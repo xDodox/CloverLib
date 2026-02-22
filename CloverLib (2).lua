@@ -1,6 +1,12 @@
 local UILib = {}
 UILib.__index = UILib
 
+UILib.Tab = {}
+UILib.Tab.__index = UILib.Tab
+
+UILib.SubTab = {}
+UILib.SubTab.__index = UILib.SubTab
+
 local UIS = game:GetService("UserInputService")
 local HS = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -886,3 +892,4 @@ function UILib.SubTab:addGroup(title)
 end
 
 return UILib
+
