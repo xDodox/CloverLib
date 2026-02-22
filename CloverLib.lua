@@ -371,6 +371,7 @@ function UILib.Tab:addSubTab(subName)
     return sub
 end
 
+-- ============= ADDED SECTION START =============
 function UILib.SubTab:addGroup(title)
     local group = {}
     group.title = title
@@ -883,5 +884,6 @@ function UILib.SubTab:addGroup(title)
     group.updateSize()
     return group
 end
+-- ============= ADDED SECTION END =============
 
 return UILib
