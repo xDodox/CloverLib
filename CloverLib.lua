@@ -181,6 +181,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     navbar.BackgroundColor3 = self.theme.Panel
     navbar.BorderSizePixel = 0
     navbar.Parent = win
+    Instance.new("UICorner", navbar).CornerRadius = UDim.new(0, 6)
     self.navbar = navbar
 
     -- Green line at the top of navbar
@@ -535,7 +536,7 @@ function UILib.Column:addGroup(title)
     label.Text = title:upper()
     label.TextColor3 = window.theme.GrayLt
     label.Font = Enum.Font.GothamBold
-    label.TextSize = 10
+    label.TextSize = 14
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.ZIndex = 2
     label.Parent = row
@@ -1333,14 +1334,6 @@ function UILib.SubTab:addGroup(title)
     row.BackgroundTransparency = 1
     row.Parent = grp
 
-    local bar = Instance.new("Frame")
-    bar.Size = UDim2.new(0, 2, 0, 14)
-    bar.Position = UDim2.new(0, 10, 0.5, -7)
-    bar.BackgroundColor3 = window.theme.Accent
-    bar.BorderSizePixel = 0
-    bar.Parent = row
-    Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 1)
-
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(1, -30, 1, 0)
     label.Position = UDim2.new(0, 18, 0, 0)
@@ -1352,8 +1345,6 @@ function UILib.SubTab:addGroup(title)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.ZIndex = 2
     label.Parent = row
-
-    -- NO SEPARATOR LINE
 
     local items = Instance.new("Frame")
     items.Position = UDim2.new(0, 0, 0, 33)
@@ -2120,4 +2111,5 @@ function UILib.SubTab:addGroup(title)
 end
 
 return UILib
+
 
