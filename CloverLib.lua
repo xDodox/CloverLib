@@ -63,18 +63,10 @@ function UILib.newWindow(title, size, theme, parent)
     headerLine.ZIndex = 6
     headerLine.Parent = header
 
-    local logoBar = Instance.new("Frame")
-    logoBar.Size = UDim2.new(0, 3, 0, 18)
-    logoBar.Position = UDim2.new(0, 14, 0.5, -9)
-    logoBar.BackgroundColor3 = theme.Accent
-    logoBar.BorderSizePixel = 0
-    logoBar.ZIndex = 6
-    logoBar.Parent = header
-    Instance.new("UICorner", logoBar).CornerRadius = UDim.new(0, 2)
-
+    -- Title label (without the logo bar)
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Size = UDim2.new(0, 240, 1, 0)
-    titleLabel.Position = UDim2.new(0, 23, 0, 0)
+    titleLabel.Position = UDim2.new(0, 10, 0, 0)  -- moved left
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = title
     titleLabel.TextColor3 = theme.White
@@ -84,9 +76,10 @@ function UILib.newWindow(title, size, theme, parent)
     titleLabel.ZIndex = 6
     titleLabel.Parent = header
 
+    -- Version pill (positioned right after title)
     local versionPill = Instance.new("Frame")
     versionPill.Size = UDim2.new(0, 52, 0, 18)
-    versionPill.Position = UDim2.new(0, 222, 0.5, -9)
+    versionPill.Position = UDim2.new(0, 250, 0.5, -9)  -- next to title
     versionPill.BackgroundColor3 = theme.AccentD
     versionPill.BorderSizePixel = 0
     versionPill.ZIndex = 6
@@ -102,6 +95,7 @@ function UILib.newWindow(title, size, theme, parent)
     versionLabel.ZIndex = 7
     versionLabel.Parent = versionPill
 
+    -- Hint label (right side)
     local hintLabel = Instance.new("TextLabel")
     hintLabel.Size = UDim2.new(0, 180, 1, 0)
     hintLabel.Position = UDim2.new(1, -188, 0, 0)
@@ -114,6 +108,7 @@ function UILib.newWindow(title, size, theme, parent)
     hintLabel.ZIndex = 6
     hintLabel.Parent = header
 
+    -- Sidebar
     local sidebar = Instance.new("Frame")
     sidebar.Size = UDim2.new(0, 152, 1, -92)
     sidebar.Position = UDim2.new(0, 0, 0, 46)
@@ -130,6 +125,7 @@ function UILib.newWindow(title, size, theme, parent)
     sidebarEdge.BorderSizePixel = 0
     sidebarEdge.Parent = sidebar
 
+    -- Content area
     local content = Instance.new("Frame")
     content.Size = UDim2.new(0, size.X - 152, 1, -92)
     content.Position = UDim2.new(0, 152, 0, 46)
@@ -138,6 +134,7 @@ function UILib.newWindow(title, size, theme, parent)
     content.Parent = win
     self.content = content
 
+    -- Navbar
     local navbar = Instance.new("Frame")
     navbar.Size = UDim2.new(1, 0, 0, 46)
     navbar.Position = UDim2.new(0, 0, 1, -46)
@@ -160,6 +157,7 @@ function UILib.newWindow(title, size, theme, parent)
     navList.VerticalAlignment = Enum.VerticalAlignment.Center
     navList.Padding = UDim.new(0, 0)
 
+    -- Drag functionality
     do
         local drag, dragStart, dragPos = false, nil, nil
         header.InputBegan:Connect(function(i)
@@ -184,6 +182,13 @@ function UILib.newWindow(title, size, theme, parent)
             end
         end))
     end
+
+    -- Built-in toggle key (RightShift)
+    table.insert(self.connections, UIS.InputBegan:Connect(function(input, gpe)
+        if not gpe and input.KeyCode == Enum.KeyCode.RightShift then
+            self:setVisible(not win.Visible)
+        end
+    end))
 
     self.tabs = {}
     self.activeTab = nil
@@ -384,7 +389,7 @@ function UILib.SubTab:addGroup(title)
     local group = {}
     group.title = title
     group.subtab = self
-    group.tab = self.tab  -- <-- FIX: add this line so group has access to tab
+    group.tab = self.tab  -- reference to parent tab
     group.elements = {}
 
     local grp = Instance.new("Frame")
@@ -422,12 +427,7 @@ function UILib.SubTab:addGroup(title)
     label.ZIndex = 2
     label.Parent = row
 
-    local separator = Instance.new("Frame")
-    separator.Size = UDim2.new(1, -16, 0, 1)
-    separator.Position = UDim2.new(0, 8, 0, 30)
-    separator.BackgroundColor3 = self.tab.window.theme.Border
-    separator.BorderSizePixel = 0
-    separator.Parent = grp
+    -- REMOVED: separator line (the "---------------- MAIN" line)
 
     local items = Instance.new("Frame")
     items.Position = UDim2.new(0, 0, 0, 33)
@@ -459,6 +459,7 @@ function UILib.SubTab:addGroup(title)
     group.itemLayout = itemLayout
     group.updateSize = updateSize
 
+    -- Element methods (toggle, slider, dropdown, keybind, label) unchanged
     function group:toggle(text, default, callback)
         local row = Instance.new("TextButton")
         row.Size = UDim2.new(1, 0, 0, 28)
