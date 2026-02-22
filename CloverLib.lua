@@ -17,14 +17,14 @@ local TweenService = game:GetService("TweenService")
 
 local activeWindow = nil
 
--- Default theme (green accent)
+-- Default theme (darker green)
 local DEFAULT_THEME = {
     BG = Color3.fromRGB(20,20,20),
     Panel = Color3.fromRGB(30,30,30),
     Item = Color3.fromRGB(35,35,35),
     ItemHov = Color3.fromRGB(45,45,45),
-    Accent = Color3.fromRGB(0,255,100),    -- bright green
-    AccentD = Color3.fromRGB(0,180,70),    -- darker green
+    Accent = Color3.fromRGB(0,200,80),     -- darker green
+    AccentD = Color3.fromRGB(0,150,60),    -- even darker
     White = Color3.new(1,1,1),
     Gray = Color3.fromRGB(160,160,160),
     GrayLt = Color3.fromRGB(200,200,200),
@@ -52,6 +52,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     self.parent = parent or (gethui and gethui()) or LP:WaitForChild("PlayerGui")
     self.connections = {}
     self.showVersion = showVersion ~= false -- default true
+    self.originalAnchor = nil
+    self.originalPos = nil
 
     self.sg = Instance.new("ScreenGui")
     self.sg.Name = "Clover_" .. HS:GenerateGUID(false)
@@ -69,12 +71,14 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     win.Parent = self.sg
     win.Active = true
     win.Selectable = false
-    Instance.new("UICorner", win).CornerRadius = UDim.new(0, 5)
+    win.AnchorPoint = Vector2.new(0, 0)  -- default top-left anchor
+    Instance.new("UICorner", win).CornerRadius = UDim.new(0, 8)  -- slightly more rounded
     local winStroke = Instance.new("UIStroke", win)
     winStroke.Color = self.theme.Border
     winStroke.Thickness = 1
     self.window = win
-    self.originalPosition = win.Position -- store initial position for animation
+    self.originalPosition = win.Position
+    self.originalSize = win.Size
 
     local header = Instance.new("Frame")
     header.Size = UDim2.new(1, 0, 0, 46)
@@ -92,7 +96,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     headerLine.ZIndex = 6
     headerLine.Parent = header
 
-    -- Title label
+    -- Title label (bigger)
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Size = UDim2.new(0, 240, 1, 0)
     titleLabel.Position = UDim2.new(0, 10, 0, 0)
@@ -100,7 +104,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     titleLabel.Text = title
     titleLabel.TextColor3 = self.theme.White
     titleLabel.Font = Enum.Font.RobotoMono
-    titleLabel.TextSize = 14
+    titleLabel.TextSize = 16  -- bigger
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.ZIndex = 6
     titleLabel.Parent = header
@@ -108,7 +112,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
 
     -- Version pill (optional)
     if self.showVersion then
-        local titleWidth = math.min(#title * 8, 240)
+        local titleWidth = math.min(#title * 9, 240)  -- adjusted for larger text
         local versionPill = Instance.new("Frame")
         versionPill.Size = UDim2.new(0, 52, 0, 18)
         versionPill.Position = UDim2.new(0, 10 + titleWidth + 8, 0.5, -9)
@@ -151,6 +155,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     sidebar.ClipsDescendants = true
     sidebar.Parent = win
     self.sidebar = sidebar
+    Instance.new("UICorner", sidebar).CornerRadius = UDim.new(0, 6)  -- rounded
 
     local sidebarEdge = Instance.new("Frame")
     sidebarEdge.Size = UDim2.new(0, 1, 1, 0)
@@ -208,7 +213,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
                     dragPos.X.Scale, dragPos.X.Offset + delta.X,
                     dragPos.Y.Scale, dragPos.Y.Offset + delta.Y
                 )
-                -- update stored position
                 self.originalPosition = win.Position
             end
         end))
@@ -219,7 +223,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
         end))
     end
 
-    -- Built-in toggle key (RightShift) with fixed animation
+    -- Built-in toggle key (RightShift) with center animation
     table.insert(self.connections, UIS.InputBegan:Connect(function(input, gpe)
         if not gpe and input.KeyCode == Enum.KeyCode.RightShift then
             self:setVisible(not win.Visible)
@@ -246,27 +250,45 @@ function UILib:Destroy()
     end
 end
 
--- Animated show/hide (preserves position)
+-- Animated show/hide (centered)
 function UILib:setVisible(visible)
     if not self.window then return end
+
     if visible then
         self.window.Visible = true
+        -- Reset anchor to top-left for dragging consistency
+        self.window.AnchorPoint = Vector2.new(0, 0)
         self.window.Size = UDim2.new(0, 0, 0, 0)
-        -- Use current position (self.originalPosition) instead of resetting
         self.window.Position = self.originalPosition
         local tween = TweenService:Create(self.window, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, self.size.X, 0, self.size.Y)
+            Size = self.originalSize
         })
         tween:Play()
     else
+        -- Store current position and size
+        self.originalPosition = self.window.Position
+        self.originalSize = self.window.Size
+
+        -- Switch anchor to center for scaling
+        local centerPos = UDim2.new(
+            self.originalPosition.X.Scale,
+            self.originalPosition.X.Offset + self.originalSize.X.Offset / 2,
+            self.originalPosition.Y.Scale,
+            self.originalPosition.Y.Offset + self.originalSize.Y.Offset / 2
+        )
+        self.window.AnchorPoint = Vector2.new(0.5, 0.5)
+        self.window.Position = centerPos
+
         local tween = TweenService:Create(self.window, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
             Size = UDim2.new(0, 0, 0, 0)
         })
         tween:Play()
         tween.Completed:Connect(function()
             self.window.Visible = false
-            -- Restore full size for next show (position unchanged)
-            self.window.Size = UDim2.new(0, self.size.X, 0, self.size.Y)
+            -- Restore original anchor and size for next show
+            self.window.AnchorPoint = Vector2.new(0, 0)
+            self.window.Size = self.originalSize
+            self.window.Position = self.originalPosition
         end)
     end
 end
@@ -453,7 +475,7 @@ function UILib.SubTab:addGroup(title)
     grp.BackgroundColor3 = self.tab.window.theme.Item
     grp.BorderSizePixel = 0
     grp.Parent = self.page
-    Instance.new("UICorner", grp).CornerRadius = UDim.new(0, 4)
+    Instance.new("UICorner", grp).CornerRadius = UDim.new(0, 6)  -- rounded
     local stroke = Instance.new("UIStroke", grp)
     stroke.Color = self.tab.window.theme.Border
     stroke.Thickness = 1
@@ -515,7 +537,7 @@ function UILib.SubTab:addGroup(title)
     group.itemLayout = itemLayout
     group.updateSize = updateSize
 
-    -- Toggle with X instead of checkmark
+    -- Toggle with × symbol
     function group:toggle(text, default, callback)
         local row = Instance.new("TextButton")
         row.Size = UDim2.new(1, 0, 0, 28)
@@ -531,7 +553,7 @@ function UILib.SubTab:addGroup(title)
         rh.Visible = false
         rh.ZIndex = 2
         rh.Parent = row
-        Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 3)
+        Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 4)
 
         row.MouseEnter:Connect(function() rh.Visible = true end)
         row.MouseLeave:Connect(function() rh.Visible = false end)
@@ -543,7 +565,7 @@ function UILib.SubTab:addGroup(title)
         cbOuter.BorderSizePixel = 0
         cbOuter.ZIndex = 4
         cbOuter.Parent = row
-        Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 3)
+        Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
 
         local cbStroke = Instance.new("UIStroke", cbOuter)
         cbStroke.Color = default and self.tab.window.theme.AccentD or self.tab.window.theme.Border
@@ -552,10 +574,10 @@ function UILib.SubTab:addGroup(title)
         local cbMark = Instance.new("TextLabel")
         cbMark.Size = UDim2.new(1, 0, 1, 0)
         cbMark.BackgroundTransparency = 1
-        cbMark.Text = default and "✕" or ""  -- X symbol
+        cbMark.Text = default and "×" or ""  -- proper multiplication sign
         cbMark.TextColor3 = Color3.new(1,1,1)
         cbMark.Font = Enum.Font.GothamBold
-        cbMark.TextSize = 14
+        cbMark.TextSize = 16
         cbMark.ZIndex = 5
         cbMark.Parent = cbOuter
 
@@ -576,7 +598,7 @@ function UILib.SubTab:addGroup(title)
             state = not state
             cbOuter.BackgroundColor3 = state and self.tab.window.theme.Accent or self.tab.window.theme.Track
             cbStroke.Color = state and self.tab.window.theme.AccentD or self.tab.window.theme.Border
-            cbMark.Text = state and "✕" or ""
+            cbMark.Text = state and "×" or ""
             callback(state)
         end)
 
@@ -584,7 +606,7 @@ function UILib.SubTab:addGroup(title)
         return row
     end
 
-    -- Slider (improved)
+    -- Improved slider
     function group:slider(text, minVal, maxVal, defaultVal, callback)
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 46)
@@ -610,7 +632,7 @@ function UILib.SubTab:addGroup(title)
         valueBox.BorderSizePixel = 0
         valueBox.ZIndex = 3
         valueBox.Parent = row
-        Instance.new("UICorner", valueBox).CornerRadius = UDim.new(0, 3)
+        Instance.new("UICorner", valueBox).CornerRadius = UDim.new(0, 4)
 
         local valueLabel = Instance.new("TextLabel")
         valueLabel.Size = UDim2.new(1, 0, 1, 0)
@@ -691,7 +713,7 @@ function UILib.SubTab:addGroup(title)
         return row
     end
 
-    -- Dropdown
+    -- Improved dropdown
     function group:dropdown(text, options, default, callback)
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 52)
@@ -802,7 +824,7 @@ function UILib.SubTab:addGroup(title)
             ck.Size = UDim2.new(0, 18, 1, 0)
             ck.Position = UDim2.new(1, -20, 0, 0)
             ck.BackgroundTransparency = 1
-            ck.Text = (opt == default) and "✕" or ""
+            ck.Text = (opt == default) and "×" or ""
             ck.TextColor3 = self.tab.window.theme.Accent
             ck.Font = Enum.Font.GothamBold
             ck.TextSize = 12
@@ -821,7 +843,7 @@ function UILib.SubTab:addGroup(title)
             ob.MouseButton1Click:Connect(function()
                 selLbl.Text = opt
                 for _, c in pairs(checks) do c.Text = "" end
-                ck.Text = "✕"
+                ck.Text = "×"
                 dlist.Visible = false
                 arrow.Text = "▼"
                 row.Size = UDim2.new(1, 0, 0, 52)
@@ -972,7 +994,7 @@ function UILib.SubTab:addGroup(title)
         rh.Visible = false
         rh.ZIndex = 2
         rh.Parent = toggleRow
-        Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 3)
+        Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 4)
 
         toggleRow.MouseEnter:Connect(function() rh.Visible = true end)
         toggleRow.MouseLeave:Connect(function() rh.Visible = false end)
