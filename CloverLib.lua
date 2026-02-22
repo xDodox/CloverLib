@@ -17,13 +17,35 @@ local TweenService = game:GetService("TweenService")
 
 local activeWindow = nil
 
+-- Default theme (used if user doesn't provide one)
+local DEFAULT_THEME = {
+    BG = Color3.fromRGB(20,20,20),
+    Panel = Color3.fromRGB(30,30,30),
+    Item = Color3.fromRGB(35,35,35),
+    ItemHov = Color3.fromRGB(45,45,45),
+    Accent = Color3.fromRGB(0,120,255),
+    AccentD = Color3.fromRGB(0,80,200),
+    White = Color3.new(1,1,1),
+    Gray = Color3.fromRGB(160,160,160),
+    GrayLt = Color3.fromRGB(200,200,200),
+    Border = Color3.fromRGB(50,50,50),
+    Track = Color3.fromRGB(60,60,60)
+}
+
 function UILib.newWindow(title, size, theme, parent, showVersion)
     if activeWindow then
         activeWindow:Destroy()
     end
 
     local self = setmetatable({}, UILib)
-    self.theme = theme
+    -- Merge user theme with defaults
+    self.theme = theme or {}
+    for k, v in pairs(DEFAULT_THEME) do
+        if self.theme[k] == nil then
+            self.theme[k] = v
+        end
+    end
+
     self.size = size
     self.title = title
     self.parent = parent or (gethui and gethui()) or LP:WaitForChild("PlayerGui")
@@ -35,26 +57,26 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     self.sg.ResetOnSpawn = false
     self.sg.IgnoreGuiInset = false
     self.sg.Parent = self.parent
-    self.sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling -- ensures proper layering
+    self.sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
     local win = Instance.new("Frame")
     win.Size = UDim2.new(0, size.X, 0, size.Y)
     win.Position = UDim2.new(0, 80, 0, 60)
-    win.BackgroundColor3 = theme.BG
+    win.BackgroundColor3 = self.theme.BG
     win.BorderSizePixel = 0
     win.ClipsDescendants = true
     win.Parent = self.sg
-    win.Active = true -- blocks clicks
+    win.Active = true
     win.Selectable = false
     Instance.new("UICorner", win).CornerRadius = UDim.new(0, 5)
     local winStroke = Instance.new("UIStroke", win)
-    winStroke.Color = theme.Border
+    winStroke.Color = self.theme.Border
     winStroke.Thickness = 1
     self.window = win
 
     local header = Instance.new("Frame")
     header.Size = UDim2.new(1, 0, 0, 46)
-    header.BackgroundColor3 = theme.BG
+    header.BackgroundColor3 = self.theme.BG
     header.BorderSizePixel = 0
     header.ZIndex = 5
     header.Parent = win
@@ -63,7 +85,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     local headerLine = Instance.new("Frame")
     headerLine.Size = UDim2.new(1, 0, 0, 2)
     headerLine.Position = UDim2.new(0, 0, 1, -2)
-    headerLine.BackgroundColor3 = theme.Accent
+    headerLine.BackgroundColor3 = self.theme.Accent
     headerLine.BorderSizePixel = 0
     headerLine.ZIndex = 6
     headerLine.Parent = header
@@ -74,7 +96,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     titleLabel.Position = UDim2.new(0, 10, 0, 0)
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = title
-    titleLabel.TextColor3 = theme.White
+    titleLabel.TextColor3 = self.theme.White
     titleLabel.Font = Enum.Font.RobotoMono
     titleLabel.TextSize = 14
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -84,12 +106,11 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
 
     -- Version pill (optional)
     if self.showVersion then
-        -- Calculate position based on title width (approx)
-        local titleWidth = math.min(#title * 8, 240) -- rough estimate
+        local titleWidth = math.min(#title * 8, 240)
         local versionPill = Instance.new("Frame")
         versionPill.Size = UDim2.new(0, 52, 0, 18)
         versionPill.Position = UDim2.new(0, 10 + titleWidth + 8, 0.5, -9)
-        versionPill.BackgroundColor3 = theme.AccentD
+        versionPill.BackgroundColor3 = self.theme.AccentD
         versionPill.BorderSizePixel = 0
         versionPill.ZIndex = 6
         versionPill.Parent = header
@@ -98,7 +119,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
         versionLabel.Size = UDim2.new(1, 0, 1, 0)
         versionLabel.BackgroundTransparency = 1
         versionLabel.Text = "v1.0"
-        versionLabel.TextColor3 = theme.White
+        versionLabel.TextColor3 = self.theme.White
         versionLabel.Font = Enum.Font.GothamBold
         versionLabel.TextSize = 10
         versionLabel.ZIndex = 7
@@ -112,7 +133,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     hintLabel.Position = UDim2.new(1, -188, 0, 0)
     hintLabel.BackgroundTransparency = 1
     hintLabel.Text = "[RSHIFT]  TOGGLE"
-    hintLabel.TextColor3 = theme.Gray
+    hintLabel.TextColor3 = self.theme.Gray
     hintLabel.Font = Enum.Font.RobotoMono
     hintLabel.TextSize = 9
     hintLabel.TextXAlignment = Enum.TextXAlignment.Right
@@ -123,7 +144,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     local sidebar = Instance.new("Frame")
     sidebar.Size = UDim2.new(0, 152, 1, -92)
     sidebar.Position = UDim2.new(0, 0, 0, 46)
-    sidebar.BackgroundColor3 = theme.Panel
+    sidebar.BackgroundColor3 = self.theme.Panel
     sidebar.BorderSizePixel = 0
     sidebar.ClipsDescendants = true
     sidebar.Parent = win
@@ -132,7 +153,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     local sidebarEdge = Instance.new("Frame")
     sidebarEdge.Size = UDim2.new(0, 1, 1, 0)
     sidebarEdge.Position = UDim2.new(1, -1, 0, 0)
-    sidebarEdge.BackgroundColor3 = theme.Border
+    sidebarEdge.BackgroundColor3 = self.theme.Border
     sidebarEdge.BorderSizePixel = 0
     sidebarEdge.Parent = sidebar
 
@@ -140,7 +161,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     local content = Instance.new("Frame")
     content.Size = UDim2.new(0, size.X - 152, 1, -92)
     content.Position = UDim2.new(0, 152, 0, 46)
-    content.BackgroundColor3 = theme.BG
+    content.BackgroundColor3 = self.theme.BG
     content.BorderSizePixel = 0
     content.Parent = win
     self.content = content
@@ -149,7 +170,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     local navbar = Instance.new("Frame")
     navbar.Size = UDim2.new(1, 0, 0, 46)
     navbar.Position = UDim2.new(0, 0, 1, -46)
-    navbar.BackgroundColor3 = theme.Panel
+    navbar.BackgroundColor3 = self.theme.Panel
     navbar.BorderSizePixel = 0
     navbar.Parent = win
     self.navbar = navbar
@@ -157,7 +178,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     local navLine = Instance.new("Frame")
     navLine.Size = UDim2.new(1, 0, 0, 1)
     navLine.Position = UDim2.new(0, 0, 0, 0)
-    navLine.BackgroundColor3 = theme.Border
+    navLine.BackgroundColor3 = self.theme.Border
     navLine.BorderSizePixel = 0
     navLine.ZIndex = 4
     navLine.Parent = navbar
@@ -241,14 +262,13 @@ function UILib:setVisible(visible)
         tween:Play()
         tween.Completed:Connect(function()
             self.window.Visible = false
-            -- Restore original size for next show
             self.window.Size = UDim2.new(0, self.size.X, 0, self.size.Y)
             self.window.Position = UDim2.new(0, 80, 0, 60)
         end)
     end
 end
 
--- Tab methods (unchanged except for metatable setup)
+-- Tab methods
 function UILib:addTab(name)
     local tab = setmetatable({}, UILib.Tab)
     tab.name = name
@@ -423,7 +443,7 @@ function UILib.SubTab:addGroup(title)
     group.subtab = self
     group.tab = self.tab
     group.elements = {}
-    group.collapsibleGroups = {} -- for nested collapsible sections
+    group.collapsibleGroups = {}
 
     local grp = Instance.new("Frame")
     grp.Size = UDim2.new(1, 0, 0, 36)
@@ -460,7 +480,7 @@ function UILib.SubTab:addGroup(title)
     label.ZIndex = 2
     label.Parent = row
 
-    -- (Separator removed)
+    -- NO SEPARATOR LINE
 
     local items = Instance.new("Frame")
     items.Position = UDim2.new(0, 0, 0, 33)
@@ -492,7 +512,7 @@ function UILib.SubTab:addGroup(title)
     group.itemLayout = itemLayout
     group.updateSize = updateSize
 
-    -- Improved toggle
+    -- Toggle
     function group:toggle(text, default, callback)
         local row = Instance.new("TextButton")
         row.Size = UDim2.new(1, 0, 0, 28)
@@ -561,7 +581,7 @@ function UILib.SubTab:addGroup(title)
         return row
     end
 
-    -- Improved slider with live value
+    -- Slider
     function group:slider(text, minVal, maxVal, defaultVal, callback)
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 46)
@@ -668,7 +688,7 @@ function UILib.SubTab:addGroup(title)
         return row
     end
 
-    -- Improved dropdown with better arrow
+    -- Dropdown
     function group:dropdown(text, options, default, callback)
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 52)
@@ -818,7 +838,7 @@ function UILib.SubTab:addGroup(title)
         return row
     end
 
-    -- Keybind (unchanged but kept for completeness)
+    -- Keybind
     function group:keybind(text, currentName, onChange)
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 30)
@@ -904,7 +924,7 @@ function UILib.SubTab:addGroup(title)
         return row
     end
 
-    -- Label (unchanged)
+    -- Label
     function group:label(text, color)
         local f = Instance.new("Frame")
         f.Size = UDim2.new(1, 0, 0, 20)
@@ -927,7 +947,7 @@ function UILib.SubTab:addGroup(title)
         return f
     end
 
-    -- New collapsible group
+    -- Collapsible group
     function group:collapsible(text, default, contentFunc)
         local container = Instance.new("Frame")
         container.Size = UDim2.new(1, 0, 0, 30)
@@ -996,7 +1016,6 @@ function UILib.SubTab:addGroup(title)
 
         contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
 
-        -- Create the nested group for content
         local nestedGroup = {
             toggle = function(_, ...) error("Use group:toggle directly") end,
             slider = function(_, ...) error("Use group:slider directly") end,
@@ -1005,7 +1024,6 @@ function UILib.SubTab:addGroup(title)
             label = function(_, ...) error("Use group:label directly") end,
             collapsible = function(_, ...) error("Use group:collapsible directly") end
         }
-        -- Override methods to add elements to contentFrame
         function nestedGroup:toggle(subText, subDefault, subCallback)
             local row = group:toggle(subText, subDefault, subCallback)
             row.Parent = contentFrame
@@ -1037,14 +1055,12 @@ function UILib.SubTab:addGroup(title)
             return row
         end
         function nestedGroup:collapsible(subText, subDefault, subContentFunc)
-            -- Recursively create nested collapsible
             local subRow = group:collapsible(subText, subDefault, subContentFunc)
             subRow.Parent = contentFrame
             updateContentSize()
             return subRow
         end
 
-        -- Call the content function to populate the nested group
         if contentFunc then
             contentFunc(nestedGroup)
         end
