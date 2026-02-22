@@ -183,14 +183,10 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     navbar.Parent = win
     self.navbar = navbar
 
-    -- Green line at the top of navbar (not a separator line)
-    local navTopLine = Instance.new("Frame")
-    navTopLine.Size = UDim2.new(1, 0, 0, 2)
-    navTopLine.Position = UDim2.new(0, 0, 0, 0)
-    navTopLine.BackgroundColor3 = self.theme.Accent
-    navTopLine.BorderSizePixel = 0
-    navTopLine.ZIndex = 4
-    navTopLine.Parent = navbar
+    -- Green line at the top of navbar
+    local navbarStroke = Instance.new("UIStroke", navbar)
+    navbarStroke.Color = self.theme.Border
+    navbarStroke.Thickness = 1
 
     local navList = Instance.new("UIListLayout", navbar)
     navList.FillDirection = Enum.FillDirection.Horizontal
@@ -2124,3 +2120,4 @@ function UILib.SubTab:addGroup(title)
 end
 
 return UILib
+
