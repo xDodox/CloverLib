@@ -1285,14 +1285,324 @@ function UILib.Column:addGroup(title)
         return btn
     end
 
-    -- Expandable toggle (omitted for brevity, but can be added back)
+    -- Expandable toggle
     function group:expandableToggle(text, default, contentFunc)
-        -- ... (same as before, we'll keep it but not show here for space)
+        local container = Instance.new("Frame")
+        container.Size = UDim2.new(1, 0, 0, 30)
+        container.BackgroundTransparency = 1
+        container.ClipsDescendants = true
+        container.Parent = items
+
+        local toggleRow = Instance.new("TextButton")
+        toggleRow.Size = UDim2.new(1, 0, 0, 30)
+        toggleRow.BackgroundTransparency = 1
+        toggleRow.Text = ""
+        toggleRow.ZIndex = 3
+        toggleRow.Parent = container
+
+        local rh = Instance.new("Frame")
+        rh.Size = UDim2.new(1, 0, 1, 0)
+        rh.BackgroundColor3 = window.theme.ItemHov
+        rh.BorderSizePixel = 0
+        rh.Visible = false
+        rh.ZIndex = 2
+        rh.Parent = toggleRow
+        Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 4)
+
+        toggleRow.MouseEnter:Connect(function() rh.Visible = true end)
+        toggleRow.MouseLeave:Connect(function() rh.Visible = false end)
+
+        local cbOuter = Instance.new("Frame")
+        cbOuter.Size = UDim2.new(0, 18, 0, 18)
+        cbOuter.Position = UDim2.new(1, -22, 0.5, -9)
+        cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.Track
+        cbOuter.BorderSizePixel = 0
+        cbOuter.ZIndex = 4
+        cbOuter.Parent = toggleRow
+        Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
+
+        local cbStroke = Instance.new("UIStroke", cbOuter)
+        cbStroke.Color = default and window.theme.AccentD or window.theme.Border
+        cbStroke.Thickness = 1
+
+        local cbMark = Instance.new("TextLabel")
+        cbMark.Size = UDim2.new(1, 0, 1, 0)
+        cbMark.BackgroundTransparency = 1
+        cbMark.Text = default and "×" or ""
+        cbMark.TextColor3 = Color3.new(1,1,1)
+        cbMark.Font = Enum.Font.GothamBold
+        cbMark.TextSize = 16
+        cbMark.ZIndex = 5
+        cbMark.Parent = cbOuter
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -32, 1, 0)
+        label.Position = UDim2.new(0, 4, 0, 0)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.TextColor3 = window.theme.White
+        label.Font = Enum.Font.Roboto
+        label.TextSize = 13
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 4
+        label.Parent = toggleRow
+
+        local contentFrame = Instance.new("Frame")
+        contentFrame.Size = UDim2.new(1, 0, 0, 0)
+        contentFrame.Position = UDim2.new(0, 0, 0, 30)
+        contentFrame.BackgroundTransparency = 1
+        contentFrame.Parent = container
+
+        local contentLayout = Instance.new("UIListLayout", contentFrame)
+        contentLayout.Padding = UDim.new(0, 2)
+        contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+        local function updateContentSize()
+            local h = contentLayout.AbsoluteContentSize.Y
+            contentFrame.Size = UDim2.new(1, 0, 0, h)
+            container.Size = UDim2.new(1, 0, 0, 30 + (default and h or 0))
+            updateSize()
+        end
+
+        contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
+
+        local nestedGroup = {}
+        function nestedGroup:toggle(subText, subDefault, subCallback)
+            local row = group:toggle(subText, subDefault, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:slider(subText, min, max, default, subCallback)
+            local row = group:slider(subText, min, max, default, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:dropdown(subText, options, default, subCallback)
+            local row = group:dropdown(subText, options, default, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:keybind(subText, current, subCallback)
+            local row = group:keybind(subText, current, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:label(subText, color)
+            local row = group:label(subText, color)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:button(subText, subCallback)
+            local row = group:button(subText, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:colorpicker(subText, subDefault, subCallback)
+            local row = group:colorpicker(subText, subDefault, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:multidropdown(subText, options, default, subCallback)
+            local row = group:multidropdown(subText, options, default, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:textbox(subText, default, subCallback)
+            local row = group:textbox(subText, default, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:numberbox(subText, default, min, max, subCallback)
+            local row = group:numberbox(subText, default, min, max, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback)
+            local row = group:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+
+        if contentFunc then
+            contentFunc(nestedGroup)
+        end
+
+        local state = default
+        toggleRow.MouseButton1Click:Connect(function()
+            state = not state
+            cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track
+            cbStroke.Color = state and window.theme.AccentD or window.theme.Border
+            cbMark.Text = state and "×" or ""
+            container.Size = UDim2.new(1, 0, 0, 30 + (state and contentLayout.AbsoluteContentSize.Y or 0))
+            updateSize()
+        end)
+
+        updateContentSize()
+        return container
     end
 
     -- Collapsible (simple, no checkbox)
     function group:collapsible(text, default, contentFunc)
-        -- ... (same as before)
+        local container = Instance.new("Frame")
+        container.Size = UDim2.new(1, 0, 0, 30)
+        container.BackgroundTransparency = 1
+        container.ClipsDescendants = true
+        container.Parent = items
+
+        local toggleRow = Instance.new("TextButton")
+        toggleRow.Size = UDim2.new(1, 0, 0, 30)
+        toggleRow.BackgroundTransparency = 1
+        toggleRow.Text = ""
+        toggleRow.ZIndex = 3
+        toggleRow.Parent = container
+
+        local rh = Instance.new("Frame")
+        rh.Size = UDim2.new(1, 0, 1, 0)
+        rh.BackgroundColor3 = window.theme.ItemHov
+        rh.BorderSizePixel = 0
+        rh.Visible = false
+        rh.ZIndex = 2
+        rh.Parent = toggleRow
+        Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 4)
+
+        toggleRow.MouseEnter:Connect(function() rh.Visible = true end)
+        toggleRow.MouseLeave:Connect(function() rh.Visible = false end)
+
+        local arrow = Instance.new("TextLabel")
+        arrow.Size = UDim2.new(0, 20, 1, 0)
+        arrow.Position = UDim2.new(1, -22, 0, 0)
+        arrow.BackgroundTransparency = 1
+        arrow.Text = default and "▼" or "▶"
+        arrow.TextColor3 = window.theme.Accent
+        arrow.Font = Enum.Font.GothamBold
+        arrow.TextSize = 14
+        arrow.ZIndex = 4
+        arrow.Parent = toggleRow
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -28, 1, 0)
+        label.Position = UDim2.new(0, 4, 0, 0)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.TextColor3 = window.theme.White
+        label.Font = Enum.Font.Roboto
+        label.TextSize = 13
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 4
+        label.Parent = toggleRow
+
+        local contentFrame = Instance.new("Frame")
+        contentFrame.Size = UDim2.new(1, 0, 0, 0)
+        contentFrame.Position = UDim2.new(0, 0, 0, 30)
+        contentFrame.BackgroundTransparency = 1
+        contentFrame.Parent = container
+
+        local contentLayout = Instance.new("UIListLayout", contentFrame)
+        contentLayout.Padding = UDim.new(0, 2)
+        contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+        local function updateContentSize()
+            local h = contentLayout.AbsoluteContentSize.Y
+            contentFrame.Size = UDim2.new(1, 0, 0, h)
+            container.Size = UDim2.new(1, 0, 0, 30 + (default and h or 0))
+            updateSize()
+        end
+
+        contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
+
+        local nestedGroup = {}
+        function nestedGroup:toggle(subText, subDefault, subCallback)
+            local row = group:toggle(subText, subDefault, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:slider(subText, min, max, default, subCallback)
+            local row = group:slider(subText, min, max, default, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:dropdown(subText, options, default, subCallback)
+            local row = group:dropdown(subText, options, default, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:keybind(subText, current, subCallback)
+            local row = group:keybind(subText, current, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:label(subText, color)
+            local row = group:label(subText, color)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:button(subText, subCallback)
+            local row = group:button(subText, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:colorpicker(subText, subDefault, subCallback)
+            local row = group:colorpicker(subText, subDefault, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:multidropdown(subText, options, default, subCallback)
+            local row = group:multidropdown(subText, options, default, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:textbox(subText, default, subCallback)
+            local row = group:textbox(subText, default, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:numberbox(subText, default, min, max, subCallback)
+            local row = group:numberbox(subText, default, min, max, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback)
+            local row = group:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+
+        if contentFunc then
+            contentFunc(nestedGroup)
+        end
+
+        local state = default
+        toggleRow.MouseButton1Click:Connect(function()
+            state = not state
+            arrow.Text = state and "▼" or "▶"
+            container.Size = UDim2.new(1, 0, 0, 30 + (state and contentLayout.AbsoluteContentSize.Y or 0))
+            updateSize()
+        end)
+
+        updateContentSize()
+        return container
     end
 
     -- Color picker (fully functional with dragging)
@@ -1411,11 +1721,16 @@ function UILib.Column:addGroup(title)
             local function updateHue(pos)
                 local rel = math.clamp((pos - hueSlider.AbsolutePosition.X) / hueSlider.AbsoluteSize.X, 0, 1)
                 hueKnob.Position = UDim2.new(rel, -5, 0.5, -5)
-                -- Convert rel to hue value (0-1)
                 local h = rel
                 local c = Color3.fromHSV(h, 1, 1)
                 satValSquare.BackgroundColor3 = c
-                -- Update current color based on sat/val later
+                -- Update current color based on sat/val knob (if not dragging sat/val, use current knob position)
+                local svRelX = satValKnob.Position.X.Scale + satValKnob.Position.X.Offset / satValSquare.AbsoluteSize.X
+                local svRelY = satValKnob.Position.Y.Scale + satValKnob.Position.Y.Offset / satValSquare.AbsoluteSize.Y
+                svRelX = math.clamp(svRelX, 0, 1)
+                svRelY = math.clamp(svRelY, 0, 1)
+                current = Color3.fromHSV(h, svRelX, 1 - svRelY)
+                colorBox.BackgroundColor3 = current
             end
 
             hueSlider.InputBegan:Connect(function(input)
@@ -1431,19 +1746,12 @@ function UILib.Column:addGroup(title)
                 end
             end)
 
-            UIS.InputEnded:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    hueDragging = false
-                end
-            end)
-
             -- Dragging logic for sat/val
             local satValDragging = false
             local function updateSatVal(pos)
                 local relX = math.clamp((pos.X - satValSquare.AbsolutePosition.X) / satValSquare.AbsoluteSize.X, 0, 1)
                 local relY = math.clamp((pos.Y - satValSquare.AbsolutePosition.Y) / satValSquare.AbsoluteSize.Y, 0, 1)
                 satValKnob.Position = UDim2.new(relX, -5, relY, -5)
-                -- Get hue from knob position
                 local h = hueKnob.Position.X.Scale + hueKnob.Position.X.Offset / hueSlider.AbsoluteSize.X
                 h = math.clamp(h, 0, 1)
                 current = Color3.fromHSV(h, relX, 1 - relY)
@@ -1463,14 +1771,18 @@ function UILib.Column:addGroup(title)
                 end
             end)
 
-            UIS.InputEnded:Connect(function(input)
+            -- Global mouse up to stop dragging
+            local mouseUpConn
+            mouseUpConn = UIS.InputEnded:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    hueDragging = false
                     satValDragging = false
                 end
             end)
 
             okButton.MouseButton1Click:Connect(function()
                 overlay:Destroy()
+                mouseUpConn:Disconnect()
                 if callback then callback(current) end
                 window.configs[id].Value = current
             end)
@@ -1971,7 +2283,7 @@ function UILib.Column:addGroup(title)
     return group
 end
 
--- ==================== SubTab:addGroup (with all element methods) ====================
+-- ==================== SubTab:addGroup (fully updated with all improvements) ====================
 function UILib.SubTab:addGroup(title)
     local window = self.window
     if not window then
@@ -2040,9 +2352,8 @@ function UILib.SubTab:addGroup(title)
     group.items = items
     group.itemLayout = itemLayout
     group.updateSize = updateSize
-    
-    -- === ELEMENT METHODS (copied from UILib.Column:addGroup) ===
-    -- (All functions below are identical to those above, using `window` and `items` from this closure)
+
+    -- === ALL ELEMENT METHODS (identical to Column versions) ===
     -- Toggle
     function group:toggle(text, default, callback)
         local id = generateID()
@@ -2123,7 +2434,7 @@ function UILib.SubTab:addGroup(title)
         return row
     end
 
-    -- Slider
+    -- Slider (with editable value)
     function group:slider(text, minVal, maxVal, defaultVal, callback)
         local id = generateID()
         local row = Instance.new("Frame")
@@ -2152,6 +2463,7 @@ function UILib.SubTab:addGroup(title)
         valueBox.Parent = row
         Instance.new("UICorner", valueBox).CornerRadius = UDim.new(0, 4)
 
+        -- The value display, which becomes a textbox on click
         local valueLabel = Instance.new("TextLabel")
         valueLabel.Size = UDim2.new(1, 0, 1, 0)
         valueLabel.BackgroundTransparency = 1
@@ -2161,6 +2473,18 @@ function UILib.SubTab:addGroup(title)
         valueLabel.TextSize = 11
         valueLabel.ZIndex = 4
         valueLabel.Parent = valueBox
+
+        local valueBoxInput = Instance.new("TextBox")
+        valueBoxInput.Size = UDim2.new(1, 0, 1, 0)
+        valueBoxInput.BackgroundTransparency = 1
+        valueBoxInput.Text = tostring(defaultVal)
+        valueBoxInput.TextColor3 = window.theme.Accent
+        valueBoxInput.Font = Enum.Font.RobotoMono
+        valueBoxInput.TextSize = 11
+        valueBoxInput.Visible = false
+        valueBoxInput.ZIndex = 5
+        valueBoxInput.Parent = valueBox
+        Instance.new("UICorner", valueBoxInput).CornerRadius = UDim.new(0, 4)
 
         local track = Instance.new("Frame")
         track.Size = UDim2.new(1, 0, 0, 6)
@@ -2203,14 +2527,22 @@ function UILib.SubTab:addGroup(title)
         local sliding = false
         local currentVal = defaultVal
 
-        local function apply(mx)
-            local rel = math.clamp((mx - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
-            local val = math.floor(minVal + (maxVal - minVal) * rel + 0.5)
+        local function updateSlider(val)
+            val = math.clamp(val, minVal, maxVal)
             currentVal = val
+            local rel = (val - minVal) / (maxVal - minVal)
             fill.Size = UDim2.new(rel, 0, 1, 0)
             knob.Position = UDim2.new(rel, -7, 0.5, -7)
             valueLabel.Text = tostring(val)
-            callback(val)
+            valueBoxInput.Text = tostring(val)
+            if callback then callback(val) end
+            window.configs[id].Value = val
+        end
+
+        local function apply(mx)
+            local rel = math.clamp((mx - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+            local val = math.floor(minVal + (maxVal - minVal) * rel + 0.5)
+            updateSlider(val)
         end
 
         hit.MouseButton1Down:Connect(function()
@@ -2230,18 +2562,32 @@ function UILib.SubTab:addGroup(title)
             end
         end)
 
+        -- Editable value: click on value label to switch to textbox
+        valueLabel.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                valueLabel.Visible = false
+                valueBoxInput.Visible = true
+                valueBoxInput:CaptureFocus()
+                valueBoxInput.Text = tostring(currentVal)
+                valueBoxInput.TextColor3 = window.theme.Accent
+            end
+        end)
+
+        valueBoxInput.FocusLost:Connect(function(enter)
+            valueBoxInput.Visible = false
+            valueLabel.Visible = true
+            local num = tonumber(valueBoxInput.Text)
+            if num then
+                updateSlider(num)
+            else
+                valueLabel.Text = tostring(currentVal)
+            end
+        end)
+
         local elem = {
             ID = id,
             Value = currentVal,
-            SetValue = function(val)
-                val = math.clamp(val, minVal, maxVal)
-                currentVal = val
-                local rel = (val - minVal) / (maxVal - minVal)
-                fill.Size = UDim2.new(rel, 0, 1, 0)
-                knob.Position = UDim2.new(rel, -7, 0.5, -7)
-                valueLabel.Text = tostring(val)
-                callback(val)
-            end
+            SetValue = updateSlider
         }
         window.configs[id] = elem
 
@@ -2369,6 +2715,15 @@ function UILib.SubTab:addGroup(title)
             ck.Parent = ob
             checks[opt] = ck
 
+            if opt == default then
+                local bg = Instance.new("Frame")
+                bg.Size = UDim2.new(1, 0, 1, 0)
+                bg.BackgroundColor3 = window.theme.Accent
+                bg.BackgroundTransparency = 0.8
+                bg.ZIndex = 50
+                bg.Parent = ob
+            end
+
             ob.MouseEnter:Connect(function()
                 oh.Visible = true
                 ol.TextColor3 = window.theme.White
@@ -2395,6 +2750,7 @@ function UILib.SubTab:addGroup(title)
             dlist.Visible = open
             arrow.Text = open and "▲" or "▼"
             row.Size = UDim2.new(1, 0, 0, 52 + (open and math.min(listH, 104) or 0))
+            updateSize()
         end)
 
         local elem = {
@@ -2414,7 +2770,7 @@ function UILib.SubTab:addGroup(title)
         return row
     end
 
-    -- Keybind
+    -- Keybind (improved)
     function group:keybind(text, currentName, onChange)
         local id = generateID()
         local row = Instance.new("Frame")
@@ -2457,8 +2813,9 @@ function UILib.SubTab:addGroup(title)
             listening = true
             skipNext = true
             kbtn.Text = "[...]"
-            kbtn.TextColor3 = window.theme.GrayLt
-            kstroke.Color = window.theme.Accent
+            kbtn.TextColor3 = window.theme.White
+            kbtn.BackgroundColor3 = window.theme.Accent
+            kstroke.Color = window.theme.AccentD
             local con
             con = UIS.InputBegan:Connect(function(i)
                 if skipNext and i.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -2467,6 +2824,7 @@ function UILib.SubTab:addGroup(title)
                 end
                 listening = false
                 con:Disconnect()
+                kbtn.BackgroundColor3 = window.theme.Track
                 kstroke.Color = window.theme.Border
                 if i.KeyCode == Enum.KeyCode.Escape then
                     kbtn.Text = currentName
@@ -2506,7 +2864,6 @@ function UILib.SubTab:addGroup(title)
             Value = currentName,
             SetValue = function(val)
                 kbtn.Text = val
-                -- we don't have an inverse mapping easily, so just update text
             end
         }
         window.configs[id] = elem
@@ -2713,6 +3070,12 @@ function UILib.SubTab:addGroup(title)
             updateContentSize()
             return row
         end
+        function nestedGroup:numberbox(subText, default, min, max, subCallback)
+            local row = group:numberbox(subText, default, min, max, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
         function nestedGroup:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback)
             local row = group:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback)
             row.Parent = contentFrame
@@ -2738,7 +3101,7 @@ function UILib.SubTab:addGroup(title)
         return container
     end
 
-    -- Collapsible (simple, no checkbox)
+    -- Collapsible
     function group:collapsible(text, default, contentFunc)
         local container = Instance.new("Frame")
         container.Size = UDim2.new(1, 0, 0, 30)
@@ -2862,6 +3225,12 @@ function UILib.SubTab:addGroup(title)
             updateContentSize()
             return row
         end
+        function nestedGroup:numberbox(subText, default, min, max, subCallback)
+            local row = group:numberbox(subText, default, min, max, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
         function nestedGroup:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback)
             local row = group:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback)
             row.Parent = contentFrame
@@ -2885,7 +3254,7 @@ function UILib.SubTab:addGroup(title)
         return container
     end
 
-    -- Color picker
+    -- Color picker (full dragging version)
     function group:colorpicker(text, default, callback)
         local id = generateID()
         local row = Instance.new("Frame")
@@ -2938,6 +3307,7 @@ function UILib.SubTab:addGroup(title)
             local pickerStroke = Instance.new("UIStroke", picker)
             pickerStroke.Color = window.theme.Border
 
+            -- Hue slider
             local hueSlider = Instance.new("Frame")
             hueSlider.Size = UDim2.new(0, 220, 0, 20)
             hueSlider.Position = UDim2.new(0.5, -110, 0, 10)
@@ -2956,32 +3326,109 @@ function UILib.SubTab:addGroup(title)
             }
             hueGradient.Rotation = 90
 
+            local hueKnob = Instance.new("Frame")
+            hueKnob.Size = UDim2.new(0, 10, 0, 10)
+            hueKnob.Position = UDim2.new(0, 0, 0.5, -5)
+            hueKnob.BackgroundColor3 = window.theme.White
+            hueKnob.BorderSizePixel = 0
+            hueKnob.ZIndex = 103
+            hueKnob.Parent = hueSlider
+            Instance.new("UICorner", hueKnob).CornerRadius = UDim.new(0, 5)
+            local hueKnobStroke = Instance.new("UIStroke", hueKnob)
+            hueKnobStroke.Color = window.theme.Accent
+
+            -- Saturation/Value square
             local satValSquare = Instance.new("Frame")
             satValSquare.Size = UDim2.new(0, 200, 0, 100)
             satValSquare.Position = UDim2.new(0.5, -100, 0, 40)
             satValSquare.BackgroundColor3 = Color3.new(1,1,1)
             satValSquare.ZIndex = 102
             satValSquare.Parent = picker
-            local squareGradient = Instance.new("UIGradient", satValSquare)
-            squareGradient.Color = ColorSequence.new{
-                ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
-                ColorSequenceKeypoint.new(1, Color3.new(1,0,0))
-            }
-            squareGradient.Rotation = 90
+            local satValKnob = Instance.new("Frame")
+            satValKnob.Size = UDim2.new(0, 10, 0, 10)
+            satValKnob.Position = UDim2.new(0, 0, 0, 0)
+            satValKnob.BackgroundColor3 = window.theme.White
+            satValKnob.BorderSizePixel = 0
+            satValKnob.ZIndex = 103
+            satValKnob.Parent = satValSquare
+            Instance.new("UICorner", satValKnob).CornerRadius = UDim.new(0, 5)
+            local satValKnobStroke = Instance.new("UIStroke", satValKnob)
+            satValKnobStroke.Color = window.theme.Accent
 
-            local close = Instance.new("TextButton")
-            close.Size = UDim2.new(0, 60, 0, 30)
-            close.Position = UDim2.new(0.5, -30, 0, 150)
-            close.BackgroundColor3 = window.theme.Accent
-            close.Text = "OK"
-            close.TextColor3 = window.theme.White
-            close.ZIndex = 102
-            close.Parent = picker
-            Instance.new("UICorner", close).CornerRadius = UDim.new(0, 4)
+            local okButton = Instance.new("TextButton")
+            okButton.Size = UDim2.new(0, 60, 0, 30)
+            okButton.Position = UDim2.new(0.5, -30, 0, 160)
+            okButton.BackgroundColor3 = window.theme.Accent
+            okButton.Text = "OK"
+            okButton.TextColor3 = window.theme.White
+            okButton.ZIndex = 102
+            okButton.Parent = picker
+            Instance.new("UICorner", okButton).CornerRadius = UDim.new(0, 4)
 
-            close.MouseButton1Click:Connect(function()
-                overlay:Destroy()
+            local hueDragging = false
+            local satValDragging = false
+
+            local function updateHue(pos)
+                local rel = math.clamp((pos - hueSlider.AbsolutePosition.X) / hueSlider.AbsoluteSize.X, 0, 1)
+                hueKnob.Position = UDim2.new(rel, -5, 0.5, -5)
+                local h = rel
+                local c = Color3.fromHSV(h, 1, 1)
+                satValSquare.BackgroundColor3 = c
+                local svRelX = satValKnob.Position.X.Scale + satValKnob.Position.X.Offset / satValSquare.AbsoluteSize.X
+                local svRelY = satValKnob.Position.Y.Scale + satValKnob.Position.Y.Offset / satValSquare.AbsoluteSize.Y
+                svRelX = math.clamp(svRelX, 0, 1)
+                svRelY = math.clamp(svRelY, 0, 1)
+                current = Color3.fromHSV(h, svRelX, 1 - svRelY)
                 colorBox.BackgroundColor3 = current
+            end
+
+            local function updateSatVal(pos)
+                local relX = math.clamp((pos.X - satValSquare.AbsolutePosition.X) / satValSquare.AbsoluteSize.X, 0, 1)
+                local relY = math.clamp((pos.Y - satValSquare.AbsolutePosition.Y) / satValSquare.AbsoluteSize.Y, 0, 1)
+                satValKnob.Position = UDim2.new(relX, -5, relY, -5)
+                local h = hueKnob.Position.X.Scale + hueKnob.Position.X.Offset / hueSlider.AbsoluteSize.X
+                h = math.clamp(h, 0, 1)
+                current = Color3.fromHSV(h, relX, 1 - relY)
+                colorBox.BackgroundColor3 = current
+            end
+
+            hueSlider.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    hueDragging = true
+                    updateHue(input.Position.X)
+                end
+            end)
+
+            hueSlider.InputChanged:Connect(function(input)
+                if hueDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                    updateHue(input.Position.X)
+                end
+            end)
+
+            satValSquare.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    satValDragging = true
+                    updateSatVal(input.Position)
+                end
+            end)
+
+            satValSquare.InputChanged:Connect(function(input)
+                if satValDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                    updateSatVal(input.Position)
+                end
+            end)
+
+            local mouseUpConn
+            mouseUpConn = UIS.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    hueDragging = false
+                    satValDragging = false
+                end
+            end)
+
+            okButton.MouseButton1Click:Connect(function()
+                overlay:Destroy()
+                mouseUpConn:Disconnect()
                 if callback then callback(current) end
                 window.configs[id].Value = current
             end)
@@ -3159,6 +3606,7 @@ function UILib.SubTab:addGroup(title)
             dlist.Visible = open
             arrow.Text = open and "▲" or "▼"
             row.Size = UDim2.new(1, 0, 0, 52 + (open and math.min(listH, 104) or 0))
+            updateSize()
         end)
 
         local elem = {
@@ -3182,7 +3630,7 @@ function UILib.SubTab:addGroup(title)
         return row
     end
 
-    -- Text input
+    -- Text input (larger)
     function group:textbox(text, default, callback)
         local id = generateID()
         local row = Instance.new("Frame")
@@ -3203,8 +3651,8 @@ function UILib.SubTab:addGroup(title)
         label.Parent = row
 
         local box = Instance.new("TextBox")
-        box.Size = UDim2.new(0, 45, 0, 20)
-        box.Position = UDim2.new(1, -49, 0, 2)
+        box.Size = UDim2.new(0, 150, 0, 22)
+        box.Position = UDim2.new(1, -154, 0, 2)
         box.BackgroundColor3 = window.theme.Track
         box.BorderSizePixel = 0
         box.ZIndex = 3
@@ -3212,7 +3660,7 @@ function UILib.SubTab:addGroup(title)
         box.Text = default or ""
         box.TextColor3 = window.theme.Accent
         box.Font = Enum.Font.RobotoMono
-        box.TextSize = 11
+        box.TextSize = 13
         box.ClearTextOnFocus = false
         Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
 
@@ -3241,7 +3689,78 @@ function UILib.SubTab:addGroup(title)
         return row
     end
 
-    -- Range slider
+    -- Number input
+    function group:numberbox(text, default, min, max, callback)
+        min = min or -math.huge
+        max = max or math.huge
+        local id = generateID()
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, 0, 0, 46)
+        row.BackgroundTransparency = 1
+        row.Parent = items
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -48, 0, 18)
+        label.Position = UDim2.new(0, 4, 0, 3)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.TextColor3 = window.theme.GrayLt
+        label.Font = Enum.Font.Roboto
+        label.TextSize = 12
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 3
+        label.Parent = row
+
+        local box = Instance.new("TextBox")
+        box.Size = UDim2.new(0, 150, 0, 22)
+        box.Position = UDim2.new(1, -154, 0, 2)
+        box.BackgroundColor3 = window.theme.Track
+        box.BorderSizePixel = 0
+        box.ZIndex = 3
+        box.Parent = row
+        box.Text = tostring(default or 0)
+        box.TextColor3 = window.theme.Accent
+        box.Font = Enum.Font.RobotoMono
+        box.TextSize = 13
+        box.ClearTextOnFocus = false
+        Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
+
+        local current = default or 0
+
+        local function validate()
+            local num = tonumber(box.Text)
+            if num then
+                num = math.clamp(num, min, max)
+                current = num
+                box.Text = tostring(num)
+                if callback then callback(num) end
+                window.configs[id].Value = num
+            else
+                box.Text = tostring(current)
+            end
+        end
+
+        box.FocusLost:Connect(function(enter)
+            if enter then validate() end
+        end)
+
+        local elem = {
+            ID = id,
+            Value = current,
+            SetValue = function(val)
+                val = math.clamp(val, min, max)
+                current = val
+                box.Text = tostring(val)
+                if callback then callback(val) end
+            end
+        }
+        window.configs[id] = elem
+
+        updateSize()
+        return row
+    end
+
+    -- Range slider (with larger value box)
     function group:rangeslider(text, minVal, maxVal, defaultMin, defaultMax, callback)
         local id = generateID()
         local row = Instance.new("Frame")
@@ -3262,8 +3781,8 @@ function UILib.SubTab:addGroup(title)
         label.Parent = row
 
         local valueBox = Instance.new("Frame")
-        valueBox.Size = UDim2.new(0, 45, 0, 20)
-        valueBox.Position = UDim2.new(1, -49, 0, 2)
+        valueBox.Size = UDim2.new(0, 80, 0, 20)  -- wider
+        valueBox.Position = UDim2.new(1, -84, 0, 2)
         valueBox.BackgroundColor3 = window.theme.Track
         valueBox.BorderSizePixel = 0
         valueBox.ZIndex = 3
@@ -3411,6 +3930,3 @@ function UILib.SubTab:addGroup(title)
 end
 
 return UILib
-
-
-
