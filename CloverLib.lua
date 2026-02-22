@@ -384,6 +384,7 @@ function UILib.SubTab:addGroup(title)
     local group = {}
     group.title = title
     group.subtab = self
+    group.tab = self.tab  -- <-- FIX: add this line so group has access to tab
     group.elements = {}
 
     local grp = Instance.new("Frame")
