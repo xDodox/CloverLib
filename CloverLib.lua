@@ -1,7 +1,6 @@
 local UILib = {}
 UILib.__index = UILib
 
--- These were missing!
 UILib.Tab = {}
 UILib.Tab.__index = UILib.Tab
 
@@ -893,4 +892,5 @@ function UILib.SubTab:addGroup(title)
 end
 
 return UILib
+
 
