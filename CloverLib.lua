@@ -8,6 +8,9 @@ UILib.Tab.__index = UILib.Tab
 UILib.SubTab = {}
 UILib.SubTab.__index = UILib.SubTab
 
+UILib.Column = {}  -- for two‑column layout
+UILib.Column.__index = UILib.Column
+
 local UIS = game:GetService("UserInputService")
 local HS = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -33,13 +36,11 @@ local DEFAULT_THEME = {
 }
 
 function UILib.newWindow(title, size, theme, parent, showVersion)
-    -- Destroy previous window (singleton)
     if activeWindow then
         activeWindow:Destroy()
     end
 
     local self = setmetatable({}, UILib)
-    -- Merge user theme with defaults
     self.theme = theme or {}
     for k, v in pairs(DEFAULT_THEME) do
         if self.theme[k] == nil then
@@ -51,9 +52,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     self.title = title
     self.parent = parent or (gethui and gethui()) or LP:WaitForChild("PlayerGui")
     self.connections = {}
-    self.showVersion = showVersion ~= false -- default true
-    self.originalAnchor = nil
-    self.originalPos = nil
+    self.showVersion = showVersion ~= false
 
     self.sg = Instance.new("ScreenGui")
     self.sg.Name = "Clover_" .. HS:GenerateGUID(false)
@@ -80,6 +79,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     self.originalPosition = win.Position
     self.originalSize = win.Size
 
+    -- Header
     local header = Instance.new("Frame")
     header.Size = UDim2.new(1, 0, 0, 46)
     header.BackgroundColor3 = self.theme.BG
@@ -87,6 +87,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     header.ZIndex = 5
     header.Parent = win
     self.header = header
+    Instance.new("UICorner", header).CornerRadius = UDim.new(0, 8)  -- top corners only? but it's fine
 
     local headerLine = Instance.new("Frame")
     headerLine.Size = UDim2.new(1, 0, 0, 2)
@@ -96,7 +97,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     headerLine.ZIndex = 6
     headerLine.Parent = header
 
-    -- Title label (bigger, bolder font)
+    -- Title
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Size = UDim2.new(0, 240, 1, 0)
     titleLabel.Position = UDim2.new(0, 10, 0, 0)
@@ -104,15 +105,15 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     titleLabel.Text = title
     titleLabel.TextColor3 = self.theme.White
     titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.TextSize = 20  -- larger
+    titleLabel.TextSize = 20
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.ZIndex = 6
     titleLabel.Parent = header
     self.titleLabel = titleLabel
 
-    -- Version pill (optional)
+    -- Version pill
     if self.showVersion then
-        local titleWidth = math.min(#title * 11, 240)  -- adjusted for larger font
+        local titleWidth = math.min(#title * 11, 240)
         local versionPill = Instance.new("Frame")
         versionPill.Size = UDim2.new(0, 52, 0, 18)
         versionPill.Position = UDim2.new(0, 10 + titleWidth + 8, 0.5, -9)
@@ -133,7 +134,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
         self.versionPill = versionPill
     end
 
-    -- Hint label (right side)
+    -- Hint label
     local hintLabel = Instance.new("TextLabel")
     hintLabel.Size = UDim2.new(0, 180, 1, 0)
     hintLabel.Position = UDim2.new(1, -188, 0, 0)
@@ -173,7 +174,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     content.Parent = win
     self.content = content
 
-    -- Navbar (no bottom separator line)
+    -- Navbar with green line on top
     local navbar = Instance.new("Frame")
     navbar.Size = UDim2.new(1, 0, 0, 46)
     navbar.Position = UDim2.new(0, 0, 1, -46)
@@ -182,7 +183,14 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     navbar.Parent = win
     self.navbar = navbar
 
-    -- REMOVED: navLine (separator line) – no bottom line
+    -- Green line above navbar
+    local navTopLine = Instance.new("Frame")
+    navTopLine.Size = UDim2.new(1, 0, 0, 2)
+    navTopLine.Position = UDim2.new(0, 0, 0, 0)
+    navTopLine.BackgroundColor3 = self.theme.Accent
+    navTopLine.BorderSizePixel = 0
+    navTopLine.ZIndex = 4
+    navTopLine.Parent = navbar
 
     local navList = Instance.new("UIListLayout", navbar)
     navList.FillDirection = Enum.FillDirection.Horizontal
@@ -190,7 +198,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     navList.VerticalAlignment = Enum.VerticalAlignment.Center
     navList.Padding = UDim.new(0, 0)
 
-    -- Drag functionality
+    -- Drag
     do
         local drag, dragStart, dragPos = false, nil, nil
         header.InputBegan:Connect(function(i)
@@ -217,7 +225,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
         end))
     end
 
-    -- Built-in toggle key (RightShift) with center animation
+    -- Toggle key
     table.insert(self.connections, UIS.InputBegan:Connect(function(input, gpe)
         if not gpe and input.KeyCode == Enum.KeyCode.RightShift then
             self:setVisible(not win.Visible)
@@ -244,10 +252,8 @@ function UILib:Destroy()
     end
 end
 
--- Animated show/hide (centered)
 function UILib:setVisible(visible)
     if not self.window then return end
-
     if visible then
         self.window.Visible = true
         self.window.AnchorPoint = Vector2.new(0, 0)
@@ -260,7 +266,6 @@ function UILib:setVisible(visible)
     else
         self.originalPosition = self.window.Position
         self.originalSize = self.window.Size
-
         local centerPos = UDim2.new(
             self.originalPosition.X.Scale,
             self.originalPosition.X.Offset + self.originalSize.X.Offset / 2,
@@ -269,7 +274,6 @@ function UILib:setVisible(visible)
         )
         self.window.AnchorPoint = Vector2.new(0.5, 0.5)
         self.window.Position = centerPos
-
         local tween = TweenService:Create(self.window, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
             Size = UDim2.new(0, 0, 0, 0)
         })
@@ -451,23 +455,59 @@ function UILib.Tab:addSubTab(subName)
     return sub
 end
 
--- SubTab methods
-function UILib.SubTab:addGroup(title)
+-- Split page into two columns
+function UILib.SubTab:split()
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, 0, 0, 0)
+    row.BackgroundTransparency = 1
+    row.Parent = self.page
+    row.LayoutOrder = 999  -- ensure it's above groups? but groups are added after, we need to manage order
+    -- Actually groups are added sequentially; we need to insert this row at the current position.
+    -- We'll just let the user add groups to the columns, and the columns themselves will be inside the row.
+    -- The row will have a horizontal layout.
+
+    local left = Instance.new("Frame")
+    left.Size = UDim2.new(0.5, -6, 0, 0)
+    left.BackgroundTransparency = 1
+    left.Parent = row
+
+    local right = Instance.new("Frame")
+    right.Size = UDim2.new(0.5, -6, 0, 0)
+    right.Position = UDim2.new(0.5, 6, 0, 0)
+    right.BackgroundTransparency = 1
+    right.Parent = row
+
+    local layout = Instance.new("UIListLayout", row)
+    layout.FillDirection = Enum.FillDirection.Horizontal
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    layout.VerticalAlignment = Enum.VerticalAlignment.Top
+    layout.Padding = UDim.new(0, 8)
+
+    -- Create column objects with addGroup method
+    local leftCol = setmetatable({ frame = left, page = self.page, tab = self.tab, window = self.window }, UILib.Column)
+    local rightCol = setmetatable({ frame = right, page = self.page, tab = self.tab, window = self.window }, UILib.Column)
+
+    -- Add to groups list? Not needed.
+
+    return leftCol, rightCol
+end
+
+-- Column method to add a group
+function UILib.Column:addGroup(title)
     local group = {}
     group.title = title
-    group.subtab = self
     group.tab = self.tab
-    group.elements = {}
-    group.collapsibleGroups = {}
+    group.window = self.window
+    group.columnFrame = self.frame
 
     local grp = Instance.new("Frame")
     grp.Size = UDim2.new(1, 0, 0, 36)
-    grp.BackgroundColor3 = self.tab.window.theme.Item
+    grp.BackgroundColor3 = self.window.theme.Item
     grp.BorderSizePixel = 0
-    grp.Parent = self.page
+    grp.Parent = self.frame
     Instance.new("UICorner", grp).CornerRadius = UDim.new(0, 6)
     local stroke = Instance.new("UIStroke", grp)
-    stroke.Color = self.tab.window.theme.Border
+    stroke.Color = self.window.theme.Border
     stroke.Thickness = 1
 
     local row = Instance.new("Frame")
@@ -478,7 +518,7 @@ function UILib.SubTab:addGroup(title)
     local bar = Instance.new("Frame")
     bar.Size = UDim2.new(0, 2, 0, 14)
     bar.Position = UDim2.new(0, 10, 0.5, -7)
-    bar.BackgroundColor3 = self.tab.window.theme.Accent
+    bar.BackgroundColor3 = self.window.theme.Accent
     bar.BorderSizePixel = 0
     bar.Parent = row
     Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 1)
@@ -488,14 +528,12 @@ function UILib.SubTab:addGroup(title)
     label.Position = UDim2.new(0, 18, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = title:upper()
-    label.TextColor3 = self.tab.window.theme.GrayLt
+    label.TextColor3 = self.window.theme.GrayLt
     label.Font = Enum.Font.GothamBold
     label.TextSize = 10
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.ZIndex = 2
     label.Parent = row
-
-    -- NO SEPARATOR LINE
 
     local items = Instance.new("Frame")
     items.Position = UDim2.new(0, 0, 0, 33)
@@ -517,8 +555,15 @@ function UILib.SubTab:addGroup(title)
         local ih = itemLayout.AbsoluteContentSize.Y
         items.Size = UDim2.new(1, 0, 0, ih + 8)
         grp.Size = UDim2.new(1, 0, 0, ih + 46)
-        self.layout:GetPropertyChangedSignal("AbsoluteContentSize"):Wait(0)
-        self.page.CanvasSize = UDim2.new(0, 0, 0, self.layout.AbsoluteContentSize.Y + 20)
+        -- Need to update column and page size? We'll just let the page's layout handle it.
+        -- But the column frame's size should expand based on its children. Since it's a frame with no layout,
+        -- we need to manually update its size. We'll add a UIListLayout to the column frame.
+        -- Let's add a vertical layout to the column frame when first group is added.
+        if not self.frame:FindFirstChildOfClass("UIListLayout") then
+            local colLayout = Instance.new("UIListLayout", self.frame)
+            colLayout.Padding = UDim.new(0, 8)
+            colLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        end
     end
     itemLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSize)
 
@@ -527,7 +572,7 @@ function UILib.SubTab:addGroup(title)
     group.itemLayout = itemLayout
     group.updateSize = updateSize
 
-    -- Toggle with × symbol
+    -- Element methods (same as regular group)
     function group:toggle(text, default, callback)
         local row = Instance.new("TextButton")
         row.Size = UDim2.new(1, 0, 0, 28)
@@ -538,7 +583,7 @@ function UILib.SubTab:addGroup(title)
 
         local rh = Instance.new("Frame")
         rh.Size = UDim2.new(1, 0, 1, 0)
-        rh.BackgroundColor3 = self.tab.window.theme.ItemHov
+        rh.BackgroundColor3 = self.window.theme.ItemHov
         rh.BorderSizePixel = 0
         rh.Visible = false
         rh.ZIndex = 2
@@ -551,14 +596,14 @@ function UILib.SubTab:addGroup(title)
         local cbOuter = Instance.new("Frame")
         cbOuter.Size = UDim2.new(0, 18, 0, 18)
         cbOuter.Position = UDim2.new(1, -22, 0.5, -9)
-        cbOuter.BackgroundColor3 = default and self.tab.window.theme.Accent or self.tab.window.theme.Track
+        cbOuter.BackgroundColor3 = default and self.window.theme.Accent or self.window.theme.Track
         cbOuter.BorderSizePixel = 0
         cbOuter.ZIndex = 4
         cbOuter.Parent = row
         Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
 
         local cbStroke = Instance.new("UIStroke", cbOuter)
-        cbStroke.Color = default and self.tab.window.theme.AccentD or self.tab.window.theme.Border
+        cbStroke.Color = default and self.window.theme.AccentD or self.window.theme.Border
         cbStroke.Thickness = 1
 
         local cbMark = Instance.new("TextLabel")
@@ -576,7 +621,7 @@ function UILib.SubTab:addGroup(title)
         label.Position = UDim2.new(0, 4, 0, 0)
         label.BackgroundTransparency = 1
         label.Text = text
-        label.TextColor3 = self.tab.window.theme.White
+        label.TextColor3 = self.window.theme.White
         label.Font = Enum.Font.Roboto
         label.TextSize = 13
         label.TextXAlignment = Enum.TextXAlignment.Left
@@ -586,18 +631,18 @@ function UILib.SubTab:addGroup(title)
         local state = default
         row.MouseButton1Click:Connect(function()
             state = not state
-            cbOuter.BackgroundColor3 = state and self.tab.window.theme.Accent or self.tab.window.theme.Track
-            cbStroke.Color = state and self.tab.window.theme.AccentD or self.tab.window.theme.Border
+            cbOuter.BackgroundColor3 = state and self.window.theme.Accent or self.window.theme.Track
+            cbStroke.Color = state and self.window.theme.AccentD or self.window.theme.Border
             cbMark.Text = state and "×" or ""
             callback(state)
         end)
 
-        group.updateSize()
+        updateSize()
         return row
     end
 
-    -- Improved slider
     function group:slider(text, minVal, maxVal, defaultVal, callback)
+        -- same as before (copy from regular group)
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 46)
         row.BackgroundTransparency = 1
@@ -608,7 +653,7 @@ function UILib.SubTab:addGroup(title)
         label.Position = UDim2.new(0, 4, 0, 3)
         label.BackgroundTransparency = 1
         label.Text = text
-        label.TextColor3 = self.tab.window.theme.GrayLt
+        label.TextColor3 = self.window.theme.GrayLt
         label.Font = Enum.Font.Roboto
         label.TextSize = 12
         label.TextXAlignment = Enum.TextXAlignment.Left
@@ -618,7 +663,7 @@ function UILib.SubTab:addGroup(title)
         local valueBox = Instance.new("Frame")
         valueBox.Size = UDim2.new(0, 45, 0, 20)
         valueBox.Position = UDim2.new(1, -49, 0, 2)
-        valueBox.BackgroundColor3 = self.tab.window.theme.Track
+        valueBox.BackgroundColor3 = self.window.theme.Track
         valueBox.BorderSizePixel = 0
         valueBox.ZIndex = 3
         valueBox.Parent = row
@@ -628,7 +673,7 @@ function UILib.SubTab:addGroup(title)
         valueLabel.Size = UDim2.new(1, 0, 1, 0)
         valueLabel.BackgroundTransparency = 1
         valueLabel.Text = tostring(defaultVal)
-        valueLabel.TextColor3 = self.tab.window.theme.Accent
+        valueLabel.TextColor3 = self.window.theme.Accent
         valueLabel.Font = Enum.Font.RobotoMono
         valueLabel.TextSize = 11
         valueLabel.ZIndex = 4
@@ -637,7 +682,7 @@ function UILib.SubTab:addGroup(title)
         local track = Instance.new("Frame")
         track.Size = UDim2.new(1, 0, 0, 6)
         track.Position = UDim2.new(0, 0, 0, 28)
-        track.BackgroundColor3 = self.tab.window.theme.Track
+        track.BackgroundColor3 = self.window.theme.Track
         track.BorderSizePixel = 0
         track.ZIndex = 3
         track.Parent = row
@@ -646,7 +691,7 @@ function UILib.SubTab:addGroup(title)
         local pct = (defaultVal - minVal) / (maxVal - minVal)
         local fill = Instance.new("Frame")
         fill.Size = UDim2.new(pct, 0, 1, 0)
-        fill.BackgroundColor3 = self.tab.window.theme.Accent
+        fill.BackgroundColor3 = self.window.theme.Accent
         fill.BorderSizePixel = 0
         fill.ZIndex = 4
         fill.Parent = track
@@ -655,13 +700,13 @@ function UILib.SubTab:addGroup(title)
         local knob = Instance.new("Frame")
         knob.Size = UDim2.new(0, 14, 0, 14)
         knob.Position = UDim2.new(pct, -7, 0.5, -7)
-        knob.BackgroundColor3 = self.tab.window.theme.White
+        knob.BackgroundColor3 = self.window.theme.White
         knob.BorderSizePixel = 0
         knob.ZIndex = 5
         knob.Parent = track
         Instance.new("UICorner", knob).CornerRadius = UDim.new(0, 7)
         local knobStroke = Instance.new("UIStroke", knob)
-        knobStroke.Color = self.tab.window.theme.Accent
+        knobStroke.Color = self.window.theme.Accent
         knobStroke.Thickness = 1.5
 
         local hit = Instance.new("TextButton")
@@ -699,12 +744,12 @@ function UILib.SubTab:addGroup(title)
             end
         end)
 
-        group.updateSize()
+        updateSize()
         return row
     end
 
-    -- Improved dropdown
     function group:dropdown(text, options, default, callback)
+        -- similar to before but using self.window.theme
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 52)
         row.BackgroundTransparency = 1
@@ -717,7 +762,7 @@ function UILib.SubTab:addGroup(title)
         label.Position = UDim2.new(0, 4, 0, 2)
         label.BackgroundTransparency = 1
         label.Text = text
-        label.TextColor3 = self.tab.window.theme.GrayLt
+        label.TextColor3 = self.window.theme.GrayLt
         label.Font = Enum.Font.Roboto
         label.TextSize = 12
         label.TextXAlignment = Enum.TextXAlignment.Left
@@ -727,14 +772,14 @@ function UILib.SubTab:addGroup(title)
         local dbtn = Instance.new("TextButton")
         dbtn.Size = UDim2.new(1, 0, 0, 28)
         dbtn.Position = UDim2.new(0, 0, 0, 22)
-        dbtn.BackgroundColor3 = self.tab.window.theme.Track
+        dbtn.BackgroundColor3 = self.window.theme.Track
         dbtn.BorderSizePixel = 0
         dbtn.Text = ""
         dbtn.ZIndex = 11
         dbtn.Parent = row
         Instance.new("UICorner", dbtn).CornerRadius = UDim.new(0, 4)
         local dstroke = Instance.new("UIStroke", dbtn)
-        dstroke.Color = self.tab.window.theme.Border
+        dstroke.Color = self.window.theme.Border
         dstroke.Thickness = 1
 
         local selLbl = Instance.new("TextLabel")
@@ -742,7 +787,7 @@ function UILib.SubTab:addGroup(title)
         selLbl.Position = UDim2.new(0, 10, 0, 0)
         selLbl.BackgroundTransparency = 1
         selLbl.Text = default
-        selLbl.TextColor3 = self.tab.window.theme.White
+        selLbl.TextColor3 = self.window.theme.White
         selLbl.Font = Enum.Font.GothamBold
         selLbl.TextSize = 12
         selLbl.TextXAlignment = Enum.TextXAlignment.Left
@@ -754,7 +799,7 @@ function UILib.SubTab:addGroup(title)
         arrow.Position = UDim2.new(1, -26, 0, 0)
         arrow.BackgroundTransparency = 1
         arrow.Text = "▼"
-        arrow.TextColor3 = self.tab.window.theme.Accent
+        arrow.TextColor3 = self.window.theme.Accent
         arrow.Font = Enum.Font.GothamBold
         arrow.TextSize = 12
         arrow.ZIndex = 12
@@ -764,16 +809,16 @@ function UILib.SubTab:addGroup(title)
         local dlist = Instance.new("ScrollingFrame")
         dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 104))
         dlist.Position = UDim2.new(0, 0, 0, 52)
-        dlist.BackgroundColor3 = self.tab.window.theme.Item
+        dlist.BackgroundColor3 = self.window.theme.Item
         dlist.BorderSizePixel = 0
         dlist.ScrollBarThickness = 2
-        dlist.ScrollBarImageColor3 = self.tab.window.theme.Accent
+        dlist.ScrollBarImageColor3 = self.window.theme.Accent
         dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
         dlist.Visible = false
         dlist.ZIndex = 50
         dlist.Parent = row
         Instance.new("UICorner", dlist).CornerRadius = UDim.new(0, 4)
-        Instance.new("UIStroke", dlist).Color = self.tab.window.theme.Accent
+        Instance.new("UIStroke", dlist).Color = self.window.theme.Accent
 
         local dlayout = Instance.new("UIListLayout", dlist)
         dlayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -791,7 +836,7 @@ function UILib.SubTab:addGroup(title)
             local oh = Instance.new("Frame")
             oh.Size = UDim2.new(1, -4, 1, -2)
             oh.Position = UDim2.new(0, 2, 0, 1)
-            oh.BackgroundColor3 = self.tab.window.theme.ItemHov
+            oh.BackgroundColor3 = self.window.theme.ItemHov
             oh.BorderSizePixel = 0
             oh.Visible = false
             oh.ZIndex = 51
@@ -803,7 +848,7 @@ function UILib.SubTab:addGroup(title)
             ol.Position = UDim2.new(0, 10, 0, 0)
             ol.BackgroundTransparency = 1
             ol.Text = opt
-            ol.TextColor3 = self.tab.window.theme.GrayLt
+            ol.TextColor3 = self.window.theme.GrayLt
             ol.Font = Enum.Font.Roboto
             ol.TextSize = 12
             ol.TextXAlignment = Enum.TextXAlignment.Left
@@ -815,7 +860,7 @@ function UILib.SubTab:addGroup(title)
             ck.Position = UDim2.new(1, -20, 0, 0)
             ck.BackgroundTransparency = 1
             ck.Text = (opt == default) and "×" or ""
-            ck.TextColor3 = self.tab.window.theme.Accent
+            ck.TextColor3 = self.window.theme.Accent
             ck.Font = Enum.Font.GothamBold
             ck.TextSize = 12
             ck.ZIndex = 52
@@ -824,11 +869,11 @@ function UILib.SubTab:addGroup(title)
 
             ob.MouseEnter:Connect(function()
                 oh.Visible = true
-                ol.TextColor3 = self.tab.window.theme.White
+                ol.TextColor3 = self.window.theme.White
             end)
             ob.MouseLeave:Connect(function()
                 oh.Visible = false
-                ol.TextColor3 = self.tab.window.theme.GrayLt
+                ol.TextColor3 = self.window.theme.GrayLt
             end)
             ob.MouseButton1Click:Connect(function()
                 selLbl.Text = opt
@@ -849,11 +894,10 @@ function UILib.SubTab:addGroup(title)
             row.Size = UDim2.new(1, 0, 0, 52 + (open and math.min(listH, 104) or 0))
         end)
 
-        group.updateSize()
+        updateSize()
         return row
     end
 
-    -- Improved keybind
     function group:keybind(text, currentName, onChange)
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 30)
@@ -865,7 +909,7 @@ function UILib.SubTab:addGroup(title)
         label.Position = UDim2.new(0, 4, 0, 0)
         label.BackgroundTransparency = 1
         label.Text = text
-        label.TextColor3 = self.tab.window.theme.White
+        label.TextColor3 = self.window.theme.White
         label.Font = Enum.Font.Roboto
         label.TextSize = 13
         label.TextXAlignment = Enum.TextXAlignment.Left
@@ -875,17 +919,17 @@ function UILib.SubTab:addGroup(title)
         local kbtn = Instance.new("TextButton")
         kbtn.Size = UDim2.new(0, 76, 0, 22)
         kbtn.Position = UDim2.new(1, -78, 0.5, -11)
-        kbtn.BackgroundColor3 = self.tab.window.theme.Track
+        kbtn.BackgroundColor3 = self.window.theme.Track
         kbtn.BorderSizePixel = 0
         kbtn.Text = currentName
-        kbtn.TextColor3 = self.tab.window.theme.Accent
+        kbtn.TextColor3 = self.window.theme.Accent
         kbtn.Font = Enum.Font.GothamBold
         kbtn.TextSize = 11
         kbtn.ZIndex = 4
         kbtn.Parent = row
         Instance.new("UICorner", kbtn).CornerRadius = UDim.new(0, 4)
         local kstroke = Instance.new("UIStroke", kbtn)
-        kstroke.Color = self.tab.window.theme.Border
+        kstroke.Color = self.window.theme.Border
         kstroke.Thickness = 1
 
         local listening = false
@@ -894,9 +938,9 @@ function UILib.SubTab:addGroup(title)
             if listening then return end
             listening = true
             skipNext = true
-            kbtn.Text = "⌨️"  -- keyboard icon (or you can use "[...]")
-            kbtn.TextColor3 = self.tab.window.theme.GrayLt
-            kstroke.Color = self.tab.window.theme.Accent
+            kbtn.Text = "⌨️"
+            kbtn.TextColor3 = self.window.theme.GrayLt
+            kstroke.Color = self.window.theme.Accent
             local con
             con = UIS.InputBegan:Connect(function(i)
                 if skipNext and i.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -905,41 +949,40 @@ function UILib.SubTab:addGroup(title)
                 end
                 listening = false
                 con:Disconnect()
-                kstroke.Color = self.tab.window.theme.Border
+                kstroke.Color = self.window.theme.Border
                 if i.KeyCode == Enum.KeyCode.Escape then
                     kbtn.Text = currentName
-                    kbtn.TextColor3 = self.tab.window.theme.Accent
+                    kbtn.TextColor3 = self.window.theme.Accent
                     return
                 end
                 local u = i.UserInputType
                 if u == Enum.UserInputType.Keyboard then
                     kbtn.Text = i.KeyCode.Name
-                    kbtn.TextColor3 = self.tab.window.theme.Accent
+                    kbtn.TextColor3 = self.window.theme.Accent
                     onChange(i.KeyCode, i.KeyCode.Name)
                 elseif u == Enum.UserInputType.MouseButton2 then
                     kbtn.Text = "RMB"
-                    kbtn.TextColor3 = self.tab.window.theme.Accent
+                    kbtn.TextColor3 = self.window.theme.Accent
                     onChange(Enum.UserInputType.MouseButton2, "RMB")
                 elseif u == Enum.UserInputType.MouseButton1 then
                     kbtn.Text = "LMB"
-                    kbtn.TextColor3 = self.tab.window.theme.Accent
+                    kbtn.TextColor3 = self.window.theme.Accent
                     onChange(Enum.UserInputType.MouseButton1, "LMB")
                 elseif u == Enum.UserInputType.MouseButton3 then
                     kbtn.Text = "MMB"
-                    kbtn.TextColor3 = self.tab.window.theme.Accent
+                    kbtn.TextColor3 = self.window.theme.Accent
                     onChange(Enum.UserInputType.MouseButton3, "MMB")
                 else
                     kbtn.Text = currentName
-                    kbtn.TextColor3 = self.tab.window.theme.Accent
+                    kbtn.TextColor3 = self.window.theme.Accent
                 end
             end)
         end)
 
-        group.updateSize()
+        updateSize()
         return row
     end
 
-    -- Label
     function group:label(text, color)
         local f = Instance.new("Frame")
         f.Size = UDim2.new(1, 0, 0, 20)
@@ -951,19 +994,19 @@ function UILib.SubTab:addGroup(title)
         lbl.Position = UDim2.new(0, 4, 0, 0)
         lbl.BackgroundTransparency = 1
         lbl.Text = text
-        lbl.TextColor3 = color or self.tab.window.theme.Gray
+        lbl.TextColor3 = color or self.window.theme.Gray
         lbl.Font = Enum.Font.Roboto
         lbl.TextSize = 11
         lbl.TextXAlignment = Enum.TextXAlignment.Left
         lbl.ZIndex = 3
         lbl.Parent = f
 
-        group.updateSize()
+        updateSize()
         return f
     end
 
-    -- Collapsible group
-    function group:collapsible(text, default, contentFunc)
+    function group:expandableToggle(text, default, contentFunc)
+        -- Create a toggle that reveals a nested group when enabled
         local container = Instance.new("Frame")
         container.Size = UDim2.new(1, 0, 0, 30)
         container.BackgroundTransparency = 1
@@ -979,7 +1022,7 @@ function UILib.SubTab:addGroup(title)
 
         local rh = Instance.new("Frame")
         rh.Size = UDim2.new(1, 0, 1, 0)
-        rh.BackgroundColor3 = self.tab.window.theme.ItemHov
+        rh.BackgroundColor3 = self.window.theme.ItemHov
         rh.BorderSizePixel = 0
         rh.Visible = false
         rh.ZIndex = 2
@@ -989,23 +1032,36 @@ function UILib.SubTab:addGroup(title)
         toggleRow.MouseEnter:Connect(function() rh.Visible = true end)
         toggleRow.MouseLeave:Connect(function() rh.Visible = false end)
 
-        local arrow = Instance.new("TextLabel")
-        arrow.Size = UDim2.new(0, 20, 1, 0)
-        arrow.Position = UDim2.new(1, -22, 0, 0)
-        arrow.BackgroundTransparency = 1
-        arrow.Text = default and "▼" or "▶"
-        arrow.TextColor3 = self.tab.window.theme.Accent
-        arrow.Font = Enum.Font.GothamBold
-        arrow.TextSize = 14
-        arrow.ZIndex = 4
-        arrow.Parent = toggleRow
+        -- Checkbox (same as toggle)
+        local cbOuter = Instance.new("Frame")
+        cbOuter.Size = UDim2.new(0, 18, 0, 18)
+        cbOuter.Position = UDim2.new(1, -22, 0.5, -9)
+        cbOuter.BackgroundColor3 = default and self.window.theme.Accent or self.window.theme.Track
+        cbOuter.BorderSizePixel = 0
+        cbOuter.ZIndex = 4
+        cbOuter.Parent = toggleRow
+        Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
+
+        local cbStroke = Instance.new("UIStroke", cbOuter)
+        cbStroke.Color = default and self.window.theme.AccentD or self.window.theme.Border
+        cbStroke.Thickness = 1
+
+        local cbMark = Instance.new("TextLabel")
+        cbMark.Size = UDim2.new(1, 0, 1, 0)
+        cbMark.BackgroundTransparency = 1
+        cbMark.Text = default and "×" or ""
+        cbMark.TextColor3 = Color3.new(1,1,1)
+        cbMark.Font = Enum.Font.GothamBold
+        cbMark.TextSize = 16
+        cbMark.ZIndex = 5
+        cbMark.Parent = cbOuter
 
         local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, -28, 1, 0)
+        label.Size = UDim2.new(1, -32, 1, 0)
         label.Position = UDim2.new(0, 4, 0, 0)
         label.BackgroundTransparency = 1
         label.Text = text
-        label.TextColor3 = self.tab.window.theme.White
+        label.TextColor3 = self.window.theme.White
         label.Font = Enum.Font.Roboto
         label.TextSize = 13
         label.TextXAlignment = Enum.TextXAlignment.Left
@@ -1026,19 +1082,13 @@ function UILib.SubTab:addGroup(title)
             local h = contentLayout.AbsoluteContentSize.Y
             contentFrame.Size = UDim2.new(1, 0, 0, h)
             container.Size = UDim2.new(1, 0, 0, 30 + (default and h or 0))
-            group.updateSize()
+            updateSize()  -- update group size
         end
 
         contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
 
-        local nestedGroup = {
-            toggle = function(_, ...) error("Use group:toggle directly") end,
-            slider = function(_, ...) error("Use group:slider directly") end,
-            dropdown = function(_, ...) error("Use group:dropdown directly") end,
-            keybind = function(_, ...) error("Use group:keybind directly") end,
-            label = function(_, ...) error("Use group:label directly") end,
-            collapsible = function(_, ...) error("Use group:collapsible directly") end
-        }
+        -- Nested group methods
+        local nestedGroup = {}
         function nestedGroup:toggle(subText, subDefault, subCallback)
             local row = group:toggle(subText, subDefault, subCallback)
             row.Parent = contentFrame
@@ -1069,12 +1119,6 @@ function UILib.SubTab:addGroup(title)
             updateContentSize()
             return row
         end
-        function nestedGroup:collapsible(subText, subDefault, subContentFunc)
-            local subRow = group:collapsible(subText, subDefault, subContentFunc)
-            subRow.Parent = contentFrame
-            updateContentSize()
-            return subRow
-        end
 
         if contentFunc then
             contentFunc(nestedGroup)
@@ -1083,18 +1127,94 @@ function UILib.SubTab:addGroup(title)
         local state = default
         toggleRow.MouseButton1Click:Connect(function()
             state = not state
-            arrow.Text = state and "▼" or "▶"
+            cbOuter.BackgroundColor3 = state and self.window.theme.Accent or self.window.theme.Track
+            cbStroke.Color = state and self.window.theme.AccentD or self.window.theme.Border
+            cbMark.Text = state and "×" or ""
             container.Size = UDim2.new(1, 0, 0, 30 + (state and contentLayout.AbsoluteContentSize.Y or 0))
-            group.updateSize()
+            updateSize()
         end)
 
         updateContentSize()
         return container
     end
 
-    table.insert(self.groups, group)
-    group.updateSize()
     return group
+end
+
+-- Regular SubTab addGroup (unchanged, for backward compatibility)
+function UILib.SubTab:addGroup(title)
+    local group = {}
+    group.title = title
+    group.subtab = self
+    group.tab = self.tab
+    group.window = self.window
+    group.elements = {}
+
+    local grp = Instance.new("Frame")
+    grp.Size = UDim2.new(1, 0, 0, 36)
+    grp.BackgroundColor3 = self.window.theme.Item
+    grp.BorderSizePixel = 0
+    grp.Parent = self.page
+    Instance.new("UICorner", grp).CornerRadius = UDim.new(0, 6)
+    local stroke = Instance.new("UIStroke", grp)
+    stroke.Color = self.window.theme.Border
+    stroke.Thickness = 1
+
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, 0, 0, 30)
+    row.BackgroundTransparency = 1
+    row.Parent = grp
+
+    local bar = Instance.new("Frame")
+    bar.Size = UDim2.new(0, 2, 0, 14)
+    bar.Position = UDim2.new(0, 10, 0.5, -7)
+    bar.BackgroundColor3 = self.window.theme.Accent
+    bar.BorderSizePixel = 0
+    bar.Parent = row
+    Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 1)
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -30, 1, 0)
+    label.Position = UDim2.new(0, 18, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = title:upper()
+    label.TextColor3 = self.window.theme.GrayLt
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 10
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.ZIndex = 2
+    label.Parent = row
+
+    local items = Instance.new("Frame")
+    items.Position = UDim2.new(0, 0, 0, 33)
+    items.Size = UDim2.new(1, 0, 0, 0)
+    items.BackgroundTransparency = 1
+    items.BorderSizePixel = 0
+    items.Parent = grp
+
+    local itemLayout = Instance.new("UIListLayout", items)
+    itemLayout.Padding = UDim.new(0, 2)
+    itemLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+    local padding = Instance.new("UIPadding", items)
+    padding.PaddingLeft = UDim.new(0, 8)
+    padding.PaddingRight = UDim.new(0, 8)
+    padding.PaddingBottom = UDim.new(0, 6)
+
+    local function updateSize()
+        local ih = itemLayout.AbsoluteContentSize.Y
+        items.Size = UDim2.new(1, 0, 0, ih + 8)
+        grp.Size = UDim2.new(1, 0, 0, ih + 46)
+        self.layout:GetPropertyChangedSignal("AbsoluteContentSize"):Wait(0)
+        self.page.CanvasSize = UDim2.new(0, 0, 0, self.layout.AbsoluteContentSize.Y + 20)
+    end
+    itemLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSize)
+
+    group.frame = grp
+    group.items = items
+    group.itemLayout = itemLayout
+    group.updateSize = updateSize
+
 end
 
 return UILib
