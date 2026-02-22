@@ -13,10 +13,11 @@ local HS = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
+local TweenService = game:GetService("TweenService")
 
 local activeWindow = nil
 
-function UILib.newWindow(title, size, theme, parent)
+function UILib.newWindow(title, size, theme, parent, showVersion)
     if activeWindow then
         activeWindow:Destroy()
     end
@@ -27,12 +28,14 @@ function UILib.newWindow(title, size, theme, parent)
     self.title = title
     self.parent = parent or (gethui and gethui()) or LP:WaitForChild("PlayerGui")
     self.connections = {}
+    self.showVersion = showVersion ~= false -- default true
 
     self.sg = Instance.new("ScreenGui")
     self.sg.Name = "Clover_" .. HS:GenerateGUID(false)
     self.sg.ResetOnSpawn = false
     self.sg.IgnoreGuiInset = false
     self.sg.Parent = self.parent
+    self.sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling -- ensures proper layering
 
     local win = Instance.new("Frame")
     win.Size = UDim2.new(0, size.X, 0, size.Y)
@@ -41,6 +44,8 @@ function UILib.newWindow(title, size, theme, parent)
     win.BorderSizePixel = 0
     win.ClipsDescendants = true
     win.Parent = self.sg
+    win.Active = true -- blocks clicks
+    win.Selectable = false
     Instance.new("UICorner", win).CornerRadius = UDim.new(0, 5)
     local winStroke = Instance.new("UIStroke", win)
     winStroke.Color = theme.Border
@@ -63,10 +68,10 @@ function UILib.newWindow(title, size, theme, parent)
     headerLine.ZIndex = 6
     headerLine.Parent = header
 
-    -- Title label (without the logo bar)
+    -- Title label
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Size = UDim2.new(0, 240, 1, 0)
-    titleLabel.Position = UDim2.new(0, 10, 0, 0)  -- moved left
+    titleLabel.Position = UDim2.new(0, 10, 0, 0)
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = title
     titleLabel.TextColor3 = theme.White
@@ -75,25 +80,31 @@ function UILib.newWindow(title, size, theme, parent)
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.ZIndex = 6
     titleLabel.Parent = header
+    self.titleLabel = titleLabel
 
-    -- Version pill (positioned right after title)
-    local versionPill = Instance.new("Frame")
-    versionPill.Size = UDim2.new(0, 52, 0, 18)
-    versionPill.Position = UDim2.new(0, 250, 0.5, -9)  -- next to title
-    versionPill.BackgroundColor3 = theme.AccentD
-    versionPill.BorderSizePixel = 0
-    versionPill.ZIndex = 6
-    versionPill.Parent = header
-    Instance.new("UICorner", versionPill).CornerRadius = UDim.new(0, 4)
-    local versionLabel = Instance.new("TextLabel")
-    versionLabel.Size = UDim2.new(1, 0, 1, 0)
-    versionLabel.BackgroundTransparency = 1
-    versionLabel.Text = "v1.0"
-    versionLabel.TextColor3 = theme.White
-    versionLabel.Font = Enum.Font.GothamBold
-    versionLabel.TextSize = 10
-    versionLabel.ZIndex = 7
-    versionLabel.Parent = versionPill
+    -- Version pill (optional)
+    if self.showVersion then
+        -- Calculate position based on title width (approx)
+        local titleWidth = math.min(#title * 8, 240) -- rough estimate
+        local versionPill = Instance.new("Frame")
+        versionPill.Size = UDim2.new(0, 52, 0, 18)
+        versionPill.Position = UDim2.new(0, 10 + titleWidth + 8, 0.5, -9)
+        versionPill.BackgroundColor3 = theme.AccentD
+        versionPill.BorderSizePixel = 0
+        versionPill.ZIndex = 6
+        versionPill.Parent = header
+        Instance.new("UICorner", versionPill).CornerRadius = UDim.new(0, 4)
+        local versionLabel = Instance.new("TextLabel")
+        versionLabel.Size = UDim2.new(1, 0, 1, 0)
+        versionLabel.BackgroundTransparency = 1
+        versionLabel.Text = "v1.0"
+        versionLabel.TextColor3 = theme.White
+        versionLabel.Font = Enum.Font.GothamBold
+        versionLabel.TextSize = 10
+        versionLabel.ZIndex = 7
+        versionLabel.Parent = versionPill
+        self.versionPill = versionPill
+    end
 
     -- Hint label (right side)
     local hintLabel = Instance.new("TextLabel")
@@ -183,7 +194,7 @@ function UILib.newWindow(title, size, theme, parent)
         end))
     end
 
-    -- Built-in toggle key (RightShift)
+    -- Built-in toggle key (RightShift) with animation
     table.insert(self.connections, UIS.InputBegan:Connect(function(input, gpe)
         if not gpe and input.KeyCode == Enum.KeyCode.RightShift then
             self:setVisible(not win.Visible)
@@ -210,13 +221,34 @@ function UILib:Destroy()
     end
 end
 
+-- Animated show/hide
 function UILib:setVisible(visible)
-    if self.window then
-        self.window.Visible = visible
+    if not self.window then return end
+    if visible then
+        self.window.Visible = true
+        self.window.Size = UDim2.new(0, 0, 0, 0)
+        self.window.Position = UDim2.new(0.5, -self.size.X/2, 0.5, -self.size.Y/2)
+        local tween = TweenService:Create(self.window, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, self.size.X, 0, self.size.Y),
+            Position = UDim2.new(0, 80, 0, 60)
+        })
+        tween:Play()
+    else
+        local tween = TweenService:Create(self.window, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            Size = UDim2.new(0, 0, 0, 0),
+            Position = UDim2.new(0.5, -self.size.X/2, 0.5, -self.size.Y/2)
+        })
+        tween:Play()
+        tween.Completed:Connect(function()
+            self.window.Visible = false
+            -- Restore original size for next show
+            self.window.Size = UDim2.new(0, self.size.X, 0, self.size.Y)
+            self.window.Position = UDim2.new(0, 80, 0, 60)
+        end)
     end
 end
 
--- Tab methods
+-- Tab methods (unchanged except for metatable setup)
 function UILib:addTab(name)
     local tab = setmetatable({}, UILib.Tab)
     tab.name = name
@@ -389,8 +421,9 @@ function UILib.SubTab:addGroup(title)
     local group = {}
     group.title = title
     group.subtab = self
-    group.tab = self.tab  -- reference to parent tab
+    group.tab = self.tab
     group.elements = {}
+    group.collapsibleGroups = {} -- for nested collapsible sections
 
     local grp = Instance.new("Frame")
     grp.Size = UDim2.new(1, 0, 0, 36)
@@ -427,7 +460,7 @@ function UILib.SubTab:addGroup(title)
     label.ZIndex = 2
     label.Parent = row
 
-    -- REMOVED: separator line (the "---------------- MAIN" line)
+    -- (Separator removed)
 
     local items = Instance.new("Frame")
     items.Position = UDim2.new(0, 0, 0, 33)
@@ -459,7 +492,7 @@ function UILib.SubTab:addGroup(title)
     group.itemLayout = itemLayout
     group.updateSize = updateSize
 
-    -- Element methods (toggle, slider, dropdown, keybind, label) unchanged
+    -- Improved toggle
     function group:toggle(text, default, callback)
         local row = Instance.new("TextButton")
         row.Size = UDim2.new(1, 0, 0, 28)
@@ -481,8 +514,8 @@ function UILib.SubTab:addGroup(title)
         row.MouseLeave:Connect(function() rh.Visible = false end)
 
         local cbOuter = Instance.new("Frame")
-        cbOuter.Size = UDim2.new(0, 16, 0, 16)
-        cbOuter.Position = UDim2.new(1, -20, 0.5, -8)
+        cbOuter.Size = UDim2.new(0, 18, 0, 18)
+        cbOuter.Position = UDim2.new(1, -22, 0.5, -9)
         cbOuter.BackgroundColor3 = default and self.tab.window.theme.Accent or self.tab.window.theme.Track
         cbOuter.BorderSizePixel = 0
         cbOuter.ZIndex = 4
@@ -499,12 +532,12 @@ function UILib.SubTab:addGroup(title)
         cbMark.Text = default and "✓" or ""
         cbMark.TextColor3 = Color3.new(1,1,1)
         cbMark.Font = Enum.Font.GothamBold
-        cbMark.TextSize = 11
+        cbMark.TextSize = 14
         cbMark.ZIndex = 5
         cbMark.Parent = cbOuter
 
         local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, -28, 1, 0)
+        label.Size = UDim2.new(1, -32, 1, 0)
         label.Position = UDim2.new(0, 4, 0, 0)
         label.BackgroundTransparency = 1
         label.Text = text
@@ -528,6 +561,7 @@ function UILib.SubTab:addGroup(title)
         return row
     end
 
+    -- Improved slider with live value
     function group:slider(text, minVal, maxVal, defaultVal, callback)
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 46)
@@ -547,8 +581,8 @@ function UILib.SubTab:addGroup(title)
         label.Parent = row
 
         local valueBox = Instance.new("Frame")
-        valueBox.Size = UDim2.new(0, 40, 0, 18)
-        valueBox.Position = UDim2.new(1, -42, 0, 3)
+        valueBox.Size = UDim2.new(0, 45, 0, 20)
+        valueBox.Position = UDim2.new(1, -49, 0, 2)
         valueBox.BackgroundColor3 = self.tab.window.theme.Track
         valueBox.BorderSizePixel = 0
         valueBox.ZIndex = 3
@@ -584,13 +618,13 @@ function UILib.SubTab:addGroup(title)
         Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 3)
 
         local knob = Instance.new("Frame")
-        knob.Size = UDim2.new(0, 12, 0, 12)
-        knob.Position = UDim2.new(pct, -6, 0.5, -6)
+        knob.Size = UDim2.new(0, 14, 0, 14)
+        knob.Position = UDim2.new(pct, -7, 0.5, -7)
         knob.BackgroundColor3 = self.tab.window.theme.White
         knob.BorderSizePixel = 0
         knob.ZIndex = 5
         knob.Parent = track
-        Instance.new("UICorner", knob).CornerRadius = UDim.new(0, 6)
+        Instance.new("UICorner", knob).CornerRadius = UDim.new(0, 7)
         local knobStroke = Instance.new("UIStroke", knob)
         knobStroke.Color = self.tab.window.theme.Accent
         knobStroke.Thickness = 1.5
@@ -608,7 +642,7 @@ function UILib.SubTab:addGroup(title)
             local rel = math.clamp((mx - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
             local val = math.floor(minVal + (maxVal - minVal) * rel + 0.5)
             fill.Size = UDim2.new(rel, 0, 1, 0)
-            knob.Position = UDim2.new(rel, -6, 0.5, -6)
+            knob.Position = UDim2.new(rel, -7, 0.5, -7)
             valueLabel.Text = tostring(val)
             callback(val)
         end
@@ -634,6 +668,7 @@ function UILib.SubTab:addGroup(title)
         return row
     end
 
+    -- Improved dropdown with better arrow
     function group:dropdown(text, options, default, callback)
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 52)
@@ -683,10 +718,10 @@ function UILib.SubTab:addGroup(title)
         arrow.Size = UDim2.new(0, 24, 1, 0)
         arrow.Position = UDim2.new(1, -26, 0, 0)
         arrow.BackgroundTransparency = 1
-        arrow.Text = "▾"
+        arrow.Text = "▼"
         arrow.TextColor3 = self.tab.window.theme.Accent
         arrow.Font = Enum.Font.GothamBold
-        arrow.TextSize = 14
+        arrow.TextSize = 12
         arrow.ZIndex = 12
         arrow.Parent = dbtn
 
@@ -765,7 +800,7 @@ function UILib.SubTab:addGroup(title)
                 for _, c in pairs(checks) do c.Text = "" end
                 ck.Text = "✓"
                 dlist.Visible = false
-                arrow.Text = "▾"
+                arrow.Text = "▼"
                 row.Size = UDim2.new(1, 0, 0, 52)
                 callback(opt)
             end)
@@ -775,7 +810,7 @@ function UILib.SubTab:addGroup(title)
         dbtn.MouseButton1Click:Connect(function()
             open = not open
             dlist.Visible = open
-            arrow.Text = open and "▴" or "▾"
+            arrow.Text = open and "▲" or "▼"
             row.Size = UDim2.new(1, 0, 0, 52 + (open and math.min(listH, 104) or 0))
         end)
 
@@ -783,6 +818,7 @@ function UILib.SubTab:addGroup(title)
         return row
     end
 
+    -- Keybind (unchanged but kept for completeness)
     function group:keybind(text, currentName, onChange)
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 30)
@@ -868,6 +904,7 @@ function UILib.SubTab:addGroup(title)
         return row
     end
 
+    -- Label (unchanged)
     function group:label(text, color)
         local f = Instance.new("Frame")
         f.Size = UDim2.new(1, 0, 0, 20)
@@ -888,6 +925,140 @@ function UILib.SubTab:addGroup(title)
 
         group.updateSize()
         return f
+    end
+
+    -- New collapsible group
+    function group:collapsible(text, default, contentFunc)
+        local container = Instance.new("Frame")
+        container.Size = UDim2.new(1, 0, 0, 30)
+        container.BackgroundTransparency = 1
+        container.ClipsDescendants = true
+        container.Parent = items
+
+        local toggleRow = Instance.new("TextButton")
+        toggleRow.Size = UDim2.new(1, 0, 0, 30)
+        toggleRow.BackgroundTransparency = 1
+        toggleRow.Text = ""
+        toggleRow.ZIndex = 3
+        toggleRow.Parent = container
+
+        local rh = Instance.new("Frame")
+        rh.Size = UDim2.new(1, 0, 1, 0)
+        rh.BackgroundColor3 = self.tab.window.theme.ItemHov
+        rh.BorderSizePixel = 0
+        rh.Visible = false
+        rh.ZIndex = 2
+        rh.Parent = toggleRow
+        Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 3)
+
+        toggleRow.MouseEnter:Connect(function() rh.Visible = true end)
+        toggleRow.MouseLeave:Connect(function() rh.Visible = false end)
+
+        local arrow = Instance.new("TextLabel")
+        arrow.Size = UDim2.new(0, 20, 1, 0)
+        arrow.Position = UDim2.new(1, -22, 0, 0)
+        arrow.BackgroundTransparency = 1
+        arrow.Text = default and "▼" or "▶"
+        arrow.TextColor3 = self.tab.window.theme.Accent
+        arrow.Font = Enum.Font.GothamBold
+        arrow.TextSize = 14
+        arrow.ZIndex = 4
+        arrow.Parent = toggleRow
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -28, 1, 0)
+        label.Position = UDim2.new(0, 4, 0, 0)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.TextColor3 = self.tab.window.theme.White
+        label.Font = Enum.Font.Roboto
+        label.TextSize = 13
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 4
+        label.Parent = toggleRow
+
+        local contentFrame = Instance.new("Frame")
+        contentFrame.Size = UDim2.new(1, 0, 0, 0)
+        contentFrame.Position = UDim2.new(0, 0, 0, 30)
+        contentFrame.BackgroundTransparency = 1
+        contentFrame.Parent = container
+
+        local contentLayout = Instance.new("UIListLayout", contentFrame)
+        contentLayout.Padding = UDim.new(0, 2)
+        contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+        local function updateContentSize()
+            local h = contentLayout.AbsoluteContentSize.Y
+            contentFrame.Size = UDim2.new(1, 0, 0, h)
+            container.Size = UDim2.new(1, 0, 0, 30 + (default and h or 0))
+            group.updateSize()
+        end
+
+        contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
+
+        -- Create the nested group for content
+        local nestedGroup = {
+            toggle = function(_, ...) error("Use group:toggle directly") end,
+            slider = function(_, ...) error("Use group:slider directly") end,
+            dropdown = function(_, ...) error("Use group:dropdown directly") end,
+            keybind = function(_, ...) error("Use group:keybind directly") end,
+            label = function(_, ...) error("Use group:label directly") end,
+            collapsible = function(_, ...) error("Use group:collapsible directly") end
+        }
+        -- Override methods to add elements to contentFrame
+        function nestedGroup:toggle(subText, subDefault, subCallback)
+            local row = group:toggle(subText, subDefault, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:slider(subText, min, max, default, subCallback)
+            local row = group:slider(subText, min, max, default, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:dropdown(subText, options, default, subCallback)
+            local row = group:dropdown(subText, options, default, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:keybind(subText, current, subCallback)
+            local row = group:keybind(subText, current, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:label(subText, color)
+            local row = group:label(subText, color)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:collapsible(subText, subDefault, subContentFunc)
+            -- Recursively create nested collapsible
+            local subRow = group:collapsible(subText, subDefault, subContentFunc)
+            subRow.Parent = contentFrame
+            updateContentSize()
+            return subRow
+        end
+
+        -- Call the content function to populate the nested group
+        if contentFunc then
+            contentFunc(nestedGroup)
+        end
+
+        local state = default
+        toggleRow.MouseButton1Click:Connect(function()
+            state = not state
+            arrow.Text = state and "▼" or "▶"
+            container.Size = UDim2.new(1, 0, 0, 30 + (state and contentLayout.AbsoluteContentSize.Y or 0))
+            group.updateSize()
+        end)
+
+        updateContentSize()
+        return container
     end
 
     table.insert(self.groups, group)
