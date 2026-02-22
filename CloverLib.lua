@@ -19,6 +19,7 @@ local Camera = workspace.CurrentCamera
 local TweenService = game:GetService("TweenService")
 
 local activeWindow = nil
+local notifications = {}
 
 -- Default theme (darker green)
 local DEFAULT_THEME = {
@@ -34,6 +35,104 @@ local DEFAULT_THEME = {
     Border = Color3.fromRGB(50,50,50),
     Track = Color3.fromRGB(60,60,60)
 }
+
+-- Utility: notification
+function UILib:notify(message, duration)
+    duration = duration or 3
+    local notif = Instance.new("Frame")
+    notif.Size = UDim2.new(0, 200, 0, 40)
+    notif.Position = UDim2.new(1, -220, 0, 10)
+    notif.BackgroundColor3 = self.theme.Panel
+    notif.BorderSizePixel = 0
+    notif.Parent = self.sg
+    Instance.new("UICorner", notif).CornerRadius = UDim.new(0, 4)
+    local stroke = Instance.new("UIStroke", notif)
+    stroke.Color = self.theme.Border
+    stroke.Thickness = 1
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -10, 1, 0)
+    label.Position = UDim2.new(0, 5, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = message
+    label.TextColor3 = self.theme.White
+    label.Font = Enum.Font.Roboto
+    label.TextSize = 14
+    label.TextWrapped = true
+    label.Parent = notif
+
+    -- Animate in
+    notif.Position = UDim2.new(1, 0, 0, 10)
+    local tween = TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Position = UDim2.new(1, -220, 0, 10)
+    })
+    tween:Play()
+
+    -- Schedule removal
+    task.delay(duration, function()
+        if notif and notif.Parent then
+            local out = TweenService:Create(notif, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                Position = UDim2.new(1, 0, 0, 10)
+            })
+            out:Play()
+            out.Completed:Connect(function()
+                notif:Destroy()
+            end)
+        end
+    end)
+end
+
+-- Utility: config serialization
+function UILib:saveConfig(filename)
+    local data = {}
+    if not self.configs then return end
+    for id, elem in pairs(self.configs) do
+        data[id] = elem.Value
+    end
+    local json = HS:JSONEncode(data)
+    local success, err = pcall(writefile, filename, json)
+    if success then
+        self:notify("Config saved to " .. filename)
+    else
+        self:notify("Save failed: " .. tostring(err))
+    end
+end
+
+function UILib:loadConfig(filename)
+    local success, content = pcall(readfile, filename)
+    if not success then
+        self:notify("Load failed: file not found")
+        return
+    end
+    local data = HS:JSONDecode(content)
+    if not data then return end
+    for id, value in pairs(data) do
+        if self.configs and self.configs[id] then
+            self.configs[id]:SetValue(value)
+        end
+    end
+    self:notify("Config loaded from " .. filename)
+end
+
+function UILib:deleteConfig(filename)
+    local success = pcall(delfile, filename)
+    if success then
+        self:notify("Config deleted: " .. filename)
+    else
+        self:notify("Delete failed")
+    end
+end
+
+function UILib:listConfigs()
+    local files = pcall(listfiles, "") or {}
+    local configs = {}
+    for _, f in ipairs(files) do
+        if f:match("%.json$") then
+            table.insert(configs, f)
+        end
+    end
+    return configs
+end
 
 function UILib.newWindow(title, size, theme, parent, showVersion)
     if activeWindow then
@@ -53,6 +152,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     self.parent = parent or (gethui and gethui()) or LP:WaitForChild("PlayerGui")
     self.connections = {}
     self.showVersion = showVersion ~= false
+    self.configs = {}  -- registry for configurable elements
+    self.resizing = nil
 
     self.sg = Instance.new("ScreenGui")
     self.sg.Name = "Clover_" .. HS:GenerateGUID(false)
@@ -79,6 +180,58 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     self.originalPosition = win.Position
     self.originalSize = win.Size
 
+    -- Resize handles
+    local function createResizeHandle(pos, size, cursor)
+        local handle = Instance.new("Frame")
+        handle.Size = size
+        handle.Position = pos
+        handle.BackgroundColor3 = self.theme.Accent
+        handle.BackgroundTransparency = 0.8
+        handle.BorderSizePixel = 0
+        handle.ZIndex = 10
+        handle.Parent = win
+        Instance.new("UICorner", handle).CornerRadius = UDim.new(0, 2)
+
+        handle.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                self.resizing = {
+                    type = cursor,
+                    startPos = input.Position,
+                    startSize = win.Size,
+                    startPosWin = win.Position
+                }
+            end
+        end)
+
+        handle.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                self.resizing = nil
+            end
+        end)
+    end
+
+    createResizeHandle(UDim2.new(0, 0, 1, -4), UDim2.new(1, 0, 0, 8), "s")
+    createResizeHandle(UDim2.new(1, -4, 0, 0), UDim2.new(0, 8, 1, 0), "e")
+    createResizeHandle(UDim2.new(1, -8, 1, -8), UDim2.new(0, 16, 0, 16), "se")
+
+    table.insert(self.connections, UIS.InputChanged:Connect(function(input)
+        if self.resizing and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - self.resizing.startPos
+            local newSize = self.resizing.startSize
+            if self.resizing.type == "s" then
+                newSize = UDim2.new(newSize.X.Scale, newSize.X.Offset, newSize.Y.Scale, newSize.Y.Offset + delta.Y)
+            elseif self.resizing.type == "e" then
+                newSize = UDim2.new(newSize.X.Scale, newSize.X.Offset + delta.X, newSize.Y.Scale, newSize.Y.Offset)
+            elseif self.resizing.type == "se" then
+                newSize = UDim2.new(newSize.X.Scale, newSize.X.Offset + delta.X, newSize.Y.Scale, newSize.Y.Offset + delta.Y)
+            end
+            newSize = UDim2.new(0, math.max(400, newSize.X.Offset), 0, math.max(300, newSize.Y.Offset))
+            win.Size = newSize
+            self.size = Vector2.new(newSize.X.Offset, newSize.Y.Offset)
+            self.content.Size = UDim2.new(0, self.size.X - 152, 1, -92)
+        end
+    end))
+
     -- Header
     local header = Instance.new("Frame")
     header.Size = UDim2.new(1, 0, 0, 46)
@@ -97,7 +250,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     headerLine.ZIndex = 6
     headerLine.Parent = header
 
-    -- Title
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Size = UDim2.new(0, 240, 1, 0)
     titleLabel.Position = UDim2.new(0, 10, 0, 0)
@@ -111,7 +263,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     titleLabel.Parent = header
     self.titleLabel = titleLabel
 
-    -- Version pill
     if self.showVersion then
         local titleWidth = math.min(#title * 11, 240)
         local versionPill = Instance.new("Frame")
@@ -134,7 +285,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
         self.versionPill = versionPill
     end
 
-    -- Hint label
     local hintLabel = Instance.new("TextLabel")
     hintLabel.Size = UDim2.new(0, 180, 1, 0)
     hintLabel.Position = UDim2.new(1, -188, 0, 0)
@@ -147,7 +297,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     hintLabel.ZIndex = 6
     hintLabel.Parent = header
 
-    -- Sidebar
     local sidebar = Instance.new("Frame")
     sidebar.Size = UDim2.new(0, 152, 1, -92)
     sidebar.Position = UDim2.new(0, 0, 0, 46)
@@ -165,7 +314,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     sidebarEdge.BorderSizePixel = 0
     sidebarEdge.Parent = sidebar
 
-    -- Content area
     local content = Instance.new("Frame")
     content.Size = UDim2.new(0, size.X - 152, 1, -92)
     content.Position = UDim2.new(0, 152, 0, 46)
@@ -174,7 +322,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     content.Parent = win
     self.content = content
 
-    -- Navbar (with rounded corners and border)
     local navbar = Instance.new("Frame")
     navbar.Size = UDim2.new(1, 0, 0, 46)
     navbar.Position = UDim2.new(0, 0, 1, -46)
@@ -193,7 +340,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     navList.VerticalAlignment = Enum.VerticalAlignment.Center
     navList.Padding = UDim.new(0, 0)
 
-    -- Drag functionality
+    -- Drag header
     do
         local drag, dragStart, dragPos = false, nil, nil
         header.InputBegan:Connect(function(i)
@@ -220,7 +367,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
         end))
     end
 
-    -- Toggle key
     table.insert(self.connections, UIS.InputBegan:Connect(function(input, gpe)
         if not gpe and input.KeyCode == Enum.KeyCode.RightShift then
             self:setVisible(not win.Visible)
@@ -282,7 +428,6 @@ function UILib:setVisible(visible)
     end
 end
 
--- Tab methods
 function UILib:addTab(name)
     local tab = setmetatable({}, UILib.Tab)
     tab.name = name
@@ -451,7 +596,6 @@ function UILib.Tab:addSubTab(subName)
     return sub
 end
 
--- Split page into two columns
 function UILib.SubTab:split()
     local row = Instance.new("Frame")
     row.Size = UDim2.new(1, 0, 0, 0)
@@ -470,7 +614,6 @@ function UILib.SubTab:split()
     right.BackgroundTransparency = 1
     right.Parent = row
 
-    -- Add vertical layouts to columns
     local leftLayout = Instance.new("UIListLayout", left)
     leftLayout.Padding = UDim.new(0, 8)
     leftLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -485,7 +628,10 @@ function UILib.SubTab:split()
     return leftCol, rightCol
 end
 
--- Column method to add a group
+local function generateID()
+    return "elem_" .. HS:GenerateGUID(false)
+end
+
 function UILib.Column:addGroup(title)
     local window = self.window
     if not window then
@@ -513,21 +659,20 @@ function UILib.Column:addGroup(title)
     row.BackgroundTransparency = 1
     row.Parent = grp
 
-    -- No vertical bar – just the title
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(1, -30, 1, 0)
-    label.Position = UDim2.new(0, 10, 0, 0)  -- left aligned
+    label.Position = UDim2.new(0, 10, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = title:upper()
     label.TextColor3 = window.theme.GrayLt
     label.Font = Enum.Font.GothamBold
-    label.TextSize = 14  -- larger
+    label.TextSize = 12
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.ZIndex = 2
     label.Parent = row
 
     local items = Instance.new("Frame")
-    items.Position = UDim2.new(0, 0, 0, 33)
+    items.Position = UDim2.new(0, 0, 0, 30)
     items.Size = UDim2.new(1, 0, 0, 0)
     items.BackgroundTransparency = 1
     items.BorderSizePixel = 0
@@ -556,6 +701,7 @@ function UILib.Column:addGroup(title)
 
     -- Toggle
     function group:toggle(text, default, callback)
+        local id = generateID()
         local row = Instance.new("TextButton")
         row.Size = UDim2.new(1, 0, 0, 28)
         row.BackgroundTransparency = 1
@@ -611,12 +757,22 @@ function UILib.Column:addGroup(title)
         label.Parent = row
 
         local state = default
+        local elem = {
+            ID = id,
+            Value = state,
+            SetValue = function(val)
+                state = val
+                cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track
+                cbStroke.Color = state and window.theme.AccentD or window.theme.Border
+                cbMark.Text = state and "×" or ""
+                if callback then callback(state) end
+            end
+        }
+        window.configs[id] = elem
+
         row.MouseButton1Click:Connect(function()
             state = not state
-            cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track
-            cbStroke.Color = state and window.theme.AccentD or window.theme.Border
-            cbMark.Text = state and "×" or ""
-            callback(state)
+            elem:SetValue(state)
         end)
 
         updateSize()
@@ -625,6 +781,7 @@ function UILib.Column:addGroup(title)
 
     -- Slider
     function group:slider(text, minVal, maxVal, defaultVal, callback)
+        local id = generateID()
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 46)
         row.BackgroundTransparency = 1
@@ -700,9 +857,12 @@ function UILib.Column:addGroup(title)
         hit.Parent = track
 
         local sliding = false
+        local currentVal = defaultVal
+
         local function apply(mx)
             local rel = math.clamp((mx - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
             local val = math.floor(minVal + (maxVal - minVal) * rel + 0.5)
+            currentVal = val
             fill.Size = UDim2.new(rel, 0, 1, 0)
             knob.Position = UDim2.new(rel, -7, 0.5, -7)
             valueLabel.Text = tostring(val)
@@ -726,12 +886,28 @@ function UILib.Column:addGroup(title)
             end
         end)
 
+        local elem = {
+            ID = id,
+            Value = currentVal,
+            SetValue = function(val)
+                val = math.clamp(val, minVal, maxVal)
+                currentVal = val
+                local rel = (val - minVal) / (maxVal - minVal)
+                fill.Size = UDim2.new(rel, 0, 1, 0)
+                knob.Position = UDim2.new(rel, -7, 0.5, -7)
+                valueLabel.Text = tostring(val)
+                callback(val)
+            end
+        }
+        window.configs[id] = elem
+
         updateSize()
         return row
     end
 
     -- Dropdown
     function group:dropdown(text, options, default, callback)
+        local id = generateID()
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 52)
         row.BackgroundTransparency = 1
@@ -864,7 +1040,8 @@ function UILib.Column:addGroup(title)
                 dlist.Visible = false
                 arrow.Text = "▼"
                 row.Size = UDim2.new(1, 0, 0, 52)
-                callback(opt)
+                if callback then callback(opt) end
+                window.configs[id].Value = opt
             end)
         end
 
@@ -876,12 +1053,26 @@ function UILib.Column:addGroup(title)
             row.Size = UDim2.new(1, 0, 0, 52 + (open and math.min(listH, 104) or 0))
         end)
 
+        local elem = {
+            ID = id,
+            Value = default,
+            SetValue = function(val)
+                selLbl.Text = val
+                for opt, ck in pairs(checks) do
+                    ck.Text = (opt == val) and "×" or ""
+                end
+                if callback then callback(val) end
+            end
+        }
+        window.configs[id] = elem
+
         updateSize()
         return row
     end
 
     -- Keybind
     function group:keybind(text, currentName, onChange)
+        local id = generateID()
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 30)
         row.BackgroundTransparency = 1
@@ -943,24 +1134,38 @@ function UILib.Column:addGroup(title)
                     kbtn.Text = i.KeyCode.Name
                     kbtn.TextColor3 = window.theme.Accent
                     onChange(i.KeyCode, i.KeyCode.Name)
+                    window.configs[id].Value = i.KeyCode.Name
                 elseif u == Enum.UserInputType.MouseButton2 then
                     kbtn.Text = "RMB"
                     kbtn.TextColor3 = window.theme.Accent
                     onChange(Enum.UserInputType.MouseButton2, "RMB")
+                    window.configs[id].Value = "RMB"
                 elseif u == Enum.UserInputType.MouseButton1 then
                     kbtn.Text = "LMB"
                     kbtn.TextColor3 = window.theme.Accent
                     onChange(Enum.UserInputType.MouseButton1, "LMB")
+                    window.configs[id].Value = "LMB"
                 elseif u == Enum.UserInputType.MouseButton3 then
                     kbtn.Text = "MMB"
                     kbtn.TextColor3 = window.theme.Accent
                     onChange(Enum.UserInputType.MouseButton3, "MMB")
+                    window.configs[id].Value = "MMB"
                 else
                     kbtn.Text = currentName
                     kbtn.TextColor3 = window.theme.Accent
                 end
             end)
         end)
+
+        local elem = {
+            ID = id,
+            Value = currentName,
+            SetValue = function(val)
+                kbtn.Text = val
+                -- we don't have an inverse mapping easily, so just update text
+            end
+        }
+        window.configs[id] = elem
 
         updateSize()
         return row
@@ -1146,6 +1351,30 @@ function UILib.Column:addGroup(title)
             updateContentSize()
             return row
         end
+        function nestedGroup:colorpicker(subText, subDefault, subCallback)
+            local row = group:colorpicker(subText, subDefault, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:multidropdown(subText, options, default, subCallback)
+            local row = group:multidropdown(subText, options, default, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:textbox(subText, default, subCallback)
+            local row = group:textbox(subText, default, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback)
+            local row = group:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
 
         if contentFunc then
             contentFunc(nestedGroup)
@@ -1271,6 +1500,30 @@ function UILib.Column:addGroup(title)
             updateContentSize()
             return row
         end
+        function nestedGroup:colorpicker(subText, subDefault, subCallback)
+            local row = group:colorpicker(subText, subDefault, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:multidropdown(subText, options, default, subCallback)
+            local row = group:multidropdown(subText, options, default, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:textbox(subText, default, subCallback)
+            local row = group:textbox(subText, default, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback)
+            local row = group:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
 
         if contentFunc then
             contentFunc(nestedGroup)
@@ -1288,10 +1541,531 @@ function UILib.Column:addGroup(title)
         return container
     end
 
+    -- Color picker
+    function group:colorpicker(text, default, callback)
+        local id = generateID()
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, 0, 0, 28)
+        row.BackgroundTransparency = 1
+        row.Parent = items
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -62, 1, 0)
+        label.Position = UDim2.new(0, 4, 0, 0)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.TextColor3 = window.theme.White
+        label.Font = Enum.Font.Roboto
+        label.TextSize = 13
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 3
+        label.Parent = row
+
+        local colorBox = Instance.new("Frame")
+        colorBox.Size = UDim2.new(0, 40, 0, 20)
+        colorBox.Position = UDim2.new(1, -44, 0.5, -10)
+        colorBox.BackgroundColor3 = default or Color3.new(1,0,0)
+        colorBox.BorderSizePixel = 0
+        colorBox.ZIndex = 4
+        colorBox.Parent = row
+        Instance.new("UICorner", colorBox).CornerRadius = UDim.new(0, 3)
+        local stroke = Instance.new("UIStroke", colorBox)
+        stroke.Color = window.theme.Border
+        stroke.Thickness = 1
+
+        local current = default or Color3.new(1,0,0)
+
+        local function openPicker()
+            local overlay = Instance.new("Frame")
+            overlay.Size = UDim2.new(1, 0, 1, 0)
+            overlay.BackgroundColor3 = Color3.new(0,0,0)
+            overlay.BackgroundTransparency = 0.5
+            overlay.ZIndex = 100
+            overlay.Parent = window.sg
+
+            local picker = Instance.new("Frame")
+            picker.Size = UDim2.new(0, 250, 0, 200)
+            picker.Position = UDim2.new(0.5, -125, 0.5, -100)
+            picker.BackgroundColor3 = window.theme.Panel
+            picker.BorderSizePixel = 0
+            picker.ZIndex = 101
+            picker.Parent = overlay
+            Instance.new("UICorner", picker).CornerRadius = UDim.new(0, 6)
+            local pickerStroke = Instance.new("UIStroke", picker)
+            pickerStroke.Color = window.theme.Border
+
+            local hueSlider = Instance.new("Frame")
+            hueSlider.Size = UDim2.new(0, 220, 0, 20)
+            hueSlider.Position = UDim2.new(0.5, -110, 0, 10)
+            hueSlider.BackgroundColor3 = Color3.new(1,1,1)
+            hueSlider.ZIndex = 102
+            hueSlider.Parent = picker
+            local hueGradient = Instance.new("UIGradient", hueSlider)
+            hueGradient.Color = ColorSequence.new{
+                ColorSequenceKeypoint.new(0, Color3.new(1,0,0)),
+                ColorSequenceKeypoint.new(0.17, Color3.new(1,1,0)),
+                ColorSequenceKeypoint.new(0.33, Color3.new(0,1,0)),
+                ColorSequenceKeypoint.new(0.5, Color3.new(0,1,1)),
+                ColorSequenceKeypoint.new(0.67, Color3.new(0,0,1)),
+                ColorSequenceKeypoint.new(0.83, Color3.new(1,0,1)),
+                ColorSequenceKeypoint.new(1, Color3.new(1,0,0))
+            }
+            hueGradient.Rotation = 90
+
+            local satValSquare = Instance.new("Frame")
+            satValSquare.Size = UDim2.new(0, 200, 0, 100)
+            satValSquare.Position = UDim2.new(0.5, -100, 0, 40)
+            satValSquare.BackgroundColor3 = Color3.new(1,1,1)
+            satValSquare.ZIndex = 102
+            satValSquare.Parent = picker
+            local squareGradient = Instance.new("UIGradient", satValSquare)
+            squareGradient.Color = ColorSequence.new{
+                ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
+                ColorSequenceKeypoint.new(1, Color3.new(1,0,0))
+            }
+            squareGradient.Rotation = 90
+
+            local close = Instance.new("TextButton")
+            close.Size = UDim2.new(0, 60, 0, 30)
+            close.Position = UDim2.new(0.5, -30, 0, 150)
+            close.BackgroundColor3 = window.theme.Accent
+            close.Text = "OK"
+            close.TextColor3 = window.theme.White
+            close.ZIndex = 102
+            close.Parent = picker
+            Instance.new("UICorner", close).CornerRadius = UDim.new(0, 4)
+
+            close.MouseButton1Click:Connect(function()
+                overlay:Destroy()
+                colorBox.BackgroundColor3 = current
+                if callback then callback(current) end
+                window.configs[id].Value = current
+            end)
+        end
+
+        colorBox.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                openPicker()
+            end
+        end)
+
+        local elem = {
+            ID = id,
+            Value = current,
+            SetValue = function(val)
+                current = val
+                colorBox.BackgroundColor3 = val
+                if callback then callback(val) end
+            end
+        }
+        window.configs[id] = elem
+
+        updateSize()
+        return row
+    end
+
+    -- Multi‑select dropdown
+    function group:multidropdown(text, options, default, callback)
+        local id = generateID()
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, 0, 0, 52)
+        row.BackgroundTransparency = 1
+        row.ClipsDescendants = false
+        row.ZIndex = 10
+        row.Parent = items
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 0, 18)
+        label.Position = UDim2.new(0, 4, 0, 2)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.TextColor3 = window.theme.GrayLt
+        label.Font = Enum.Font.Roboto
+        label.TextSize = 12
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 11
+        label.Parent = row
+
+        local dbtn = Instance.new("TextButton")
+        dbtn.Size = UDim2.new(1, 0, 0, 28)
+        dbtn.Position = UDim2.new(0, 0, 0, 22)
+        dbtn.BackgroundColor3 = window.theme.Track
+        dbtn.BorderSizePixel = 0
+        dbtn.Text = ""
+        dbtn.ZIndex = 11
+        dbtn.Parent = row
+        Instance.new("UICorner", dbtn).CornerRadius = UDim.new(0, 4)
+        local dstroke = Instance.new("UIStroke", dbtn)
+        dstroke.Color = window.theme.Border
+        dstroke.Thickness = 1
+
+        local selLbl = Instance.new("TextLabel")
+        selLbl.Size = UDim2.new(1, -34, 1, 0)
+        selLbl.Position = UDim2.new(0, 10, 0, 0)
+        selLbl.BackgroundTransparency = 1
+        selLbl.Text = default and #default > 0 and table.concat(default, ", ") or "None"
+        selLbl.TextColor3 = window.theme.White
+        selLbl.Font = Enum.Font.GothamBold
+        selLbl.TextSize = 12
+        selLbl.TextXAlignment = Enum.TextXAlignment.Left
+        selLbl.ZIndex = 12
+        selLbl.Parent = dbtn
+
+        local arrow = Instance.new("TextLabel")
+        arrow.Size = UDim2.new(0, 24, 1, 0)
+        arrow.Position = UDim2.new(1, -26, 0, 0)
+        arrow.BackgroundTransparency = 1
+        arrow.Text = "▼"
+        arrow.TextColor3 = window.theme.Accent
+        arrow.Font = Enum.Font.GothamBold
+        arrow.TextSize = 12
+        arrow.ZIndex = 12
+        arrow.Parent = dbtn
+
+        local listH = #options * 26
+        local dlist = Instance.new("ScrollingFrame")
+        dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 104))
+        dlist.Position = UDim2.new(0, 0, 0, 52)
+        dlist.BackgroundColor3 = window.theme.Item
+        dlist.BorderSizePixel = 0
+        dlist.ScrollBarThickness = 2
+        dlist.ScrollBarImageColor3 = window.theme.Accent
+        dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
+        dlist.Visible = false
+        dlist.ZIndex = 50
+        dlist.Parent = row
+        Instance.new("UICorner", dlist).CornerRadius = UDim.new(0, 4)
+        Instance.new("UIStroke", dlist).Color = window.theme.Accent
+
+        local dlayout = Instance.new("UIListLayout", dlist)
+        dlayout.SortOrder = Enum.SortOrder.LayoutOrder
+        dlayout.Padding = UDim.new(0, 0)
+
+        local selected = default or {}
+        local checks = {}
+        for _, opt in ipairs(options) do
+            local ob = Instance.new("TextButton")
+            ob.Size = UDim2.new(1, 0, 0, 26)
+            ob.BackgroundTransparency = 1
+            ob.Text = ""
+            ob.ZIndex = 51
+            ob.Parent = dlist
+
+            local oh = Instance.new("Frame")
+            oh.Size = UDim2.new(1, -4, 1, -2)
+            oh.Position = UDim2.new(0, 2, 0, 1)
+            oh.BackgroundColor3 = window.theme.ItemHov
+            oh.BorderSizePixel = 0
+            oh.Visible = false
+            oh.ZIndex = 51
+            oh.Parent = ob
+            Instance.new("UICorner", oh).CornerRadius = UDim.new(0, 4)
+
+            local ol = Instance.new("TextLabel")
+            ol.Size = UDim2.new(1, -22, 1, 0)
+            ol.Position = UDim2.new(0, 10, 0, 0)
+            ol.BackgroundTransparency = 1
+            ol.Text = opt
+            ol.TextColor3 = window.theme.GrayLt
+            ol.Font = Enum.Font.Roboto
+            ol.TextSize = 12
+            ol.TextXAlignment = Enum.TextXAlignment.Left
+            ol.ZIndex = 52
+            ol.Parent = ob
+
+            local ck = Instance.new("TextLabel")
+            ck.Size = UDim2.new(0, 18, 1, 0)
+            ck.Position = UDim2.new(1, -20, 0, 0)
+            ck.BackgroundTransparency = 1
+            ck.Text = ""
+            ck.TextColor3 = window.theme.Accent
+            ck.Font = Enum.Font.GothamBold
+            ck.TextSize = 12
+            ck.ZIndex = 52
+            ck.Parent = ob
+            checks[opt] = ck
+
+            ob.MouseEnter:Connect(function()
+                oh.Visible = true
+                ol.TextColor3 = window.theme.White
+            end)
+            ob.MouseLeave:Connect(function()
+                oh.Visible = false
+                ol.TextColor3 = window.theme.GrayLt
+            end)
+            ob.MouseButton1Click:Connect(function()
+                if selected[opt] then
+                    selected[opt] = nil
+                    ck.Text = ""
+                else
+                    selected[opt] = true
+                    ck.Text = "×"
+                end
+                local keys = {}
+                for k, _ in pairs(selected) do table.insert(keys, k) end
+                selLbl.Text = #keys > 0 and table.concat(keys, ", ") or "None"
+                if callback then callback(keys) end
+                window.configs[id].Value = keys
+            end)
+        end
+
+        local open = false
+        dbtn.MouseButton1Click:Connect(function()
+            open = not open
+            dlist.Visible = open
+            arrow.Text = open and "▲" or "▼"
+            row.Size = UDim2.new(1, 0, 0, 52 + (open and math.min(listH, 104) or 0))
+        end)
+
+        local elem = {
+            ID = id,
+            Value = selected,
+            SetValue = function(t)
+                selected = {}
+                for _, opt in ipairs(t) do selected[opt] = true end
+                for opt, ck in pairs(checks) do
+                    ck.Text = selected[opt] and "×" or ""
+                end
+                local keys = {}
+                for k, _ in pairs(selected) do table.insert(keys, k) end
+                selLbl.Text = #keys > 0 and table.concat(keys, ", ") or "None"
+                if callback then callback(keys) end
+            end
+        }
+        window.configs[id] = elem
+
+        updateSize()
+        return row
+    end
+
+    -- Text input
+    function group:textbox(text, default, callback)
+        local id = generateID()
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, 0, 0, 46)
+        row.BackgroundTransparency = 1
+        row.Parent = items
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -48, 0, 18)
+        label.Position = UDim2.new(0, 4, 0, 3)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.TextColor3 = window.theme.GrayLt
+        label.Font = Enum.Font.Roboto
+        label.TextSize = 12
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 3
+        label.Parent = row
+
+        local box = Instance.new("TextBox")
+        box.Size = UDim2.new(0, 45, 0, 20)
+        box.Position = UDim2.new(1, -49, 0, 2)
+        box.BackgroundColor3 = window.theme.Track
+        box.BorderSizePixel = 0
+        box.ZIndex = 3
+        box.Parent = row
+        box.Text = default or ""
+        box.TextColor3 = window.theme.Accent
+        box.Font = Enum.Font.RobotoMono
+        box.TextSize = 11
+        box.ClearTextOnFocus = false
+        Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
+
+        local current = default or ""
+
+        box.FocusLost:Connect(function(enter)
+            if enter then
+                current = box.Text
+                if callback then callback(current) end
+                window.configs[id].Value = current
+            end
+        end)
+
+        local elem = {
+            ID = id,
+            Value = current,
+            SetValue = function(val)
+                current = val
+                box.Text = val
+                if callback then callback(val) end
+            end
+        }
+        window.configs[id] = elem
+
+        updateSize()
+        return row
+    end
+
+    -- Range slider
+    function group:rangeslider(text, minVal, maxVal, defaultMin, defaultMax, callback)
+        local id = generateID()
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, 0, 0, 46)
+        row.BackgroundTransparency = 1
+        row.Parent = items
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -48, 0, 18)
+        label.Position = UDim2.new(0, 4, 0, 3)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.TextColor3 = window.theme.GrayLt
+        label.Font = Enum.Font.Roboto
+        label.TextSize = 12
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 3
+        label.Parent = row
+
+        local valueBox = Instance.new("Frame")
+        valueBox.Size = UDim2.new(0, 45, 0, 20)
+        valueBox.Position = UDim2.new(1, -49, 0, 2)
+        valueBox.BackgroundColor3 = window.theme.Track
+        valueBox.BorderSizePixel = 0
+        valueBox.ZIndex = 3
+        valueBox.Parent = row
+        Instance.new("UICorner", valueBox).CornerRadius = UDim.new(0, 4)
+
+        local valueLabel = Instance.new("TextLabel")
+        valueLabel.Size = UDim2.new(1, 0, 1, 0)
+        valueLabel.BackgroundTransparency = 1
+        valueLabel.Text = tostring(defaultMin) .. " - " .. tostring(defaultMax)
+        valueLabel.TextColor3 = window.theme.Accent
+        valueLabel.Font = Enum.Font.RobotoMono
+        valueLabel.TextSize = 11
+        valueLabel.ZIndex = 4
+        valueLabel.Parent = valueBox
+
+        local track = Instance.new("Frame")
+        track.Size = UDim2.new(1, 0, 0, 6)
+        track.Position = UDim2.new(0, 0, 0, 28)
+        track.BackgroundColor3 = window.theme.Track
+        track.BorderSizePixel = 0
+        track.ZIndex = 3
+        track.Parent = row
+        Instance.new("UICorner", track).CornerRadius = UDim.new(0, 3)
+
+        local pctMin = (defaultMin - minVal) / (maxVal - minVal)
+        local pctMax = (defaultMax - minVal) / (maxVal - minVal)
+
+        local fill = Instance.new("Frame")
+        fill.Size = UDim2.new(pctMax - pctMin, 0, 1, 0)
+        fill.Position = UDim2.new(pctMin, 0, 0, 0)
+        fill.BackgroundColor3 = window.theme.Accent
+        fill.BorderSizePixel = 0
+        fill.ZIndex = 4
+        fill.Parent = track
+        Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 3)
+
+        local knobLeft = Instance.new("Frame")
+        knobLeft.Size = UDim2.new(0, 14, 0, 14)
+        knobLeft.Position = UDim2.new(pctMin, -7, 0.5, -7)
+        knobLeft.BackgroundColor3 = window.theme.White
+        knobLeft.BorderSizePixel = 0
+        knobLeft.ZIndex = 5
+        knobLeft.Parent = track
+        Instance.new("UICorner", knobLeft).CornerRadius = UDim.new(0, 7)
+        local knobLeftStroke = Instance.new("UIStroke", knobLeft)
+        knobLeftStroke.Color = window.theme.Accent
+
+        local knobRight = Instance.new("Frame")
+        knobRight.Size = UDim2.new(0, 14, 0, 14)
+        knobRight.Position = UDim2.new(pctMax, -7, 0.5, -7)
+        knobRight.BackgroundColor3 = window.theme.White
+        knobRight.BorderSizePixel = 0
+        knobRight.ZIndex = 5
+        knobRight.Parent = track
+        Instance.new("UICorner", knobRight).CornerRadius = UDim.new(0, 7)
+        local knobRightStroke = Instance.new("UIStroke", knobRight)
+        knobRightStroke.Color = window.theme.Accent
+
+        local hitLeft = Instance.new("TextButton")
+        hitLeft.Size = UDim2.new(0, 20, 0, 20)
+        hitLeft.Position = UDim2.new(pctMin, -10, 0.5, -10)
+        hitLeft.BackgroundTransparency = 1
+        hitLeft.Text = ""
+        hitLeft.ZIndex = 6
+        hitLeft.Parent = track
+
+        local hitRight = Instance.new("TextButton")
+        hitRight.Size = UDim2.new(0, 20, 0, 20)
+        hitRight.Position = UDim2.new(pctMax, -10, 0.5, -10)
+        hitRight.BackgroundTransparency = 1
+        hitRight.Text = ""
+        hitRight.ZIndex = 6
+        hitRight.Parent = track
+
+        local dragging = false
+        local dragType = nil
+        local currentMin = defaultMin
+        local currentMax = defaultMax
+
+        local function updateDisplay()
+            valueLabel.Text = tostring(currentMin) .. " - " .. tostring(currentMax)
+            pctMin = (currentMin - minVal) / (maxVal - minVal)
+            pctMax = (currentMax - minVal) / (maxVal - minVal)
+            fill.Size = UDim2.new(pctMax - pctMin, 0, 1, 0)
+            fill.Position = UDim2.new(pctMin, 0, 0, 0)
+            knobLeft.Position = UDim2.new(pctMin, -7, 0.5, -7)
+            knobRight.Position = UDim2.new(pctMax, -7, 0.5, -7)
+            hitLeft.Position = UDim2.new(pctMin, -10, 0.5, -10)
+            hitRight.Position = UDim2.new(pctMax, -10, 0.5, -10)
+        end
+
+        local function apply(pos, which)
+            local rel = math.clamp((pos - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+            local val = minVal + (maxVal - minVal) * rel
+            if which == "left" then
+                val = math.min(val, currentMax)
+                currentMin = math.floor(val + 0.5)
+            else
+                val = math.max(val, currentMin)
+                currentMax = math.floor(val + 0.5)
+            end
+            updateDisplay()
+            if callback then callback(currentMin, currentMax) end
+            window.configs[id].Value = {currentMin, currentMax}
+        end
+
+        hitLeft.MouseButton1Down:Connect(function()
+            dragging = true
+            dragType = "left"
+        end)
+        hitRight.MouseButton1Down:Connect(function()
+            dragging = true
+            dragType = "right"
+        end)
+
+        UIS.InputChanged:Connect(function(i)
+            if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
+                apply(i.Position.X, dragType)
+            end
+        end)
+
+        UIS.InputEnded:Connect(function(i)
+            if i.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = false
+            end
+        end)
+
+        local elem = {
+            ID = id,
+            Value = {currentMin, currentMax},
+            SetValue = function(t)
+                currentMin, currentMax = t[1], t[2]
+                updateDisplay()
+                if callback then callback(currentMin, currentMax) end
+            end
+        }
+        window.configs[id] = elem
+
+        updateSize()
+        return row
+    end
+
     return group
 end
 
--- Regular SubTab addGroup (complete)
 function UILib.SubTab:addGroup(title)
     local window = self.window
     if not window then
@@ -1319,21 +2093,20 @@ function UILib.SubTab:addGroup(title)
     row.BackgroundTransparency = 1
     row.Parent = grp
 
-    -- No vertical bar
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(1, -30, 1, 0)
-    label.Position = UDim2.new(0, 10, 0, 0)  -- left aligned
+    label.Position = UDim2.new(0, 10, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = title:upper()
     label.TextColor3 = window.theme.GrayLt
     label.Font = Enum.Font.GothamBold
-    label.TextSize = 14  -- larger
+    label.TextSize = 12
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.ZIndex = 2
     label.Parent = row
 
     local items = Instance.new("Frame")
-    items.Position = UDim2.new(0, 0, 0, 33)
+    items.Position = UDim2.new(0, 0, 0, 30)
     items.Size = UDim2.new(1, 0, 0, 0)
     items.BackgroundTransparency = 1
     items.BorderSizePixel = 0
@@ -1362,16 +2135,11 @@ function UILib.SubTab:addGroup(title)
     group.itemLayout = itemLayout
     group.updateSize = updateSize
 
-    -- Element methods (identical to those in Column:addGroup)
-    -- (We'll copy them here – for brevity, I'll assume they are the same as above.
-    -- In practice, you'd include all the functions from the Column's group here,
-    -- using the same `window` closure. Since they are identical, we can just
-    -- reference them, but to keep the library self-contained, I'll include them.
-    -- However, to avoid duplication in this answer, I'll note that they are the same.
-    -- In the final code, you must include them all. I'll provide them below.)
-
+    -- === ELEMENT METHODS (copied from UILib.Column:addGroup) ===
+    -- (All functions below are identical to those above, using `window` and `items` from this closure)
     -- Toggle
     function group:toggle(text, default, callback)
+        local id = generateID()
         local row = Instance.new("TextButton")
         row.Size = UDim2.new(1, 0, 0, 28)
         row.BackgroundTransparency = 1
@@ -1427,19 +2195,31 @@ function UILib.SubTab:addGroup(title)
         label.Parent = row
 
         local state = default
+        local elem = {
+            ID = id,
+            Value = state,
+            SetValue = function(val)
+                state = val
+                cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track
+                cbStroke.Color = state and window.theme.AccentD or window.theme.Border
+                cbMark.Text = state and "×" or ""
+                if callback then callback(state) end
+            end
+        }
+        window.configs[id] = elem
+
         row.MouseButton1Click:Connect(function()
             state = not state
-            cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track
-            cbStroke.Color = state and window.theme.AccentD or window.theme.Border
-            cbMark.Text = state and "×" or ""
-            callback(state)
+            elem:SetValue(state)
         end)
 
         updateSize()
         return row
     end
 
+    -- Slider
     function group:slider(text, minVal, maxVal, defaultVal, callback)
+        local id = generateID()
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 46)
         row.BackgroundTransparency = 1
@@ -1515,9 +2295,12 @@ function UILib.SubTab:addGroup(title)
         hit.Parent = track
 
         local sliding = false
+        local currentVal = defaultVal
+
         local function apply(mx)
             local rel = math.clamp((mx - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
             local val = math.floor(minVal + (maxVal - minVal) * rel + 0.5)
+            currentVal = val
             fill.Size = UDim2.new(rel, 0, 1, 0)
             knob.Position = UDim2.new(rel, -7, 0.5, -7)
             valueLabel.Text = tostring(val)
@@ -1541,11 +2324,28 @@ function UILib.SubTab:addGroup(title)
             end
         end)
 
+        local elem = {
+            ID = id,
+            Value = currentVal,
+            SetValue = function(val)
+                val = math.clamp(val, minVal, maxVal)
+                currentVal = val
+                local rel = (val - minVal) / (maxVal - minVal)
+                fill.Size = UDim2.new(rel, 0, 1, 0)
+                knob.Position = UDim2.new(rel, -7, 0.5, -7)
+                valueLabel.Text = tostring(val)
+                callback(val)
+            end
+        }
+        window.configs[id] = elem
+
         updateSize()
         return row
     end
 
+    -- Dropdown
     function group:dropdown(text, options, default, callback)
+        local id = generateID()
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 52)
         row.BackgroundTransparency = 1
@@ -1678,7 +2478,8 @@ function UILib.SubTab:addGroup(title)
                 dlist.Visible = false
                 arrow.Text = "▼"
                 row.Size = UDim2.new(1, 0, 0, 52)
-                callback(opt)
+                if callback then callback(opt) end
+                window.configs[id].Value = opt
             end)
         end
 
@@ -1690,11 +2491,26 @@ function UILib.SubTab:addGroup(title)
             row.Size = UDim2.new(1, 0, 0, 52 + (open and math.min(listH, 104) or 0))
         end)
 
+        local elem = {
+            ID = id,
+            Value = default,
+            SetValue = function(val)
+                selLbl.Text = val
+                for opt, ck in pairs(checks) do
+                    ck.Text = (opt == val) and "×" or ""
+                end
+                if callback then callback(val) end
+            end
+        }
+        window.configs[id] = elem
+
         updateSize()
         return row
     end
 
+    -- Keybind
     function group:keybind(text, currentName, onChange)
+        local id = generateID()
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 30)
         row.BackgroundTransparency = 1
@@ -1756,18 +2572,22 @@ function UILib.SubTab:addGroup(title)
                     kbtn.Text = i.KeyCode.Name
                     kbtn.TextColor3 = window.theme.Accent
                     onChange(i.KeyCode, i.KeyCode.Name)
+                    window.configs[id].Value = i.KeyCode.Name
                 elseif u == Enum.UserInputType.MouseButton2 then
                     kbtn.Text = "RMB"
                     kbtn.TextColor3 = window.theme.Accent
                     onChange(Enum.UserInputType.MouseButton2, "RMB")
+                    window.configs[id].Value = "RMB"
                 elseif u == Enum.UserInputType.MouseButton1 then
                     kbtn.Text = "LMB"
                     kbtn.TextColor3 = window.theme.Accent
                     onChange(Enum.UserInputType.MouseButton1, "LMB")
+                    window.configs[id].Value = "LMB"
                 elseif u == Enum.UserInputType.MouseButton3 then
                     kbtn.Text = "MMB"
                     kbtn.TextColor3 = window.theme.Accent
                     onChange(Enum.UserInputType.MouseButton3, "MMB")
+                    window.configs[id].Value = "MMB"
                 else
                     kbtn.Text = currentName
                     kbtn.TextColor3 = window.theme.Accent
@@ -1775,10 +2595,21 @@ function UILib.SubTab:addGroup(title)
             end)
         end)
 
+        local elem = {
+            ID = id,
+            Value = currentName,
+            SetValue = function(val)
+                kbtn.Text = val
+                -- we don't have an inverse mapping easily, so just update text
+            end
+        }
+        window.configs[id] = elem
+
         updateSize()
         return row
     end
 
+    -- Label
     function group:label(text, color)
         local f = Instance.new("Frame")
         f.Size = UDim2.new(1, 0, 0, 20)
@@ -1801,6 +2632,7 @@ function UILib.SubTab:addGroup(title)
         return f
     end
 
+    -- Button
     function group:button(text, callback)
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(1, 0, 0, 28)
@@ -1839,6 +2671,7 @@ function UILib.SubTab:addGroup(title)
         return btn
     end
 
+    -- Expandable toggle
     function group:expandableToggle(text, default, contentFunc)
         local container = Instance.new("Frame")
         container.Size = UDim2.new(1, 0, 0, 30)
@@ -1956,6 +2789,30 @@ function UILib.SubTab:addGroup(title)
             updateContentSize()
             return row
         end
+        function nestedGroup:colorpicker(subText, subDefault, subCallback)
+            local row = group:colorpicker(subText, subDefault, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:multidropdown(subText, options, default, subCallback)
+            local row = group:multidropdown(subText, options, default, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:textbox(subText, default, subCallback)
+            local row = group:textbox(subText, default, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback)
+            local row = group:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
 
         if contentFunc then
             contentFunc(nestedGroup)
@@ -1975,6 +2832,7 @@ function UILib.SubTab:addGroup(title)
         return container
     end
 
+    -- Collapsible (simple, no checkbox)
     function group:collapsible(text, default, contentFunc)
         local container = Instance.new("Frame")
         container.Size = UDim2.new(1, 0, 0, 30)
@@ -2080,6 +2938,30 @@ function UILib.SubTab:addGroup(title)
             updateContentSize()
             return row
         end
+        function nestedGroup:colorpicker(subText, subDefault, subCallback)
+            local row = group:colorpicker(subText, subDefault, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:multidropdown(subText, options, default, subCallback)
+            local row = group:multidropdown(subText, options, default, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:textbox(subText, default, subCallback)
+            local row = group:textbox(subText, default, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback)
+            local row = group:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
 
         if contentFunc then
             contentFunc(nestedGroup)
@@ -2097,8 +2979,528 @@ function UILib.SubTab:addGroup(title)
         return container
     end
 
-    table.insert(self.groups, group)
-    updateSize()
+    -- Color picker
+    function group:colorpicker(text, default, callback)
+        local id = generateID()
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, 0, 0, 28)
+        row.BackgroundTransparency = 1
+        row.Parent = items
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -62, 1, 0)
+        label.Position = UDim2.new(0, 4, 0, 0)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.TextColor3 = window.theme.White
+        label.Font = Enum.Font.Roboto
+        label.TextSize = 13
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 3
+        label.Parent = row
+
+        local colorBox = Instance.new("Frame")
+        colorBox.Size = UDim2.new(0, 40, 0, 20)
+        colorBox.Position = UDim2.new(1, -44, 0.5, -10)
+        colorBox.BackgroundColor3 = default or Color3.new(1,0,0)
+        colorBox.BorderSizePixel = 0
+        colorBox.ZIndex = 4
+        colorBox.Parent = row
+        Instance.new("UICorner", colorBox).CornerRadius = UDim.new(0, 3)
+        local stroke = Instance.new("UIStroke", colorBox)
+        stroke.Color = window.theme.Border
+        stroke.Thickness = 1
+
+        local current = default or Color3.new(1,0,0)
+
+        local function openPicker()
+            local overlay = Instance.new("Frame")
+            overlay.Size = UDim2.new(1, 0, 1, 0)
+            overlay.BackgroundColor3 = Color3.new(0,0,0)
+            overlay.BackgroundTransparency = 0.5
+            overlay.ZIndex = 100
+            overlay.Parent = window.sg
+
+            local picker = Instance.new("Frame")
+            picker.Size = UDim2.new(0, 250, 0, 200)
+            picker.Position = UDim2.new(0.5, -125, 0.5, -100)
+            picker.BackgroundColor3 = window.theme.Panel
+            picker.BorderSizePixel = 0
+            picker.ZIndex = 101
+            picker.Parent = overlay
+            Instance.new("UICorner", picker).CornerRadius = UDim.new(0, 6)
+            local pickerStroke = Instance.new("UIStroke", picker)
+            pickerStroke.Color = window.theme.Border
+
+            local hueSlider = Instance.new("Frame")
+            hueSlider.Size = UDim2.new(0, 220, 0, 20)
+            hueSlider.Position = UDim2.new(0.5, -110, 0, 10)
+            hueSlider.BackgroundColor3 = Color3.new(1,1,1)
+            hueSlider.ZIndex = 102
+            hueSlider.Parent = picker
+            local hueGradient = Instance.new("UIGradient", hueSlider)
+            hueGradient.Color = ColorSequence.new{
+                ColorSequenceKeypoint.new(0, Color3.new(1,0,0)),
+                ColorSequenceKeypoint.new(0.17, Color3.new(1,1,0)),
+                ColorSequenceKeypoint.new(0.33, Color3.new(0,1,0)),
+                ColorSequenceKeypoint.new(0.5, Color3.new(0,1,1)),
+                ColorSequenceKeypoint.new(0.67, Color3.new(0,0,1)),
+                ColorSequenceKeypoint.new(0.83, Color3.new(1,0,1)),
+                ColorSequenceKeypoint.new(1, Color3.new(1,0,0))
+            }
+            hueGradient.Rotation = 90
+
+            local satValSquare = Instance.new("Frame")
+            satValSquare.Size = UDim2.new(0, 200, 0, 100)
+            satValSquare.Position = UDim2.new(0.5, -100, 0, 40)
+            satValSquare.BackgroundColor3 = Color3.new(1,1,1)
+            satValSquare.ZIndex = 102
+            satValSquare.Parent = picker
+            local squareGradient = Instance.new("UIGradient", satValSquare)
+            squareGradient.Color = ColorSequence.new{
+                ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
+                ColorSequenceKeypoint.new(1, Color3.new(1,0,0))
+            }
+            squareGradient.Rotation = 90
+
+            local close = Instance.new("TextButton")
+            close.Size = UDim2.new(0, 60, 0, 30)
+            close.Position = UDim2.new(0.5, -30, 0, 150)
+            close.BackgroundColor3 = window.theme.Accent
+            close.Text = "OK"
+            close.TextColor3 = window.theme.White
+            close.ZIndex = 102
+            close.Parent = picker
+            Instance.new("UICorner", close).CornerRadius = UDim.new(0, 4)
+
+            close.MouseButton1Click:Connect(function()
+                overlay:Destroy()
+                colorBox.BackgroundColor3 = current
+                if callback then callback(current) end
+                window.configs[id].Value = current
+            end)
+        end
+
+        colorBox.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                openPicker()
+            end
+        end)
+
+        local elem = {
+            ID = id,
+            Value = current,
+            SetValue = function(val)
+                current = val
+                colorBox.BackgroundColor3 = val
+                if callback then callback(val) end
+            end
+        }
+        window.configs[id] = elem
+
+        updateSize()
+        return row
+    end
+
+    -- Multi‑select dropdown
+    function group:multidropdown(text, options, default, callback)
+        local id = generateID()
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, 0, 0, 52)
+        row.BackgroundTransparency = 1
+        row.ClipsDescendants = false
+        row.ZIndex = 10
+        row.Parent = items
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 0, 18)
+        label.Position = UDim2.new(0, 4, 0, 2)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.TextColor3 = window.theme.GrayLt
+        label.Font = Enum.Font.Roboto
+        label.TextSize = 12
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 11
+        label.Parent = row
+
+        local dbtn = Instance.new("TextButton")
+        dbtn.Size = UDim2.new(1, 0, 0, 28)
+        dbtn.Position = UDim2.new(0, 0, 0, 22)
+        dbtn.BackgroundColor3 = window.theme.Track
+        dbtn.BorderSizePixel = 0
+        dbtn.Text = ""
+        dbtn.ZIndex = 11
+        dbtn.Parent = row
+        Instance.new("UICorner", dbtn).CornerRadius = UDim.new(0, 4)
+        local dstroke = Instance.new("UIStroke", dbtn)
+        dstroke.Color = window.theme.Border
+        dstroke.Thickness = 1
+
+        local selLbl = Instance.new("TextLabel")
+        selLbl.Size = UDim2.new(1, -34, 1, 0)
+        selLbl.Position = UDim2.new(0, 10, 0, 0)
+        selLbl.BackgroundTransparency = 1
+        selLbl.Text = default and #default > 0 and table.concat(default, ", ") or "None"
+        selLbl.TextColor3 = window.theme.White
+        selLbl.Font = Enum.Font.GothamBold
+        selLbl.TextSize = 12
+        selLbl.TextXAlignment = Enum.TextXAlignment.Left
+        selLbl.ZIndex = 12
+        selLbl.Parent = dbtn
+
+        local arrow = Instance.new("TextLabel")
+        arrow.Size = UDim2.new(0, 24, 1, 0)
+        arrow.Position = UDim2.new(1, -26, 0, 0)
+        arrow.BackgroundTransparency = 1
+        arrow.Text = "▼"
+        arrow.TextColor3 = window.theme.Accent
+        arrow.Font = Enum.Font.GothamBold
+        arrow.TextSize = 12
+        arrow.ZIndex = 12
+        arrow.Parent = dbtn
+
+        local listH = #options * 26
+        local dlist = Instance.new("ScrollingFrame")
+        dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 104))
+        dlist.Position = UDim2.new(0, 0, 0, 52)
+        dlist.BackgroundColor3 = window.theme.Item
+        dlist.BorderSizePixel = 0
+        dlist.ScrollBarThickness = 2
+        dlist.ScrollBarImageColor3 = window.theme.Accent
+        dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
+        dlist.Visible = false
+        dlist.ZIndex = 50
+        dlist.Parent = row
+        Instance.new("UICorner", dlist).CornerRadius = UDim.new(0, 4)
+        Instance.new("UIStroke", dlist).Color = window.theme.Accent
+
+        local dlayout = Instance.new("UIListLayout", dlist)
+        dlayout.SortOrder = Enum.SortOrder.LayoutOrder
+        dlayout.Padding = UDim.new(0, 0)
+
+        local selected = default or {}
+        local checks = {}
+        for _, opt in ipairs(options) do
+            local ob = Instance.new("TextButton")
+            ob.Size = UDim2.new(1, 0, 0, 26)
+            ob.BackgroundTransparency = 1
+            ob.Text = ""
+            ob.ZIndex = 51
+            ob.Parent = dlist
+
+            local oh = Instance.new("Frame")
+            oh.Size = UDim2.new(1, -4, 1, -2)
+            oh.Position = UDim2.new(0, 2, 0, 1)
+            oh.BackgroundColor3 = window.theme.ItemHov
+            oh.BorderSizePixel = 0
+            oh.Visible = false
+            oh.ZIndex = 51
+            oh.Parent = ob
+            Instance.new("UICorner", oh).CornerRadius = UDim.new(0, 4)
+
+            local ol = Instance.new("TextLabel")
+            ol.Size = UDim2.new(1, -22, 1, 0)
+            ol.Position = UDim2.new(0, 10, 0, 0)
+            ol.BackgroundTransparency = 1
+            ol.Text = opt
+            ol.TextColor3 = window.theme.GrayLt
+            ol.Font = Enum.Font.Roboto
+            ol.TextSize = 12
+            ol.TextXAlignment = Enum.TextXAlignment.Left
+            ol.ZIndex = 52
+            ol.Parent = ob
+
+            local ck = Instance.new("TextLabel")
+            ck.Size = UDim2.new(0, 18, 1, 0)
+            ck.Position = UDim2.new(1, -20, 0, 0)
+            ck.BackgroundTransparency = 1
+            ck.Text = ""
+            ck.TextColor3 = window.theme.Accent
+            ck.Font = Enum.Font.GothamBold
+            ck.TextSize = 12
+            ck.ZIndex = 52
+            ck.Parent = ob
+            checks[opt] = ck
+
+            ob.MouseEnter:Connect(function()
+                oh.Visible = true
+                ol.TextColor3 = window.theme.White
+            end)
+            ob.MouseLeave:Connect(function()
+                oh.Visible = false
+                ol.TextColor3 = window.theme.GrayLt
+            end)
+            ob.MouseButton1Click:Connect(function()
+                if selected[opt] then
+                    selected[opt] = nil
+                    ck.Text = ""
+                else
+                    selected[opt] = true
+                    ck.Text = "×"
+                end
+                local keys = {}
+                for k, _ in pairs(selected) do table.insert(keys, k) end
+                selLbl.Text = #keys > 0 and table.concat(keys, ", ") or "None"
+                if callback then callback(keys) end
+                window.configs[id].Value = keys
+            end)
+        end
+
+        local open = false
+        dbtn.MouseButton1Click:Connect(function()
+            open = not open
+            dlist.Visible = open
+            arrow.Text = open and "▲" or "▼"
+            row.Size = UDim2.new(1, 0, 0, 52 + (open and math.min(listH, 104) or 0))
+        end)
+
+        local elem = {
+            ID = id,
+            Value = selected,
+            SetValue = function(t)
+                selected = {}
+                for _, opt in ipairs(t) do selected[opt] = true end
+                for opt, ck in pairs(checks) do
+                    ck.Text = selected[opt] and "×" or ""
+                end
+                local keys = {}
+                for k, _ in pairs(selected) do table.insert(keys, k) end
+                selLbl.Text = #keys > 0 and table.concat(keys, ", ") or "None"
+                if callback then callback(keys) end
+            end
+        }
+        window.configs[id] = elem
+
+        updateSize()
+        return row
+    end
+
+    -- Text input
+    function group:textbox(text, default, callback)
+        local id = generateID()
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, 0, 0, 46)
+        row.BackgroundTransparency = 1
+        row.Parent = items
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -48, 0, 18)
+        label.Position = UDim2.new(0, 4, 0, 3)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.TextColor3 = window.theme.GrayLt
+        label.Font = Enum.Font.Roboto
+        label.TextSize = 12
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 3
+        label.Parent = row
+
+        local box = Instance.new("TextBox")
+        box.Size = UDim2.new(0, 45, 0, 20)
+        box.Position = UDim2.new(1, -49, 0, 2)
+        box.BackgroundColor3 = window.theme.Track
+        box.BorderSizePixel = 0
+        box.ZIndex = 3
+        box.Parent = row
+        box.Text = default or ""
+        box.TextColor3 = window.theme.Accent
+        box.Font = Enum.Font.RobotoMono
+        box.TextSize = 11
+        box.ClearTextOnFocus = false
+        Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
+
+        local current = default or ""
+
+        box.FocusLost:Connect(function(enter)
+            if enter then
+                current = box.Text
+                if callback then callback(current) end
+                window.configs[id].Value = current
+            end
+        end)
+
+        local elem = {
+            ID = id,
+            Value = current,
+            SetValue = function(val)
+                current = val
+                box.Text = val
+                if callback then callback(val) end
+            end
+        }
+        window.configs[id] = elem
+
+        updateSize()
+        return row
+    end
+
+    -- Range slider
+    function group:rangeslider(text, minVal, maxVal, defaultMin, defaultMax, callback)
+        local id = generateID()
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, 0, 0, 46)
+        row.BackgroundTransparency = 1
+        row.Parent = items
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -48, 0, 18)
+        label.Position = UDim2.new(0, 4, 0, 3)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.TextColor3 = window.theme.GrayLt
+        label.Font = Enum.Font.Roboto
+        label.TextSize = 12
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 3
+        label.Parent = row
+
+        local valueBox = Instance.new("Frame")
+        valueBox.Size = UDim2.new(0, 45, 0, 20)
+        valueBox.Position = UDim2.new(1, -49, 0, 2)
+        valueBox.BackgroundColor3 = window.theme.Track
+        valueBox.BorderSizePixel = 0
+        valueBox.ZIndex = 3
+        valueBox.Parent = row
+        Instance.new("UICorner", valueBox).CornerRadius = UDim.new(0, 4)
+
+        local valueLabel = Instance.new("TextLabel")
+        valueLabel.Size = UDim2.new(1, 0, 1, 0)
+        valueLabel.BackgroundTransparency = 1
+        valueLabel.Text = tostring(defaultMin) .. " - " .. tostring(defaultMax)
+        valueLabel.TextColor3 = window.theme.Accent
+        valueLabel.Font = Enum.Font.RobotoMono
+        valueLabel.TextSize = 11
+        valueLabel.ZIndex = 4
+        valueLabel.Parent = valueBox
+
+        local track = Instance.new("Frame")
+        track.Size = UDim2.new(1, 0, 0, 6)
+        track.Position = UDim2.new(0, 0, 0, 28)
+        track.BackgroundColor3 = window.theme.Track
+        track.BorderSizePixel = 0
+        track.ZIndex = 3
+        track.Parent = row
+        Instance.new("UICorner", track).CornerRadius = UDim.new(0, 3)
+
+        local pctMin = (defaultMin - minVal) / (maxVal - minVal)
+        local pctMax = (defaultMax - minVal) / (maxVal - minVal)
+
+        local fill = Instance.new("Frame")
+        fill.Size = UDim2.new(pctMax - pctMin, 0, 1, 0)
+        fill.Position = UDim2.new(pctMin, 0, 0, 0)
+        fill.BackgroundColor3 = window.theme.Accent
+        fill.BorderSizePixel = 0
+        fill.ZIndex = 4
+        fill.Parent = track
+        Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 3)
+
+        local knobLeft = Instance.new("Frame")
+        knobLeft.Size = UDim2.new(0, 14, 0, 14)
+        knobLeft.Position = UDim2.new(pctMin, -7, 0.5, -7)
+        knobLeft.BackgroundColor3 = window.theme.White
+        knobLeft.BorderSizePixel = 0
+        knobLeft.ZIndex = 5
+        knobLeft.Parent = track
+        Instance.new("UICorner", knobLeft).CornerRadius = UDim.new(0, 7)
+        local knobLeftStroke = Instance.new("UIStroke", knobLeft)
+        knobLeftStroke.Color = window.theme.Accent
+
+        local knobRight = Instance.new("Frame")
+        knobRight.Size = UDim2.new(0, 14, 0, 14)
+        knobRight.Position = UDim2.new(pctMax, -7, 0.5, -7)
+        knobRight.BackgroundColor3 = window.theme.White
+        knobRight.BorderSizePixel = 0
+        knobRight.ZIndex = 5
+        knobRight.Parent = track
+        Instance.new("UICorner", knobRight).CornerRadius = UDim.new(0, 7)
+        local knobRightStroke = Instance.new("UIStroke", knobRight)
+        knobRightStroke.Color = window.theme.Accent
+
+        local hitLeft = Instance.new("TextButton")
+        hitLeft.Size = UDim2.new(0, 20, 0, 20)
+        hitLeft.Position = UDim2.new(pctMin, -10, 0.5, -10)
+        hitLeft.BackgroundTransparency = 1
+        hitLeft.Text = ""
+        hitLeft.ZIndex = 6
+        hitLeft.Parent = track
+
+        local hitRight = Instance.new("TextButton")
+        hitRight.Size = UDim2.new(0, 20, 0, 20)
+        hitRight.Position = UDim2.new(pctMax, -10, 0.5, -10)
+        hitRight.BackgroundTransparency = 1
+        hitRight.Text = ""
+        hitRight.ZIndex = 6
+        hitRight.Parent = track
+
+        local dragging = false
+        local dragType = nil
+        local currentMin = defaultMin
+        local currentMax = defaultMax
+
+        local function updateDisplay()
+            valueLabel.Text = tostring(currentMin) .. " - " .. tostring(currentMax)
+            pctMin = (currentMin - minVal) / (maxVal - minVal)
+            pctMax = (currentMax - minVal) / (maxVal - minVal)
+            fill.Size = UDim2.new(pctMax - pctMin, 0, 1, 0)
+            fill.Position = UDim2.new(pctMin, 0, 0, 0)
+            knobLeft.Position = UDim2.new(pctMin, -7, 0.5, -7)
+            knobRight.Position = UDim2.new(pctMax, -7, 0.5, -7)
+            hitLeft.Position = UDim2.new(pctMin, -10, 0.5, -10)
+            hitRight.Position = UDim2.new(pctMax, -10, 0.5, -10)
+        end
+
+        local function apply(pos, which)
+            local rel = math.clamp((pos - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+            local val = minVal + (maxVal - minVal) * rel
+            if which == "left" then
+                val = math.min(val, currentMax)
+                currentMin = math.floor(val + 0.5)
+            else
+                val = math.max(val, currentMin)
+                currentMax = math.floor(val + 0.5)
+            end
+            updateDisplay()
+            if callback then callback(currentMin, currentMax) end
+            window.configs[id].Value = {currentMin, currentMax}
+        end
+
+        hitLeft.MouseButton1Down:Connect(function()
+            dragging = true
+            dragType = "left"
+        end)
+        hitRight.MouseButton1Down:Connect(function()
+            dragging = true
+            dragType = "right"
+        end)
+
+        UIS.InputChanged:Connect(function(i)
+            if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
+                apply(i.Position.X, dragType)
+            end
+        end)
+
+        UIS.InputEnded:Connect(function(i)
+            if i.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = false
+            end
+        end)
+
+        local elem = {
+            ID = id,
+            Value = {currentMin, currentMax},
+            SetValue = function(t)
+                currentMin, currentMax = t[1], t[2]
+                updateDisplay()
+                if callback then callback(currentMin, currentMax) end
+            end
+        }
+        window.configs[id] = elem
+
+        updateSize()
+        return row
+    end
+
     return group
 end
 
