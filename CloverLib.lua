@@ -1,6 +1,7 @@
 local UILib = {}
 UILib.__index = UILib
 
+-- Define class tables for Tab and SubTab
 UILib.Tab = {}
 UILib.Tab.__index = UILib.Tab
 
@@ -210,8 +211,9 @@ function UILib:setVisible(visible)
     end
 end
 
+-- Tab methods
 function UILib:addTab(name)
-    local tab = {}
+    local tab = setmetatable({}, UILib.Tab)
     tab.name = name
     tab.window = self
     tab.subtabs = {}
@@ -285,7 +287,7 @@ function UILib:addTab(name)
 end
 
 function UILib.Tab:addSubTab(subName)
-    local sub = {}
+    local sub = setmetatable({}, UILib.SubTab)
     sub.name = subName
     sub.tab = self
 
@@ -377,7 +379,7 @@ function UILib.Tab:addSubTab(subName)
     return sub
 end
 
--- ============= CRITICAL MISSING SECTION =============
+-- SubTab methods
 function UILib.SubTab:addGroup(title)
     local group = {}
     group.title = title
@@ -892,5 +894,3 @@ function UILib.SubTab:addGroup(title)
 end
 
 return UILib
-
-
