@@ -174,7 +174,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     content.Parent = win
     self.content = content
 
-    -- Navbar (with green line on top)
+    -- Navbar (with rounded corners and border)
     local navbar = Instance.new("Frame")
     navbar.Size = UDim2.new(1, 0, 0, 46)
     navbar.Position = UDim2.new(0, 0, 1, -46)
@@ -182,12 +182,10 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     navbar.BorderSizePixel = 0
     navbar.Parent = win
     Instance.new("UICorner", navbar).CornerRadius = UDim.new(0, 6)
-    self.navbar = navbar
-
-    -- Green line at the top of navbar
     local navbarStroke = Instance.new("UIStroke", navbar)
     navbarStroke.Color = self.theme.Border
     navbarStroke.Thickness = 1
+    self.navbar = navbar
 
     local navList = Instance.new("UIListLayout", navbar)
     navList.FillDirection = Enum.FillDirection.Horizontal
@@ -472,12 +470,6 @@ function UILib.SubTab:split()
     right.BackgroundTransparency = 1
     right.Parent = row
 
-    local layout = Instance.new("UIListLayout", row)
-    layout.FillDirection = Enum.FillDirection.Horizontal
-    layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-    layout.VerticalAlignment = Enum.VerticalAlignment.Top
-    layout.Padding = UDim.new(0, 8)
-
     -- Add vertical layouts to columns
     local leftLayout = Instance.new("UIListLayout", left)
     leftLayout.Padding = UDim.new(0, 8)
@@ -521,22 +513,15 @@ function UILib.Column:addGroup(title)
     row.BackgroundTransparency = 1
     row.Parent = grp
 
-    local bar = Instance.new("Frame")
-    bar.Size = UDim2.new(0, 2, 0, 14)
-    bar.Position = UDim2.new(0, 10, 0.5, -7)
-    bar.BackgroundColor3 = window.theme.Accent
-    bar.BorderSizePixel = 0
-    bar.Parent = row
-    Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 1)
-
+    -- No vertical bar – just the title
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(1, -30, 1, 0)
-    label.Position = UDim2.new(0, 18, 0, 0)
+    label.Position = UDim2.new(0, 10, 0, 0)  -- left aligned
     label.BackgroundTransparency = 1
     label.Text = title:upper()
     label.TextColor3 = window.theme.GrayLt
     label.Font = Enum.Font.GothamBold
-    label.TextSize = 14
+    label.TextSize = 14  -- larger
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.ZIndex = 2
     label.Parent = row
@@ -1334,14 +1319,15 @@ function UILib.SubTab:addGroup(title)
     row.BackgroundTransparency = 1
     row.Parent = grp
 
+    -- No vertical bar
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(1, -30, 1, 0)
-    label.Position = UDim2.new(0, 18, 0, 0)
+    label.Position = UDim2.new(0, 10, 0, 0)  -- left aligned
     label.BackgroundTransparency = 1
     label.Text = title:upper()
     label.TextColor3 = window.theme.GrayLt
     label.Font = Enum.Font.GothamBold
-    label.TextSize = 10
+    label.TextSize = 14  -- larger
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.ZIndex = 2
     label.Parent = row
@@ -1376,9 +1362,15 @@ function UILib.SubTab:addGroup(title)
     group.itemLayout = itemLayout
     group.updateSize = updateSize
 
-    -- Copy element methods from Column's group (same functions)
-    -- (We'll reuse the same functions but ensure they refer to the correct window)
-    -- Note: These functions use `window` from the closure.
+    -- Element methods (identical to those in Column:addGroup)
+    -- (We'll copy them here – for brevity, I'll assume they are the same as above.
+    -- In practice, you'd include all the functions from the Column's group here,
+    -- using the same `window` closure. Since they are identical, we can just
+    -- reference them, but to keep the library self-contained, I'll include them.
+    -- However, to avoid duplication in this answer, I'll note that they are the same.
+    -- In the final code, you must include them all. I'll provide them below.)
+
+    -- Toggle
     function group:toggle(text, default, callback)
         local row = Instance.new("TextButton")
         row.Size = UDim2.new(1, 0, 0, 28)
@@ -2111,5 +2103,3 @@ function UILib.SubTab:addGroup(title)
 end
 
 return UILib
-
-
