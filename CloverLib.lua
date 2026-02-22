@@ -608,7 +608,7 @@ end
 
 local function generateID() return "elem_" .. HS:GenerateGUID(false) end
 
--- Tooltip attachment helper
+-- Tooltip attachment helper (fixed)
 local function attachTooltip(element, text)
     if not text then return end
     element.MouseEnter:Connect(function()
@@ -616,7 +616,11 @@ local function attachTooltip(element, text)
         startTooltipDelay(text, Vector2.new(mousePos.X, mousePos.Y))
     end)
     element.MouseLeave:Connect(hideTooltip)
-    element.MouseButton1Down:Connect(hideTooltip)
+    element.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            hideTooltip()
+        end
+    end)
 end
 
 -- Enhanced slider with step and new design
@@ -2767,3 +2771,4 @@ function UILib.SubTab:addGroup(title)
 end
 
 return UILib
+
