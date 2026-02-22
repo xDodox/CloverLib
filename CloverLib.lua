@@ -2556,7 +2556,7 @@ function UILib.SubTab:addGroup(title)
             if listening then return end
             listening = true
             skipNext = true
-            kbtn.Text = "⌨️"
+            kbtn.Text = "[...]"
             kbtn.TextColor3 = window.theme.GrayLt
             kstroke.Color = window.theme.Accent
             local con
