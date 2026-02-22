@@ -620,10 +620,7 @@ function UILib.SubTab:split()
     right.BackgroundTransparency = 1
     right.Parent = row
 
-    -- Set minimum widths so they don't collapse too much
-    left.SizeConstraint = UDim2.new(0.5, -6, 0, 0)
-    right.SizeConstraint = UDim2.new(0.5, -6, 0, 0)
-
+    -- Add vertical layouts to columns
     local leftLayout = Instance.new("UIListLayout", left)
     leftLayout.Padding = UDim.new(0, 8)
     leftLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -3514,4 +3511,5 @@ function UILib.SubTab:addGroup(title)
 end
 
 return UILib
+
 
