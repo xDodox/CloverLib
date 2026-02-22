@@ -461,7 +461,7 @@ function UILib.SubTab:split()
     row.Size = UDim2.new(1, 0, 0, 0)
     row.BackgroundTransparency = 1
     row.Parent = self.page
-    row.LayoutOrder = 0  -- will be first
+    row.LayoutOrder = 0
 
     local left = Instance.new("Frame")
     left.Size = UDim2.new(0.5, -6, 0, 0)
@@ -1326,10 +1326,7 @@ function UILib.SubTab:addGroup(title)
     group.itemLayout = itemLayout
     group.updateSize = updateSize
 
-    -- Reuse the same element functions from column's group
-    -- We'll define them here, but to avoid code duplication, you could factor them out.
-    -- For brevity, I'll assume the functions are identical and will just refer to self.window.theme.
-    -- In practice, you'd copy the functions from above. I'll include them for completeness.
+    -- Copy element methods from Column's group (same code)
     function group:toggle(text, default, callback)
         local row = Instance.new("TextButton")
         row.Size = UDim2.new(1, 0, 0, 28)
@@ -1505,7 +1502,6 @@ function UILib.SubTab:addGroup(title)
     end
 
     function group:dropdown(text, options, default, callback)
-        -- (same as column's dropdown)
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 52)
         row.BackgroundTransparency = 1
@@ -1655,7 +1651,6 @@ function UILib.SubTab:addGroup(title)
     end
 
     function group:keybind(text, currentName, onChange)
-        -- (same as column's keybind)
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 30)
         row.BackgroundTransparency = 1
@@ -1763,7 +1758,6 @@ function UILib.SubTab:addGroup(title)
     end
 
     function group:collapsible(text, default, contentFunc)
-        -- (same as column's collapsible)
         local container = Instance.new("Frame")
         container.Size = UDim2.new(1, 0, 0, 30)
         container.BackgroundTransparency = 1
@@ -1880,8 +1874,7 @@ function UILib.SubTab:addGroup(title)
     end
 
     function group:expandableToggle(text, default, contentFunc)
-        -- (same as column's expandableToggle)
-        -- (copy from column's expandableToggle)
+        -- same as above with checkbox
         local container = Instance.new("Frame")
         container.Size = UDim2.new(1, 0, 0, 30)
         container.BackgroundTransparency = 1
