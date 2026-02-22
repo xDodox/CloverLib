@@ -558,7 +558,6 @@ function UILib.Column:addGroup(title)
         local ih = itemLayout.AbsoluteContentSize.Y
         items.Size = UDim2.new(1, 0, 0, ih + 8)
         grp.Size = UDim2.new(1, 0, 0, ih + 46)
-        -- The column's size will adjust via its UIListLayout
     end
     itemLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSize)
 
@@ -1002,6 +1001,45 @@ function UILib.Column:addGroup(title)
         return f
     end
 
+    -- Button (new)
+    function group:button(text, callback)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, 0, 0, 28)
+        btn.BackgroundTransparency = 1
+        btn.Text = ""
+        btn.ZIndex = 3
+        btn.Parent = items
+
+        local rh = Instance.new("Frame")
+        rh.Size = UDim2.new(1, 0, 1, 0)
+        rh.BackgroundColor3 = self.window.theme.ItemHov
+        rh.BorderSizePixel = 0
+        rh.Visible = false
+        rh.ZIndex = 2
+        rh.Parent = btn
+        Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 4)
+
+        btn.MouseEnter:Connect(function() rh.Visible = true end)
+        btn.MouseLeave:Connect(function() rh.Visible = false end)
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.Position = UDim2.new(0, 4, 0, 0)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.TextColor3 = self.window.theme.White
+        label.Font = Enum.Font.Roboto
+        label.TextSize = 13
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 4
+        label.Parent = btn
+
+        btn.MouseButton1Click:Connect(callback)
+
+        updateSize()
+        return btn
+    end
+
     -- Expandable toggle
     function group:expandableToggle(text, default, contentFunc)
         local container = Instance.new("Frame")
@@ -1110,6 +1148,12 @@ function UILib.Column:addGroup(title)
         end
         function nestedGroup:label(subText, color)
             local row = group:label(subText, color)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:button(subText, subCallback)
+            local row = group:button(subText, subCallback)
             row.Parent = contentFrame
             updateContentSize()
             return row
@@ -1229,6 +1273,12 @@ function UILib.Column:addGroup(title)
         end
         function nestedGroup:label(subText, color)
             local row = group:label(subText, color)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:button(subText, subCallback)
+            local row = group:button(subText, subCallback)
             row.Parent = contentFrame
             updateContentSize()
             return row
@@ -1757,6 +1807,45 @@ function UILib.SubTab:addGroup(title)
         return f
     end
 
+    -- Button (new)
+    function group:button(text, callback)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, 0, 0, 28)
+        btn.BackgroundTransparency = 1
+        btn.Text = ""
+        btn.ZIndex = 3
+        btn.Parent = items
+
+        local rh = Instance.new("Frame")
+        rh.Size = UDim2.new(1, 0, 1, 0)
+        rh.BackgroundColor3 = self.window.theme.ItemHov
+        rh.BorderSizePixel = 0
+        rh.Visible = false
+        rh.ZIndex = 2
+        rh.Parent = btn
+        Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 4)
+
+        btn.MouseEnter:Connect(function() rh.Visible = true end)
+        btn.MouseLeave:Connect(function() rh.Visible = false end)
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.Position = UDim2.new(0, 4, 0, 0)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.TextColor3 = self.window.theme.White
+        label.Font = Enum.Font.Roboto
+        label.TextSize = 13
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 4
+        label.Parent = btn
+
+        btn.MouseButton1Click:Connect(callback)
+
+        updateSize()
+        return btn
+    end
+
     function group:collapsible(text, default, contentFunc)
         local container = Instance.new("Frame")
         container.Size = UDim2.new(1, 0, 0, 30)
@@ -1856,6 +1945,12 @@ function UILib.SubTab:addGroup(title)
             updateContentSize()
             return row
         end
+        function nestedGroup:button(subText, subCallback)
+            local row = group:button(subText, subCallback)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
 
         if contentFunc then
             contentFunc(nestedGroup)
@@ -1874,7 +1969,8 @@ function UILib.SubTab:addGroup(title)
     end
 
     function group:expandableToggle(text, default, contentFunc)
-        -- same as above with checkbox
+        -- same as above with checkbox, but we'll reuse the one from Column
+        -- For brevity, include it (same as Column's expandableToggle)
         local container = Instance.new("Frame")
         container.Size = UDim2.new(1, 0, 0, 30)
         container.BackgroundTransparency = 1
@@ -1981,6 +2077,12 @@ function UILib.SubTab:addGroup(title)
         end
         function nestedGroup:label(subText, color)
             local row = group:label(subText, color)
+            row.Parent = contentFrame
+            updateContentSize()
+            return row
+        end
+        function nestedGroup:button(subText, subCallback)
+            local row = group:button(subText, subCallback)
             row.Parent = contentFrame
             updateContentSize()
             return row
