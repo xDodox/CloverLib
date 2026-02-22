@@ -17,14 +17,14 @@ local TweenService = game:GetService("TweenService")
 
 local activeWindow = nil
 
--- Default theme (used if user doesn't provide one)
+-- Default theme (green accent)
 local DEFAULT_THEME = {
     BG = Color3.fromRGB(20,20,20),
     Panel = Color3.fromRGB(30,30,30),
     Item = Color3.fromRGB(35,35,35),
     ItemHov = Color3.fromRGB(45,45,45),
-    Accent = Color3.fromRGB(0,120,255),
-    AccentD = Color3.fromRGB(0,80,200),
+    Accent = Color3.fromRGB(0,255,100),    -- bright green
+    AccentD = Color3.fromRGB(0,180,70),    -- darker green
     White = Color3.new(1,1,1),
     Gray = Color3.fromRGB(160,160,160),
     GrayLt = Color3.fromRGB(200,200,200),
@@ -33,6 +33,7 @@ local DEFAULT_THEME = {
 }
 
 function UILib.newWindow(title, size, theme, parent, showVersion)
+    -- Destroy previous window (singleton)
     if activeWindow then
         activeWindow:Destroy()
     end
@@ -73,6 +74,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
     winStroke.Color = self.theme.Border
     winStroke.Thickness = 1
     self.window = win
+    self.originalPosition = win.Position -- store initial position for animation
 
     local header = Instance.new("Frame")
     header.Size = UDim2.new(1, 0, 0, 46)
@@ -206,6 +208,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
                     dragPos.X.Scale, dragPos.X.Offset + delta.X,
                     dragPos.Y.Scale, dragPos.Y.Offset + delta.Y
                 )
+                -- update stored position
+                self.originalPosition = win.Position
             end
         end))
         table.insert(self.connections, UIS.InputEnded:Connect(function(i)
@@ -215,7 +219,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion)
         end))
     end
 
-    -- Built-in toggle key (RightShift) with animation
+    -- Built-in toggle key (RightShift) with fixed animation
     table.insert(self.connections, UIS.InputBegan:Connect(function(input, gpe)
         if not gpe and input.KeyCode == Enum.KeyCode.RightShift then
             self:setVisible(not win.Visible)
@@ -242,28 +246,27 @@ function UILib:Destroy()
     end
 end
 
--- Animated show/hide
+-- Animated show/hide (preserves position)
 function UILib:setVisible(visible)
     if not self.window then return end
     if visible then
         self.window.Visible = true
         self.window.Size = UDim2.new(0, 0, 0, 0)
-        self.window.Position = UDim2.new(0.5, -self.size.X/2, 0.5, -self.size.Y/2)
+        -- Use current position (self.originalPosition) instead of resetting
+        self.window.Position = self.originalPosition
         local tween = TweenService:Create(self.window, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, self.size.X, 0, self.size.Y),
-            Position = UDim2.new(0, 80, 0, 60)
+            Size = UDim2.new(0, self.size.X, 0, self.size.Y)
         })
         tween:Play()
     else
         local tween = TweenService:Create(self.window, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-            Size = UDim2.new(0, 0, 0, 0),
-            Position = UDim2.new(0.5, -self.size.X/2, 0.5, -self.size.Y/2)
+            Size = UDim2.new(0, 0, 0, 0)
         })
         tween:Play()
         tween.Completed:Connect(function()
             self.window.Visible = false
+            -- Restore full size for next show (position unchanged)
             self.window.Size = UDim2.new(0, self.size.X, 0, self.size.Y)
-            self.window.Position = UDim2.new(0, 80, 0, 60)
         end)
     end
 end
@@ -512,7 +515,7 @@ function UILib.SubTab:addGroup(title)
     group.itemLayout = itemLayout
     group.updateSize = updateSize
 
-    -- Toggle
+    -- Toggle with X instead of checkmark
     function group:toggle(text, default, callback)
         local row = Instance.new("TextButton")
         row.Size = UDim2.new(1, 0, 0, 28)
@@ -549,7 +552,7 @@ function UILib.SubTab:addGroup(title)
         local cbMark = Instance.new("TextLabel")
         cbMark.Size = UDim2.new(1, 0, 1, 0)
         cbMark.BackgroundTransparency = 1
-        cbMark.Text = default and "✓" or ""
+        cbMark.Text = default and "✕" or ""  -- X symbol
         cbMark.TextColor3 = Color3.new(1,1,1)
         cbMark.Font = Enum.Font.GothamBold
         cbMark.TextSize = 14
@@ -573,7 +576,7 @@ function UILib.SubTab:addGroup(title)
             state = not state
             cbOuter.BackgroundColor3 = state and self.tab.window.theme.Accent or self.tab.window.theme.Track
             cbStroke.Color = state and self.tab.window.theme.AccentD or self.tab.window.theme.Border
-            cbMark.Text = state and "✓" or ""
+            cbMark.Text = state and "✕" or ""
             callback(state)
         end)
 
@@ -581,7 +584,7 @@ function UILib.SubTab:addGroup(title)
         return row
     end
 
-    -- Slider
+    -- Slider (improved)
     function group:slider(text, minVal, maxVal, defaultVal, callback)
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 46)
@@ -799,7 +802,7 @@ function UILib.SubTab:addGroup(title)
             ck.Size = UDim2.new(0, 18, 1, 0)
             ck.Position = UDim2.new(1, -20, 0, 0)
             ck.BackgroundTransparency = 1
-            ck.Text = (opt == default) and "✓" or ""
+            ck.Text = (opt == default) and "✕" or ""
             ck.TextColor3 = self.tab.window.theme.Accent
             ck.Font = Enum.Font.GothamBold
             ck.TextSize = 12
@@ -818,7 +821,7 @@ function UILib.SubTab:addGroup(title)
             ob.MouseButton1Click:Connect(function()
                 selLbl.Text = opt
                 for _, c in pairs(checks) do c.Text = "" end
-                ck.Text = "✓"
+                ck.Text = "✕"
                 dlist.Visible = false
                 arrow.Text = "▼"
                 row.Size = UDim2.new(1, 0, 0, 52)
