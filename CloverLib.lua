@@ -46,7 +46,7 @@ end
 
 local function hideTooltip()
     if tooltipTimer then
-        tooltipTimer:Cancel()
+        task.cancel(tooltipTimer)
         tooltipTimer = nil
     end
     if tooltipFrame then
@@ -371,7 +371,7 @@ function UILib:addWatermark(name)
     if self.watermark then self.watermark:Destroy() end
     local wm = Instance.new("Frame")
     wm.Size = UDim2.new(0, 160, 0, 30)
-    wm.Position = UDim2.new(0, 10, 0, 10)
+    wm.Position = UDim2.new(1, -170, 0, 10)  -- right side
     wm.BackgroundColor3 = self.theme.Panel
     wm.BorderSizePixel = 0
     wm.Parent = self.sg
@@ -1228,7 +1228,9 @@ function UILib.Column:addGroup(title)
         local dlayout = Instance.new("UIListLayout", dlist)
         dlayout.SortOrder = Enum.SortOrder.LayoutOrder
         dlayout.Padding = UDim.new(0, 0)
+
         local checks = {}
+        local backgrounds = {}  -- store background frames for each option
         for _, opt in ipairs(options) do
             local ob = Instance.new("TextButton")
             ob.Size = UDim2.new(1, 0, 0, 26)
@@ -1236,6 +1238,20 @@ function UILib.Column:addGroup(title)
             ob.Text = ""
             ob.ZIndex = 51
             ob.Parent = dlist
+
+            -- Background highlight for selected option
+            local bg = Instance.new("Frame")
+            bg.Size = UDim2.new(1, -4, 1, -2)
+            bg.Position = UDim2.new(0, 2, 0, 1)
+            bg.BackgroundColor3 = window.theme.Accent
+            bg.BackgroundTransparency = 0.8
+            bg.BorderSizePixel = 0
+            bg.Visible = (opt == default)
+            bg.ZIndex = 50
+            bg.Parent = ob
+            Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 4)
+            backgrounds[opt] = bg
+
             local oh = Instance.new("Frame")
             oh.Size = UDim2.new(1, -4, 1, -2)
             oh.Position = UDim2.new(0, 2, 0, 1)
@@ -1245,6 +1261,7 @@ function UILib.Column:addGroup(title)
             oh.ZIndex = 51
             oh.Parent = ob
             Instance.new("UICorner", oh).CornerRadius = UDim.new(0, 4)
+
             local ol = Instance.new("TextLabel")
             ol.Size = UDim2.new(1, -22, 1, 0)
             ol.Position = UDim2.new(0, 10, 0, 0)
@@ -1256,6 +1273,7 @@ function UILib.Column:addGroup(title)
             ol.TextXAlignment = Enum.TextXAlignment.Left
             ol.ZIndex = 52
             ol.Parent = ob
+
             local ck = Instance.new("TextLabel")
             ck.Size = UDim2.new(0, 18, 1, 0)
             ck.Position = UDim2.new(1, -20, 0, 0)
@@ -1267,20 +1285,23 @@ function UILib.Column:addGroup(title)
             ck.ZIndex = 52
             ck.Parent = ob
             checks[opt] = ck
-            if opt == default then
-                local bg = Instance.new("Frame")
-                bg.Size = UDim2.new(1, 0, 1, 0)
-                bg.BackgroundColor3 = window.theme.Accent
-                bg.BackgroundTransparency = 0.8
-                bg.ZIndex = 50
-                bg.Parent = ob
-            end
-            ob.MouseEnter:Connect(function() oh.Visible = true ol.TextColor3 = window.theme.White end)
-            ob.MouseLeave:Connect(function() oh.Visible = false ol.TextColor3 = window.theme.GrayLt end)
+
+            ob.MouseEnter:Connect(function()
+                oh.Visible = true
+                ol.TextColor3 = window.theme.White
+            end)
+            ob.MouseLeave:Connect(function()
+                oh.Visible = false
+                ol.TextColor3 = window.theme.GrayLt
+            end)
             ob.MouseButton1Click:Connect(function()
                 selLbl.Text = opt
+                -- Update checkmarks
                 for _, c in pairs(checks) do c.Text = "" end
                 ck.Text = "×"
+                -- Update background highlights
+                for _, bgFrame in pairs(backgrounds) do bgFrame.Visible = false end
+                bg.Visible = true
                 dlist.Visible = false
                 arrow.Text = "▼"
                 row.Size = UDim2.new(1, 0, 0, 52)
@@ -1288,6 +1309,7 @@ function UILib.Column:addGroup(title)
                 window.configs[id].Value = opt
             end)
         end
+
         local open = false
         dbtn.MouseButton1Click:Connect(function()
             open = not open
@@ -1296,7 +1318,16 @@ function UILib.Column:addGroup(title)
             row.Size = UDim2.new(1, 0, 0, 52 + (open and math.min(listH, 104) or 0))
             updateSize()
         end)
-        local elem = {ID = id, Value = default, SetValue = function(val) selLbl.Text = val for opt, ck in pairs(checks) do ck.Text = (opt == val) and "×" or "" end if callback then callback(val) end end}
+        local elem = {ID = id, Value = default, SetValue = function(val)
+            selLbl.Text = val
+            for opt, ck in pairs(checks) do
+                ck.Text = (opt == val) and "×" or ""
+            end
+            for opt, bg in pairs(backgrounds) do
+                bg.Visible = (opt == val)
+            end
+            if callback then callback(val) end
+        end}
         window.configs[id] = elem
         if tooltip then attachTooltip(row, tooltip) end
         updateSize()
@@ -2042,7 +2073,9 @@ function UILib.SubTab:addGroup(title)
         local dlayout = Instance.new("UIListLayout", dlist)
         dlayout.SortOrder = Enum.SortOrder.LayoutOrder
         dlayout.Padding = UDim.new(0, 0)
+
         local checks = {}
+        local backgrounds = {}
         for _, opt in ipairs(options) do
             local ob = Instance.new("TextButton")
             ob.Size = UDim2.new(1, 0, 0, 26)
@@ -2050,6 +2083,19 @@ function UILib.SubTab:addGroup(title)
             ob.Text = ""
             ob.ZIndex = 51
             ob.Parent = dlist
+
+            local bg = Instance.new("Frame")
+            bg.Size = UDim2.new(1, -4, 1, -2)
+            bg.Position = UDim2.new(0, 2, 0, 1)
+            bg.BackgroundColor3 = window.theme.Accent
+            bg.BackgroundTransparency = 0.8
+            bg.BorderSizePixel = 0
+            bg.Visible = (opt == default)
+            bg.ZIndex = 50
+            bg.Parent = ob
+            Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 4)
+            backgrounds[opt] = bg
+
             local oh = Instance.new("Frame")
             oh.Size = UDim2.new(1, -4, 1, -2)
             oh.Position = UDim2.new(0, 2, 0, 1)
@@ -2059,6 +2105,7 @@ function UILib.SubTab:addGroup(title)
             oh.ZIndex = 51
             oh.Parent = ob
             Instance.new("UICorner", oh).CornerRadius = UDim.new(0, 4)
+
             local ol = Instance.new("TextLabel")
             ol.Size = UDim2.new(1, -22, 1, 0)
             ol.Position = UDim2.new(0, 10, 0, 0)
@@ -2070,6 +2117,7 @@ function UILib.SubTab:addGroup(title)
             ol.TextXAlignment = Enum.TextXAlignment.Left
             ol.ZIndex = 52
             ol.Parent = ob
+
             local ck = Instance.new("TextLabel")
             ck.Size = UDim2.new(0, 18, 1, 0)
             ck.Position = UDim2.new(1, -20, 0, 0)
@@ -2081,20 +2129,15 @@ function UILib.SubTab:addGroup(title)
             ck.ZIndex = 52
             ck.Parent = ob
             checks[opt] = ck
-            if opt == default then
-                local bg = Instance.new("Frame")
-                bg.Size = UDim2.new(1, 0, 1, 0)
-                bg.BackgroundColor3 = window.theme.Accent
-                bg.BackgroundTransparency = 0.8
-                bg.ZIndex = 50
-                bg.Parent = ob
-            end
+
             ob.MouseEnter:Connect(function() oh.Visible = true ol.TextColor3 = window.theme.White end)
             ob.MouseLeave:Connect(function() oh.Visible = false ol.TextColor3 = window.theme.GrayLt end)
             ob.MouseButton1Click:Connect(function()
                 selLbl.Text = opt
                 for _, c in pairs(checks) do c.Text = "" end
                 ck.Text = "×"
+                for _, bg in pairs(backgrounds) do bg.Visible = false end
+                bg.Visible = true
                 dlist.Visible = false
                 arrow.Text = "▼"
                 row.Size = UDim2.new(1, 0, 0, 52)
@@ -2113,6 +2156,7 @@ function UILib.SubTab:addGroup(title)
         local elem = {ID = id, Value = default, SetValue = function(val)
             selLbl.Text = val
             for opt, ck in pairs(checks) do ck.Text = (opt == val) and "×" or "" end
+            for opt, bg in pairs(backgrounds) do bg.Visible = (opt == val) end
             if callback then callback(val) end
         end}
         window.configs[id] = elem
@@ -2329,82 +2373,20 @@ function UILib.SubTab:addGroup(title)
         end
         contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
         local nestedGroup = {}
-        function nestedGroup:toggle(subText, subDefault, subCallback, subTooltip)
-            local row = group:toggle(subText, subDefault, subCallback, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
-        function nestedGroup:slider(subText, min, max, default, subCallback, step, subTooltip)
-            local row = group:slider(subText, min, max, default, subCallback, step, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
-        function nestedGroup:dropdown(subText, options, default, subCallback, subTooltip)
-            local row = group:dropdown(subText, options, default, subCallback, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
-        function nestedGroup:keybind(subText, current, subCallback, subTooltip)
-            local row = group:keybind(subText, current, subCallback, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
-        function nestedGroup:label(subText, color, subTooltip)
-            local row = group:label(subText, color, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
-        function nestedGroup:button(subText, subCallback, subTooltip)
-            local row = group:button(subText, subCallback, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
-        function nestedGroup:colorpicker(subText, subDefault, subCallback, subTooltip)
-            local row = group:colorpicker(subText, subDefault, subCallback, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
-        function nestedGroup:multidropdown(subText, options, default, subCallback, subTooltip)
-            local row = group:multidropdown(subText, options, default, subCallback, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
-        function nestedGroup:textbox(subText, default, subCallback, subTooltip)
-            local row = group:textbox(subText, default, subCallback, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
-        function nestedGroup:numberbox(subText, default, min, max, subCallback, subTooltip)
-            local row = group:numberbox(subText, default, min, max, subCallback, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
-        function nestedGroup:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip)
-            local row = group:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
+        function nestedGroup:toggle(subText, subDefault, subCallback, subTooltip) local row = group:toggle(subText, subDefault, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
+        function nestedGroup:slider(subText, min, max, default, subCallback, step, subTooltip) local row = group:slider(subText, min, max, default, subCallback, step, subTooltip) row.Parent = contentFrame updateContentSize() return row end
+        function nestedGroup:dropdown(subText, options, default, subCallback, subTooltip) local row = group:dropdown(subText, options, default, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
+        function nestedGroup:keybind(subText, current, subCallback, subTooltip) local row = group:keybind(subText, current, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
+        function nestedGroup:label(subText, color, subTooltip) local row = group:label(subText, color, subTooltip) row.Parent = contentFrame updateContentSize() return row end
+        function nestedGroup:button(subText, subCallback, subTooltip) local row = group:button(subText, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
+        function nestedGroup:colorpicker(subText, subDefault, subCallback, subTooltip) local row = group:colorpicker(subText, subDefault, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
+        function nestedGroup:multidropdown(subText, options, default, subCallback, subTooltip) local row = group:multidropdown(subText, options, default, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
+        function nestedGroup:textbox(subText, default, subCallback, subTooltip) local row = group:textbox(subText, default, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
+        function nestedGroup:numberbox(subText, default, min, max, subCallback, subTooltip) local row = group:numberbox(subText, default, min, max, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
+        function nestedGroup:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip) local row = group:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
         if contentFunc then contentFunc(nestedGroup) end
         local state = default
-        toggleRow.MouseButton1Click:Connect(function()
-            state = not state
-            cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track
-            cbStroke.Color = state and window.theme.AccentD or window.theme.Border
-            cbMark.Text = state and "×" or ""
-            container.Size = UDim2.new(1, 0, 0, 30 + (state and contentLayout.AbsoluteContentSize.Y or 0))
-            updateSize()
-        end)
+        toggleRow.MouseButton1Click:Connect(function() state = not state cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track cbStroke.Color = state and window.theme.AccentD or window.theme.Border cbMark.Text = state and "×" or "" container.Size = UDim2.new(1, 0, 0, 30 + (state and contentLayout.AbsoluteContentSize.Y or 0)) updateSize() end)
         if tooltip then attachTooltip(toggleRow, tooltip) end
         updateContentSize()
         return container
@@ -2469,80 +2451,20 @@ function UILib.SubTab:addGroup(title)
         end
         contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
         local nestedGroup = {}
-        function nestedGroup:toggle(subText, subDefault, subCallback, subTooltip)
-            local row = group:toggle(subText, subDefault, subCallback, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
-        function nestedGroup:slider(subText, min, max, default, subCallback, step, subTooltip)
-            local row = group:slider(subText, min, max, default, subCallback, step, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
-        function nestedGroup:dropdown(subText, options, default, subCallback, subTooltip)
-            local row = group:dropdown(subText, options, default, subCallback, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
-        function nestedGroup:keybind(subText, current, subCallback, subTooltip)
-            local row = group:keybind(subText, current, subCallback, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
-        function nestedGroup:label(subText, color, subTooltip)
-            local row = group:label(subText, color, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
-        function nestedGroup:button(subText, subCallback, subTooltip)
-            local row = group:button(subText, subCallback, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
-        function nestedGroup:colorpicker(subText, subDefault, subCallback, subTooltip)
-            local row = group:colorpicker(subText, subDefault, subCallback, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
-        function nestedGroup:multidropdown(subText, options, default, subCallback, subTooltip)
-            local row = group:multidropdown(subText, options, default, subCallback, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
-        function nestedGroup:textbox(subText, default, subCallback, subTooltip)
-            local row = group:textbox(subText, default, subCallback, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
-        function nestedGroup:numberbox(subText, default, min, max, subCallback, subTooltip)
-            local row = group:numberbox(subText, default, min, max, subCallback, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
-        function nestedGroup:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip)
-            local row = group:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip)
-            row.Parent = contentFrame
-            updateContentSize()
-            return row
-        end
+        function nestedGroup:toggle(subText, subDefault, subCallback, subTooltip) local row = group:toggle(subText, subDefault, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
+        function nestedGroup:slider(subText, min, max, default, subCallback, step, subTooltip) local row = group:slider(subText, min, max, default, subCallback, step, subTooltip) row.Parent = contentFrame updateContentSize() return row end
+        function nestedGroup:dropdown(subText, options, default, subCallback, subTooltip) local row = group:dropdown(subText, options, default, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
+        function nestedGroup:keybind(subText, current, subCallback, subTooltip) local row = group:keybind(subText, current, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
+        function nestedGroup:label(subText, color, subTooltip) local row = group:label(subText, color, subTooltip) row.Parent = contentFrame updateContentSize() return row end
+        function nestedGroup:button(subText, subCallback, subTooltip) local row = group:button(subText, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
+        function nestedGroup:colorpicker(subText, subDefault, subCallback, subTooltip) local row = group:colorpicker(subText, subDefault, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
+        function nestedGroup:multidropdown(subText, options, default, subCallback, subTooltip) local row = group:multidropdown(subText, options, default, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
+        function nestedGroup:textbox(subText, default, subCallback, subTooltip) local row = group:textbox(subText, default, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
+        function nestedGroup:numberbox(subText, default, min, max, subCallback, subTooltip) local row = group:numberbox(subText, default, min, max, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
+        function nestedGroup:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip) local row = group:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
         if contentFunc then contentFunc(nestedGroup) end
         local state = default
-        toggleRow.MouseButton1Click:Connect(function()
-            state = not state
-            arrow.Text = state and "▼" or "▶"
-            container.Size = UDim2.new(1, 0, 0, 30 + (state and contentLayout.AbsoluteContentSize.Y or 0))
-            updateSize()
-        end)
+        toggleRow.MouseButton1Click:Connect(function() state = not state arrow.Text = state and "▼" or "▶" container.Size = UDim2.new(1, 0, 0, 30 + (state and contentLayout.AbsoluteContentSize.Y or 0)) updateSize() end)
         if tooltip then attachTooltip(toggleRow, tooltip) end
         updateContentSize()
         return container
@@ -2771,4 +2693,3 @@ function UILib.SubTab:addGroup(title)
 end
 
 return UILib
-
