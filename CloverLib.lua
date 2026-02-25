@@ -23,14 +23,26 @@ local DEFAULT_THEME = {
     Panel = Color3.fromRGB(30,30,30),
     Item = Color3.fromRGB(35,35,35),
     ItemHov = Color3.fromRGB(45,45,45),
-    Accent = Color3.fromRGB(0,200,80),
-    AccentD = Color3.fromRGB(0,150,60),
+    Accent = Color3.fromRGB(0,255,163),
+    AccentD = Color3.fromRGB(0,191,122),
     White = Color3.new(1,1,1),
     Gray = Color3.fromRGB(160,160,160),
     GrayLt = Color3.fromRGB(200,200,200),
     Border = Color3.fromRGB(50,50,50),
     Track = Color3.fromRGB(60,60,60)
 }
+
+-- Notification type colors
+local NOTIF_COLORS = {
+    info = Color3.fromRGB(50, 150, 255),
+    success = Color3.fromRGB(0, 255, 163),
+    error = Color3.fromRGB(255, 70, 70),
+    warning = Color3.fromRGB(255, 180, 50),
+}
+
+-- Context menu shared frame
+local contextMenuFrame = nil
+local contextMenuConnections = {}
 
 -- Tooltip system
 local tooltipFrame = nil
@@ -61,36 +73,80 @@ local function startTooltipDelay(text, pos)
     end)
 end
 
-function UILib:notify(message, duration)
+function UILib:notify(message, notifType, duration)
+    notifType = notifType or "info"
     duration = duration or 3
+    if not self.notifications then self.notifications = {} end
+    local accentColor = NOTIF_COLORS[notifType] or NOTIF_COLORS.info
+    local index = #self.notifications + 1
+    local yPos = 10 + (index - 1) * 50
     local notif = Instance.new("Frame")
-    notif.Size = UDim2.new(0, 200, 0, 40)
-    notif.Position = UDim2.new(1, -220, 0, 10)
+    notif.Size = UDim2.new(0, 240, 0, 42)
+    notif.Position = UDim2.new(1, 0, 0, yPos)
     notif.BackgroundColor3 = self.theme.Panel
     notif.BorderSizePixel = 0
+    notif.ZIndex = 500
     notif.Parent = self.sg
-    Instance.new("UICorner", notif).CornerRadius = UDim.new(0, 4)
+    Instance.new("UICorner", notif).CornerRadius = UDim.new(0, 6)
     local stroke = Instance.new("UIStroke", notif)
-    stroke.Color = self.theme.Border
+    stroke.Color = accentColor
     stroke.Thickness = 1
+    -- Colored left bar
+    local colorBar = Instance.new("Frame")
+    colorBar.Size = UDim2.new(0, 3, 1, -6)
+    colorBar.Position = UDim2.new(0, 3, 0, 3)
+    colorBar.BackgroundColor3 = accentColor
+    colorBar.BorderSizePixel = 0
+    colorBar.ZIndex = 501
+    colorBar.Parent = notif
+    Instance.new("UICorner", colorBar).CornerRadius = UDim.new(0, 2)
+    -- Type icon
+    local icons = {info = "ℹ", success = "✓", error = "✕", warning = "⚠"}
+    local iconLbl = Instance.new("TextLabel")
+    iconLbl.Size = UDim2.new(0, 20, 1, 0)
+    iconLbl.Position = UDim2.new(0, 10, 0, 0)
+    iconLbl.BackgroundTransparency = 1
+    iconLbl.Text = icons[notifType] or "ℹ"
+    iconLbl.TextColor3 = accentColor
+    iconLbl.Font = Enum.Font.GothamBold
+    iconLbl.TextSize = 16
+    iconLbl.ZIndex = 501
+    iconLbl.Parent = notif
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -10, 1, 0)
-    label.Position = UDim2.new(0, 5, 0, 0)
+    label.Size = UDim2.new(1, -38, 1, 0)
+    label.Position = UDim2.new(0, 32, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = message
     label.TextColor3 = self.theme.White
     label.Font = Enum.Font.Roboto
-    label.TextSize = 14
+    label.TextSize = 13
     label.TextWrapped = true
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.ZIndex = 501
     label.Parent = notif
-    notif.Position = UDim2.new(1, 0, 0, 10)
-    local tween = TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(1, -220, 0, 10)})
+    table.insert(self.notifications, notif)
+    -- Slide in
+    local tween = TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(1, -250, 0, yPos)})
     tween:Play()
+    -- Auto dismiss
     task.delay(duration, function()
         if notif and notif.Parent then
-            local out = TweenService:Create(notif, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(1, 0, 0, 10)})
+            local out = TweenService:Create(notif, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(1, 0, 0, yPos)})
             out:Play()
-            out.Completed:Connect(function() notif:Destroy() end)
+            out.Completed:Connect(function()
+                notif:Destroy()
+                -- Remove from list and restack
+                if self.notifications then
+                    for i, n in ipairs(self.notifications) do
+                        if n == notif then table.remove(self.notifications, i) break end
+                    end
+                    for i, n in ipairs(self.notifications) do
+                        if n and n.Parent then
+                            TweenService:Create(n, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(n.Position.X.Scale, n.Position.X.Offset, 0, 10 + (i-1) * 50)}):Play()
+                        end
+                    end
+                end
+            end)
         end
     end)
 end
@@ -99,35 +155,48 @@ function UILib:saveConfig(filename)
     local data = {}
     if not self.configs then return end
     for id, elem in pairs(self.configs) do
-        data[id] = elem.Value
+        if elem.Value ~= nil then
+            data[id] = elem.Value
+        end
     end
     local json = HS:JSONEncode(data)
     local success, err = pcall(writefile, filename, json)
-    if success then self:notify("Config saved to " .. filename) else self:notify("Save failed: " .. tostring(err)) end
+    if success then self:notify("Config saved: " .. filename, "success") else self:notify("Save failed: " .. tostring(err), "error") end
 end
 
 function UILib:loadConfig(filename)
     local success, content = pcall(readfile, filename)
-    if not success then self:notify("Load failed: file not found") return end
-    local data = HS:JSONDecode(content)
-    if not data then return end
+    if not success then self:notify("File not found: " .. filename, "error") return end
+    local ok, data = pcall(HS.JSONDecode, HS, content)
+    if not ok or not data then self:notify("Invalid config file", "error") return end
     for id, value in pairs(data) do
         if self.configs and self.configs[id] then
-            self.configs[id]:SetValue(value)
+            local s, e = pcall(self.configs[id].SetValue, value)
+            if not s then warn("Failed to set config " .. id .. ": " .. tostring(e)) end
         end
     end
-    self:notify("Config loaded from " .. filename)
+    self:notify("Config loaded: " .. filename, "success")
 end
 
 function UILib:deleteConfig(filename)
     local success = pcall(delfile, filename)
-    if success then self:notify("Config deleted: " .. filename) else self:notify("Delete failed") end
+    if success then self:notify("Deleted: " .. filename, "success") else self:notify("Delete failed", "error") end
 end
 
-function UILib:listConfigs()
-    local files = pcall(listfiles, "") or {}
+function UILib:listConfigs(prefix)
+    prefix = prefix or "clover_"
+    local ok, files = pcall(listfiles, "")
+    if not ok then return {} end
     local configs = {}
-    for _, f in ipairs(files) do if f:match("%.json$") then table.insert(configs, f) end end
+    for _, f in ipairs(files) do
+        local name = f:match("([^/\\]+)$") -- get filename only
+        if name and name:match("^" .. prefix) and name:match("%.json$") then
+            local profileName = name:match("^" .. prefix .. "(.+)%.json$")
+            if profileName then
+                table.insert(configs, profileName)
+            end
+        end
+    end
     return configs
 end
 
@@ -145,6 +214,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     self.resizing = nil
     self.toggleKey = Enum.KeyCode.RightShift
     self.watermark = nil
+    self.notifications = {}
+    self.configPrefix = "clover_"
 
     self.sg = Instance.new("ScreenGui")
     self.sg.Name = "Clover_" .. HS:GenerateGUID(false)
@@ -305,6 +376,73 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     sidebarEdge.BorderSizePixel = 0
     sidebarEdge.Parent = sidebar
 
+    -- Sidebar Search Box
+    local searchContainer = Instance.new("Frame")
+    searchContainer.Size = UDim2.new(1, -8, 0, 28)
+    searchContainer.Position = UDim2.new(0, 4, 0, 4)
+    searchContainer.BackgroundColor3 = self.theme.Track
+    searchContainer.BorderSizePixel = 0
+    searchContainer.ZIndex = 5
+    searchContainer.Parent = sidebar
+    Instance.new("UICorner", searchContainer).CornerRadius = UDim.new(0, 4)
+    local searchIcon = Instance.new("TextLabel")
+    searchIcon.Size = UDim2.new(0, 20, 1, 0)
+    searchIcon.Position = UDim2.new(0, 4, 0, 0)
+    searchIcon.BackgroundTransparency = 1
+    searchIcon.Text = "\xF0\x9F\x94\x8D"
+    searchIcon.TextColor3 = self.theme.Gray
+    searchIcon.Font = Enum.Font.Roboto
+    searchIcon.TextSize = 12
+    searchIcon.ZIndex = 6
+    searchIcon.Parent = searchContainer
+    local searchBox = Instance.new("TextBox")
+    searchBox.Size = UDim2.new(1, -44, 1, 0)
+    searchBox.Position = UDim2.new(0, 22, 0, 0)
+    searchBox.BackgroundTransparency = 1
+    searchBox.Text = ""
+    searchBox.PlaceholderText = "Search..."
+    searchBox.PlaceholderColor3 = self.theme.Gray
+    searchBox.TextColor3 = self.theme.White
+    searchBox.Font = Enum.Font.Roboto
+    searchBox.TextSize = 11
+    searchBox.TextXAlignment = Enum.TextXAlignment.Left
+    searchBox.ClearTextOnFocus = false
+    searchBox.ZIndex = 6
+    searchBox.Parent = searchContainer
+    local searchClear = Instance.new("TextButton")
+    searchClear.Size = UDim2.new(0, 18, 0, 18)
+    searchClear.Position = UDim2.new(1, -22, 0.5, -9)
+    searchClear.BackgroundTransparency = 1
+    searchClear.Text = "\xC3\x97"
+    searchClear.TextColor3 = self.theme.Gray
+    searchClear.Font = Enum.Font.GothamBold
+    searchClear.TextSize = 14
+    searchClear.Visible = false
+    searchClear.ZIndex = 7
+    searchClear.Parent = searchContainer
+    self.searchBox = searchBox
+    self.allSubTabs = {} -- track all sub-tab buttons for filtering
+
+    local function filterSubTabs(query)
+        query = query:lower()
+        for _, sub in ipairs(self.allSubTabs) do
+            if query == "" then
+                sub.btn.Visible = (self.activeTab and self.activeTab == sub.tab)
+            else
+                local match = sub.name:lower():find(query, 1, true) ~= nil
+                sub.btn.Visible = match
+            end
+        end
+        searchClear.Visible = (#query > 0)
+    end
+    searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        filterSubTabs(searchBox.Text)
+    end)
+    searchClear.MouseButton1Click:Connect(function()
+        searchBox.Text = ""
+    end)
+    self.filterSubTabs = filterSubTabs
+
     local content = Instance.new("ScrollingFrame")
     content.Size = UDim2.new(0, size.X - 152, 1, -92)
     content.Position = UDim2.new(0, 152, 0, 46)
@@ -347,7 +485,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     self.activeTab = nil
     self.navList = navList
 
-    -- UI Settings Tab (tooltips as last parameter)
+    -- UI Settings Tab
     if includeUITab ~= false then
         local uiTab = self:addTab("UI")
         local uiSub = uiTab:addSubTab("Settings")
@@ -357,12 +495,242 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
         grp:toggle("Show Version", self.showVersion, function(v) self.showVersion = v end, "Show version pill in header")
         grp:toggle("Show Watermark", false, function(v) if v then self:addWatermark("CloverHub") elseif self.watermark then self.watermark:Destroy() self.watermark = nil end end, "Display FPS and ping")
         grp:button("Unload", function() self:Destroy() end, "Destroy the UI")
-        local cfg = uiSub:addGroup("Config")
-        cfg:button("Save Config", function() self:saveConfig("clover_config.json") end)
-        cfg:button("Load Config", function() self:loadConfig("clover_config.json") end)
+
+        -- Config Profiles
+        local cfg = uiSub:addGroup("Config Profiles")
+        local currentProfile = "default"
+        local profileNameBox = nil
+        local profileDropdown = nil
+        local profileList = self:listConfigs()
+        if #profileList == 0 then table.insert(profileList, "default") end
+
+        cfg:textbox("Profile Name", "default", function(val)
+            currentProfile = val
+        end, "Name for save/load")
+
+        cfg:dropdown("Load Profile", profileList, profileList[1] or "default", function(val)
+            currentProfile = val
+            self:loadConfig(self.configPrefix .. val .. ".json")
+        end, "Select a saved profile", function()
+            return self:listConfigs()
+        end)
+
+        cfg:button("Save Profile", function()
+            if currentProfile and currentProfile ~= "" then
+                self:saveConfig(self.configPrefix .. currentProfile .. ".json")
+            else
+                self:notify("Enter a profile name first", "warning")
+            end
+        end, "Save current settings")
+
+        cfg:button("Delete Profile", function()
+            if currentProfile and currentProfile ~= "" then
+                self:deleteConfig(self.configPrefix .. currentProfile .. ".json")
+            end
+        end, "Delete selected profile")
     end
 
-    self:notify("CloverLib Loaded", 2)
+    -- Context Menu (shared, repositioned on right-click)
+    local ctxMenu = Instance.new("Frame")
+    ctxMenu.Size = UDim2.new(0, 160, 0, 0)
+    ctxMenu.BackgroundColor3 = self.theme.Panel
+    ctxMenu.BorderSizePixel = 0
+    ctxMenu.Visible = false
+    ctxMenu.ZIndex = 900
+    ctxMenu.Parent = self.sg
+    Instance.new("UICorner", ctxMenu).CornerRadius = UDim.new(0, 6)
+    local ctxStroke = Instance.new("UIStroke", ctxMenu)
+    ctxStroke.Color = self.theme.Accent
+    ctxStroke.Thickness = 1
+    local ctxLayout = Instance.new("UIListLayout", ctxMenu)
+    ctxLayout.Padding = UDim.new(0, 1)
+    ctxLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    local ctxPadding = Instance.new("UIPadding", ctxMenu)
+    ctxPadding.PaddingTop = UDim.new(0, 4)
+    ctxPadding.PaddingBottom = UDim.new(0, 4)
+    ctxPadding.PaddingLeft = UDim.new(0, 4)
+    ctxPadding.PaddingRight = UDim.new(0, 4)
+    contextMenuFrame = ctxMenu
+    self.contextMenu = ctxMenu
+    self.contextMenuLayout = ctxLayout
+
+    local function closeContextMenu()
+        ctxMenu.Visible = false
+        for _, c in ipairs(contextMenuConnections) do pcall(c.Disconnect, c) end
+        contextMenuConnections = {}
+        for _, child in ipairs(ctxMenu:GetChildren()) do
+            if child:IsA("TextButton") or child:IsA("Frame") then child:Destroy() end
+        end
+    end
+    self.closeContextMenu = closeContextMenu
+
+    local function addContextMenuItem(text, icon, callback)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, 0, 0, 26)
+        btn.BackgroundTransparency = 1
+        btn.Text = ""
+        btn.ZIndex = 901
+        btn.Parent = ctxMenu
+        local hov = Instance.new("Frame")
+        hov.Size = UDim2.new(1, 0, 1, 0)
+        hov.BackgroundColor3 = self.theme.ItemHov
+        hov.BorderSizePixel = 0
+        hov.Visible = false
+        hov.ZIndex = 901
+        hov.Parent = btn
+        Instance.new("UICorner", hov).CornerRadius = UDim.new(0, 4)
+        btn.MouseEnter:Connect(function() hov.Visible = true end)
+        btn.MouseLeave:Connect(function() hov.Visible = false end)
+        local iconLbl = Instance.new("TextLabel")
+        iconLbl.Size = UDim2.new(0, 20, 1, 0)
+        iconLbl.Position = UDim2.new(0, 2, 0, 0)
+        iconLbl.BackgroundTransparency = 1
+        iconLbl.Text = icon or ""
+        iconLbl.TextColor3 = self.theme.Accent
+        iconLbl.Font = Enum.Font.GothamBold
+        iconLbl.TextSize = 12
+        iconLbl.ZIndex = 902
+        iconLbl.Parent = btn
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(1, -24, 1, 0)
+        lbl.Position = UDim2.new(0, 22, 0, 0)
+        lbl.BackgroundTransparency = 1
+        lbl.Text = text
+        lbl.TextColor3 = self.theme.White
+        lbl.Font = Enum.Font.Roboto
+        lbl.TextSize = 12
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.ZIndex = 902
+        lbl.Parent = btn
+        btn.MouseButton1Click:Connect(function()
+            if callback then callback() end
+            closeContextMenu()
+        end)
+        return btn
+    end
+    self.addContextMenuItem = addContextMenuItem
+
+    -- Show context menu for an element
+    function self:showContextMenu(pos, elemConfig)
+        closeContextMenu()
+        local x, y = pos.X, pos.Y
+        ctxMenu.Position = UDim2.new(0, x, 0, y)
+
+        -- Reset to Default
+        if elemConfig and elemConfig.DefaultValue ~= nil then
+            addContextMenuItem("Reset to Default", "\xE2\x86\xBA", function()
+                if elemConfig.SetValue then
+                    elemConfig:SetValue(elemConfig.DefaultValue)
+                end
+            end)
+        end
+
+        -- Copy Value
+        if elemConfig and elemConfig.Value ~= nil then
+            addContextMenuItem("Copy Value", "\xF0\x9F\x93\x8B", function()
+                local val = tostring(elemConfig.Value)
+                if setclipboard then setclipboard(val) end
+                self:notify("Copied: " .. val, "info", 1.5)
+            end)
+        end
+
+        -- Toggle Mode (only for toggles)
+        if elemConfig and elemConfig.IsToggle then
+            -- Separator
+            local sep = Instance.new("Frame")
+            sep.Size = UDim2.new(1, 0, 0, 1)
+            sep.BackgroundColor3 = self.theme.Border
+            sep.BorderSizePixel = 0
+            sep.ZIndex = 901
+            sep.Parent = ctxMenu
+
+            local currentMode = elemConfig.Mode or "toggle"
+            local modes = {"always", "toggle", "hold"}
+            local modeLabels = {always = "\xE2\x9C\x93 Always On", toggle = "\xE2\x87\x85 Toggle", hold = "\xE2\x9C\x8B Hold"}
+            for _, mode in ipairs(modes) do
+                local prefix = (currentMode == mode) and "\xE2\x97\x8F " or "\xE2\x97\x8B "
+                addContextMenuItem(prefix .. (modeLabels[mode] or mode), "", function()
+                    elemConfig.Mode = mode
+                    if mode == "always" then
+                        elemConfig:SetValue(true)
+                    end
+                    self:notify("Mode: " .. mode, "info", 1.5)
+                end)
+            end
+
+            -- Hotkey
+            local sep2 = Instance.new("Frame")
+            sep2.Size = UDim2.new(1, 0, 0, 1)
+            sep2.BackgroundColor3 = self.theme.Border
+            sep2.BorderSizePixel = 0
+            sep2.ZIndex = 901
+            sep2.Parent = ctxMenu
+
+            local hotkeyText = elemConfig.Hotkey and elemConfig.Hotkey.Name or "None"
+            addContextMenuItem("Hotkey: [" .. hotkeyText .. "]", "\xE2\x8C\xA8", function()
+                self:notify("Press a key to bind...", "info", 2)
+                local con
+                con = UIS.InputBegan:Connect(function(input, gpe)
+                    if gpe then return end
+                    con:Disconnect()
+                    if input.KeyCode == Enum.KeyCode.Escape then
+                        elemConfig.Hotkey = nil
+                        self:notify("Hotkey cleared", "info", 1.5)
+                    elseif input.UserInputType == Enum.UserInputType.Keyboard then
+                        elemConfig.Hotkey = input.KeyCode
+                        self:notify("Hotkey set: " .. input.KeyCode.Name, "success", 1.5)
+                    end
+                end)
+            end)
+        end
+
+        -- Size the menu
+        task.defer(function()
+            ctxMenu.Size = UDim2.new(0, 160, 0, ctxLayout.AbsoluteContentSize.Y + 8)
+        end)
+        ctxMenu.Visible = true
+
+        -- Dismiss on click outside
+        local dismissConn
+        dismissConn = UIS.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.MouseButton2 then
+                local mp = UIS:GetMouseLocation()
+                local ap, as = ctxMenu.AbsolutePosition, ctxMenu.AbsoluteSize
+                if mp.X < ap.X or mp.X > ap.X + as.X or mp.Y < ap.Y or mp.Y > ap.Y + as.Y then
+                    closeContextMenu()
+                    dismissConn:Disconnect()
+                end
+            end
+        end)
+        table.insert(contextMenuConnections, dismissConn)
+    end
+
+    -- Global hotkey listener for toggle modes
+    table.insert(self.connections, UIS.InputBegan:Connect(function(input, gpe)
+        if gpe then return end
+        for _, elem in pairs(self.configs) do
+            if elem.IsToggle and elem.Hotkey and input.KeyCode == elem.Hotkey then
+                local mode = elem.Mode or "toggle"
+                if mode == "toggle" then
+                    elem:SetValue(not elem.Value)
+                elseif mode == "hold" then
+                    elem:SetValue(true)
+                end
+            end
+        end
+    end))
+    table.insert(self.connections, UIS.InputEnded:Connect(function(input)
+        for _, elem in pairs(self.configs) do
+            if elem.IsToggle and elem.Hotkey and input.KeyCode == elem.Hotkey then
+                local mode = elem.Mode or "toggle"
+                if mode == "hold" then
+                    elem:SetValue(false)
+                end
+            end
+        end
+    end))
+
+    self:notify("CloverLib Loaded", "success", 2)
     activeWindow = self
     return self
 end
@@ -574,6 +942,7 @@ function UILib.Tab:addSubTab(subName)
     btn.MouseButton1Click:Connect(activateSub)
     if not self.firstSub then self.firstSub = subName end
     self.subtabs[subName] = sub
+    table.insert(self.window.allSubTabs, {name = subName, btn = btn, tab = self})
     return sub
 end
 
@@ -734,8 +1103,15 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
         local num = tonumber(valueBoxInput.Text)
         if num then updateSlider(num) else valueLabel.Text = tostring(currentVal) end
     end)
-    local elem = {ID = id, Value = currentVal, SetValue = updateSlider}
+    local elem = {ID = id, Value = currentVal, DefaultValue = defaultVal, SetValue = updateSlider}
     window.configs[id] = elem
+
+    row.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton2 then
+            window:showContextMenu(UIS:GetMouseLocation(), elem)
+        end
+    end)
+
     return row
 end
 
@@ -1094,6 +1470,41 @@ function UILib.Column:addGroup(title)
     group.updateSize = updateSize
 
     -- Element methods with tooltip support
+    function group:paragraph(title, text, tooltip)
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, 0, 0, 0)
+        row.BackgroundTransparency = 1
+        row.AutomaticSize = Enum.AutomaticSize.Y
+        row.Parent = items
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(1, -8, 0, 0)
+        lbl.Position = UDim2.new(0, 4, 0, 2)
+        lbl.BackgroundTransparency = 1
+        lbl.Text = title
+        lbl.TextColor3 = window.theme.Accent
+        lbl.Font = Enum.Font.GothamBold
+        lbl.TextSize = 12
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.AutomaticSize = Enum.AutomaticSize.Y
+        lbl.Parent = row
+        local body = Instance.new("TextLabel")
+        body.Size = UDim2.new(1, -8, 0, 0)
+        body.Position = UDim2.new(0, 4, 0, 18)
+        body.BackgroundTransparency = 1
+        body.Text = text
+        body.TextColor3 = window.theme.Gray
+        body.Font = Enum.Font.Roboto
+        body.TextSize = 12
+        body.TextXAlignment = Enum.TextXAlignment.Left
+        body.TextWrapped = true
+        body.AutomaticSize = Enum.AutomaticSize.Y
+        body.Parent = row
+        Instance.new("UIPadding", row).PaddingBottom = UDim.new(0, 6)
+        if tooltip then attachTooltip(row, tooltip) end
+        updateSize()
+        return row
+    end
+
     function group:toggle(text, default, callback, tooltip)
         local id = generateID()
         local row = Instance.new("TextButton")
@@ -1144,9 +1555,32 @@ function UILib.Column:addGroup(title)
         label.ZIndex = 4
         label.Parent = row
         local state = default
-        local elem = {ID = id, Value = state, SetValue = function(val) state = val cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track cbStroke.Color = state and window.theme.AccentD or window.theme.Border cbMark.Text = state and "×" or "" if callback then callback(state) end end}
+        local elem = {
+            ID = id, 
+            Value = state, 
+            DefaultValue = default,
+            IsToggle = true,
+            Mode = "toggle",
+            SetValue = function(val) 
+                state = val 
+                cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track 
+                cbStroke.Color = state and window.theme.AccentD or window.theme.Border 
+                cbMark.Text = state and "×" or "" 
+                if callback then callback(state) end 
+                window.configs[id].Value = state
+            end
+        }
         window.configs[id] = elem
-        row.MouseButton1Click:Connect(function() state = not state elem:SetValue(state) end)
+        row.MouseButton1Click:Connect(function() 
+            if elem.Mode == "always" then return end
+            state = not state 
+            elem:SetValue(state) 
+        end)
+        row.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton2 then
+                window:showContextMenu(UIS:GetMouseLocation(), elem)
+            end
+        end)
         if tooltip then attachTooltip(row, tooltip) end
         updateSize()
         return row
@@ -1159,7 +1593,7 @@ function UILib.Column:addGroup(title)
         return row
     end
 
-    function group:dropdown(text, options, default, callback, tooltip)
+    function group:dropdown(text, options, default, callback, tooltip, refreshCallback)
         local id = generateID()
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 52)
@@ -1168,7 +1602,7 @@ function UILib.Column:addGroup(title)
         row.ZIndex = 10
         row.Parent = items
         local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, 0, 0, 18)
+        label.Size = UDim2.new(1, -60, 0, 18)
         label.Position = UDim2.new(0, 4, 0, 2)
         label.BackgroundTransparency = 1
         label.Text = text
@@ -1178,6 +1612,21 @@ function UILib.Column:addGroup(title)
         label.TextXAlignment = Enum.TextXAlignment.Left
         label.ZIndex = 11
         label.Parent = row
+
+        local refreshBtn = nil
+        if refreshCallback then
+            refreshBtn = Instance.new("TextButton")
+            refreshBtn.Size = UDim2.new(0, 24, 0, 24)
+            refreshBtn.Position = UDim2.new(1, -28, 0, 0)
+            refreshBtn.BackgroundTransparency = 1
+            refreshBtn.Text = "\xF0\x9F\x94\x84"
+            refreshBtn.TextColor3 = window.theme.Accent
+            refreshBtn.Font = Enum.Font.GothamBold
+            refreshBtn.TextSize = 14
+            refreshBtn.ZIndex = 12
+            refreshBtn.Parent = row
+        end
+
         local dbtn = Instance.new("TextButton")
         dbtn.Size = UDim2.new(1, 0, 0, 28)
         dbtn.Position = UDim2.new(0, 0, 0, 22)
@@ -1214,6 +1663,137 @@ function UILib.Column:addGroup(title)
         local listH = #options * 26
         local dlist = Instance.new("ScrollingFrame")
         dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 104))
+        dlist.Position = UDim2.new(0, 0, 0, 52)
+        dlist.BackgroundColor3 = window.theme.Item
+        dlist.BorderSizePixel = 0
+        dlist.ScrollBarThickness = 2
+        dlist.ScrollBarImageColor3 = window.theme.Accent
+        dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
+        dlist.Visible = false
+        dlist.ZIndex = 50
+        dlist.Parent = row
+        Instance.new("UICorner", dlist).CornerRadius = UDim.new(0, 4)
+        local dstroke2 = Instance.new("UIStroke", dlist)
+        dstroke2.Color = window.theme.Accent
+        local dlayout = Instance.new("UIListLayout", dlist)
+        dlayout.SortOrder = Enum.SortOrder.LayoutOrder
+        dlayout.Padding = UDim.new(0, 0)
+
+        local checks = {}
+        local backgrounds = {}
+        local currentOptions = options
+        local currentSelection = default
+
+        local function buildOptions(opts)
+            for _, child in ipairs(dlist:GetChildren()) do if child:IsA("TextButton") then child:Destroy() end end
+            checks = {}
+            backgrounds = {}
+            currentOptions = opts
+            listH = #opts * 26
+            dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
+            for _, opt in ipairs(opts) do
+                local ob = Instance.new("TextButton")
+                ob.Size = UDim2.new(1, 0, 0, 26)
+                ob.BackgroundTransparency = 1
+                ob.Text = ""
+                ob.ZIndex = 51
+                ob.Parent = dlist
+                local bg = Instance.new("Frame")
+                bg.Size = UDim2.new(1, -4, 1, -2)
+                bg.Position = UDim2.new(0, 2, 0, 1)
+                bg.BackgroundColor3 = window.theme.Accent
+                bg.BackgroundTransparency = 0.8
+                bg.BorderSizePixel = 0
+                bg.Visible = (opt == currentSelection)
+                bg.ZIndex = 50
+                bg.Parent = ob
+                Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 4)
+                backgrounds[opt] = bg
+                local oh = Instance.new("Frame")
+                oh.Size = UDim2.new(1, -4, 1, -2)
+                oh.Position = UDim2.new(0, 2, 0, 1)
+                oh.BackgroundColor3 = window.theme.ItemHov
+                oh.BorderSizePixel = 0
+                oh.Visible = false
+                oh.ZIndex = 51
+                oh.Parent = ob
+                Instance.new("UICorner", oh).CornerRadius = UDim.new(0, 4)
+                local ol = Instance.new("TextLabel")
+                ol.Size = UDim2.new(1, -22, 1, 0)
+                ol.Position = UDim2.new(0, 10, 0, 0)
+                ol.BackgroundTransparency = 1
+                ol.Text = opt
+                ol.TextColor3 = window.theme.GrayLt
+                ol.Font = Enum.Font.Roboto
+                ol.TextSize = 12
+                ol.TextXAlignment = Enum.TextXAlignment.Left
+                ol.ZIndex = 52
+                ol.Parent = ob
+                local ck = Instance.new("TextLabel")
+                ck.Size = UDim2.new(0, 18, 1, 0)
+                ck.Position = UDim2.new(1, -20, 0, 0)
+                ck.BackgroundTransparency = 1
+                ck.Text = (opt == currentSelection) and "×" or ""
+                ck.TextColor3 = window.theme.Accent
+                ck.Font = Enum.Font.GothamBold
+                ck.TextSize = 12
+                ck.ZIndex = 52
+                ck.Parent = ob
+                checks[opt] = ck
+                ob.MouseEnter:Connect(function() oh.Visible = true ol.TextColor3 = window.theme.White end)
+                ob.MouseLeave:Connect(function() oh.Visible = false ol.TextColor3 = window.theme.GrayLt end)
+                ob.MouseButton1Click:Connect(function()
+                    currentSelection = opt
+                    selLbl.Text = opt
+                    for o, c in pairs(checks) do c.Text = (o == opt) and "×" or "" end
+                    for o, b in pairs(backgrounds) do b.Visible = (o == opt) end
+                    if callback then callback(opt) end
+                    window.configs[id].Value = opt
+                    dlist.Visible = false
+                    arrow.Text = "▼"
+                    row.Size = UDim2.new(1, 0, 0, 52)
+                    updateSize()
+                end)
+            end
+        end
+        buildOptions(options)
+        local function refresh()
+            if refreshCallback then
+                local newOpts = refreshCallback()
+                if newOpts then
+                    buildOptions(newOpts)
+                    local exists = false
+                    for _, o in ipairs(newOpts) do if o == currentSelection then exists = true break end end
+                    if not exists then currentSelection = newOpts[1] or "" selLbl.Text = currentSelection if callback then callback(currentSelection) end end
+                end
+            end
+        end
+        if refreshBtn then refreshBtn.MouseButton1Click:Connect(refresh) end
+        local open = false
+        dbtn.MouseButton1Click:Connect(function()
+            open = not open
+            dlist.Visible = open
+            arrow.Text = open and "▲" or "▼"
+            row.Size = UDim2.new(1, 0, 0, 52 + (open and math.min(listH, 104) or 0))
+            updateSize()
+        end)
+        local elem = {
+            ID = id, Value = currentSelection, DefaultValue = default, Refresh = refresh,
+            SetValue = function(val)
+                currentSelection = val selLbl.Text = val
+                for o, c in pairs(checks) do c.Text = (o == val) and "×" or "" end
+                for o, b in pairs(backgrounds) do b.Visible = (o == val) end
+                if callback then callback(val) end
+            end
+        }
+        window.configs[id] = elem
+        row.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton2 then window:showContextMenu(UIS:GetMouseLocation(), elem) end
+        end)
+        if tooltip then attachTooltip(row, tooltip) end
+        updateSize()
+        return row
+    end
         dlist.Position = UDim2.new(0, 0, 0, 52)
         dlist.BackgroundColor3 = window.theme.Item
         dlist.BorderSizePixel = 0
@@ -1933,6 +2513,41 @@ function UILib.SubTab:addGroup(title)
     group.updateSize = updateSize
 
     -- Element methods (direct copies, no delegation)
+    function group:paragraph(title, text, tooltip)
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, 0, 0, 0)
+        row.BackgroundTransparency = 1
+        row.AutomaticSize = Enum.AutomaticSize.Y
+        row.Parent = items
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(1, -8, 0, 0)
+        lbl.Position = UDim2.new(0, 4, 0, 2)
+        lbl.BackgroundTransparency = 1
+        lbl.Text = title
+        lbl.TextColor3 = window.theme.Accent
+        lbl.Font = Enum.Font.GothamBold
+        lbl.TextSize = 12
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.AutomaticSize = Enum.AutomaticSize.Y
+        lbl.Parent = row
+        local body = Instance.new("TextLabel")
+        body.Size = UDim2.new(1, -8, 0, 0)
+        body.Position = UDim2.new(0, 4, 0, 18)
+        body.BackgroundTransparency = 1
+        body.Text = text
+        body.TextColor3 = window.theme.Gray
+        body.Font = Enum.Font.Roboto
+        body.TextSize = 12
+        body.TextXAlignment = Enum.TextXAlignment.Left
+        body.TextWrapped = true
+        body.AutomaticSize = Enum.AutomaticSize.Y
+        body.Parent = row
+        Instance.new("UIPadding", row).PaddingBottom = UDim.new(0, 6)
+        if tooltip then attachTooltip(row, tooltip) end
+        updateSize()
+        return row
+    end
+
     function group:toggle(text, default, callback, tooltip)
         local id = generateID()
         local row = Instance.new("TextButton")
@@ -1983,15 +2598,32 @@ function UILib.SubTab:addGroup(title)
         label.ZIndex = 4
         label.Parent = row
         local state = default
-        local elem = {ID = id, Value = state, SetValue = function(val)
-            state = val
-            cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track
-            cbStroke.Color = state and window.theme.AccentD or window.theme.Border
-            cbMark.Text = state and "×" or ""
-            if callback then callback(state) end
-        end}
+        local elem = {
+            ID = id, 
+            Value = state, 
+            DefaultValue = default,
+            IsToggle = true,
+            Mode = "toggle",
+            SetValue = function(val)
+                state = val
+                cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track
+                cbStroke.Color = state and window.theme.AccentD or window.theme.Border
+                cbMark.Text = state and "×" or ""
+                if callback then callback(state) end
+                window.configs[id].Value = state
+            end
+        }
         window.configs[id] = elem
-        row.MouseButton1Click:Connect(function() state = not state elem:SetValue(state) end)
+        row.MouseButton1Click:Connect(function() 
+            if elem.Mode == "always" then return end
+            state = not state 
+            elem:SetValue(state) 
+        end)
+        row.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton2 then
+                window:showContextMenu(UIS:GetMouseLocation(), elem)
+            end
+        end)
         if tooltip then attachTooltip(row, tooltip) end
         updateSize()
         return row
@@ -2076,75 +2708,114 @@ function UILib.SubTab:addGroup(title)
 
         local checks = {}
         local backgrounds = {}
-        for _, opt in ipairs(options) do
-            local ob = Instance.new("TextButton")
-            ob.Size = UDim2.new(1, 0, 0, 26)
-            ob.BackgroundTransparency = 1
-            ob.Text = ""
-            ob.ZIndex = 51
-            ob.Parent = dlist
+        local currentOptions = options
+        local currentSelection = default
 
-            local bg = Instance.new("Frame")
-            bg.Size = UDim2.new(1, -4, 1, -2)
-            bg.Position = UDim2.new(0, 2, 0, 1)
-            bg.BackgroundColor3 = window.theme.Accent
-            bg.BackgroundTransparency = 0.8
-            bg.BorderSizePixel = 0
-            bg.Visible = (opt == default)
-            bg.ZIndex = 50
-            bg.Parent = ob
-            Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 4)
-            backgrounds[opt] = bg
+        local function buildOptions(opts)
+            for _, child in ipairs(dlist:GetChildren()) do
+                if child:IsA("TextButton") then child:Destroy() end
+            end
+            checks = {}
+            backgrounds = {}
+            currentOptions = opts
+            listH = #opts * 26
+            dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
+            
+            for _, opt in ipairs(opts) do
+                local ob = Instance.new("TextButton")
+                ob.Size = UDim2.new(1, 0, 0, 26)
+                ob.BackgroundTransparency = 1
+                ob.Text = ""
+                ob.ZIndex = 51
+                ob.Parent = dlist
 
-            local oh = Instance.new("Frame")
-            oh.Size = UDim2.new(1, -4, 1, -2)
-            oh.Position = UDim2.new(0, 2, 0, 1)
-            oh.BackgroundColor3 = window.theme.ItemHov
-            oh.BorderSizePixel = 0
-            oh.Visible = false
-            oh.ZIndex = 51
-            oh.Parent = ob
-            Instance.new("UICorner", oh).CornerRadius = UDim.new(0, 4)
+                local bg = Instance.new("Frame")
+                bg.Size = UDim2.new(1, -4, 1, -2)
+                bg.Position = UDim2.new(0, 2, 0, 1)
+                bg.BackgroundColor3 = window.theme.Accent
+                bg.BackgroundTransparency = 0.8
+                bg.BorderSizePixel = 0
+                bg.Visible = (opt == currentSelection)
+                bg.ZIndex = 50
+                bg.Parent = ob
+                Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 4)
+                backgrounds[opt] = bg
 
-            local ol = Instance.new("TextLabel")
-            ol.Size = UDim2.new(1, -22, 1, 0)
-            ol.Position = UDim2.new(0, 10, 0, 0)
-            ol.BackgroundTransparency = 1
-            ol.Text = opt
-            ol.TextColor3 = window.theme.GrayLt
-            ol.Font = Enum.Font.Roboto
-            ol.TextSize = 12
-            ol.TextXAlignment = Enum.TextXAlignment.Left
-            ol.ZIndex = 52
-            ol.Parent = ob
+                local oh = Instance.new("Frame")
+                oh.Size = UDim2.new(1, -4, 1, -2)
+                oh.Position = UDim2.new(0, 2, 0, 1)
+                oh.BackgroundColor3 = window.theme.ItemHov
+                oh.BorderSizePixel = 0
+                oh.Visible = false
+                oh.ZIndex = 51
+                oh.Parent = ob
+                Instance.new("UICorner", oh).CornerRadius = UDim.new(0, 4)
 
-            local ck = Instance.new("TextLabel")
-            ck.Size = UDim2.new(0, 18, 1, 0)
-            ck.Position = UDim2.new(1, -20, 0, 0)
-            ck.BackgroundTransparency = 1
-            ck.Text = (opt == default) and "×" or ""
-            ck.TextColor3 = window.theme.Accent
-            ck.Font = Enum.Font.GothamBold
-            ck.TextSize = 12
-            ck.ZIndex = 52
-            ck.Parent = ob
-            checks[opt] = ck
+                local ol = Instance.new("TextLabel")
+                ol.Size = UDim2.new(1, -22, 1, 0)
+                ol.Position = UDim2.new(0, 10, 0, 0)
+                ol.BackgroundTransparency = 1
+                ol.Text = opt
+                ol.TextColor3 = window.theme.GrayLt
+                ol.Font = Enum.Font.Roboto
+                ol.TextSize = 12
+                ol.TextXAlignment = Enum.TextXAlignment.Left
+                ol.ZIndex = 52
+                ol.Parent = ob
 
-            ob.MouseEnter:Connect(function() oh.Visible = true ol.TextColor3 = window.theme.White end)
-            ob.MouseLeave:Connect(function() oh.Visible = false ol.TextColor3 = window.theme.GrayLt end)
-            ob.MouseButton1Click:Connect(function()
-                selLbl.Text = opt
-                for _, c in pairs(checks) do c.Text = "" end
-                ck.Text = "×"
-                for _, bg in pairs(backgrounds) do bg.Visible = false end
-                bg.Visible = true
-                dlist.Visible = false
-                arrow.Text = "▼"
-                row.Size = UDim2.new(1, 0, 0, 52)
-                if callback then callback(opt) end
-                window.configs[id].Value = opt
-            end)
+                local ck = Instance.new("TextLabel")
+                ck.Size = UDim2.new(0, 18, 1, 0)
+                ck.Position = UDim2.new(1, -20, 0, 0)
+                ck.BackgroundTransparency = 1
+                ck.Text = (opt == currentSelection) and "×" or ""
+                ck.TextColor3 = window.theme.Accent
+                ck.Font = Enum.Font.GothamBold
+                ck.TextSize = 12
+                ck.ZIndex = 52
+                ck.Parent = ob
+                checks[opt] = ck
+
+                ob.MouseEnter:Connect(function() oh.Visible = true ol.TextColor3 = window.theme.White end)
+                ob.MouseLeave:Connect(function() oh.Visible = false ol.TextColor3 = window.theme.GrayLt end)
+                ob.MouseButton1Click:Connect(function()
+                    currentSelection = opt
+                    selLbl.Text = opt
+                    for o, c in pairs(checks) do c.Text = (o == opt) and "×" or "" end
+                    for o, b in pairs(backgrounds) do b.Visible = (o == opt) end
+                    if callback then callback(opt) end
+                    window.configs[id].Value = opt
+                    
+                    dlist.Visible = false
+                    arrow.Text = "▼"
+                    row.Size = UDim2.new(1, 0, 0, 52)
+                    updateSize()
+                end)
+            end
         end
+
+        buildOptions(options)
+
+        local function refresh()
+            if refreshCallback then
+                local newOpts = refreshCallback()
+                if newOpts then
+                    buildOptions(newOpts)
+                    -- Check if current selection still exists
+                    local exists = false
+                    for _, o in ipairs(newOpts) do if o == currentSelection then exists = true break end end
+                    if not exists then
+                        currentSelection = newOpts[1] or ""
+                        selLbl.Text = currentSelection
+                        if callback then callback(currentSelection) end
+                    end
+                end
+            end
+        end
+
+        if refreshBtn then
+            refreshBtn.MouseButton1Click:Connect(refresh)
+        end
+
         local open = false
         dbtn.MouseButton1Click:Connect(function()
             open = not open
@@ -2153,13 +2824,28 @@ function UILib.SubTab:addGroup(title)
             row.Size = UDim2.new(1, 0, 0, 52 + (open and math.min(listH, 104) or 0))
             updateSize()
         end)
-        local elem = {ID = id, Value = default, SetValue = function(val)
-            selLbl.Text = val
-            for opt, ck in pairs(checks) do ck.Text = (opt == val) and "×" or "" end
-            for opt, bg in pairs(backgrounds) do bg.Visible = (opt == val) end
-            if callback then callback(val) end
-        end}
+
+        local elem = {
+            ID = id, 
+            Value = currentSelection, 
+            DefaultValue = default,
+            Refresh = refresh,
+            SetValue = function(val)
+                currentSelection = val
+                selLbl.Text = val
+                for o, c in pairs(checks) do c.Text = (o == val) and "×" or "" end
+                for o, b in pairs(backgrounds) do b.Visible = (o == val) end
+                if callback then callback(val) end
+            end
+        }
         window.configs[id] = elem
+
+        row.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton2 then
+                window:showContextMenu(UIS:GetMouseLocation(), elem)
+            end
+        end)
+
         if tooltip then attachTooltip(row, tooltip) end
         updateSize()
         return row
