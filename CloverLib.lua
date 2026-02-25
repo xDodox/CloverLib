@@ -52,7 +52,23 @@ local tooltipTimer = nil
 local function showTooltip(text, pos)
     if not tooltipFrame then return end
     tooltipText.Text = text
-    tooltipFrame.Position = UDim2.new(0, pos.X + 15, 0, pos.Y + 15)
+    -- Ensure tooltip stays on screen
+    local screenWidth = LP.PlayerGui:GetGuiObjectsAtPosition(0,0)[1] and LP.PlayerGui:GetGuiObjectsAtPosition(0,0)[1].Parent and LP.PlayerGui:GetGuiObjectsAtPosition(0,0)[1].Parent.AbsoluteSize.X or 1920
+    local screenHeight = LP.PlayerGui:GetGuiObjectsAtPosition(0,0)[1] and LP.PlayerGui:GetGuiObjectsAtPosition(0,0)[1].Parent and LP.PlayerGui:GetGuiObjectsAtPosition(0,0)[1].Parent.AbsoluteSize.Y or 1080
+    -- Fallback to workspace current camera if gui objects fail
+    if workspace.CurrentCamera then
+        screenWidth = workspace.CurrentCamera.ViewportSize.X
+        screenHeight = workspace.CurrentCamera.ViewportSize.Y
+    end
+
+    local x = pos.X + 15
+    local y = pos.Y + 15
+    
+    -- Estimation of tooltip size if needed, but for now just basic clamping
+    if x + 160 > screenWidth then x = pos.X - 165 end
+    if y + 40 > screenHeight then y = pos.Y - 45 end
+
+    tooltipFrame.Position = UDim2.new(0, x, 0, y)
     tooltipFrame.Visible = true
 end
 
@@ -101,12 +117,12 @@ function UILib:notify(message, notifType, duration)
     colorBar.Parent = notif
     Instance.new("UICorner", colorBar).CornerRadius = UDim.new(0, 2)
     -- Type icon
-    local icons = {info = "ℹ", success = "✓", error = "✕", warning = "⚠"}
+    local icons = {info = "i", success = "v", error = "x", warning = "!"}
     local iconLbl = Instance.new("TextLabel")
     iconLbl.Size = UDim2.new(0, 20, 1, 0)
     iconLbl.Position = UDim2.new(0, 10, 0, 0)
     iconLbl.BackgroundTransparency = 1
-    iconLbl.Text = icons[notifType] or "ℹ"
+    iconLbl.Text = icons[notifType] or "i"
     iconLbl.TextColor3 = accentColor
     iconLbl.Font = Enum.Font.GothamBold
     iconLbl.TextSize = 16
@@ -220,7 +236,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     self.sg = Instance.new("ScreenGui")
     self.sg.Name = "Clover_" .. HS:GenerateGUID(false)
     self.sg.ResetOnSpawn = false
-    self.sg.IgnoreGuiInset = false
+    self.sg.IgnoreGuiInset = true
     self.sg.Parent = self.parent
     self.sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -389,7 +405,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     searchIcon.Size = UDim2.new(0, 20, 1, 0)
     searchIcon.Position = UDim2.new(0, 4, 0, 0)
     searchIcon.BackgroundTransparency = 1
-    searchIcon.Text = "\xF0\x9F\x94\x8D"
+    searchIcon.Text = "" -- Removed emoji
     searchIcon.TextColor3 = self.theme.Gray
     searchIcon.Font = Enum.Font.Roboto
     searchIcon.TextSize = 12
@@ -397,7 +413,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     searchIcon.Parent = searchContainer
     local searchBox = Instance.new("TextBox")
     searchBox.Size = UDim2.new(1, -44, 1, 0)
-    searchBox.Position = UDim2.new(0, 22, 0, 0)
+    searchBox.Position = UDim2.new(0, 8, 0, 0) -- Adjusted position since icon is gone
+    searchBox.ClipsDescendants = true -- Fix overflow
     searchBox.BackgroundTransparency = 1
     searchBox.Text = ""
     searchBox.PlaceholderText = "Search..."
@@ -582,22 +599,23 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
         btn.MouseEnter:Connect(function() hov.Visible = true end)
         btn.MouseLeave:Connect(function() hov.Visible = false end)
         local iconLbl = Instance.new("TextLabel")
-        iconLbl.Size = UDim2.new(0, 20, 1, 0)
+        iconLbl.Size = UDim2.new(0, 0, 1, 0) -- Hidden
         iconLbl.Position = UDim2.new(0, 2, 0, 0)
         iconLbl.BackgroundTransparency = 1
-        iconLbl.Text = icon or ""
+        iconLbl.Text = "" -- Removed emojis
         iconLbl.TextColor3 = self.theme.Accent
         iconLbl.Font = Enum.Font.GothamBold
         iconLbl.TextSize = 12
         iconLbl.ZIndex = 902
         iconLbl.Parent = btn
         local lbl = Instance.new("TextLabel")
-        lbl.Size = UDim2.new(1, -24, 1, 0)
-        lbl.Position = UDim2.new(0, 22, 0, 0)
+        lbl.Size = UDim2.new(1, -8, 1, 0)
+        lbl.Position = UDim2.new(0, 4, 0, 0)
         lbl.BackgroundTransparency = 1
         lbl.Text = text
         lbl.TextColor3 = self.theme.White
         lbl.Font = Enum.Font.Roboto
+        lbl.TextXAlignment = Enum.TextXAlignment.Left -- Ensure text alignment is consistent
         lbl.TextSize = 12
         lbl.TextXAlignment = Enum.TextXAlignment.Left
         lbl.ZIndex = 902
@@ -618,21 +636,14 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 
         -- Reset to Default
         if elemConfig and elemConfig.DefaultValue ~= nil then
-            addContextMenuItem("Reset to Default", "\xE2\x86\xBA", function()
+            addContextMenuItem("Reset to Default", "", function()
                 if elemConfig.SetValue then
                     elemConfig:SetValue(elemConfig.DefaultValue)
                 end
             end)
         end
 
-        -- Copy Value
-        if elemConfig and elemConfig.Value ~= nil then
-            addContextMenuItem("Copy Value", "\xF0\x9F\x93\x8B", function()
-                local val = tostring(elemConfig.Value)
-                if setclipboard then setclipboard(val) end
-                self:notify("Copied: " .. val, "info", 1.5)
-            end)
-        end
+
 
         -- Toggle Mode (only for toggles)
         if elemConfig and elemConfig.IsToggle then
@@ -646,9 +657,9 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 
             local currentMode = elemConfig.Mode or "toggle"
             local modes = {"always", "toggle", "hold"}
-            local modeLabels = {always = "\xE2\x9C\x93 Always On", toggle = "\xE2\x87\x85 Toggle", hold = "\xE2\x9C\x8B Hold"}
+            local modeLabels = {always = "Always On", toggle = "Toggle", hold = "Hold"}
             for _, mode in ipairs(modes) do
-                local prefix = (currentMode == mode) and "\xE2\x97\x8F " or "\xE2\x97\x8B "
+                local prefix = (currentMode == mode) and "• " or "  "
                 addContextMenuItem(prefix .. (modeLabels[mode] or mode), "", function()
                     elemConfig.Mode = mode
                     if mode == "always" then
@@ -667,7 +678,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
             sep2.Parent = ctxMenu
 
             local hotkeyText = elemConfig.Hotkey and elemConfig.Hotkey.Name or "None"
-            addContextMenuItem("Hotkey: [" .. hotkeyText .. "]", "\xE2\x8C\xA8", function()
+            addContextMenuItem("Hotkey: [" .. hotkeyText .. "]", "", function()
                 self:notify("Press a key to bind...", "info", 2)
                 local con
                 con = UIS.InputBegan:Connect(function(input, gpe)
@@ -1537,7 +1548,7 @@ function UILib.Column:addGroup(title)
         local cbMark = Instance.new("TextLabel")
         cbMark.Size = UDim2.new(1, 0, 1, 0)
         cbMark.BackgroundTransparency = 1
-        cbMark.Text = default and "×" or ""
+        cbMark.Text = default and "x" or ""
         cbMark.TextColor3 = Color3.new(1,1,1)
         cbMark.Font = Enum.Font.GothamBold
         cbMark.TextSize = 16
@@ -1565,7 +1576,7 @@ function UILib.Column:addGroup(title)
                 state = val 
                 cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track 
                 cbStroke.Color = state and window.theme.AccentD or window.theme.Border 
-                cbMark.Text = state and "×" or "" 
+                cbMark.Text = state and "x" or "" 
                 if callback then callback(state) end 
                 window.configs[id].Value = state
             end
@@ -1619,10 +1630,10 @@ function UILib.Column:addGroup(title)
             refreshBtn.Size = UDim2.new(0, 24, 0, 24)
             refreshBtn.Position = UDim2.new(1, -28, 0, 0)
             refreshBtn.BackgroundTransparency = 1
-            refreshBtn.Text = "\xF0\x9F\x94\x84"
-            refreshBtn.TextColor3 = window.theme.Accent
-            refreshBtn.Font = Enum.Font.GothamBold
-            refreshBtn.TextSize = 14
+            refreshBtn.Text = "R" -- Clean symbol
+            refreshBtn.TextColor3 = window.theme.Gray
+            refreshBtn.Font = Enum.Font.RobotoMono
+            refreshBtn.TextSize = 11
             refreshBtn.ZIndex = 12
             refreshBtn.Parent = row
         end
@@ -1654,10 +1665,10 @@ function UILib.Column:addGroup(title)
         arrow.Size = UDim2.new(0, 24, 1, 0)
         arrow.Position = UDim2.new(1, -26, 0, 0)
         arrow.BackgroundTransparency = 1
-        arrow.Text = "▼"
+        arrow.Text = "v"
         arrow.TextColor3 = window.theme.Accent
-        arrow.Font = Enum.Font.GothamBold
-        arrow.TextSize = 12
+        arrow.Font = Enum.Font.RobotoMono
+        arrow.TextSize = 10
         arrow.ZIndex = 12
         arrow.Parent = dbtn
         local listH = #options * 26
@@ -1702,7 +1713,7 @@ function UILib.Column:addGroup(title)
                 bg.Size = UDim2.new(1, -4, 1, -2)
                 bg.Position = UDim2.new(0, 2, 0, 1)
                 bg.BackgroundColor3 = window.theme.Accent
-                bg.BackgroundTransparency = 0.8
+                bg.BackgroundTransparency = 0.85
                 bg.BorderSizePixel = 0
                 bg.Visible = (opt == currentSelection)
                 bg.ZIndex = 50
@@ -1723,7 +1734,7 @@ function UILib.Column:addGroup(title)
                 ol.Position = UDim2.new(0, 10, 0, 0)
                 ol.BackgroundTransparency = 1
                 ol.Text = opt
-                ol.TextColor3 = window.theme.GrayLt
+                ol.TextColor3 = (opt == currentSelection) and window.theme.White or window.theme.GrayLt
                 ol.Font = Enum.Font.Roboto
                 ol.TextSize = 12
                 ol.TextXAlignment = Enum.TextXAlignment.Left
@@ -1733,26 +1744,26 @@ function UILib.Column:addGroup(title)
                 ck.Size = UDim2.new(0, 18, 1, 0)
                 ck.Position = UDim2.new(1, -20, 0, 0)
                 ck.BackgroundTransparency = 1
-                ck.Text = (opt == currentSelection) and "×" or ""
+                ck.Text = (opt == currentSelection) and "o" or ""
                 ck.TextColor3 = window.theme.Accent
-                ck.Font = Enum.Font.GothamBold
-                ck.TextSize = 12
+                ck.Font = Enum.Font.Roboto
+                ck.TextSize = 10
                 ck.ZIndex = 52
                 ck.Parent = ob
                 checks[opt] = ck
                 ob.MouseEnter:Connect(function() oh.Visible = true ol.TextColor3 = window.theme.White end)
-                ob.MouseLeave:Connect(function() oh.Visible = false ol.TextColor3 = window.theme.GrayLt end)
+                ob.MouseLeave:Connect(function() oh.Visible = false if opt ~= currentSelection then ol.TextColor3 = window.theme.GrayLt end end)
                 ob.MouseButton1Click:Connect(function()
                     currentSelection = opt
                     selLbl.Text = opt
-                    for o, c in pairs(checks) do c.Text = (o == opt) and "×" or "" end
+                    for o, c in pairs(checks) do c.Text = (o == opt) and "o" or "" end
                     for o, b in pairs(backgrounds) do b.Visible = (o == opt) end
                     if callback then callback(opt) end
                     window.configs[id].Value = opt
                     dlist.Visible = false
-                    arrow.Text = "▼"
+                    arrow.Text = "v"
                     row.Size = UDim2.new(1, 0, 0, 52)
-                    updateSize()
+                    task.delay(0.1, updateSize)
                 end)
             end
         end
@@ -1773,9 +1784,9 @@ function UILib.Column:addGroup(title)
         dbtn.MouseButton1Click:Connect(function()
             open = not open
             dlist.Visible = open
-            arrow.Text = open and "▲" or "▼"
+            arrow.Text = open and "^" or "v"
             row.Size = UDim2.new(1, 0, 0, 52 + (open and math.min(listH, 104) or 0))
-            updateSize()
+            task.delay(0.1, updateSize)
         end)
         local elem = {
             ID = id, Value = currentSelection, DefaultValue = default, Refresh = refresh,
@@ -1970,7 +1981,7 @@ function UILib.Column:addGroup(title)
         local cbMark = Instance.new("TextLabel")
         cbMark.Size = UDim2.new(1, 0, 1, 0)
         cbMark.BackgroundTransparency = 1
-        cbMark.Text = default and "×" or ""
+        cbMark.Text = default and "x" or ""
         cbMark.TextColor3 = Color3.new(1,1,1)
         cbMark.Font = Enum.Font.GothamBold
         cbMark.TextSize = 16
@@ -2016,7 +2027,7 @@ function UILib.Column:addGroup(title)
         function nestedGroup:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip) local row = group:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
         if contentFunc then contentFunc(nestedGroup) end
         local state = default
-        toggleRow.MouseButton1Click:Connect(function() state = not state cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track cbStroke.Color = state and window.theme.AccentD or window.theme.Border cbMark.Text = state and "×" or "" container.Size = UDim2.new(1, 0, 0, 30 + (state and contentLayout.AbsoluteContentSize.Y or 0)) updateSize() end)
+        toggleRow.MouseButton1Click:Connect(function() state = not state cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track cbStroke.Color = state and window.theme.AccentD or window.theme.Border cbMark.Text = state and "x" or "" container.Size = UDim2.new(1, 0, 0, 30 + (state and contentLayout.AbsoluteContentSize.Y or 0)) updateSize() end)
         if tooltip then attachTooltip(toggleRow, tooltip) end
         updateContentSize()
         return container
@@ -2048,7 +2059,7 @@ function UILib.Column:addGroup(title)
         arrow.Size = UDim2.new(0, 20, 1, 0)
         arrow.Position = UDim2.new(1, -22, 0, 0)
         arrow.BackgroundTransparency = 1
-        arrow.Text = default and "▼" or "▶"
+        arrow.Text = default and "v" or ">"
         arrow.TextColor3 = window.theme.Accent
         arrow.Font = Enum.Font.GothamBold
         arrow.TextSize = 14
@@ -2094,7 +2105,7 @@ function UILib.Column:addGroup(title)
         function nestedGroup:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip) local row = group:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
         if contentFunc then contentFunc(nestedGroup) end
         local state = default
-        toggleRow.MouseButton1Click:Connect(function() state = not state arrow.Text = state and "▼" or "▶" container.Size = UDim2.new(1, 0, 0, 30 + (state and contentLayout.AbsoluteContentSize.Y or 0)) updateSize() end)
+        toggleRow.MouseButton1Click:Connect(function() state = not state arrow.Text = state and "v" or ">" container.Size = UDim2.new(1, 0, 0, 30 + (state and contentLayout.AbsoluteContentSize.Y or 0)) updateSize() end)
         if tooltip then attachTooltip(toggleRow, tooltip) end
         updateContentSize()
         return container
@@ -2135,6 +2146,7 @@ function UILib.Column:addGroup(title)
         box.Size = UDim2.new(0, 150, 0, 22)
         box.Position = UDim2.new(1, -154, 0, 2)
         box.BackgroundColor3 = window.theme.Track
+        box.ClipsDescendants = true -- Fix overflow
         box.BorderSizePixel = 0
         box.ZIndex = 3
         box.Parent = row
@@ -2181,6 +2193,7 @@ function UILib.Column:addGroup(title)
         box.Size = UDim2.new(0, 150, 0, 22)
         box.Position = UDim2.new(1, -154, 0, 2)
         box.BackgroundColor3 = window.theme.Track
+        box.ClipsDescendants = true -- Fix overflow
         box.BorderSizePixel = 0
         box.ZIndex = 3
         box.Parent = row
@@ -3087,6 +3100,7 @@ function UILib.SubTab:addGroup(title)
         box.Size = UDim2.new(0, 150, 0, 22)
         box.Position = UDim2.new(1, -154, 0, 2)
         box.BackgroundColor3 = window.theme.Track
+        box.ClipsDescendants = true -- Fix overflow
         box.BorderSizePixel = 0
         box.ZIndex = 3
         box.Parent = row
@@ -3133,6 +3147,7 @@ function UILib.SubTab:addGroup(title)
         box.Size = UDim2.new(0, 150, 0, 22)
         box.Position = UDim2.new(1, -154, 0, 2)
         box.BackgroundColor3 = window.theme.Track
+        box.ClipsDescendants = true -- Fix overflow
         box.BorderSizePixel = 0
         box.ZIndex = 3
         box.Parent = row
