@@ -1794,125 +1794,6 @@ function UILib.Column:addGroup(title)
         updateSize()
         return row
     end
-        dlist.Position = UDim2.new(0, 0, 0, 52)
-        dlist.BackgroundColor3 = window.theme.Item
-        dlist.BorderSizePixel = 0
-        dlist.ScrollBarThickness = 2
-        dlist.ScrollBarImageColor3 = window.theme.Accent
-        dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
-        dlist.Visible = false
-        dlist.ZIndex = 50
-        dlist.Parent = row
-        Instance.new("UICorner", dlist).CornerRadius = UDim.new(0, 4)
-        Instance.new("UIStroke", dlist).Color = window.theme.Accent
-        local dlayout = Instance.new("UIListLayout", dlist)
-        dlayout.SortOrder = Enum.SortOrder.LayoutOrder
-        dlayout.Padding = UDim.new(0, 0)
-
-        local checks = {}
-        local backgrounds = {}  -- store background frames for each option
-        for _, opt in ipairs(options) do
-            local ob = Instance.new("TextButton")
-            ob.Size = UDim2.new(1, 0, 0, 26)
-            ob.BackgroundTransparency = 1
-            ob.Text = ""
-            ob.ZIndex = 51
-            ob.Parent = dlist
-
-            -- Background highlight for selected option
-            local bg = Instance.new("Frame")
-            bg.Size = UDim2.new(1, -4, 1, -2)
-            bg.Position = UDim2.new(0, 2, 0, 1)
-            bg.BackgroundColor3 = window.theme.Accent
-            bg.BackgroundTransparency = 0.8
-            bg.BorderSizePixel = 0
-            bg.Visible = (opt == default)
-            bg.ZIndex = 50
-            bg.Parent = ob
-            Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 4)
-            backgrounds[opt] = bg
-
-            local oh = Instance.new("Frame")
-            oh.Size = UDim2.new(1, -4, 1, -2)
-            oh.Position = UDim2.new(0, 2, 0, 1)
-            oh.BackgroundColor3 = window.theme.ItemHov
-            oh.BorderSizePixel = 0
-            oh.Visible = false
-            oh.ZIndex = 51
-            oh.Parent = ob
-            Instance.new("UICorner", oh).CornerRadius = UDim.new(0, 4)
-
-            local ol = Instance.new("TextLabel")
-            ol.Size = UDim2.new(1, -22, 1, 0)
-            ol.Position = UDim2.new(0, 10, 0, 0)
-            ol.BackgroundTransparency = 1
-            ol.Text = opt
-            ol.TextColor3 = window.theme.GrayLt
-            ol.Font = Enum.Font.Roboto
-            ol.TextSize = 12
-            ol.TextXAlignment = Enum.TextXAlignment.Left
-            ol.ZIndex = 52
-            ol.Parent = ob
-
-            local ck = Instance.new("TextLabel")
-            ck.Size = UDim2.new(0, 18, 1, 0)
-            ck.Position = UDim2.new(1, -20, 0, 0)
-            ck.BackgroundTransparency = 1
-            ck.Text = (opt == default) and "×" or ""
-            ck.TextColor3 = window.theme.Accent
-            ck.Font = Enum.Font.GothamBold
-            ck.TextSize = 12
-            ck.ZIndex = 52
-            ck.Parent = ob
-            checks[opt] = ck
-
-            ob.MouseEnter:Connect(function()
-                oh.Visible = true
-                ol.TextColor3 = window.theme.White
-            end)
-            ob.MouseLeave:Connect(function()
-                oh.Visible = false
-                ol.TextColor3 = window.theme.GrayLt
-            end)
-            ob.MouseButton1Click:Connect(function()
-                selLbl.Text = opt
-                -- Update checkmarks
-                for _, c in pairs(checks) do c.Text = "" end
-                ck.Text = "×"
-                -- Update background highlights
-                for _, bgFrame in pairs(backgrounds) do bgFrame.Visible = false end
-                bg.Visible = true
-                dlist.Visible = false
-                arrow.Text = "▼"
-                row.Size = UDim2.new(1, 0, 0, 52)
-                if callback then callback(opt) end
-                window.configs[id].Value = opt
-            end)
-        end
-
-        local open = false
-        dbtn.MouseButton1Click:Connect(function()
-            open = not open
-            dlist.Visible = open
-            arrow.Text = open and "▲" or "▼"
-            row.Size = UDim2.new(1, 0, 0, 52 + (open and math.min(listH, 104) or 0))
-            updateSize()
-        end)
-        local elem = {ID = id, Value = default, SetValue = function(val)
-            selLbl.Text = val
-            for opt, ck in pairs(checks) do
-                ck.Text = (opt == val) and "×" or ""
-            end
-            for opt, bg in pairs(backgrounds) do
-                bg.Visible = (opt == val)
-            end
-            if callback then callback(val) end
-        end}
-        window.configs[id] = elem
-        if tooltip then attachTooltip(row, tooltip) end
-        updateSize()
-        return row
-    end
 
     function group:keybind(text, currentName, onChange, tooltip)
         local id = generateID()
@@ -2265,8 +2146,13 @@ function UILib.Column:addGroup(title)
         Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
         local current = default or ""
         box.FocusLost:Connect(function(enter) if enter then current = box.Text if callback then callback(current) end window.configs[id].Value = current end end)
-        local elem = {ID = id, Value = current, SetValue = function(val) current = val box.Text = val if callback then callback(val) end end}
+        local elem = {ID = id, Value = current, DefaultValue = default or "", SetValue = function(val) current = val box.Text = val if callback then callback(val) end window.configs[id].Value = val end}
         window.configs[id] = elem
+        row.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton2 then
+                window:showContextMenu(UIS:GetMouseLocation(), elem)
+            end
+        end)
         if tooltip then attachTooltip(row, tooltip) end
         updateSize()
         return row
@@ -2310,8 +2196,13 @@ function UILib.Column:addGroup(title)
             if num then num = math.clamp(num, min, max) current = num box.Text = tostring(num) if callback then callback(num) end window.configs[id].Value = num else box.Text = tostring(current) end
         end
         box.FocusLost:Connect(function(enter) if enter then validate() end end)
-        local elem = {ID = id, Value = current, SetValue = function(val) val = math.clamp(val, min, max) current = val box.Text = tostring(val) if callback then callback(val) end end}
+        local elem = {ID = id, Value = current, DefaultValue = default or 0, SetValue = function(val) val = math.clamp(val, min, max) current = val box.Text = tostring(val) if callback then callback(val) end window.configs[id].Value = val end}
         window.configs[id] = elem
+        row.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton2 then
+                window:showContextMenu(UIS:GetMouseLocation(), elem)
+            end
+        end)
         if tooltip then attachTooltip(row, tooltip) end
         updateSize()
         return row
@@ -2431,8 +2322,13 @@ function UILib.Column:addGroup(title)
         hitRight.MouseButton1Down:Connect(function() dragging = true dragType = "right" end)
         UIS.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then apply(i.Position.X, dragType) end end)
         UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
-        local elem = {ID = id, Value = {currentMin, currentMax}, SetValue = function(t) currentMin, currentMax = t[1], t[2] updateDisplay() if callback then callback(currentMin, currentMax) end end}
+        local elem = {ID = id, Value = {currentMin, currentMax}, DefaultValue = {defaultMin, defaultMax}, SetValue = function(t) currentMin, currentMax = t[1], t[2] updateDisplay() if callback then callback(currentMin, currentMax) end window.configs[id].Value = {currentMin, currentMax} end}
         window.configs[id] = elem
+        row.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton2 then
+                window:showContextMenu(UIS:GetMouseLocation(), elem)
+            end
+        end)
         if tooltip then attachTooltip(row, tooltip) end
         updateSize()
         return row
@@ -3202,8 +3098,13 @@ function UILib.SubTab:addGroup(title)
         Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
         local current = default or ""
         box.FocusLost:Connect(function(enter) if enter then current = box.Text if callback then callback(current) end window.configs[id].Value = current end end)
-        local elem = {ID = id, Value = current, SetValue = function(val) current = val box.Text = val if callback then callback(val) end end}
+        local elem = {ID = id, Value = current, DefaultValue = default or "", SetValue = function(val) current = val box.Text = val if callback then callback(val) end window.configs[id].Value = val end}
         window.configs[id] = elem
+        row.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton2 then
+                window:showContextMenu(UIS:GetMouseLocation(), elem)
+            end
+        end)
         if tooltip then attachTooltip(row, tooltip) end
         updateSize()
         return row
@@ -3247,8 +3148,13 @@ function UILib.SubTab:addGroup(title)
             if num then num = math.clamp(num, min, max) current = num box.Text = tostring(num) if callback then callback(num) end window.configs[id].Value = num else box.Text = tostring(current) end
         end
         box.FocusLost:Connect(function(enter) if enter then validate() end end)
-        local elem = {ID = id, Value = current, SetValue = function(val) val = math.clamp(val, min, max) current = val box.Text = tostring(val) if callback then callback(val) end end}
+        local elem = {ID = id, Value = current, DefaultValue = default or 0, SetValue = function(val) val = math.clamp(val, min, max) current = val box.Text = tostring(val) if callback then callback(val) end window.configs[id].Value = val end}
         window.configs[id] = elem
+        row.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton2 then
+                window:showContextMenu(UIS:GetMouseLocation(), elem)
+            end
+        end)
         if tooltip then attachTooltip(row, tooltip) end
         updateSize()
         return row
@@ -3368,8 +3274,13 @@ function UILib.SubTab:addGroup(title)
         hitRight.MouseButton1Down:Connect(function() dragging = true dragType = "right" end)
         UIS.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then apply(i.Position.X, dragType) end end)
         UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
-        local elem = {ID = id, Value = {currentMin, currentMax}, SetValue = function(t) currentMin, currentMax = t[1], t[2] updateDisplay() if callback then callback(currentMin, currentMax) end end}
+        local elem = {ID = id, Value = {currentMin, currentMax}, DefaultValue = {defaultMin, defaultMax}, SetValue = function(t) currentMin, currentMax = t[1], t[2] updateDisplay() if callback then callback(currentMin, currentMax) end window.configs[id].Value = {currentMin, currentMax} end}
         window.configs[id] = elem
+        row.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton2 then
+                window:showContextMenu(UIS:GetMouseLocation(), elem)
+            end
+        end)
         if tooltip then attachTooltip(row, tooltip) end
         updateSize()
         return row
