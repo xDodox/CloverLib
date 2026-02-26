@@ -49,14 +49,13 @@ local tooltipFrame = nil
 local tooltipText = nil
 local tooltipTimer = nil
 
-local function showTooltip(text, pos)
-    if not tooltipFrame then return end
+local function showTooltip(text, element)
+    if not tooltipFrame or not element then return end
     tooltipText.Text = text
     
     local screenWidth = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
     local screenHeight = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
 
-    -- Static size for consistency as requested
     local padding = 10
     local textWidth = 160
     local textSize = game:GetService("TextService"):GetTextSize(text, 12, Enum.Font.Roboto, Vector2.new(textWidth, 500))
@@ -64,11 +63,17 @@ local function showTooltip(text, pos)
     
     tooltipFrame.Size = UDim2.new(0, textWidth + padding * 2, 0, height)
     
-    -- Position: Above the mouse/component
-    local x = pos.X - (tooltipFrame.Size.X.Offset / 2)
-    local y = pos.Y - tooltipFrame.Size.Y.Offset - 20 -- 20px offset as requested
+    local absPos = element.AbsolutePosition
+    local absSize = element.AbsoluteSize
     
-    -- Bound clamping
+    local centerX = absPos.X + (absSize.X / 2)
+    local x = centerX - (tooltipFrame.Size.X.Offset / 2)
+    local y = absPos.Y - tooltipFrame.Size.Y.Offset - 6
+    
+    if y < 5 then
+        y = absPos.Y + absSize.Y + 6
+    end
+    
     x = math.clamp(x, 5, screenWidth - tooltipFrame.Size.X.Offset - 5)
     y = math.clamp(y, 5, screenHeight - tooltipFrame.Size.Y.Offset - 5)
 
@@ -86,10 +91,10 @@ local function hideTooltip()
     end
 end
 
-local function startTooltipDelay(text, pos)
+local function startTooltipDelay(text, element)
     hideTooltip()
     tooltipTimer = task.delay(0.5, function()
-        showTooltip(text, pos)
+        showTooltip(text, element)
     end)
 end
 
@@ -238,7 +243,31 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     self.notifications = {}
     self.configPrefix = "clover_"
     self.accentObjects = {} -- track objects that need color updates
-    self.accentObjects = {} -- track objects that need color updates
+    self.rainbowElements = {} -- track elements for rainbow animation
+    self.pulseElements = {} -- track elements for pulse animation
+    
+    local animConn = RunService.RenderStepped:Connect(function()
+        if not self.sg or not self.sg.Parent then return end
+        local h = (tick() * 0.2) % 1
+        local p = (math.sin(tick() * 2) + 1) / 2
+        
+        for elem, data in pairs(self.rainbowElements) do
+            local _, s, v = Color3.toHSV(elem.Value)
+            local newCol = Color3.fromHSV(h, s, v)
+            elem.Value = newCol
+            if data.callback then data.callback(newCol) end
+            if data.colorBox then data.colorBox.BackgroundColor3 = newCol end
+        end
+        
+        for elem, data in pairs(self.pulseElements) do
+            local h_, s, _ = Color3.toHSV(elem.Value)
+            local newCol = Color3.fromHSV(h_, s, p)
+            elem.Value = newCol
+            if data.callback then data.callback(newCol) end
+            if data.colorBox then data.colorBox.BackgroundColor3 = newCol end
+        end
+    end)
+    table.insert(self.connections, animConn)
     self.allSubTabs = {} -- track subtabs for navigation
     
     function self:updateAccent(color)
@@ -536,14 +565,15 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     -- Context Menu (shared, repositioned on right-click)
     local ctxMenu = Instance.new("Frame")
     ctxMenu.Size = UDim2.new(0, 160, 0, 0)
-    ctxMenu.BackgroundColor3 = self.theme.Panel
+    ctxMenu.BackgroundColor3 = Color3.fromRGB(25, 25, 25) -- Darker for premium feel
     ctxMenu.BorderSizePixel = 0
     ctxMenu.Visible = false
     ctxMenu.ZIndex = 900
     ctxMenu.Parent = self.sg
-    Instance.new("UICorner", ctxMenu).CornerRadius = UDim.new(0, 6)
+    Instance.new("UICorner", ctxMenu).CornerRadius = UDim.new(0, 5)
     local ctxStroke = Instance.new("UIStroke", ctxMenu)
     ctxStroke.Color = self.theme.Accent
+    ctxStroke.Transparency = 0.4 -- Subtle accent
     ctxStroke.Thickness = 1
     local ctxLayout = Instance.new("UIListLayout", ctxMenu)
     ctxLayout.Padding = UDim.new(0, 1)
@@ -595,13 +625,12 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
         iconLbl.ZIndex = 902
         iconLbl.Parent = btn
         local lbl = Instance.new("TextLabel")
-        lbl.Size = UDim2.new(1, -8, 1, 0)
-        lbl.Position = UDim2.new(0, 4, 0, 0)
+        lbl.Size = UDim2.new(1, -12, 1, 0)
+        lbl.Position = UDim2.new(0, 8, 0, 0)
         lbl.BackgroundTransparency = 1
         lbl.Text = text
         lbl.TextColor3 = self.theme.White
         lbl.Font = Enum.Font.Roboto
-        lbl.TextXAlignment = Enum.TextXAlignment.Left -- Ensure text alignment is consistent
         lbl.TextSize = 12
         lbl.TextXAlignment = Enum.TextXAlignment.Left
         lbl.ZIndex = 902
@@ -645,14 +674,19 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
             local modes = {"always", "toggle", "hold"}
             local modeLabels = {always = "Always On", toggle = "Toggle", hold = "Hold"}
             for _, mode in ipairs(modes) do
-                local prefix = (currentMode == mode) and "• " or "  "
-                addContextMenuItem(prefix .. (modeLabels[mode] or mode), "", function()
+                local isActive = (currentMode == mode)
+                local prefix = isActive and "• " or "  "
+                local item = addContextMenuItem(prefix .. (modeLabels[mode] or mode), "", function()
                     elemConfig.Mode = mode
                     if mode == "always" then
                         elemConfig:SetValue(true)
                     end
-                    self:notify("Mode: " .. mode, "info", 1.5)
+                    window:notify("Mode: " .. mode, "info", 1.5)
                 end)
+                if isActive then
+                    local lbl = item:FindFirstChildWhichIsA("TextLabel")
+                    if lbl then lbl.TextColor3 = window.theme.Accent end
+                end
             end
 
             -- Hotkey
@@ -1059,8 +1093,7 @@ local function generateID() return "elem_" .. HS:GenerateGUID(false) end
 local function attachTooltip(element, text)
     if not text then return end
     element.MouseEnter:Connect(function()
-        local mousePos = UIS:GetMouseLocation()
-        startTooltipDelay(text, Vector2.new(mousePos.X, mousePos.Y))
+        startTooltipDelay(text, element)
     end)
     element.MouseLeave:Connect(hideTooltip)
     element.InputBegan:Connect(function(input)
@@ -1224,92 +1257,262 @@ local function createColorPicker(group, items, window, text, default, callback)
     stroke.Color = window.theme.Border
     stroke.Thickness = 1
     local current = default or Color3.new(1,0,0)
+    local elem = {ID = id, Value = current}
+    local currentMode = "Solid"
     local pickerFrame = nil
+    
+    elem.SetValue = function(val) 
+        current = val 
+        elem.Value = val
+        colorBox.BackgroundColor3 = val 
+        if callback then callback(val) end 
+    end
+    window.configs[id] = elem
+
     local function closePicker()
         if pickerFrame then pickerFrame:Destroy() pickerFrame = nil end
     end
+
     local function openPicker()
         if pickerFrame then closePicker() return end
         pickerFrame = Instance.new("Frame")
-        pickerFrame.Size = UDim2.new(0, 200, 0, 160)
-        -- Improved positioning: Check if it fits on the left, else put it on the right
+        pickerFrame.Size = UDim2.new(0, 220, 0, 260)
         local absPos = colorBox.AbsolutePosition
-        local screenWidth = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
-        local posX = absPos.X - 204
+        local posX = absPos.X - 224
         if posX < 10 then posX = absPos.X + colorBox.AbsoluteSize.X + 4 end
-        
         pickerFrame.Position = UDim2.new(0, posX, 0, absPos.Y)
-        pickerFrame.BackgroundColor3 = window.theme.Panel
+        pickerFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
         pickerFrame.BorderSizePixel = 0
-        pickerFrame.ZIndex = 2000 -- Above everything
-        pickerFrame.Parent = window.sg -- Parented to ScreenGui to avoid Clipping
-        Instance.new("UICorner", pickerFrame).CornerRadius = UDim.new(0, 6)
+        pickerFrame.ZIndex = 2000
+        pickerFrame.Parent = window.sg
+        Instance.new("UICorner", pickerFrame).CornerRadius = UDim.new(0, 8)
         local pickerStroke = Instance.new("UIStroke", pickerFrame)
         pickerStroke.Color = window.theme.Accent
+        pickerStroke.Transparency = 0.5
+
+        -- Tabs
+        local tabContainer = Instance.new("Frame")
+        tabContainer.Size = UDim2.new(1, -16, 0, 24)
+        tabContainer.Position = UDim2.new(0, 8, 0, 8)
+        tabContainer.BackgroundTransparency = 1
+        tabContainer.Parent = pickerFrame
+        local tabLayout = Instance.new("UIListLayout", tabContainer)
+        tabLayout.FillDirection = Enum.FillDirection.Horizontal
+        tabLayout.Padding = UDim.new(0, 4)
+
+        local activeTabLine = Instance.new("Frame")
+        activeTabLine.Size = UDim2.new(0, 0, 0, 2)
+        activeTabLine.BackgroundColor3 = window.theme.Accent
+        activeTabLine.BorderSizePixel = 0
+        activeTabLine.ZIndex = 2002
+        activeTabLine.Parent = tabContainer
+
+        local function createTab(name)
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(0.33, -3, 1, 0)
+            btn.BackgroundTransparency = 1
+            btn.Text = name
+            btn.TextColor3 = (currentMode == name) and window.theme.White or window.theme.Gray
+            btn.Font = Enum.Font.GothamBold
+            btn.TextSize = 11
+            btn.ZIndex = 2001
+            btn.Parent = tabContainer
+            btn.MouseButton1Click:Connect(function()
+                currentMode = name
+                for _, t in ipairs(tabContainer:GetChildren()) do
+                    if t:IsA("TextButton") then
+                        t.TextColor3 = (t.Text == name) and window.theme.White or window.theme.Gray
+                    end
+                end
+                
+                -- Update mode logic
+                window.rainbowElements[elem] = (name == "Rainbow") and {callback = callback, colorBox = colorBox} or nil
+                window.pulseElements[elem] = (name == "Pulse") and {callback = callback, colorBox = colorBox} or nil
+                
+                if name == "Solid" then
+                    update()
+                end
+            end)
+            return btn
+        end
+        createTab("Solid")
+        createTab("Rainbow")
+        createTab("Pulse")
+
+        -- S/V Area
+        local satValSquare = Instance.new("Frame")
+        satValSquare.Size = UDim2.new(1, -16, 0, 110)
+        satValSquare.Position = UDim2.new(0, 8, 0, 36)
+        satValSquare.BackgroundColor3 = Color3.fromHSV(select(1, Color3.toHSV(current)), 1, 1)
+        satValSquare.ZIndex = 2001
+        satValSquare.Parent = pickerFrame
+        local svWhite = Instance.new("Frame", satValSquare)
+        svWhite.Size = UDim2.new(1, 0, 1, 0)
+        svWhite.ZIndex = 2001
+        Instance.new("UIGradient", svWhite).Color = ColorSequence.new(Color3.new(1, 1, 1))
+        svWhite.BackgroundTransparency = 0
+        svWhite.UIGradient.Transparency = NumberSequence.new(0, 1)
+        svWhite.UIGradient.Rotation = 0
+        local svBlack = Instance.new("Frame", satValSquare)
+        svBlack.Size = UDim2.new(1, 0, 1, 0)
+        svBlack.ZIndex = 2002
+        Instance.new("UIGradient", svBlack).Color = ColorSequence.new(Color3.new(0, 0, 0))
+        svBlack.UIGradient.Transparency = NumberSequence.new(1, 0)
+        svBlack.UIGradient.Rotation = 90
         
+        local satValKnob = Instance.new("Frame")
+        satValKnob.Size = UDim2.new(0, 10, 0, 10)
+        local h_, s, v = Color3.toHSV(current)
+        satValKnob.Position = UDim2.new(s, -5, 1 - v, -5)
+        satValKnob.BackgroundColor3 = window.theme.White
+        satValKnob.ZIndex = 2003
+        satValKnob.Parent = satValSquare
+        Instance.new("UICorner", satValKnob).CornerRadius = UDim.new(1, 0)
+        Instance.new("UIStroke", satValKnob).Color = Color3.new(0, 0, 0)
+
+        -- Hue Slider
         local hueSlider = Instance.new("Frame")
-        hueSlider.Size = UDim2.new(0, 180, 0, 16)
-        hueSlider.Position = UDim2.new(0.5, -90, 0, 8)
+        hueSlider.Size = UDim2.new(1, -16, 0, 10)
+        hueSlider.Position = UDim2.new(0, 8, 0, 154)
         hueSlider.BackgroundColor3 = Color3.new(1,1,1)
         hueSlider.ZIndex = 2001
         hueSlider.Parent = pickerFrame
+        Instance.new("UICorner", hueSlider).CornerRadius = UDim.new(0, 5)
         local hueGradient = Instance.new("UIGradient", hueSlider)
         hueGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0, Color3.new(1,0,0)), ColorSequenceKeypoint.new(0.17, Color3.new(1,1,0)), ColorSequenceKeypoint.new(0.33, Color3.new(0,1,0)), ColorSequenceKeypoint.new(0.5, Color3.new(0,1,1)), ColorSequenceKeypoint.new(0.67, Color3.new(0,0,1)), ColorSequenceKeypoint.new(0.83, Color3.new(1,0,1)), ColorSequenceKeypoint.new(1, Color3.new(1,0,0))}
-        -- hueGradient.Rotation = 0 -- Default is 0
+        
         local hueKnob = Instance.new("Frame")
-        hueKnob.Size = UDim2.new(0, 10, 0, 10)
-        hueKnob.Position = UDim2.new(0, 0, 0.5, -5)
+        hueKnob.Size = UDim2.new(0, 12, 0, 12)
+        hueKnob.Position = UDim2.new(h_, -6, 0.5, -6)
         hueKnob.BackgroundColor3 = window.theme.White
-        hueKnob.BorderSizePixel = 0
         hueKnob.ZIndex = 2002
         hueKnob.Parent = hueSlider
-        Instance.new("UICorner", hueKnob).CornerRadius = UDim.new(0, 5)
-        local hueKnobStroke = Instance.new("UIStroke", hueKnob)
-        hueKnobStroke.Color = window.theme.Accent
-        local satValSquare = Instance.new("Frame")
-        satValSquare.Size = UDim2.new(0, 160, 0, 80)
-        satValSquare.Position = UDim2.new(0.5, -80, 0, 32)
-        satValSquare.BackgroundColor3 = Color3.new(1,1,1)
-        satValSquare.ZIndex = 2001
-        satValSquare.Parent = pickerFrame
-        local satValKnob = Instance.new("Frame")
-        satValKnob.Size = UDim2.new(0, 10, 0, 10)
-        satValKnob.Position = UDim2.new(0, 0, 0, 0)
-        satValKnob.BackgroundColor3 = window.theme.White
-        satValKnob.BorderSizePixel = 0
-        satValKnob.ZIndex = 2002
-        satValKnob.Parent = satValSquare
-        Instance.new("UICorner", satValKnob).CornerRadius = UDim.new(0, 5)
-        local satValKnobStroke = Instance.new("UIStroke", satValKnob)
-        satValKnobStroke.Color = window.theme.Accent
-        local hueDragging = false
-        local svDragging = false
-        local function updateHue(pos)
-            local rel = math.clamp((pos.X - hueSlider.AbsolutePosition.X) / hueSlider.AbsoluteSize.X, 0, 1)
-            hueKnob.Position = UDim2.new(rel, -5, 0.5, -5)
-            local h = rel
-            local c = Color3.fromHSV(h, 1, 1)
-            satValSquare.BackgroundColor3 = c
-            local h_, s, v = Color3.toHSV(current)
+        Instance.new("UICorner", hueKnob).CornerRadius = UDim.new(1, 0)
+        Instance.new("UIStroke", hueKnob).Color = Color3.new(0, 0, 0)
+
+        -- Hex Row
+        local hexRow = Instance.new("Frame")
+        hexRow.Size = UDim2.new(1, -16, 0, 24)
+        hexRow.Position = UDim2.new(0, 8, 0, 172)
+        hexRow.BackgroundTransparency = 1
+        hexRow.Parent = pickerFrame
+        local hexBox = Instance.new("TextBox")
+        hexBox.Size = UDim2.new(0.5, 0, 1, 0)
+        hexBox.BackgroundColor3 = window.theme.Track
+        hexBox.BorderSizePixel = 0
+        hexBox.Text = "#" .. current:ToHex()
+        hexBox.TextColor3 = window.theme.Accent
+        hexBox.Font = Enum.Font.RobotoMono
+        hexBox.TextSize = 12
+        hexBox.ZIndex = 2001
+        hexBox.Parent = hexRow
+        Instance.new("UICorner", hexBox).CornerRadius = UDim.new(0, 4)
+
+        local copyBtn = Instance.new("TextButton")
+        copyBtn.Size = UDim2.new(0.25, -4, 1, 0)
+        copyBtn.Position = UDim2.new(0.5, 4, 0, 0)
+        copyBtn.BackgroundColor3 = window.theme.Track
+        copyBtn.Text = "COPY"
+        copyBtn.TextColor3 = window.theme.White
+        copyBtn.Font = Enum.Font.GothamBold
+        copyBtn.TextSize = 10
+        copyBtn.ZIndex = 2001
+        copyBtn.Parent = hexRow
+        Instance.new("UICorner", copyBtn).CornerRadius = UDim.new(0, 4)
+
+        local applyBtn = Instance.new("TextButton")
+        applyBtn.Size = UDim2.new(0.25, -4, 1, 0)
+        applyBtn.Position = UDim2.new(0.75, 4, 0, 0)
+        applyBtn.BackgroundColor3 = window.theme.Track
+        applyBtn.Text = "APPLY"
+        applyBtn.TextColor3 = window.theme.White
+        applyBtn.Font = Enum.Font.GothamBold
+        applyBtn.TextSize = 10
+        applyBtn.ZIndex = 2001
+        applyBtn.Parent = hexRow
+        Instance.new("UICorner", applyBtn).CornerRadius = UDim.new(0, 4)
+
+        -- Footer Buttons
+        local footer = Instance.new("Frame")
+        footer.Size = UDim2.new(1, -16, 0, 24)
+        footer.Position = UDim2.new(0, 8, 0, 204)
+        footer.BackgroundTransparency = 1
+        footer.Parent = pickerFrame
+        local resetBtn = Instance.new("TextButton")
+        resetBtn.Size = UDim2.new(0.5, -4, 1, 0)
+        resetBtn.BackgroundColor3 = window.theme.Track
+        resetBtn.Text = "RESET"
+        resetBtn.TextColor3 = window.theme.White
+        resetBtn.Font = Enum.Font.GothamBold
+        resetBtn.TextSize = 10
+        resetBtn.ZIndex = 2001
+        resetBtn.Parent = footer
+        Instance.new("UICorner", resetBtn).CornerRadius = UDim.new(0, 4)
+
+        local pickBtn = Instance.new("TextButton")
+        pickBtn.Size = UDim2.new(0.5, -4, 1, 0)
+        pickBtn.Position = UDim2.new(0.5, 4, 0, 0)
+        pickBtn.BackgroundColor3 = window.theme.Accent
+        pickBtn.Text = "PICK"
+        pickBtn.TextColor3 = Color3.new(1,1,1)
+        pickBtn.Font = Enum.Font.GothamBold
+        pickBtn.TextSize = 10
+        pickBtn.ZIndex = 2001
+        pickBtn.Parent = footer
+        Instance.new("UICorner", pickBtn).CornerRadius = UDim.new(0, 4)
+
+        -- Logic
+        local hueDragging, svDragging = false, false
+        local function update()
+            local h = hueKnob.Position.X.Scale
+            local s = math.clamp(satValKnob.Position.X.Scale, 0, 1)
+            local v = math.clamp(1 - satValKnob.Position.Y.Scale, 0, 1)
             current = Color3.fromHSV(h, s, v)
+            satValSquare.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
             colorBox.BackgroundColor3 = current
+            hexBox.Text = "#" .. current:ToHex()
             if callback then callback(current) end
         end
+
+        local function updateHue(pos)
+            local rel = math.clamp((pos.X - hueSlider.AbsolutePosition.X) / hueSlider.AbsoluteSize.X, 0, 1)
+            hueKnob.Position = UDim2.new(rel, -6, 0.5, -6)
+            update()
+        end
+
         local function updateSV(pos)
             local relX = math.clamp((pos.X - satValSquare.AbsolutePosition.X) / satValSquare.AbsoluteSize.X, 0, 1)
             local relY = math.clamp((pos.Y - satValSquare.AbsolutePosition.Y) / satValSquare.AbsoluteSize.Y, 0, 1)
             satValKnob.Position = UDim2.new(relX, -5, relY, -5)
-            local h = hueKnob.Position.X.Scale + hueKnob.Position.X.Offset / hueSlider.AbsoluteSize.X
-            h = math.clamp(h, 0, 1)
-            current = Color3.fromHSV(h, relX, 1 - relY)
-            colorBox.BackgroundColor3 = current
-            if callback then callback(current) end
+            update()
         end
+
         hueSlider.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then hueDragging = true updateHue(input.Position) end end)
         hueSlider.InputChanged:Connect(function(input) if hueDragging and input.UserInputType == Enum.UserInputType.MouseMovement then updateHue(input.Position) end end)
         satValSquare.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then svDragging = true updateSV(input.Position) end end)
         satValSquare.InputChanged:Connect(function(input) if svDragging and input.UserInputType == Enum.UserInputType.MouseMovement then updateSV(input.Position) end end)
         UIS.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then hueDragging = false svDragging = false end end)
+        
+        copyBtn.MouseButton1Click:Connect(function() setclipboard(hexBox.Text) end)
+        applyBtn.MouseButton1Click:Connect(function() 
+            local success, hexColor = pcall(Color3.fromHex, hexBox.Text:gsub("#", ""))
+            if success then
+                current = hexColor
+                local h, s, v = Color3.toHSV(current)
+                hueKnob.Position = UDim2.new(h, -6, 0.5, -6)
+                satValKnob.Position = UDim2.new(s, -5, 1 - v, -5)
+                update()
+            end
+        end)
+        resetBtn.MouseButton1Click:Connect(function()
+            current = default
+            local h, s, v = Color3.toHSV(current)
+            hueKnob.Position = UDim2.new(h, -6, 0.5, -6)
+            satValKnob.Position = UDim2.new(s, -5, 1 - v, -5)
+            update()
+        end)
+        pickBtn.MouseButton1Click:Connect(closePicker)
+
         local inputBeganConn
         inputBeganConn = UIS.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -1324,8 +1527,6 @@ local function createColorPicker(group, items, window, text, default, callback)
         end)
     end
     colorBox.MouseButton1Click:Connect(openPicker)
-    local elem = {ID = id, Value = current, SetValue = function(val) current = val colorBox.BackgroundColor3 = val if callback then callback(val) end end}
-    window.configs[id] = elem
     return row
 end
 
@@ -1376,8 +1577,8 @@ local function createMultiDropdown(group, items, window, text, options, default,
     arrow.Size = UDim2.new(0, 24, 1, 0)
     arrow.Position = UDim2.new(1, -26, 0, 0)
     arrow.BackgroundTransparency = 1
-    arrow.Text = "▼"
-    arrow.TextColor3 = window.theme.Accent
+    arrow.Text = "\226\137\161" -- Hamburger 
+    arrow.TextColor3 = window.theme.Gray
     arrow.Font = Enum.Font.GothamBold
     arrow.TextSize = 12
     arrow.ZIndex = 12
@@ -1474,7 +1675,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
     dbtn.MouseButton1Click:Connect(function()
         open = not open
         dlist.Visible = open
-        arrow.Text = open and "▲" or "▼"
+        arrow.Text = "\226\137\161"
         row.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 104) or 0))
         group.updateSize()
     end)
@@ -1741,8 +1942,8 @@ function UILib.Column:addGroup(title)
         arrow.Size = UDim2.new(0, 24, 1, 0)
         arrow.Position = UDim2.new(1, -26, 0, 0)
         arrow.BackgroundTransparency = 1
-        arrow.Text = "▼"
-        arrow.TextColor3 = window.theme.Accent
+        arrow.Text = "\226\137\161"
+        arrow.TextColor3 = window.theme.Gray
         arrow.Font = Enum.Font.GothamBold
         arrow.TextSize = 12
         arrow.ZIndex = 12
@@ -1866,7 +2067,7 @@ function UILib.Column:addGroup(title)
         dbtn.MouseButton1Click:Connect(function()
             open = not open
             dlist.Visible = open
-            arrow.Text = open and "^" or "v"
+            arrow.Text = "\226\137\161"
             row.Size = UDim2.new(1, 0, 0, 52 + (open and math.min(listH, 104) or 0))
             task.delay(0.1, updateSize)
         end)
@@ -2814,7 +3015,7 @@ function UILib.SubTab:addGroup(title)
         dbtn.MouseButton1Click:Connect(function()
             open = not open
             dlist.Visible = open
-            arrow.Text = open and "▲" or "▼"
+            arrow.Text = "\226\137\161"
             row.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 104) or 0))
             updateSize()
         end)
