@@ -252,7 +252,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
         local p = (math.sin(tick() * 2) + 1) / 2
         
         for elem, data in pairs(self.rainbowElements) do
-            local _, s, v = Color3.toHSV(elem.Value)
+            local s = data.s or 1
+            local v = data.v or 1
             local newCol = Color3.fromHSV(h, s, v)
             elem.Value = newCol
             if data.callback then data.callback(newCol) end
@@ -261,7 +262,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
         
         for elem, data in pairs(self.pulseElements) do
             local h_, s, _ = Color3.toHSV(elem.Value)
-            local newCol = Color3.fromHSV(h_, s, p)
+            local targetS = data.s or s
+            local newCol = Color3.fromHSV(h_, targetS, p)
             elem.Value = newCol
             if data.callback then data.callback(newCol) end
             if data.colorBox then data.colorBox.BackgroundColor3 = newCol end
@@ -274,17 +276,21 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
         self.theme.Accent = color
         self.theme.AccentD = Color3.new(color.r*0.75, color.g*0.75, color.b*0.75)
         for _, obj in ipairs(self.accentObjects) do
-            if obj:IsA("Frame") or obj:IsA("ScrollingFrame") then
-                if obj.Name == "indicator" or obj.Name == "underline" or obj.Name == "headerLine" then
-                    obj.BackgroundColor3 = color
+            pcall(function()
+                if obj:IsA("Frame") or obj:IsA("ScrollingFrame") then
+                    if obj.Name == "indicator" or obj.Name == "underline" or obj.Name == "headerLine" or obj.Name == "cbOuter" then
+                        obj.BackgroundColor3 = (obj.Name == "cbOuter" and obj.BackgroundColor3 ~= self.theme.Track) and color or obj.BackgroundColor3
+                        if obj.Name ~= "cbOuter" then obj.BackgroundColor3 = color end
+                    end
+                elseif obj:IsA("UIStroke") then
+                    obj.Color = (obj.Name == "cbStroke" and obj.Color ~= self.theme.Border) and color or obj.Color
+                    if obj.Name ~= "cbStroke" then obj.Color = color end
+                elseif obj:IsA("TextLabel") or obj:IsA("TextButton") then
+                    if obj.Name == "arrow" or obj.Name == "icon" or obj.Name == "cbMark" then
+                        obj.TextColor3 = color
+                    end
                 end
-            elseif obj:IsA("UIStroke") then
-                obj.Color = color
-            elseif obj:IsA("TextLabel") or obj:IsA("TextButton") then
-                if obj.Name == "arrow" or obj.Name == "icon" or obj.Name == "cbMark" then
-                    obj.TextColor3 = color
-                end
-            end
+            end)
         end
     end
 
@@ -743,9 +749,9 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
             if elem.IsToggle and elem.Hotkey and input.KeyCode == elem.Hotkey then
                 local mode = elem.Mode or "toggle"
                 if mode == "toggle" then
-                    elem:SetValue(not elem.Value)
+                    elem.SetValue(not elem.Value)
                 elseif mode == "hold" then
-                    elem:SetValue(true)
+                    elem.SetValue(true)
                 end
             end
         end
@@ -755,7 +761,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
             if elem.IsToggle and elem.Hotkey and input.KeyCode == elem.Hotkey then
                 local mode = elem.Mode or "toggle"
                 if mode == "hold" then
-                    elem:SetValue(false)
+                    elem.SetValue(false)
                 end
             end
         end
@@ -863,7 +869,7 @@ function UILib:addWatermark(name)
     self.watermark = wm
     
     -- Ensure watermark is registered for theme updates
-    table.insert(self.accentObjects, wmStroke)
+    table.insert(self.accentObjects, sep)
     table.insert(self.accentObjects, fpsLabel)
     table.insert(self.accentObjects, pingLabel)
     
@@ -1278,10 +1284,12 @@ local function createColorPicker(group, items, window, text, default, callback)
         pickerFrame = Instance.new("Frame")
         pickerFrame.Size = UDim2.new(0, 220, 0, 260)
         local absPos = colorBox.AbsolutePosition
-        local posX = absPos.X - 224
-        if posX < 10 then posX = absPos.X + colorBox.AbsoluteSize.X + 4 end
+        local posX = absPos.X + colorBox.AbsoluteSize.X + 6
+        local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
+        if posX + 220 > screenW - 10 then posX = absPos.X - 226 end
+        if posX < 10 then posX = 10 end
         pickerFrame.Position = UDim2.new(0, posX, 0, absPos.Y)
-        pickerFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        pickerFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
         pickerFrame.BorderSizePixel = 0
         pickerFrame.ZIndex = 2000
         pickerFrame.Parent = window.sg
@@ -1289,6 +1297,40 @@ local function createColorPicker(group, items, window, text, default, callback)
         local pickerStroke = Instance.new("UIStroke", pickerFrame)
         pickerStroke.Color = window.theme.Accent
         pickerStroke.Transparency = 0.5
+
+        -- Forward-declare all UI element variables so functions can reference them
+        local satValSquare, satValKnob, hueSlider, hueKnob, hexBox
+        local hueDragging, svDragging = false, false
+
+        -- Define functions that reference the forward-declared variables
+        local function update()
+            local h = hueKnob.Position.X.Scale
+            local s = math.clamp(satValKnob.Position.X.Scale, 0, 1)
+            local v = math.clamp(1 - satValKnob.Position.Y.Scale, 0, 1)
+            current = Color3.fromHSV(h, s, v)
+            elem.Value = current
+            satValSquare.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+            colorBox.BackgroundColor3 = current
+            hexBox.Text = "#" .. current:ToHex()
+            
+            if window.rainbowElements[elem] then window.rainbowElements[elem].s = s window.rainbowElements[elem].v = v end
+            if window.pulseElements[elem] then window.pulseElements[elem].s = s window.pulseElements[elem].v = v end
+            
+            if callback then callback(current) end
+        end
+
+        local function updateHue(pos)
+            local rel = math.clamp((pos.X - hueSlider.AbsolutePosition.X) / hueSlider.AbsoluteSize.X, 0, 1)
+            hueKnob.Position = UDim2.new(rel, -6, 0.5, -6)
+            update()
+        end
+
+        local function updateSV(pos)
+            local relX = math.clamp((pos.X - satValSquare.AbsolutePosition.X) / satValSquare.AbsoluteSize.X, 0, 1)
+            local relY = math.clamp((pos.Y - satValSquare.AbsolutePosition.Y) / satValSquare.AbsoluteSize.Y, 0, 1)
+            satValKnob.Position = UDim2.new(relX, -5, relY, -5)
+            update()
+        end
 
         -- Tabs
         local tabContainer = Instance.new("Frame")
@@ -1299,13 +1341,6 @@ local function createColorPicker(group, items, window, text, default, callback)
         local tabLayout = Instance.new("UIListLayout", tabContainer)
         tabLayout.FillDirection = Enum.FillDirection.Horizontal
         tabLayout.Padding = UDim.new(0, 4)
-
-        local activeTabLine = Instance.new("Frame")
-        activeTabLine.Size = UDim2.new(0, 0, 0, 2)
-        activeTabLine.BackgroundColor3 = window.theme.Accent
-        activeTabLine.BorderSizePixel = 0
-        activeTabLine.ZIndex = 2002
-        activeTabLine.Parent = tabContainer
 
         local function createTab(name)
             local btn = Instance.new("TextButton")
@@ -1324,23 +1359,22 @@ local function createColorPicker(group, items, window, text, default, callback)
                         t.TextColor3 = (t.Text == name) and window.theme.White or window.theme.Gray
                     end
                 end
-                
-                -- Update mode logic
-                window.rainbowElements[elem] = (name == "Rainbow") and {callback = callback, colorBox = colorBox} or nil
-                window.pulseElements[elem] = (name == "Pulse") and {callback = callback, colorBox = colorBox} or nil
-                
-                if name == "Solid" then
-                    update()
-                end
+                local _, cs, cv = Color3.toHSV(current)
+                if cs < 0.05 then cs = 1 end
+                if cv < 0.05 then cv = 1 end
+                window.rainbowElements[elem] = (name == "Rainbow") and {callback = callback, colorBox = colorBox, s = cs, v = cv} or nil
+                window.pulseElements[elem] = (name == "Pulse") and {callback = callback, colorBox = colorBox, s = cs, v = cv} or nil
+                if name == "Solid" then update() end
             end)
             return btn
         end
+
         createTab("Solid")
         createTab("Rainbow")
         createTab("Pulse")
 
-        -- S/V Area
-        local satValSquare = Instance.new("Frame")
+        -- S/V Area (create UI elements that were forward-declared)
+        satValSquare = Instance.new("Frame")
         satValSquare.Size = UDim2.new(1, -16, 0, 110)
         satValSquare.Position = UDim2.new(0, 8, 0, 36)
         satValSquare.BackgroundColor3 = Color3.fromHSV(select(1, Color3.toHSV(current)), 1, 1)
@@ -1360,10 +1394,10 @@ local function createColorPicker(group, items, window, text, default, callback)
         svBlack.UIGradient.Transparency = NumberSequence.new(1, 0)
         svBlack.UIGradient.Rotation = 90
         
-        local satValKnob = Instance.new("Frame")
+        satValKnob = Instance.new("Frame")
         satValKnob.Size = UDim2.new(0, 10, 0, 10)
-        local h_, s, v = Color3.toHSV(current)
-        satValKnob.Position = UDim2.new(s, -5, 1 - v, -5)
+        local h_, s_, v_ = Color3.toHSV(current)
+        satValKnob.Position = UDim2.new(s_, -5, 1 - v_, -5)
         satValKnob.BackgroundColor3 = window.theme.White
         satValKnob.ZIndex = 2003
         satValKnob.Parent = satValSquare
@@ -1371,7 +1405,7 @@ local function createColorPicker(group, items, window, text, default, callback)
         Instance.new("UIStroke", satValKnob).Color = Color3.new(0, 0, 0)
 
         -- Hue Slider
-        local hueSlider = Instance.new("Frame")
+        hueSlider = Instance.new("Frame")
         hueSlider.Size = UDim2.new(1, -16, 0, 10)
         hueSlider.Position = UDim2.new(0, 8, 0, 154)
         hueSlider.BackgroundColor3 = Color3.new(1,1,1)
@@ -1381,7 +1415,7 @@ local function createColorPicker(group, items, window, text, default, callback)
         local hueGradient = Instance.new("UIGradient", hueSlider)
         hueGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0, Color3.new(1,0,0)), ColorSequenceKeypoint.new(0.17, Color3.new(1,1,0)), ColorSequenceKeypoint.new(0.33, Color3.new(0,1,0)), ColorSequenceKeypoint.new(0.5, Color3.new(0,1,1)), ColorSequenceKeypoint.new(0.67, Color3.new(0,0,1)), ColorSequenceKeypoint.new(0.83, Color3.new(1,0,1)), ColorSequenceKeypoint.new(1, Color3.new(1,0,0))}
         
-        local hueKnob = Instance.new("Frame")
+        hueKnob = Instance.new("Frame")
         hueKnob.Size = UDim2.new(0, 12, 0, 12)
         hueKnob.Position = UDim2.new(h_, -6, 0.5, -6)
         hueKnob.BackgroundColor3 = window.theme.White
@@ -1396,9 +1430,9 @@ local function createColorPicker(group, items, window, text, default, callback)
         hexRow.Position = UDim2.new(0, 8, 0, 172)
         hexRow.BackgroundTransparency = 1
         hexRow.Parent = pickerFrame
-        local hexBox = Instance.new("TextBox")
+        hexBox = Instance.new("TextBox")
         hexBox.Size = UDim2.new(0.5, 0, 1, 0)
-        hexBox.BackgroundColor3 = window.theme.Track
+        hexBox.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
         hexBox.BorderSizePixel = 0
         hexBox.Text = "#" .. current:ToHex()
         hexBox.TextColor3 = window.theme.Accent
@@ -1411,7 +1445,7 @@ local function createColorPicker(group, items, window, text, default, callback)
         local copyBtn = Instance.new("TextButton")
         copyBtn.Size = UDim2.new(0.25, -4, 1, 0)
         copyBtn.Position = UDim2.new(0.5, 4, 0, 0)
-        copyBtn.BackgroundColor3 = window.theme.Track
+        copyBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
         copyBtn.Text = "COPY"
         copyBtn.TextColor3 = window.theme.White
         copyBtn.Font = Enum.Font.GothamBold
@@ -1423,7 +1457,7 @@ local function createColorPicker(group, items, window, text, default, callback)
         local applyBtn = Instance.new("TextButton")
         applyBtn.Size = UDim2.new(0.25, -4, 1, 0)
         applyBtn.Position = UDim2.new(0.75, 4, 0, 0)
-        applyBtn.BackgroundColor3 = window.theme.Track
+        applyBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
         applyBtn.Text = "APPLY"
         applyBtn.TextColor3 = window.theme.White
         applyBtn.Font = Enum.Font.GothamBold
@@ -1440,7 +1474,7 @@ local function createColorPicker(group, items, window, text, default, callback)
         footer.Parent = pickerFrame
         local resetBtn = Instance.new("TextButton")
         resetBtn.Size = UDim2.new(0.5, -4, 1, 0)
-        resetBtn.BackgroundColor3 = window.theme.Track
+        resetBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
         resetBtn.Text = "RESET"
         resetBtn.TextColor3 = window.theme.White
         resetBtn.Font = Enum.Font.GothamBold
@@ -1460,32 +1494,6 @@ local function createColorPicker(group, items, window, text, default, callback)
         pickBtn.ZIndex = 2001
         pickBtn.Parent = footer
         Instance.new("UICorner", pickBtn).CornerRadius = UDim.new(0, 4)
-
-        -- Logic
-        local hueDragging, svDragging = false, false
-        local function update()
-            local h = hueKnob.Position.X.Scale
-            local s = math.clamp(satValKnob.Position.X.Scale, 0, 1)
-            local v = math.clamp(1 - satValKnob.Position.Y.Scale, 0, 1)
-            current = Color3.fromHSV(h, s, v)
-            satValSquare.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
-            colorBox.BackgroundColor3 = current
-            hexBox.Text = "#" .. current:ToHex()
-            if callback then callback(current) end
-        end
-
-        local function updateHue(pos)
-            local rel = math.clamp((pos.X - hueSlider.AbsolutePosition.X) / hueSlider.AbsoluteSize.X, 0, 1)
-            hueKnob.Position = UDim2.new(rel, -6, 0.5, -6)
-            update()
-        end
-
-        local function updateSV(pos)
-            local relX = math.clamp((pos.X - satValSquare.AbsolutePosition.X) / satValSquare.AbsoluteSize.X, 0, 1)
-            local relY = math.clamp((pos.Y - satValSquare.AbsolutePosition.Y) / satValSquare.AbsoluteSize.Y, 0, 1)
-            satValKnob.Position = UDim2.new(relX, -5, relY, -5)
-            update()
-        end
 
         hueSlider.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then hueDragging = true updateHue(input.Position) end end)
         hueSlider.InputChanged:Connect(function(input) if hueDragging and input.UserInputType == Enum.UserInputType.MouseMovement then updateHue(input.Position) end end)
@@ -1519,6 +1527,14 @@ local function createColorPicker(group, items, window, text, default, callback)
                 local pos = UIS:GetMouseLocation()
                 local absPos_ = pickerFrame.AbsolutePosition
                 local absSize_ = pickerFrame.AbsoluteSize
+                
+                -- Extra check: Is the click on the colorBox button? If so, ignore (openPicker handles it)
+                local btnPos = colorBox.AbsolutePosition
+                local btnSize = colorBox.AbsoluteSize
+                if pos.X >= btnPos.X and pos.X <= btnPos.X + btnSize.X and pos.Y >= btnPos.Y and pos.Y <= btnPos.Y + btnSize.Y then
+                    return
+                end
+
                 if pos.X < absPos_.X or pos.X > absPos_.X + absSize_.X or pos.Y < absPos_.Y or pos.Y > absPos_.Y + absSize_.Y then
                     closePicker()
                     inputBeganConn:Disconnect()
@@ -1596,7 +1612,10 @@ local function createMultiDropdown(group, items, window, text, options, default,
     dlist.ZIndex = 50
     dlist.Parent = row
     Instance.new("UICorner", dlist).CornerRadius = UDim.new(0, 4)
-    Instance.new("UIStroke", dlist).Color = window.theme.Accent
+    local listStroke = Instance.new("UIStroke", dlist)
+    listStroke.Color = window.theme.Border
+    listStroke.Thickness = 1
+    table.insert(window.accentObjects, listStroke)
     local dlayout = Instance.new("UIListLayout", dlist)
     dlayout.SortOrder = Enum.SortOrder.LayoutOrder
     dlayout.Padding = UDim.new(0, 0)
@@ -1753,6 +1772,51 @@ function UILib.Column:addGroup(title)
     group.items = items
     group.itemLayout = itemLayout
     group.updateSize = updateSize
+    
+    function group:split()
+        local splitRow = Instance.new("Frame")
+        splitRow.Size = UDim2.new(1, 0, 0, 0)
+        splitRow.BackgroundTransparency = 1
+        splitRow.Parent = items
+        
+        local lFrame = Instance.new("Frame")
+        lFrame.Size = UDim2.new(0.5, -4, 0, 0)
+        lFrame.BackgroundTransparency = 1
+        lFrame.AutomaticSize = Enum.AutomaticSize.Y
+        lFrame.Parent = splitRow
+        Instance.new("UIListLayout", lFrame).Padding = UDim.new(0, 2)
+        
+        local rFrame = Instance.new("Frame")
+        rFrame.Size = UDim2.new(0.5, -4, 0, 0)
+        rFrame.Position = UDim2.new(0.5, 4, 0, 0)
+        rFrame.BackgroundTransparency = 1
+        rFrame.AutomaticSize = Enum.AutomaticSize.Y
+        rFrame.Parent = splitRow
+        Instance.new("UIListLayout", rFrame).Padding = UDim.new(0, 2)
+        
+        local function updateSplitSize()
+            local lh = lFrame.UIListLayout.AbsoluteContentSize.Y
+            local rh = rFrame.UIListLayout.AbsoluteContentSize.Y
+            splitRow.Size = UDim2.new(1, 0, 0, math.max(lh, rh))
+            updateSize()
+        end
+        lFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplitSize)
+        rFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplitSize)
+        
+        -- Proxy groups (internal)
+        local leftGroup = {window = window, frame = lFrame, items = lFrame, tab = self.tab, sub = self.sub, updateSize = updateSplitSize}
+        local rightGroup = {window = window, frame = rFrame, items = rFrame, tab = self.tab, sub = self.sub, updateSize = updateSplitSize}
+        
+        -- Attach methods to proxy groups
+        for k, v in pairs(group) do
+            if type(v) == "function" and k ~= "split" and k ~= "addGroup" then
+                leftGroup[k] = function(self, ...) return v(leftGroup, ...) end
+                rightGroup[k] = function(self, ...) return v(rightGroup, ...) end
+            end
+        end
+        
+        return leftGroup, rightGroup
+    end
 
     -- Element methods with tooltip support
     function group:paragraph(title, text, tooltip)
@@ -1848,7 +1912,7 @@ function UILib.Column:addGroup(title)
             Mode = "toggle",
             SetValue = function(val)
                 state = val 
-                elem.Value = state
+                elem.Value = state 
                 cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track 
                 cbStroke.Color = state and window.theme.AccentD or window.theme.Border 
                 cbMark.Text = state and "x" or "" 
@@ -1860,7 +1924,7 @@ function UILib.Column:addGroup(title)
         row.MouseButton1Click:Connect(function() 
             if elem.Mode == "always" then return end
             state = not state 
-            elem:SetValue(state) 
+            elem.SetValue(state) 
         end)
         row.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton2 then
@@ -2810,7 +2874,7 @@ function UILib.SubTab:addGroup(title)
         row.MouseButton1Click:Connect(function() 
             if elem.Mode == "always" then return end
             state = not state 
-            elem:SetValue(state) 
+            elem.SetValue(state) 
         end)
         row.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton2 then
