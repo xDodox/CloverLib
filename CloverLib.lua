@@ -238,7 +238,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     self.notifications = {}
     self.configPrefix = "clover_"
     self.accentObjects = {} -- track objects that need color updates
-    self.allSearchable = {} -- track elements for global search
+    self.accentObjects = {} -- track objects that need color updates
     self.allSubTabs = {} -- track subtabs for navigation
     
     function self:updateAccent(color)
@@ -404,39 +404,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     hintLabel.Parent = header
     self.hintLabel = hintLabel
 
-    local searchContainer = Instance.new("Frame")
-    searchContainer.Size = UDim2.new(0, 160, 0, 24)
-    searchContainer.Position = UDim2.new(1, -140, 0.5, 0)
-    searchContainer.AnchorPoint = Vector2.new(1, 0.5)
-    searchContainer.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    searchContainer.BorderSizePixel = 0
-    searchContainer.Parent = header
-    Instance.new("UICorner", searchContainer).CornerRadius = UDim.new(0, 4)
-    self.searchContainer = searchContainer
-    local searchBox = Instance.new("TextBox")
-    searchBox.Size = UDim2.new(1, -30, 1, 0)
-    searchBox.Position = UDim2.new(0, 10, 0, 0)
-    searchBox.BackgroundTransparency = 1
-    searchBox.Text = ""
-    searchBox.PlaceholderText = "Search..."
-    searchBox.PlaceholderColor3 = self.theme.Gray
-    searchBox.TextColor3 = self.theme.White
-    searchBox.Font = Enum.Font.Roboto
-    searchBox.TextSize = 12
-    searchBox.TextXAlignment = Enum.TextXAlignment.Left
-    searchBox.ZIndex = 8
-    searchBox.Parent = searchContainer
-    local searchClear = Instance.new("TextButton")
-    searchClear.Size = UDim2.new(0, 20, 0, 20)
-    searchClear.Position = UDim2.new(1, -24, 0.5, -10)
-    searchClear.BackgroundTransparency = 1
-    searchClear.Text = "x"
-    searchClear.TextColor3 = self.theme.Gray
-    searchClear.Font = Enum.Font.GothamBold
-    searchClear.TextSize = 14
-    searchClear.Visible = false
-    searchClear.ZIndex = 8
-    searchClear.Parent = searchContainer
+    self.hintLabel = hintLabel
 
     local sidebar = Instance.new("ScrollingFrame")
     sidebar.Size = UDim2.new(0, 152, 1, -92)
@@ -464,49 +432,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     sidebarEdge.Parent = win -- Parented to win to avoid Layout
     self.sidebarEdge = sidebarEdge
 
-    -- Global element registration helper
-    function self:registerSearchable(text, obj, subtab)
-        table.insert(self.allSearchable, {text = text:lower(), obj = obj, subtab = subtab})
-    end
-
-    local function filterSearch(query)
-        query = query:lower()
-        if query == "" then
-            searchClear.Visible = false
-            return
-        end
-        searchClear.Visible = true
-        
-        -- Find best match among registered interactive elements
-        local best = nil
-        for _, item in ipairs(self.allSearchable) do
-            if item.text:find(query, 1, true) then
-                best = item
-                break
-            end
-        end
-        
-        if best then
-            if best.subtab then
-                -- Explicitly activate main tab first if search requires switching
-                if best.subtab.tab and best.subtab.tab.activate then
-                    best.subtab.tab:activate()
-                end
-                best.subtab:select()
-                -- Scroll content to show the item
-                task.defer(function()
-                    local rel = best.obj.AbsolutePosition.Y - self.content.AbsolutePosition.Y
-                    self.content.CanvasPosition = Vector2.new(0, math.clamp(self.content.CanvasPosition.Y + rel - 50, 0, self.content.CanvasSize.Y.Offset))
-                end)
-            end
-        end
-    end
-    searchBox:GetPropertyChangedSignal("Text"):Connect(function()
-        filterSearch(searchBox.Text)
-    end)
-    searchClear.MouseButton1Click:Connect(function()
-        searchBox.Text = ""
-    end)
+    self.sidebarEdge = sidebarEdge
 
     local content = Instance.new("ScrollingFrame")
     content.Size = UDim2.new(0, size.X - 152, 1, -92)
@@ -544,7 +470,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
         table.insert(self.connections, UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end end))
     end
 
-    table.insert(self.connections, UIS.InputBegan:Connect(function(input, gpe) if not gpe and input.KeyCode == self.toggleKey then self:setVisible(not win.Visible) end end))
+    table.insert(self.connections, UIS.InputBegan:Connect(function(input, gpe) if input.KeyCode == self.toggleKey then self:setVisible(not win.Visible) end end))
 
     self.tabs = {}
     self.activeTab = nil
@@ -825,6 +751,19 @@ function UILib:addWatermark(name)
     sep.ZIndex = 201
     sep.Parent = wm
     
+    local watermarkScale = Instance.new("UIScale", wm)
+    watermarkScale.Scale = 1
+
+    local function updateWatermarkSize(delta)
+        watermarkScale.Scale = math.clamp(watermarkScale.Scale + delta * 0.05, 0.5, 2)
+    end
+
+    wm.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseWheel then
+            updateWatermarkSize(input.Position.Z > 0 and 1 or -1)
+        end
+    end)
+
     local dragBtn = Instance.new("TextButton")
     dragBtn.Size = UDim2.new(1, 0, 1, 0)
     dragBtn.BackgroundTransparency = 1
@@ -1136,7 +1075,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
     step = step or 1
     local id = generateID()
     local row = Instance.new("Frame")
-    row.Size = UDim2.new(1, 0, 0, 46)
+    row.Size = UDim2.new(1, 0, 0, 50)
     row.BackgroundTransparency = 1
     row.Parent = items
     local label = Instance.new("TextLabel")
@@ -1180,7 +1119,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
     Instance.new("UICorner", valueBoxInput).CornerRadius = UDim.new(0, 4)
     local track = Instance.new("Frame")
     track.Size = UDim2.new(1, 0, 0, 4)
-    track.Position = UDim2.new(0, 0, 0, 30)
+    track.Position = UDim2.new(0, 0, 0, 34)
     track.BackgroundColor3 = window.theme.Track
     track.BorderSizePixel = 0
     track.ZIndex = 3
@@ -1258,7 +1197,7 @@ end
 local function createColorPicker(group, items, window, text, default, callback)
     local id = generateID()
     local row = Instance.new("Frame")
-    row.Size = UDim2.new(1, 0, 0, 28)
+    row.Size = UDim2.new(1, 0, 0, 32)
     row.BackgroundTransparency = 1
     row.Parent = items
     local label = Instance.new("TextLabel")
@@ -1272,12 +1211,13 @@ local function createColorPicker(group, items, window, text, default, callback)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.ZIndex = 3
     label.Parent = row
-    local colorBox = Instance.new("Frame")
+    local colorBox = Instance.new("TextButton")
     colorBox.Size = UDim2.new(0, 40, 0, 20)
     colorBox.Position = UDim2.new(1, -44, 0.5, -10)
-    colorBox.BackgroundColor3 = default or Color3.new(1,0,0)
+    colorBox.BackgroundColor3 = default
     colorBox.BorderSizePixel = 0
     colorBox.ZIndex = 4
+    colorBox.Text = ""
     colorBox.Parent = row
     Instance.new("UICorner", colorBox).CornerRadius = UDim.new(0, 3)
     local stroke = Instance.new("UIStroke", colorBox)
@@ -1383,7 +1323,7 @@ local function createColorPicker(group, items, window, text, default, callback)
             end
         end)
     end
-    colorBox.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then openPicker() end end)
+    colorBox.MouseButton1Click:Connect(openPicker)
     local elem = {ID = id, Value = current, SetValue = function(val) current = val colorBox.BackgroundColor3 = val if callback then callback(val) end end}
     window.configs[id] = elem
     return row
@@ -1393,7 +1333,7 @@ end
 local function createMultiDropdown(group, items, window, text, options, default, callback)
     local id = generateID()
     local row = Instance.new("Frame")
-    row.Size = UDim2.new(1, 0, 0, 52)
+    row.Size = UDim2.new(1, 0, 0, 56)
     row.BackgroundTransparency = 1
     row.ClipsDescendants = false
     row.ZIndex = 10
@@ -1411,7 +1351,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
     label.Parent = row
     local dbtn = Instance.new("TextButton")
     dbtn.Size = UDim2.new(1, 0, 0, 28)
-    dbtn.Position = UDim2.new(0, 0, 0, 22)
+    dbtn.Position = UDim2.new(0, 0, 0, 26)
     dbtn.BackgroundColor3 = window.theme.Track
     dbtn.BorderSizePixel = 0
     dbtn.Text = ""
@@ -1445,7 +1385,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
     local listH = #options * 26
     local dlist = Instance.new("ScrollingFrame")
     dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 104))
-    dlist.Position = UDim2.new(0, 0, 0, 52)
+    dlist.Position = UDim2.new(0, 0, 0, 56)
     dlist.BackgroundColor3 = window.theme.Item
     dlist.BorderSizePixel = 0
     dlist.ScrollBarThickness = 2
@@ -1535,7 +1475,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
         open = not open
         dlist.Visible = open
         arrow.Text = open and "▲" or "▼"
-        row.Size = UDim2.new(1, 0, 0, 52 + (open and math.min(listH, 104) or 0))
+        row.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 104) or 0))
         group.updateSize()
     end)
     local elem = {ID = id, Value = selected, SetValue = function(t)
@@ -1652,7 +1592,7 @@ function UILib.Column:addGroup(title)
     function group:toggle(text, default, callback, tooltip)
         local id = generateID()
         local row = Instance.new("TextButton")
-        row.Size = UDim2.new(1, 0, 0, 28)
+        row.Size = UDim2.new(1, 0, 0, 32)
         row.BackgroundTransparency = 1
         row.Text = ""
         row.ZIndex = 3
@@ -1705,8 +1645,8 @@ function UILib.Column:addGroup(title)
             DefaultValue = default,
             IsToggle = true,
             Mode = "toggle",
-            SetValue = function(val) 
                 state = val 
+                elem.Value = state
                 cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track 
                 cbStroke.Color = state and window.theme.AccentD or window.theme.Border 
                 cbMark.Text = state and "x" or "" 
@@ -1743,7 +1683,7 @@ function UILib.Column:addGroup(title)
     function group:dropdown(text, options, default, callback, tooltip, refreshCallback)
         local id = generateID()
         local row = Instance.new("Frame")
-        row.Size = UDim2.new(1, 0, 0, 52)
+        row.Size = UDim2.new(1, 0, 0, 56)
         row.BackgroundTransparency = 1
         row.ClipsDescendants = false
         row.ZIndex = 10
@@ -1775,7 +1715,7 @@ function UILib.Column:addGroup(title)
         end
 
         local dbtn = Instance.new("TextButton")
-        dbtn.Size = UDim2.new(1, 0, 0, 28)
+        dbtn.Size = UDim2.new(1, 0, 0, 32)
         dbtn.Position = UDim2.new(0, 0, 0, 22)
         dbtn.BackgroundColor3 = window.theme.Track
         dbtn.BorderSizePixel = 0
@@ -1946,7 +1886,7 @@ function UILib.Column:addGroup(title)
     function group:keybind(text, currentName, onChange, tooltip)
         local id = generateID()
         local row = Instance.new("Frame")
-        row.Size = UDim2.new(1, 0, 0, 30)
+        row.Size = UDim2.new(1, 0, 0, 34)
         row.BackgroundTransparency = 1
         row.Parent = items
         local label = Instance.new("TextLabel")
@@ -2050,7 +1990,7 @@ function UILib.Column:addGroup(title)
 
     function group:button(text, callback, tooltip)
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, 0, 0, 28)
+        btn.Size = UDim2.new(1, 0, 0, 32)
         btn.BackgroundTransparency = 1
         btn.Text = ""
         btn.ZIndex = 3
@@ -2084,12 +2024,12 @@ function UILib.Column:addGroup(title)
 
     function group:expandableToggle(text, default, contentFunc, tooltip)
         local container = Instance.new("Frame")
-        container.Size = UDim2.new(1, 0, 0, 30)
+        container.Size = UDim2.new(1, 0, 0, 34)
         container.BackgroundTransparency = 1
         container.ClipsDescendants = true
         container.Parent = items
         local toggleRow = Instance.new("TextButton")
-        toggleRow.Size = UDim2.new(1, 0, 0, 30)
+        toggleRow.Size = UDim2.new(1, 0, 0, 34)
         toggleRow.BackgroundTransparency = 1
         toggleRow.Text = ""
         toggleRow.ZIndex = 3
@@ -2137,7 +2077,7 @@ function UILib.Column:addGroup(title)
         label.Parent = toggleRow
         local contentFrame = Instance.new("Frame")
         contentFrame.Size = UDim2.new(1, 0, 0, 0)
-        contentFrame.Position = UDim2.new(0, 0, 0, 30)
+        contentFrame.Position = UDim2.new(0, 0, 0, 34)
         contentFrame.BackgroundTransparency = 1
         contentFrame.Parent = container
         local contentLayout = Instance.new("UIListLayout", contentFrame)
@@ -2146,7 +2086,7 @@ function UILib.Column:addGroup(title)
         local function updateContentSize()
             local h = contentLayout.AbsoluteContentSize.Y
             contentFrame.Size = UDim2.new(1, 0, 0, h)
-            container.Size = UDim2.new(1, 0, 0, 30 + (default and h or 0))
+            container.Size = UDim2.new(1, 0, 0, 34 + (default and h or 0))
             updateSize()
         end
         contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
@@ -2164,7 +2104,7 @@ function UILib.Column:addGroup(title)
         function nestedGroup:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip) local row = group:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
         if contentFunc then contentFunc(nestedGroup) end
         local state = default
-        toggleRow.MouseButton1Click:Connect(function() state = not state cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track cbStroke.Color = state and window.theme.AccentD or window.theme.Border cbMark.Text = state and "x" or "" container.Size = UDim2.new(1, 0, 0, 30 + (state and contentLayout.AbsoluteContentSize.Y or 0)) updateSize() end)
+        toggleRow.MouseButton1Click:Connect(function() state = not state cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track cbStroke.Color = state and window.theme.AccentD or window.theme.Border cbMark.Text = state and "x" or "" container.Size = UDim2.new(1, 0, 0, 34 + (state and contentLayout.AbsoluteContentSize.Y or 0)) updateSize() end)
         if tooltip then attachTooltip(toggleRow, tooltip) end
         updateContentSize()
         return container
@@ -2172,12 +2112,12 @@ function UILib.Column:addGroup(title)
 
     function group:collapsible(text, default, contentFunc, tooltip)
         local container = Instance.new("Frame")
-        container.Size = UDim2.new(1, 0, 0, 30)
+        container.Size = UDim2.new(1, 0, 0, 34)
         container.BackgroundTransparency = 1
         container.ClipsDescendants = true
         container.Parent = items
         local toggleRow = Instance.new("TextButton")
-        toggleRow.Size = UDim2.new(1, 0, 0, 30)
+        toggleRow.Size = UDim2.new(1, 0, 0, 34)
         toggleRow.BackgroundTransparency = 1
         toggleRow.Text = ""
         toggleRow.ZIndex = 3
@@ -2215,7 +2155,7 @@ function UILib.Column:addGroup(title)
         label.Parent = toggleRow
         local contentFrame = Instance.new("Frame")
         contentFrame.Size = UDim2.new(1, 0, 0, 0)
-        contentFrame.Position = UDim2.new(0, 0, 0, 30)
+        contentFrame.Position = UDim2.new(0, 0, 0, 34)
         contentFrame.BackgroundTransparency = 1
         contentFrame.Parent = container
         local contentLayout = Instance.new("UIListLayout", contentFrame)
@@ -2224,7 +2164,7 @@ function UILib.Column:addGroup(title)
         local function updateContentSize()
             local h = contentLayout.AbsoluteContentSize.Y
             contentFrame.Size = UDim2.new(1, 0, 0, h)
-            container.Size = UDim2.new(1, 0, 0, 30 + (default and h or 0))
+            container.Size = UDim2.new(1, 0, 0, 34 + (default and h or 0))
             updateSize()
         end
         contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
@@ -2242,7 +2182,7 @@ function UILib.Column:addGroup(title)
         function nestedGroup:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip) local row = group:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
         if contentFunc then contentFunc(nestedGroup) end
         local state = default
-        toggleRow.MouseButton1Click:Connect(function() state = not state arrow.Text = state and "v" or ">" container.Size = UDim2.new(1, 0, 0, 30 + (state and contentLayout.AbsoluteContentSize.Y or 0)) updateSize() end)
+        toggleRow.MouseButton1Click:Connect(function() state = not state arrow.Text = state and "v" or ">" container.Size = UDim2.new(1, 0, 0, 34 + (state and contentLayout.AbsoluteContentSize.Y or 0)) updateSize() end)
         if tooltip then attachTooltip(toggleRow, tooltip) end
         updateContentSize()
         return container
@@ -2597,7 +2537,7 @@ function UILib.SubTab:addGroup(title)
     function group:toggle(text, default, callback, tooltip)
         local id = generateID()
         local row = Instance.new("TextButton")
-        row.Size = UDim2.new(1, 0, 0, 28)
+        row.Size = UDim2.new(1, 0, 0, 32)
         row.BackgroundTransparency = 1
         row.Text = ""
         row.ZIndex = 3
@@ -2685,7 +2625,7 @@ function UILib.SubTab:addGroup(title)
     function group:dropdown(text, options, default, callback, tooltip)
         local id = generateID()
         local row = Instance.new("Frame")
-        row.Size = UDim2.new(1, 0, 0, 52)
+        row.Size = UDim2.new(1, 0, 0, 56)
         row.BackgroundTransparency = 1
         row.ClipsDescendants = false
         row.ZIndex = 10
@@ -2702,7 +2642,7 @@ function UILib.SubTab:addGroup(title)
         label.ZIndex = 11
         label.Parent = row
         local dbtn = Instance.new("TextButton")
-        dbtn.Size = UDim2.new(1, 0, 0, 28)
+        dbtn.Size = UDim2.new(1, 0, 0, 32)
         dbtn.Position = UDim2.new(0, 0, 0, 22)
         dbtn.BackgroundColor3 = window.theme.Track
         dbtn.BorderSizePixel = 0
@@ -2739,7 +2679,7 @@ function UILib.SubTab:addGroup(title)
         local listH = #options * 26
         local dlist = Instance.new("ScrollingFrame")
         dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 104))
-        dlist.Position = UDim2.new(0, 0, 0, 52)
+        dlist.Position = UDim2.new(0, 0, 0, 56)
         dlist.BackgroundColor3 = window.theme.Item
         dlist.BorderSizePixel = 0
         dlist.ScrollBarThickness = 2
@@ -2835,7 +2775,7 @@ function UILib.SubTab:addGroup(title)
                     
                     dlist.Visible = false
                     arrow.Text = "▼"
-                    row.Size = UDim2.new(1, 0, 0, 52)
+                    row.Size = UDim2.new(1, 0, 0, 56)
                     updateSize()
                 end)
             end
@@ -2869,7 +2809,7 @@ function UILib.SubTab:addGroup(title)
             open = not open
             dlist.Visible = open
             arrow.Text = open and "▲" or "▼"
-            row.Size = UDim2.new(1, 0, 0, 52 + (open and math.min(listH, 104) or 0))
+            row.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 104) or 0))
             updateSize()
         end)
 
@@ -2902,7 +2842,7 @@ function UILib.SubTab:addGroup(title)
     function group:keybind(text, currentName, onChange, tooltip)
         local id = generateID()
         local row = Instance.new("Frame")
-        row.Size = UDim2.new(1, 0, 0, 30)
+        row.Size = UDim2.new(1, 0, 0, 34)
         row.BackgroundTransparency = 1
         row.Parent = items
         local label = Instance.new("TextLabel")
@@ -3006,7 +2946,7 @@ function UILib.SubTab:addGroup(title)
 
     function group:button(text, callback, tooltip)
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, 0, 0, 28)
+        btn.Size = UDim2.new(1, 0, 0, 32)
         btn.BackgroundTransparency = 1
         btn.Text = ""
         btn.ZIndex = 3
@@ -3040,12 +2980,12 @@ function UILib.SubTab:addGroup(title)
 
     function group:expandableToggle(text, default, contentFunc, tooltip)
         local container = Instance.new("Frame")
-        container.Size = UDim2.new(1, 0, 0, 30)
+        container.Size = UDim2.new(1, 0, 0, 34)
         container.BackgroundTransparency = 1
         container.ClipsDescendants = true
         container.Parent = items
         local toggleRow = Instance.new("TextButton")
-        toggleRow.Size = UDim2.new(1, 0, 0, 30)
+        toggleRow.Size = UDim2.new(1, 0, 0, 34)
         toggleRow.BackgroundTransparency = 1
         toggleRow.Text = ""
         toggleRow.ZIndex = 3
@@ -3093,7 +3033,7 @@ function UILib.SubTab:addGroup(title)
         label.Parent = toggleRow
         local contentFrame = Instance.new("Frame")
         contentFrame.Size = UDim2.new(1, 0, 0, 0)
-        contentFrame.Position = UDim2.new(0, 0, 0, 30)
+        contentFrame.Position = UDim2.new(0, 0, 0, 34)
         contentFrame.BackgroundTransparency = 1
         contentFrame.Parent = container
         local contentLayout = Instance.new("UIListLayout", contentFrame)
@@ -3102,7 +3042,7 @@ function UILib.SubTab:addGroup(title)
         local function updateContentSize()
             local h = contentLayout.AbsoluteContentSize.Y
             contentFrame.Size = UDim2.new(1, 0, 0, h)
-            container.Size = UDim2.new(1, 0, 0, 30 + (default and h or 0))
+            container.Size = UDim2.new(1, 0, 0, 34 + (default and h or 0))
             updateSize()
         end
         contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
@@ -3120,7 +3060,7 @@ function UILib.SubTab:addGroup(title)
         function nestedGroup:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip) local row = group:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
         if contentFunc then contentFunc(nestedGroup) end
         local state = default
-        toggleRow.MouseButton1Click:Connect(function() state = not state cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track cbStroke.Color = state and window.theme.AccentD or window.theme.Border cbMark.Text = state and "×" or "" container.Size = UDim2.new(1, 0, 0, 30 + (state and contentLayout.AbsoluteContentSize.Y or 0)) updateSize() end)
+        toggleRow.MouseButton1Click:Connect(function() state = not state cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track cbStroke.Color = state and window.theme.AccentD or window.theme.Border cbMark.Text = state and "×" or "" container.Size = UDim2.new(1, 0, 0, 34 + (state and contentLayout.AbsoluteContentSize.Y or 0)) updateSize() end)
         if tooltip then attachTooltip(toggleRow, tooltip) end
         updateContentSize()
         return container
@@ -3128,12 +3068,12 @@ function UILib.SubTab:addGroup(title)
 
     function group:collapsible(text, default, contentFunc, tooltip)
         local container = Instance.new("Frame")
-        container.Size = UDim2.new(1, 0, 0, 30)
+        container.Size = UDim2.new(1, 0, 0, 34)
         container.BackgroundTransparency = 1
         container.ClipsDescendants = true
         container.Parent = items
         local toggleRow = Instance.new("TextButton")
-        toggleRow.Size = UDim2.new(1, 0, 0, 30)
+        toggleRow.Size = UDim2.new(1, 0, 0, 34)
         toggleRow.BackgroundTransparency = 1
         toggleRow.Text = ""
         toggleRow.ZIndex = 3
@@ -3171,7 +3111,7 @@ function UILib.SubTab:addGroup(title)
         label.Parent = toggleRow
         local contentFrame = Instance.new("Frame")
         contentFrame.Size = UDim2.new(1, 0, 0, 0)
-        contentFrame.Position = UDim2.new(0, 0, 0, 30)
+        contentFrame.Position = UDim2.new(0, 0, 0, 34)
         contentFrame.BackgroundTransparency = 1
         contentFrame.Parent = container
         local contentLayout = Instance.new("UIListLayout", contentFrame)
@@ -3180,7 +3120,7 @@ function UILib.SubTab:addGroup(title)
         local function updateContentSize()
             local h = contentLayout.AbsoluteContentSize.Y
             contentFrame.Size = UDim2.new(1, 0, 0, h)
-            container.Size = UDim2.new(1, 0, 0, 30 + (default and h or 0))
+            container.Size = UDim2.new(1, 0, 0, 34 + (default and h or 0))
             updateSize()
         end
         contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
@@ -3198,7 +3138,7 @@ function UILib.SubTab:addGroup(title)
         function nestedGroup:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip) local row = group:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
         if contentFunc then contentFunc(nestedGroup) end
         local state = default
-        toggleRow.MouseButton1Click:Connect(function() state = not state arrow.Text = state and "▼" or "▶" container.Size = UDim2.new(1, 0, 0, 30 + (state and contentLayout.AbsoluteContentSize.Y or 0)) updateSize() end)
+        toggleRow.MouseButton1Click:Connect(function() state = not state arrow.Text = state and "▼" or "▶" container.Size = UDim2.new(1, 0, 0, 34 + (state and contentLayout.AbsoluteContentSize.Y or 0)) updateSize() end)
         if tooltip then attachTooltip(toggleRow, tooltip) end
         updateContentSize()
         return container
@@ -3221,7 +3161,7 @@ function UILib.SubTab:addGroup(title)
     function group:textbox(text, default, callback, tooltip)
         local id = generateID()
         local row = Instance.new("Frame")
-        row.Size = UDim2.new(1, 0, 0, 46)
+        row.Size = UDim2.new(1, 0, 0, 50)
         row.BackgroundTransparency = 1
         row.Parent = items
         local label = Instance.new("TextLabel")
@@ -3268,7 +3208,7 @@ function UILib.SubTab:addGroup(title)
         max = max or math.huge
         local id = generateID()
         local row = Instance.new("Frame")
-        row.Size = UDim2.new(1, 0, 0, 46)
+        row.Size = UDim2.new(1, 0, 0, 50)
         row.BackgroundTransparency = 1
         row.Parent = items
         local label = Instance.new("TextLabel")
@@ -3317,7 +3257,7 @@ function UILib.SubTab:addGroup(title)
     function group:rangeslider(text, minVal, maxVal, defaultMin, defaultMax, callback, tooltip)
         local id = generateID()
         local row = Instance.new("Frame")
-        row.Size = UDim2.new(1, 0, 0, 46)
+        row.Size = UDim2.new(1, 0, 0, 50)
         row.BackgroundTransparency = 1
         row.Parent = items
         local label = Instance.new("TextLabel")
@@ -3350,7 +3290,7 @@ function UILib.SubTab:addGroup(title)
         valueLabel.Parent = valueBox
         local track = Instance.new("Frame")
         track.Size = UDim2.new(1, 0, 0, 6)
-        track.Position = UDim2.new(0, 0, 0, 28)
+        track.Position = UDim2.new(0, 0, 0, 32)
         track.BackgroundColor3 = window.theme.Track
         track.BorderSizePixel = 0
         track.ZIndex = 3
