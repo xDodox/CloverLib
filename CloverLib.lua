@@ -390,6 +390,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
         versionLabel.ZIndex = 7
         versionLabel.Parent = versionPill
         self.versionLabel = versionLabel
+    end
     local hintLabel = Instance.new("TextLabel")
     hintLabel.Size = UDim2.new(0, 120, 0, 46)
     hintLabel.Position = UDim2.new(1, -10, 0.5, 0)
@@ -1349,7 +1350,7 @@ local function createColorPicker(group, items, window, text, default, callback)
             local h = rel
             local c = Color3.fromHSV(h, 1, 1)
             satValSquare.BackgroundColor3 = c
-            local h_, s, v = current:toHSV()
+            local h_, s, v = Color3.toHSV(current)
             current = Color3.fromHSV(h, s, v)
             colorBox.BackgroundColor3 = current
             if callback then callback(current) end
