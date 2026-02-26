@@ -114,7 +114,7 @@ function UILib:notify(message, notifType, duration)
     -- Progress Bar
     local progressOuter = Instance.new("Frame")
     progressOuter.Size = UDim2.new(1, 0, 0, 2)
-    progressOuter.Position = UDim2.new(0, 0, 1, 0) -- Moved very down as requested
+    progressOuter.Position = UDim2.new(0, 0, 1, -2) -- Adjusted to stay visible on the edge
     progressOuter.BackgroundTransparency = 1
     progressOuter.BorderSizePixel = 0
     progressOuter.ZIndex = 502
@@ -334,6 +334,9 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
             win.Size = newSize
             self.size = Vector2.new(newSize.X.Offset, newSize.Y.Offset)
             self.content.Size = UDim2.new(0, self.size.X - 152, 1, -92)
+            if self.sidebarEdge then
+                self.sidebarEdge.Size = UDim2.new(0, 1, 1, -92)
+            end
         end
     end))
 
@@ -352,8 +355,9 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     headerLine.BorderSizePixel = 0
     headerLine.ZIndex = 6
     headerLine.Parent = header
+    local titleSize = game:GetService("TextService"):GetTextSize(title, 20, Enum.Font.GothamBold, Vector2.new(1000, 46))
     local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(0, 240, 1, 0)
+    titleLabel.Size = UDim2.new(0, titleSize.X + 5, 1, 0)
     titleLabel.Position = UDim2.new(0, 10, 0, 0)
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = title
@@ -365,49 +369,49 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     titleLabel.Parent = header
     self.titleLabel = titleLabel
 
-    if self.showVersion then
-        local titleWidth = math.min(#title * 11, 240)
+    if showVersion then
         local versionPill = Instance.new("Frame")
-        versionPill.Size = UDim2.new(0, 52, 0, 18)
-        versionPill.Position = UDim2.new(0, 10 + titleWidth + 8, 0.5, -9)
-        versionPill.BackgroundColor3 = self.theme.AccentD
+        versionPill.Size = UDim2.new(0, 48, 0, 18)
+        versionPill.Position = UDim2.new(0, titleSize.X + 20, 0.5, 0)
+        versionPill.AnchorPoint = Vector2.new(0, 0.5)
+        versionPill.BackgroundColor3 = self.theme.Accent
         versionPill.BorderSizePixel = 0
         versionPill.ZIndex = 6
         versionPill.Parent = header
         Instance.new("UICorner", versionPill).CornerRadius = UDim.new(0, 4)
+        
         local versionLabel = Instance.new("TextLabel")
         versionLabel.Size = UDim2.new(1, 0, 1, 0)
         versionLabel.BackgroundTransparency = 1
         versionLabel.Text = "v1.0"
-        versionLabel.TextColor3 = self.theme.White
-        versionLabel.Font = Enum.Font.GothamBold
+        versionLabel.TextColor3 = Color3.fromRGB(20,20,20)
+        versionLabel.Font = Enum.Font.RobotoBold
         versionLabel.TextSize = 10
         versionLabel.ZIndex = 7
         versionLabel.Parent = versionPill
-        self.versionPill = versionPill
-    end
-
+        self.versionLabel = versionLabel
     local hintLabel = Instance.new("TextLabel")
-    hintLabel.Size = UDim2.new(0, 180, 1, 0)
-    hintLabel.Position = UDim2.new(1, -188, 0, 0)
+    hintLabel.Size = UDim2.new(0, 120, 0, 46)
+    hintLabel.Position = UDim2.new(1, -10, 0.5, 0)
+    hintLabel.AnchorPoint = Vector2.new(1, 0.5)
     hintLabel.BackgroundTransparency = 1
-    hintLabel.Text = "[RSHIFT]  TOGGLE"
+    hintLabel.Text = "[ " .. (self.toggleKey and self.toggleKey.Name or "RSHIFT") .. " ]  TOGGLE"
     hintLabel.TextColor3 = self.theme.Gray
     hintLabel.Font = Enum.Font.RobotoMono
     hintLabel.TextSize = 9
     hintLabel.TextXAlignment = Enum.TextXAlignment.Right
-    hintLabel.ZIndex = 6
     hintLabel.Parent = header
+    self.hintLabel = hintLabel
 
-    -- Header Search Bar
     local searchContainer = Instance.new("Frame")
-    searchContainer.Size = UDim2.new(0, 200, 0, 28)
-    searchContainer.Position = UDim2.new(1, -400, 0.5, -14)
-    searchContainer.BackgroundColor3 = self.theme.Track
+    searchContainer.Size = UDim2.new(0, 160, 0, 24)
+    searchContainer.Position = UDim2.new(1, -140, 0.5, 0)
+    searchContainer.AnchorPoint = Vector2.new(1, 0.5)
+    searchContainer.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
     searchContainer.BorderSizePixel = 0
-    searchContainer.ZIndex = 7
     searchContainer.Parent = header
-    Instance.new("UICorner", searchContainer).CornerRadius = UDim.new(0, 6)
+    Instance.new("UICorner", searchContainer).CornerRadius = UDim.new(0, 4)
+    self.searchContainer = searchContainer
     local searchBox = Instance.new("TextBox")
     searchBox.Size = UDim2.new(1, -30, 1, 0)
     searchBox.Position = UDim2.new(0, 10, 0, 0)
@@ -437,9 +441,10 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     sidebar.Size = UDim2.new(0, 152, 1, -92)
     sidebar.Position = UDim2.new(0, 0, 0, 46)
     sidebar.BackgroundColor3 = self.theme.Panel
-    sidebar.BackgroundTransparency = 1
+    sidebar.BackgroundTransparency = 0 -- Restored background
     sidebar.BorderSizePixel = 0
     sidebar.ScrollBarThickness = 0
+    sidebar.AutomaticCanvasSize = Enum.AutomaticSize.Y
     sidebar.CanvasSize = UDim2.new(0, 0, 0, 0)
     sidebar.ClipsDescendants = true
     sidebar.Parent = win
@@ -449,12 +454,14 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     sidebarLayout.Padding = UDim.new(0, 2)
     sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
     Instance.new("UIPadding", sidebar).PaddingTop = UDim.new(0, 4)
+    
     local sidebarEdge = Instance.new("Frame")
-    sidebarEdge.Size = UDim2.new(0, 1, 1, 0)
-    sidebarEdge.Position = UDim2.new(1, -1, 0, 0)
+    sidebarEdge.Size = UDim2.new(0, 1, 1, -92)
+    sidebarEdge.Position = UDim2.new(0, 151, 0, 46)
     sidebarEdge.BackgroundColor3 = self.theme.Border
     sidebarEdge.BorderSizePixel = 0
-    sidebarEdge.Parent = sidebar
+    sidebarEdge.Parent = win -- Parented to win to avoid Layout
+    self.sidebarEdge = sidebarEdge
 
     -- Global element registration helper
     function self:registerSearchable(text, obj, subtab)
@@ -1284,29 +1291,36 @@ local function createColorPicker(group, items, window, text, default, callback)
         if pickerFrame then closePicker() return end
         pickerFrame = Instance.new("Frame")
         pickerFrame.Size = UDim2.new(0, 200, 0, 160)
-        pickerFrame.Position = UDim2.new(0, 0, 1, 2)
+        -- Improved positioning: Check if it fits on the left, else put it on the right
+        local absPos = colorBox.AbsolutePosition
+        local screenWidth = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
+        local posX = absPos.X - 204
+        if posX < 10 then posX = absPos.X + colorBox.AbsoluteSize.X + 4 end
+        
+        pickerFrame.Position = UDim2.new(0, posX, 0, absPos.Y)
         pickerFrame.BackgroundColor3 = window.theme.Panel
         pickerFrame.BorderSizePixel = 0
-        pickerFrame.ZIndex = 50
-        pickerFrame.Parent = row
+        pickerFrame.ZIndex = 2000 -- Above everything
+        pickerFrame.Parent = window.sg -- Parented to ScreenGui to avoid Clipping
         Instance.new("UICorner", pickerFrame).CornerRadius = UDim.new(0, 6)
         local pickerStroke = Instance.new("UIStroke", pickerFrame)
         pickerStroke.Color = window.theme.Accent
+        
         local hueSlider = Instance.new("Frame")
         hueSlider.Size = UDim2.new(0, 180, 0, 16)
         hueSlider.Position = UDim2.new(0.5, -90, 0, 8)
         hueSlider.BackgroundColor3 = Color3.new(1,1,1)
-        hueSlider.ZIndex = 51
+        hueSlider.ZIndex = 2001
         hueSlider.Parent = pickerFrame
         local hueGradient = Instance.new("UIGradient", hueSlider)
         hueGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0, Color3.new(1,0,0)), ColorSequenceKeypoint.new(0.17, Color3.new(1,1,0)), ColorSequenceKeypoint.new(0.33, Color3.new(0,1,0)), ColorSequenceKeypoint.new(0.5, Color3.new(0,1,1)), ColorSequenceKeypoint.new(0.67, Color3.new(0,0,1)), ColorSequenceKeypoint.new(0.83, Color3.new(1,0,1)), ColorSequenceKeypoint.new(1, Color3.new(1,0,0))}
-        hueGradient.Rotation = 90
+        -- hueGradient.Rotation = 0 -- Default is 0
         local hueKnob = Instance.new("Frame")
         hueKnob.Size = UDim2.new(0, 10, 0, 10)
         hueKnob.Position = UDim2.new(0, 0, 0.5, -5)
         hueKnob.BackgroundColor3 = window.theme.White
         hueKnob.BorderSizePixel = 0
-        hueKnob.ZIndex = 52
+        hueKnob.ZIndex = 2002
         hueKnob.Parent = hueSlider
         Instance.new("UICorner", hueKnob).CornerRadius = UDim.new(0, 5)
         local hueKnobStroke = Instance.new("UIStroke", hueKnob)
@@ -1315,14 +1329,14 @@ local function createColorPicker(group, items, window, text, default, callback)
         satValSquare.Size = UDim2.new(0, 160, 0, 80)
         satValSquare.Position = UDim2.new(0.5, -80, 0, 32)
         satValSquare.BackgroundColor3 = Color3.new(1,1,1)
-        satValSquare.ZIndex = 51
+        satValSquare.ZIndex = 2001
         satValSquare.Parent = pickerFrame
         local satValKnob = Instance.new("Frame")
         satValKnob.Size = UDim2.new(0, 10, 0, 10)
         satValKnob.Position = UDim2.new(0, 0, 0, 0)
         satValKnob.BackgroundColor3 = window.theme.White
         satValKnob.BorderSizePixel = 0
-        satValKnob.ZIndex = 52
+        satValKnob.ZIndex = 2002
         satValKnob.Parent = satValSquare
         Instance.new("UICorner", satValKnob).CornerRadius = UDim.new(0, 5)
         local satValKnobStroke = Instance.new("UIStroke", satValKnob)
@@ -1330,16 +1344,13 @@ local function createColorPicker(group, items, window, text, default, callback)
         local hueDragging = false
         local svDragging = false
         local function updateHue(pos)
-            local rel = math.clamp((pos - hueSlider.AbsolutePosition.X) / hueSlider.AbsoluteSize.X, 0, 1)
+            local rel = math.clamp((pos.X - hueSlider.AbsolutePosition.X) / hueSlider.AbsoluteSize.X, 0, 1)
             hueKnob.Position = UDim2.new(rel, -5, 0.5, -5)
             local h = rel
             local c = Color3.fromHSV(h, 1, 1)
             satValSquare.BackgroundColor3 = c
-            local svRelX = satValKnob.Position.X.Scale + satValKnob.Position.X.Offset / satValSquare.AbsoluteSize.X
-            local svRelY = satValKnob.Position.Y.Scale + satValKnob.Position.Y.Offset / satValSquare.AbsoluteSize.Y
-            svRelX = math.clamp(svRelX, 0, 1)
-            svRelY = math.clamp(svRelY, 0, 1)
-            current = Color3.fromHSV(h, svRelX, 1 - svRelY)
+            local h_, s, v = current:toHSV()
+            current = Color3.fromHSV(h, s, v)
             colorBox.BackgroundColor3 = current
             if callback then callback(current) end
         end
@@ -1362,9 +1373,9 @@ local function createColorPicker(group, items, window, text, default, callback)
         inputBeganConn = UIS.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 local pos = UIS:GetMouseLocation()
-                local absPos = pickerFrame.AbsolutePosition
-                local absSize = pickerFrame.AbsoluteSize
-                if pos.X < absPos.X or pos.X > absPos.X + absSize.X or pos.Y < absPos.Y or pos.Y > absPos.Y + absSize.Y then
+                local absPos_ = pickerFrame.AbsolutePosition
+                local absSize_ = pickerFrame.AbsoluteSize
+                if pos.X < absPos_.X or pos.X > absPos_.X + absSize_.X or pos.Y < absPos_.Y or pos.Y > absPos_.Y + absSize_.Y then
                     closePicker()
                     inputBeganConn:Disconnect()
                 end
