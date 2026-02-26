@@ -280,17 +280,14 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
         for _, obj in ipairs(self.accentObjects) do
             pcall(function()
                 if obj:IsA("Frame") or obj:IsA("ScrollingFrame") then
-                    if obj.Name == "indicator" or obj.Name == "underline" or obj.Name == "headerLine" or obj.Name == "cbOuter" then
-                        obj.BackgroundColor3 = (obj.Name == "cbOuter" and obj.BackgroundColor3 ~= self.theme.Track) and color or obj.BackgroundColor3
-                        if obj.Name ~= "cbOuter" then obj.BackgroundColor3 = color end
-                    end
+                    -- Update frames that should be accent-colored
+                    obj.BackgroundColor3 = color
                 elseif obj:IsA("UIStroke") then
-                    obj.Color = (obj.Name == "cbStroke" and obj.Color ~= self.theme.Border) and color or obj.Color
-                    if obj.Name ~= "cbStroke" then obj.Color = color end
+                    obj.Color = color
                 elseif obj:IsA("TextLabel") or obj:IsA("TextButton") then
-                    if obj.Name == "arrow" or obj.Name == "icon" or obj.Name == "cbMark" then
-                        obj.TextColor3 = color
-                    end
+                    obj.TextColor3 = color
+                elseif obj:IsA("TextBox") then
+                    obj.TextColor3 = color
                 end
             end)
         end
@@ -392,6 +389,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     headerLine.BorderSizePixel = 0
     headerLine.ZIndex = 6
     headerLine.Parent = header
+    table.insert(self.accentObjects, headerLine)
     local titleSize = game:GetService("TextService"):GetTextSize(title, 20, Enum.Font.GothamBold, Vector2.new(1000, 46))
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Size = UDim2.new(0, titleSize.X + 5, 1, 0)
@@ -416,6 +414,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
         versionPill.ZIndex = 6
         versionPill.Parent = header
         Instance.new("UICorner", versionPill).CornerRadius = UDim.new(0, 4)
+        table.insert(self.accentObjects, versionPill)
         
         local versionLabel = Instance.new("TextLabel")
         versionLabel.Size = UDim2.new(1, 0, 1, 0)
@@ -524,7 +523,10 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
         end, "Update accent color")
         
         grp:keybind("Toggle Key", "RightShift", function(_, name) 
-            self.toggleKey = Enum.KeyCode[name] or Enum.KeyCode.RightShift 
+            self.toggleKey = Enum.KeyCode[name] or Enum.KeyCode.RightShift
+            if self.hintLabel then
+                self.hintLabel.Text = "[ " .. name .. " ]  TOGGLE"
+            end
         end, "Set key to show/hide menu")
         
         grp:toggle("Show Version", self.showVersion, function(v) 
@@ -928,6 +930,7 @@ function UILib:addTab(name)
     underline.BorderSizePixel = 0
     underline.Visible = false
     underline.Parent = btn
+    table.insert(self.accentObjects, underline)
     btn.MouseEnter:Connect(function() if btn.TextColor3 ~= self.theme.White then btn.TextColor3 = self.theme.GrayLt end end)
     btn.MouseLeave:Connect(function() if btn.TextColor3 ~= self.theme.White then btn.TextColor3 = self.theme.Gray end end)
     tab.btn = btn
@@ -1186,6 +1189,8 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
     local knobStroke = Instance.new("UIStroke", knob)
     knobStroke.Color = window.theme.Accent
     knobStroke.Thickness = 2
+    table.insert(window.accentObjects, fill)
+    table.insert(window.accentObjects, knobStroke)
     local hit = Instance.new("TextButton")
     hit.Size = UDim2.new(1, 0, 0, 22)
     hit.Position = UDim2.new(0, 0, 0.5, -11)
