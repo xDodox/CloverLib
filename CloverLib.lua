@@ -385,7 +385,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
         versionLabel.BackgroundTransparency = 1
         versionLabel.Text = "v1.0"
         versionLabel.TextColor3 = Color3.fromRGB(20,20,20)
-        versionLabel.Font = Enum.Font.RobotoBold
+        versionLabel.Font = Enum.Font.GothamBold
         versionLabel.TextSize = 10
         versionLabel.ZIndex = 7
         versionLabel.Parent = versionPill
