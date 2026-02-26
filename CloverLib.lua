@@ -64,9 +64,9 @@ local function showTooltip(text, pos)
     
     tooltipFrame.Size = UDim2.new(0, textWidth + padding * 2, 0, height)
     
-    -- Position: Above the component (horizontally centered to mouse)
+    -- Position: Above the mouse/component
     local x = pos.X - (tooltipFrame.Size.X.Offset / 2)
-    local y = pos.Y - tooltipFrame.Size.Y.Offset - 10
+    local y = pos.Y - tooltipFrame.Size.Y.Offset - 20 -- 20px offset as requested
     
     -- Bound clamping
     x = math.clamp(x, 5, screenWidth - tooltipFrame.Size.X.Offset - 5)
@@ -111,20 +111,10 @@ function UILib:notify(message, notifType, duration)
     local stroke = Instance.new("UIStroke", notif)
     stroke.Color = self.theme.Border
     stroke.Thickness = 1
-    -- Colored left bar
-    local colorBar = Instance.new("Frame")
-    colorBar.Size = UDim2.new(0, 3, 1, -6)
-    colorBar.Position = UDim2.new(0, 3, 0, 3)
-    colorBar.BackgroundColor3 = accentColor
-    colorBar.BorderSizePixel = 0
-    colorBar.ZIndex = 501
-    colorBar.Parent = notif
-    Instance.new("UICorner", colorBar).CornerRadius = UDim.new(0, 2)
-    
     -- Progress Bar
     local progressOuter = Instance.new("Frame")
     progressOuter.Size = UDim2.new(1, 0, 0, 2)
-    progressOuter.Position = UDim2.new(0, 0, 1, -2)
+    progressOuter.Position = UDim2.new(0, 0, 1, 0) -- Moved very down as requested
     progressOuter.BackgroundTransparency = 1
     progressOuter.BorderSizePixel = 0
     progressOuter.ZIndex = 502
@@ -284,9 +274,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     tooltipFrame.ZIndex = 1000
     tooltipFrame.Parent = self.sg
     Instance.new("UICorner", tooltipFrame).CornerRadius = UDim.new(0, 4)
-    local tipStroke = Instance.new("UIStroke", tooltipFrame)
-    tipStroke.Color = self.theme.Accent
-    tipStroke.Thickness = 1
     local tipPadding = Instance.new("UIPadding", tooltipFrame)
     tipPadding.PaddingLeft = UDim.new(0, 6)
     tipPadding.PaddingRight = UDim.new(0, 6)
@@ -446,15 +433,22 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     searchClear.ZIndex = 8
     searchClear.Parent = searchContainer
 
-    local sidebar = Instance.new("Frame")
+    local sidebar = Instance.new("ScrollingFrame")
     sidebar.Size = UDim2.new(0, 152, 1, -92)
     sidebar.Position = UDim2.new(0, 0, 0, 46)
     sidebar.BackgroundColor3 = self.theme.Panel
+    sidebar.BackgroundTransparency = 1
     sidebar.BorderSizePixel = 0
+    sidebar.ScrollBarThickness = 0
+    sidebar.CanvasSize = UDim2.new(0, 0, 0, 0)
     sidebar.ClipsDescendants = true
     sidebar.Parent = win
     Instance.new("UICorner", sidebar).CornerRadius = UDim.new(0, 6)
     self.sidebar = sidebar
+    local sidebarLayout = Instance.new("UIListLayout", sidebar)
+    sidebarLayout.Padding = UDim.new(0, 2)
+    sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    Instance.new("UIPadding", sidebar).PaddingTop = UDim.new(0, 4)
     local sidebarEdge = Instance.new("Frame")
     sidebarEdge.Size = UDim2.new(0, 1, 1, 0)
     sidebarEdge.Position = UDim2.new(1, -1, 0, 0)
@@ -486,6 +480,10 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
         
         if best then
             if best.subtab then
+                -- Explicitly activate main tab first if search requires switching
+                if best.subtab.tab and best.subtab.tab.activate then
+                    best.subtab.tab:activate()
+                end
                 best.subtab:select()
                 -- Scroll content to show the item
                 task.defer(function()
@@ -810,9 +808,14 @@ function UILib:addWatermark(name)
     wm.Parent = self.sg
     wm.ZIndex = 200
     Instance.new("UICorner", wm).CornerRadius = UDim.new(0, 6)
-    local wmStroke = Instance.new("UIStroke", wm)
-    wmStroke.Color = self.theme.Accent
-    wmStroke.Thickness = 1
+    -- Horizontal separator instead of outline
+    local sep = Instance.new("Frame")
+    sep.Size = UDim2.new(1, -16, 0, 1)
+    sep.Position = UDim2.new(0, 8, 1, -5)
+    sep.BackgroundColor3 = self.theme.Accent
+    sep.BorderSizePixel = 0
+    sep.ZIndex = 201
+    sep.Parent = wm
     
     local dragBtn = Instance.new("TextButton")
     dragBtn.Size = UDim2.new(1, 0, 1, 0)
@@ -941,19 +944,21 @@ function UILib:addTab(name)
     tab.btn = btn
     tab.underline = underline
     local function activate()
-        if self.activeTab then
-            self.activeTab.btn.TextColor3 = self.theme.Gray
-            if self.activeTab.underline then self.activeTab.underline.Visible = false end
-            for _, sub in pairs(self.activeTab.subtabs) do 
+        for _, t in pairs(self.tabs) do
+            for _, sub in pairs(t.subtabs) do 
                 sub.btn.Visible = false 
                 sub.page.Visible = false 
                 if sub.selLine then sub.selLine.Visible = false end
                 if sub.label then sub.label.TextColor3 = self.theme.Gray end
             end
         end
+        if self.activeTab then
+            self.activeTab.btn.TextColor3 = self.theme.Gray
+            if self.activeTab.underline then self.activeTab.underline.Visible = false end
+        end
         btn.TextColor3 = self.theme.White
         underline.Visible = true
-        for _, sub in pairs(tab.subtabs) do sub.btn.Visible = true end
+        for _, sub in pairs(tab.subtabOrder) do sub.btn.Visible = true end
         if tab.firstSub then 
             local first = tab.subtabs[tab.firstSub] 
             if first then 
@@ -962,6 +967,7 @@ function UILib:addTab(name)
                 if first.label then first.label.TextColor3 = self.theme.White end
             end 
         end
+        self.sidebar.CanvasSize = UDim2.new(0, 0, 0, #tab.subtabOrder * 26 + 10)
         self.activeTab = tab
     end
     btn.MouseButton1Click:Connect(activate)
@@ -980,7 +986,7 @@ function UILib.Tab:addSubTab(name)
     local btn = Instance.new("TextButton")
     table.insert(self.subtabOrder, sub)
     btn.Size = UDim2.new(1, -8, 0, 24)
-    btn.Position = UDim2.new(0, 4, 0, (#self.subtabOrder - 1) * 26 + 1)
+    btn.Position = UDim2.new(0, 4, 0, 0) -- Manual position removed, controlled by UIListLayout
     btn.BackgroundTransparency = 1
     btn.Text = ""
     btn.ZIndex = 5
@@ -1036,7 +1042,7 @@ function UILib.Tab:addSubTab(name)
         self.page.Visible = true
         
         -- Ensure sidebar scrolling for subtabs
-        self.window.sidebar.CanvasSize = UDim2.new(0, 0, 0, #self.tab.subtabs * 26 + 10)
+        self.window.sidebar.CanvasSize = UDim2.new(0, 0, 0, #self.tab.subtabOrder * 26 + 10)
     end
 
     btn.MouseEnter:Connect(function() hov.Visible = true end)
