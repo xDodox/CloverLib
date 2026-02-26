@@ -52,21 +52,25 @@ local tooltipTimer = nil
 local function showTooltip(text, pos)
     if not tooltipFrame then return end
     tooltipText.Text = text
-    -- Ensure tooltip stays on screen
-    local screenWidth = LP.PlayerGui:GetGuiObjectsAtPosition(0,0)[1] and LP.PlayerGui:GetGuiObjectsAtPosition(0,0)[1].Parent and LP.PlayerGui:GetGuiObjectsAtPosition(0,0)[1].Parent.AbsoluteSize.X or 1920
-    local screenHeight = LP.PlayerGui:GetGuiObjectsAtPosition(0,0)[1] and LP.PlayerGui:GetGuiObjectsAtPosition(0,0)[1].Parent and LP.PlayerGui:GetGuiObjectsAtPosition(0,0)[1].Parent.AbsoluteSize.Y or 1080
-    -- Fallback to workspace current camera if gui objects fail
-    if workspace.CurrentCamera then
-        screenWidth = workspace.CurrentCamera.ViewportSize.X
-        screenHeight = workspace.CurrentCamera.ViewportSize.Y
-    end
-
-    local x = pos.X + 15
-    local y = pos.Y + 15
     
-    -- Estimation of tooltip size if needed, but for now just basic clamping
-    if x + 160 > screenWidth then x = pos.X - 165 end
-    if y + 40 > screenHeight then y = pos.Y - 45 end
+    local screenWidth = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
+    local screenHeight = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
+
+    -- Static size for consistency as requested
+    local padding = 10
+    local textWidth = 160
+    local textSize = game:GetService("TextService"):GetTextSize(text, 12, Enum.Font.Roboto, Vector2.new(textWidth, 500))
+    local height = textSize.Y + padding * 2
+    
+    tooltipFrame.Size = UDim2.new(0, textWidth + padding * 2, 0, height)
+    
+    -- Position: Above the component (horizontally centered to mouse)
+    local x = pos.X - (tooltipFrame.Size.X.Offset / 2)
+    local y = pos.Y - tooltipFrame.Size.Y.Offset - 10
+    
+    -- Bound clamping
+    x = math.clamp(x, 5, screenWidth - tooltipFrame.Size.X.Offset - 5)
+    y = math.clamp(y, 5, screenHeight - tooltipFrame.Size.Y.Offset - 5)
 
     tooltipFrame.Position = UDim2.new(0, x, 0, y)
     tooltipFrame.Visible = true
@@ -116,21 +120,10 @@ function UILib:notify(message, notifType, duration)
     colorBar.ZIndex = 501
     colorBar.Parent = notif
     Instance.new("UICorner", colorBar).CornerRadius = UDim.new(0, 2)
-    -- Type icon
-    local icons = {info = "i", success = "v", error = "x", warning = "!"}
-    local iconLbl = Instance.new("TextLabel")
-    iconLbl.Size = UDim2.new(0, 20, 1, 0)
-    iconLbl.Position = UDim2.new(0, 10, 0, 0)
-    iconLbl.BackgroundTransparency = 1
-    iconLbl.Text = icons[notifType] or "i"
-    iconLbl.TextColor3 = accentColor
-    iconLbl.Font = Enum.Font.GothamBold
-    iconLbl.TextSize = 16
-    iconLbl.ZIndex = 501
-    iconLbl.Parent = notif
+    -- Removed iconLbl creation for cleaner layout
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -38, 1, 0)
-    label.Position = UDim2.new(0, 32, 0, 0)
+    label.Size = UDim2.new(1, -16, 1, 0) -- Increased width since icon is gone
+    label.Position = UDim2.new(0, 10, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = message
     label.TextColor3 = self.theme.White
@@ -232,6 +225,25 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     self.watermark = nil
     self.notifications = {}
     self.configPrefix = "clover_"
+    self.accentObjects = {} -- track objects that need color updates
+    
+    function self:updateAccent(color)
+        self.theme.Accent = color
+        self.theme.AccentD = Color3.new(color.r*0.75, color.g*0.75, color.b*0.75)
+        for _, obj in ipairs(self.accentObjects) do
+            if obj:IsA("Frame") or obj:IsA("ScrollingFrame") then
+                if obj.Name == "indicator" or obj.Name == "underline" or obj.Name == "headerLine" then
+                    obj.BackgroundColor3 = color
+                end
+            elseif obj:IsA("UIStroke") then
+                obj.Color = color
+            elseif obj:IsA("TextLabel") or obj:IsA("TextButton") then
+                if obj.Name == "arrow" or obj.Name == "icon" or obj.Name == "cbMark" then
+                    obj.TextColor3 = color
+                end
+            end
+        end
+    end
 
     self.sg = Instance.new("ScreenGui")
     self.sg.Name = "Clover_" .. HS:GenerateGUID(false)
@@ -242,12 +254,25 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 
     -- Tooltip frame
     tooltipFrame = Instance.new("Frame")
-    tooltipFrame.Size = UDim2.new(0, 0, 0, 0)
     tooltipFrame.BackgroundColor3 = self.theme.Panel
     tooltipFrame.BorderSizePixel = 0
     tooltipFrame.Visible = false
     tooltipFrame.ZIndex = 1000
     tooltipFrame.Parent = self.sg
+    Instance.new("UICorner", tooltipFrame).CornerRadius = UDim.new(0, 4)
+    local ttStroke = Instance.new("UIStroke", tooltipFrame)
+    ttStroke.Color = self.theme.Accent
+    ttStroke.Thickness = 1
+    tooltipText = Instance.new("TextLabel")
+    tooltipText.Size = UDim2.new(1, -20, 1, -20)
+    tooltipText.Position = UDim2.new(0, 10, 0, 10)
+    tooltipText.BackgroundTransparency = 1
+    tooltipText.TextColor3 = self.theme.White
+    tooltipText.Font = Enum.Font.Roboto
+    tooltipText.TextSize = 12
+    tooltipText.TextWrapped = true
+    tooltipText.ZIndex = 1001
+    tooltipText.Parent = tooltipFrame
     Instance.new("UICorner", tooltipFrame).CornerRadius = UDim.new(0, 4)
     local tipStroke = Instance.new("UIStroke", tooltipFrame)
     tipStroke.Color = self.theme.Accent
@@ -392,68 +417,41 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     sidebarEdge.BorderSizePixel = 0
     sidebarEdge.Parent = sidebar
 
-    -- Sidebar Search Box
-    local searchContainer = Instance.new("Frame")
-    searchContainer.Size = UDim2.new(1, -8, 0, 28)
-    searchContainer.Position = UDim2.new(0, 4, 0, 4)
-    searchContainer.BackgroundColor3 = self.theme.Track
-    searchContainer.BorderSizePixel = 0
-    searchContainer.ZIndex = 5
-    searchContainer.Parent = sidebar
-    Instance.new("UICorner", searchContainer).CornerRadius = UDim.new(0, 4)
-    local searchIcon = Instance.new("TextLabel")
-    searchIcon.Size = UDim2.new(0, 20, 1, 0)
-    searchIcon.Position = UDim2.new(0, 4, 0, 0)
-    searchIcon.BackgroundTransparency = 1
-    searchIcon.Text = "" -- Removed emoji
-    searchIcon.TextColor3 = self.theme.Gray
-    searchIcon.Font = Enum.Font.Roboto
-    searchIcon.TextSize = 12
-    searchIcon.ZIndex = 6
-    searchIcon.Parent = searchContainer
-    local searchBox = Instance.new("TextBox")
-    searchBox.Size = UDim2.new(1, -44, 1, 0)
-    searchBox.Position = UDim2.new(0, 8, 0, 0) -- Adjusted position since icon is gone
-    searchBox.ClipsDescendants = true -- Fix overflow
-    searchBox.BackgroundTransparency = 1
-    searchBox.Text = ""
-    searchBox.PlaceholderText = "Search..."
-    searchBox.PlaceholderColor3 = self.theme.Gray
-    searchBox.TextColor3 = self.theme.White
-    searchBox.Font = Enum.Font.Roboto
-    searchBox.TextSize = 11
-    searchBox.TextXAlignment = Enum.TextXAlignment.Left
-    searchBox.ClearTextOnFocus = false
-    searchBox.ZIndex = 6
-    searchBox.Parent = searchContainer
-    local searchClear = Instance.new("TextButton")
-    searchClear.Size = UDim2.new(0, 18, 0, 18)
-    searchClear.Position = UDim2.new(1, -22, 0.5, -9)
-    searchClear.BackgroundTransparency = 1
-    searchClear.Text = "\xC3\x97"
-    searchClear.TextColor3 = self.theme.Gray
-    searchClear.Font = Enum.Font.GothamBold
-    searchClear.TextSize = 14
-    searchClear.Visible = false
-    searchClear.ZIndex = 7
-    searchClear.Parent = searchContainer
-    self.searchBox = searchBox
-    self.allSubTabs = {} -- track all sub-tab buttons for filtering
+    -- Global element registration helper
+    function self:registerSearchable(text, obj, subtab)
+        table.insert(self.allSearchable, {text = text:lower(), obj = obj, subtab = subtab})
+    end
 
-    local function filterSubTabs(query)
+    local function filterSearch(query)
         query = query:lower()
-        for _, sub in ipairs(self.allSubTabs) do
-            if query == "" then
-                sub.btn.Visible = (self.activeTab and self.activeTab == sub.tab)
-            else
-                local match = sub.name:lower():find(query, 1, true) ~= nil
-                sub.btn.Visible = match
+        if query == "" then
+            searchClear.Visible = false
+            return
+        end
+        searchClear.Visible = true
+        
+        -- Find best match
+        local best = nil
+        for _, item in ipairs(self.allSearchable) do
+            if item.text:find(query, 1, true) then
+                best = item
+                break
             end
         end
-        searchClear.Visible = (#query > 0)
+        
+        if best then
+            if best.subtab then
+                best.subtab:select()
+                -- Scroll to object
+                task.defer(function()
+                    local rel = best.obj.AbsolutePosition.Y - self.content.AbsolutePosition.Y
+                    self.content.CanvasPosition = Vector2.new(0, self.content.CanvasPosition.Y + rel - 50)
+                end)
+            end
+        end
     end
     searchBox:GetPropertyChangedSignal("Text"):Connect(function()
-        filterSubTabs(searchBox.Text)
+        filterSearch(searchBox.Text)
     end)
     searchClear.MouseButton1Click:Connect(function()
         searchBox.Text = ""
@@ -502,16 +500,40 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     self.activeTab = nil
     self.navList = navList
 
-    -- UI Settings Tab
+    -- UI Settings Tab (Hardcoded as First Tab)
     if includeUITab ~= false then
         local uiTab = self:addTab("UI")
-        local uiSub = uiTab:addSubTab("Settings")
-        local grp = uiSub:addGroup("Interface")
-        grp:colorpicker("Accent Color", self.theme.Accent, function(c) self.theme.Accent = c; self.theme.AccentD = Color3.new(c.r*0.75, c.g*0.75, c.b*0.75) end, "Change accent color (requires restart)")
-        grp:keybind("Toggle Key", "RightShift", function(_, name) self.toggleKey = name == "RightShift" and Enum.KeyCode.RightShift or Enum.KeyCode[name] or Enum.KeyCode.RightShift end, "Set key to show/hide menu")
-        grp:toggle("Show Version", self.showVersion, function(v) self.showVersion = v end, "Show version pill in header")
-        grp:toggle("Show Watermark", false, function(v) if v then self:addWatermark("CloverHub") elseif self.watermark then self.watermark:Destroy() self.watermark = nil end end, "Display FPS and ping")
-        grp:button("Unload", function() self:Destroy() end, "Destroy the UI")
+        local uiSub = uiTab:addSubTab("Interface")
+        local grp = uiSub:addGroup("Theme & Toggle")
+        
+        local accentPicker = grp:colorpicker("Accent Color", self.theme.Accent, function(c) 
+            self:updateAccent(c)
+        end, "Update accent color")
+        
+        grp:keybind("Toggle Key", "RightShift", function(_, name) 
+            self.toggleKey = Enum.KeyCode[name] or Enum.KeyCode.RightShift 
+        end, "Set key to show/hide menu")
+        
+        local showVer = grp:toggle("Show Version", self.showVersion, function(v) 
+            self.showVersion = v 
+            if self.versionPill then self.versionPill.Visible = v end
+        end, "Show version pill")
+        
+        local showWM = grp:toggle("Show Watermark", false, function(v) 
+            if v then self:addWatermark(self.title) else if self.watermark then self.watermark:Destroy(); self.watermark = nil end end
+        end, "Display FPS and ping")
+        
+        grp:button("Unload", function() self:Destroy() end, "Cleanly remove the UI")
+        
+        local cfg = uiSub:addGroup("Configuration")
+        local currentProfile = "default"
+        cfg:textbox("Profile Name", "default", function(val) currentProfile = val end)
+        cfg:button("Save Current", function() self:saveConfig(self.configPrefix .. currentProfile .. ".json") end)
+        cfg:button("Scan & Load", function() 
+             local profiles = self:listConfigs()
+             if #profiles > 0 then self:loadConfig(self.configPrefix .. profiles[1] .. ".json") end
+        end)
+    end
 
         -- Config Profiles
         local cfg = uiSub:addGroup("Config Profiles")
@@ -759,19 +781,35 @@ function UILib:addWatermark(name)
     local wmStroke = Instance.new("UIStroke", wm)
     wmStroke.Color = self.theme.Accent
     wmStroke.Thickness = 1
-    local wmName = Instance.new("TextLabel")
-    wmName.Size = UDim2.new(0, 60, 1, 0)
-    wmName.Position = UDim2.new(0, 5, 0, 0)
-    wmName.BackgroundTransparency = 1
-    wmName.Text = name
-    wmName.TextColor3 = self.theme.White
-    wmName.Font = Enum.Font.GothamBold
-    wmName.TextSize = 12
-    wmName.TextXAlignment = Enum.TextXAlignment.Left
-    wmName.ZIndex = 201
-    wmName.Parent = wm
+    
+    local dragBtn = Instance.new("TextButton")
+    dragBtn.Size = UDim2.new(1, 0, 1, 0)
+    dragBtn.BackgroundTransparency = 1
+    dragBtn.Text = ""
+    dragBtn.ZIndex = 205
+    dragBtn.Parent = wm
+    
+    do
+        local drag, dragStart, dragPos = false, nil, nil
+        dragBtn.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = true dragStart = i.Position dragPos = wm.Position end end)
+        table.insert(self.connections, UIS.InputChanged:Connect(function(i) if drag and i.UserInputType == Enum.UserInputType.MouseMovement then local delta = i.Position - dragStart wm.Position = UDim2.new(dragPos.X.Scale, dragPos.X.Offset + delta.X, dragPos.Y.Scale, dragPos.Y.Offset + delta.Y) end end))
+        table.insert(self.connections, UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end end))
+    end
+    
+    local nameLbl = Instance.new("TextLabel")
+    nameLbl.Size = UDim2.new(0, 60, 1, 0)
+    nameLbl.Position = UDim2.new(0, 8, 0, 0)
+    nameLbl.BackgroundTransparency = 1
+    nameLbl.Text = name
+    nameLbl.TextColor3 = self.theme.White
+    nameLbl.Font = Enum.Font.GothamBold
+    nameLbl.TextSize = 12
+    nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+    nameLbl.ZIndex = 201
+    nameLbl.Parent = wm
+    
     local fpsLabel = Instance.new("TextLabel")
-    fpsLabel.Size = UDim2.new(0, 40, 1, 0)
+    fpsLabel.Size = UDim2.new(0, 45, 1, 0)
     fpsLabel.Position = UDim2.new(0, 70, 0, 0)
     fpsLabel.BackgroundTransparency = 1
     fpsLabel.Text = "FPS: 0"
@@ -780,6 +818,7 @@ function UILib:addWatermark(name)
     fpsLabel.TextSize = 10
     fpsLabel.ZIndex = 201
     fpsLabel.Parent = wm
+    
     local pingLabel = Instance.new("TextLabel")
     pingLabel.Size = UDim2.new(0, 40, 1, 0)
     pingLabel.Position = UDim2.new(0, 115, 0, 0)
@@ -790,6 +829,7 @@ function UILib:addWatermark(name)
     pingLabel.TextSize = 10
     pingLabel.ZIndex = 201
     pingLabel.Parent = wm
+    
     local frameCount = 0
     local lastTime = tick()
     local connection = RunService.RenderStepped:Connect(function()
@@ -803,18 +843,20 @@ function UILib:addWatermark(name)
         local ping = LP:GetNetworkPing() * 1000
         pingLabel.Text = math.floor(ping + 0.5) .. "ms"
     end)
-    wm:SetAttribute("Connection", connection)
+    self.wmConn = connection
     self.watermark = wm
+    
+    -- Ensure watermark is registered for theme updates
+    table.insert(self.accentObjects, wmStroke)
+    table.insert(self.accentObjects, fpsLabel)
+    table.insert(self.accentObjects, pingLabel)
+    
     return wm
 end
 
 function UILib:Destroy()
     for _, conn in ipairs(self.connections) do conn:Disconnect() end
-    if self.watermark then
-        local conn = self.watermark:GetAttribute("Connection")
-        if conn then conn:Disconnect() end
-        self.watermark:Destroy()
-    end
+    if self.wmConn then self.wmConn:Disconnect(); self.wmConn = nil end
     if self.sg then self.sg:Destroy() end
     if activeWindow == self then activeWindow = nil end
 end
@@ -883,48 +925,77 @@ function UILib:addTab(name)
     return tab
 end
 
-function UILib.Tab:addSubTab(subName)
+function UILib.Tab:addSubTab(name)
     local sub = setmetatable({}, UILib.SubTab)
-    sub.name = subName
+    sub.name = name
     sub.tab = self
     sub.window = self.window
+    sub.groups = {}
+    
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, 40)
+    btn.Size = UDim2.new(1, -8, 0, 24)
+    btn.Position = UDim2.new(0, 4, 0, #self.subtabs * 26 + 1)
     btn.BackgroundTransparency = 1
     btn.Text = ""
-    btn.Visible = false
+    btn.ZIndex = 5
     btn.Parent = self.window.sidebar
-    local hover = Instance.new("Frame")
-    hover.Size = UDim2.new(1, -2, 1, -1)
-    hover.Position = UDim2.new(0, 1, 0, 0)
-    hover.BackgroundColor3 = self.window.theme.ItemHov
-    hover.BorderSizePixel = 0
-    hover.Visible = false
-    hover.ZIndex = 1
-    hover.Parent = btn
-    Instance.new("UICorner", hover).CornerRadius = UDim.new(0, 4)
-    btn.MouseEnter:Connect(function() hover.Visible = true end)
-    btn.MouseLeave:Connect(function() hover.Visible = false end)
-    local indicator = Instance.new("Frame")
-    indicator.Size = UDim2.new(0, 3, 0.5, 0)
-    indicator.Position = UDim2.new(0, 0, 0.25, 0)
-    indicator.BackgroundColor3 = self.window.theme.Accent
-    indicator.BorderSizePixel = 0
-    indicator.Visible = false
-    indicator.ZIndex = 3
-    indicator.Parent = btn
-    Instance.new("UICorner", indicator).CornerRadius = UDim.new(0, 2)
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, -8, 1, 0)
-    lbl.Position = UDim2.new(0, 15, 0, 0)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = subName
-    lbl.TextColor3 = self.window.theme.Gray
-    lbl.Font = Enum.Font.GothamBold
-    lbl.TextSize = 12
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.ZIndex = 3
-    lbl.Parent = btn
+    
+    local hov = Instance.new("Frame")
+    hov.Size = UDim2.new(1, 0, 1, 0)
+    hov.BackgroundColor3 = self.window.theme.ItemHov
+    hov.BorderSizePixel = 0
+    hov.Visible = false
+    hov.ZIndex = 4
+    hov.Parent = btn
+    Instance.new("UICorner", hov).CornerRadius = UDim.new(0, 4)
+    
+    local selLine = Instance.new("Frame")
+    selLine.Size = UDim2.new(0, 2, 1, -8)
+    selLine.Position = UDim2.new(0, 0, 0, 4)
+    selLine.BackgroundColor3 = self.window.theme.Accent
+    selLine.BorderSizePixel = 0
+    selLine.Visible = false
+    selLine.ZIndex = 6
+    selLine.Parent = btn
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -12, 1, 0)
+    label.Position = UDim2.new(0, 8, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = name
+    label.TextColor3 = self.window.theme.Gray
+    label.Font = Enum.Font.Roboto
+    label.TextSize = 12
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.ZIndex = 6
+    label.Parent = btn
+    
+    function sub:select()
+        for _, t in pairs(self.window.tabs) do
+            t.btn.TextColor3 = self.window.theme.Gray
+            if t.underline then t.underline.Visible = false end
+            for _, s in pairs(t.subtabs) do
+                s.btn.Visible = false
+                s.page.Visible = false
+                s.selLine.Visible = false
+                s.label.TextColor3 = self.window.theme.Gray
+            end
+        end
+        self.tab.btn.TextColor3 = self.window.theme.White
+        if self.tab.underline then self.tab.underline.Visible = true end
+        for _, s in pairs(self.tab.subtabs) do s.btn.Visible = true end
+        self.window.activeTab = self.tab
+        self.label.TextColor3 = self.window.theme.White
+        self.selLine.Visible = true
+        self.page.Visible = true
+        
+        -- Ensure sidebar scrolling for subtabs
+        self.window.sidebar.CanvasSize = UDim2.new(0, 0, 0, #self.tab.subtabs * 26 + 10)
+    end
+
+    btn.MouseEnter:Connect(function() hov.Visible = true end)
+    btn.MouseLeave:Connect(function() hov.Visible = false end)
+    
     local page = Instance.new("ScrollingFrame")
     page.Size = UDim2.new(1, -14, 1, -12)
     page.Position = UDim2.new(0, 7, 0, 6)
@@ -940,20 +1011,17 @@ function UILib.Tab:addSubTab(subName)
     layout.Padding = UDim.new(0, 8)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     sub.btn = btn
-    sub.ind = indicator
-    sub.lbl = lbl
+    sub.hov = hov
+    sub.selLine = selLine
+    sub.label = label
     sub.page = page
     sub.layout = layout
-    sub.groups = {}
-    local function activateSub()
-        if self.window.activeTab ~= self then self:activate() end
-        for _, s in pairs(self.subtabs) do s.page.Visible = false s.ind.Visible = false s.lbl.TextColor3 = self.window.theme.Gray end
-        page.Visible = true indicator.Visible = true lbl.TextColor3 = self.window.theme.White
-    end
-    btn.MouseButton1Click:Connect(activateSub)
-    if not self.firstSub then self.firstSub = subName end
-    self.subtabs[subName] = sub
-    table.insert(self.window.allSubTabs, {name = subName, btn = btn, tab = self})
+    
+    btn.MouseButton1Click:Connect(function() sub:select() end)
+    
+    if not self.firstSub then self.firstSub = name end
+    self.subtabs[name] = sub
+    table.insert(self.window.allSubTabs, {name = name, btn = btn, tab = self})
     return sub
 end
 
@@ -981,8 +1049,8 @@ function UILib.SubTab:split()
     local rightLayout = Instance.new("UIListLayout", right)
     rightLayout.Padding = UDim.new(0, 8)
     rightLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    local leftCol = setmetatable({ frame = left, window = self.window, tab = self.tab }, UILib.Column)
-    local rightCol = setmetatable({ frame = right, window = self.window, tab = self.tab }, UILib.Column)
+    local leftCol = setmetatable({ frame = left, window = self.window, tab = self.tab, sub = self }, UILib.Column)
+    local rightCol = setmetatable({ frame = right, window = self.window, tab = self.tab, sub = self }, UILib.Column)
     return leftCol, rightCol
 end
 
@@ -1431,6 +1499,7 @@ function UILib.Column:addGroup(title)
     group.title = title
     group.window = window
     group.tab = self.tab
+    group.sub = self.sub
     group.columnFrame = self.frame
     local grp = Instance.new("Frame")
     grp.Size = UDim2.new(1, 0, 0, 36)
@@ -1594,6 +1663,7 @@ function UILib.Column:addGroup(title)
         end)
         if tooltip then attachTooltip(row, tooltip) end
         updateSize()
+        window:registerSearchable(text, row, group.sub)
         return row
     end
 
@@ -1601,6 +1671,15 @@ function UILib.Column:addGroup(title)
         local row = createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step)
         if tooltip then attachTooltip(row, tooltip) end
         updateSize()
+        window:registerSearchable(text, row, group.sub)
+        return row
+    end
+
+    function group:button(text, callback, tooltip)
+        local row = createButton(group, items, window, text, callback)
+        if tooltip then attachTooltip(row, tooltip) end
+        updateSize()
+        window:registerSearchable(text, row, group.sub)
         return row
     end
 
@@ -1661,15 +1740,8 @@ function UILib.Column:addGroup(title)
         selLbl.TextXAlignment = Enum.TextXAlignment.Left
         selLbl.ZIndex = 12
         selLbl.Parent = dbtn
-        local arrow = Instance.new("TextLabel")
-        arrow.Size = UDim2.new(0, 24, 1, 0)
-        arrow.Position = UDim2.new(1, -26, 0, 0)
-        arrow.BackgroundTransparency = 1
-        arrow.Text = "v"
-        arrow.TextColor3 = window.theme.Accent
-        arrow.Font = Enum.Font.RobotoMono
-        arrow.TextSize = 10
-        arrow.ZIndex = 12
+        arrow.Name = "arrow"
+        table.insert(window.accentObjects, arrow)
         arrow.Parent = dbtn
         local listH = #options * 26
         local dlist = Instance.new("ScrollingFrame")
@@ -2596,6 +2668,8 @@ function UILib.SubTab:addGroup(title)
         arrow.Font = Enum.Font.GothamBold
         arrow.TextSize = 12
         arrow.ZIndex = 12
+        arrow.Name = "arrow"
+        table.insert(window.accentObjects, arrow)
         arrow.Parent = dbtn
         local listH = #options * 26
         local dlist = Instance.new("ScrollingFrame")
