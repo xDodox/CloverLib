@@ -109,7 +109,7 @@ function UILib:notify(message, notifType, duration)
     notif.Parent = self.sg
     Instance.new("UICorner", notif).CornerRadius = UDim.new(0, 6)
     local stroke = Instance.new("UIStroke", notif)
-    stroke.Color = accentColor
+    stroke.Color = self.theme.Border
     stroke.Thickness = 1
     -- Colored left bar
     local colorBar = Instance.new("Frame")
@@ -120,9 +120,28 @@ function UILib:notify(message, notifType, duration)
     colorBar.ZIndex = 501
     colorBar.Parent = notif
     Instance.new("UICorner", colorBar).CornerRadius = UDim.new(0, 2)
-    -- Removed iconLbl creation for cleaner layout
+    
+    -- Progress Bar
+    local progressOuter = Instance.new("Frame")
+    progressOuter.Size = UDim2.new(1, 0, 0, 2)
+    progressOuter.Position = UDim2.new(0, 0, 1, -2)
+    progressOuter.BackgroundTransparency = 1
+    progressOuter.BorderSizePixel = 0
+    progressOuter.ZIndex = 502
+    progressOuter.Parent = notif
+    Instance.new("UICorner", progressOuter).CornerRadius = UDim.new(0, 2)
+    
+    local progressBar = Instance.new("Frame")
+    progressBar.Name = "indicator" -- Mark for accent updates if needed, though usually fixed to notif type
+    progressBar.Size = UDim2.new(1, 0, 1, 0)
+    progressBar.BackgroundColor3 = accentColor
+    progressBar.BorderSizePixel = 0
+    progressBar.ZIndex = 503
+    progressBar.Parent = progressOuter
+    Instance.new("UICorner", progressBar).CornerRadius = UDim.new(0, 2)
+
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -16, 1, 0) -- Increased width since icon is gone
+    label.Size = UDim2.new(1, -16, 1, -4)
     label.Position = UDim2.new(0, 10, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = message
@@ -137,6 +156,9 @@ function UILib:notify(message, notifType, duration)
     -- Slide in
     local tween = TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(1, -250, 0, yPos)})
     tween:Play()
+    
+    -- Animate progress
+    TweenService:Create(progressBar, TweenInfo.new(duration, Enum.EasingStyle.Linear), {Size = UDim2.new(0, 0, 1, 0)}):Play()
     -- Auto dismiss
     task.delay(duration, function()
         if notif and notif.Parent then
@@ -781,8 +803,8 @@ end
 function UILib:addWatermark(name)
     if self.watermark then self.watermark:Destroy() end
     local wm = Instance.new("Frame")
-    wm.Size = UDim2.new(0, 160, 0, 30)
-    wm.Position = UDim2.new(1, -170, 0, 10)  -- right side
+    wm.Size = UDim2.new(0, 200, 0, 30)
+    wm.Position = UDim2.new(1, -210, 0, 10)  -- right side
     wm.BackgroundColor3 = self.theme.Panel
     wm.BorderSizePixel = 0
     wm.Parent = self.sg
@@ -807,7 +829,7 @@ function UILib:addWatermark(name)
     end
     
     local nameLbl = Instance.new("TextLabel")
-    nameLbl.Size = UDim2.new(0, 60, 1, 0)
+    nameLbl.Size = UDim2.new(0, 100, 1, 0)
     nameLbl.Position = UDim2.new(0, 8, 0, 0)
     nameLbl.BackgroundTransparency = 1
     nameLbl.Text = name
@@ -820,7 +842,7 @@ function UILib:addWatermark(name)
     
     local fpsLabel = Instance.new("TextLabel")
     fpsLabel.Size = UDim2.new(0, 45, 1, 0)
-    fpsLabel.Position = UDim2.new(0, 70, 0, 0)
+    fpsLabel.Position = UDim2.new(0, 110, 0, 0)
     fpsLabel.BackgroundTransparency = 1
     fpsLabel.Text = "FPS: 0"
     fpsLabel.TextColor3 = self.theme.Accent
@@ -831,7 +853,7 @@ function UILib:addWatermark(name)
     
     local pingLabel = Instance.new("TextLabel")
     pingLabel.Size = UDim2.new(0, 40, 1, 0)
-    pingLabel.Position = UDim2.new(0, 115, 0, 0)
+    pingLabel.Position = UDim2.new(0, 155, 0, 0)
     pingLabel.BackgroundTransparency = 1
     pingLabel.Text = "0ms"
     pingLabel.TextColor3 = self.theme.Accent
@@ -897,6 +919,7 @@ function UILib:addTab(name)
     tab.name = name
     tab.window = self
     tab.subtabs = {}
+    tab.subtabOrder = {}
     tab.firstSub = nil
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 110, 0, 46)
@@ -921,12 +944,24 @@ function UILib:addTab(name)
         if self.activeTab then
             self.activeTab.btn.TextColor3 = self.theme.Gray
             if self.activeTab.underline then self.activeTab.underline.Visible = false end
-            for _, sub in pairs(self.activeTab.subtabs) do sub.btn.Visible = false sub.page.Visible = false sub.ind.Visible = false sub.lbl.TextColor3 = self.theme.Gray end
+            for _, sub in pairs(self.activeTab.subtabs) do 
+                sub.btn.Visible = false 
+                sub.page.Visible = false 
+                if sub.selLine then sub.selLine.Visible = false end
+                if sub.label then sub.label.TextColor3 = self.theme.Gray end
+            end
         end
         btn.TextColor3 = self.theme.White
         underline.Visible = true
         for _, sub in pairs(tab.subtabs) do sub.btn.Visible = true end
-        if tab.firstSub then local first = tab.subtabs[tab.firstSub] if first then first.page.Visible = true first.ind.Visible = true first.lbl.TextColor3 = self.theme.White end end
+        if tab.firstSub then 
+            local first = tab.subtabs[tab.firstSub] 
+            if first then 
+                first.page.Visible = true 
+                if first.selLine then first.selLine.Visible = true end
+                if first.label then first.label.TextColor3 = self.theme.White end
+            end 
+        end
         self.activeTab = tab
     end
     btn.MouseButton1Click:Connect(activate)
@@ -943,8 +978,9 @@ function UILib.Tab:addSubTab(name)
     sub.groups = {}
     
     local btn = Instance.new("TextButton")
+    table.insert(self.subtabOrder, sub)
     btn.Size = UDim2.new(1, -8, 0, 24)
-    btn.Position = UDim2.new(0, 4, 0, #self.subtabs * 26 + 1)
+    btn.Position = UDim2.new(0, 4, 0, (#self.subtabOrder - 1) * 26 + 1)
     btn.BackgroundTransparency = 1
     btn.Text = ""
     btn.ZIndex = 5
