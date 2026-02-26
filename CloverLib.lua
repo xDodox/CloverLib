@@ -66,18 +66,20 @@ local function showTooltip(text, element)
     local absPos = element.AbsolutePosition
     local absSize = element.AbsoluteSize
     
-    local centerX = absPos.X + (absSize.X / 2)
-    local x = centerX - (tooltipFrame.Size.X.Offset / 2)
-    local y = absPos.Y - tooltipFrame.Size.Y.Offset - 6
+    -- Position below the element by default
+    local targetX = absPos.X + (absSize.X / 2) - (tooltipFrame.AbsoluteSize.X / 2)
+    local targetY = absPos.Y + absSize.Y + 6
     
-    if y < 5 then
-        y = absPos.Y + absSize.Y + 6
+    -- Flip above if no space below
+    if targetY + tooltipFrame.AbsoluteSize.Y > screenHeight - 10 then
+        targetY = absPos.Y - tooltipFrame.AbsoluteSize.Y - 6
     end
     
-    x = math.clamp(x, 5, screenWidth - tooltipFrame.Size.X.Offset - 5)
-    y = math.clamp(y, 5, screenHeight - tooltipFrame.Size.Y.Offset - 5)
-
-    tooltipFrame.Position = UDim2.new(0, x, 0, y)
+    -- Keep within screen bounds
+    targetX = math.clamp(targetX, 10, screenWidth - tooltipFrame.AbsoluteSize.X - 10)
+    targetY = math.clamp(targetY, 10, screenHeight - tooltipFrame.AbsoluteSize.Y - 10)
+    
+    tooltipFrame.Position = UDim2.new(0, targetX, 0, targetY)
     tooltipFrame.Visible = true
 end
 
@@ -1281,6 +1283,8 @@ local function createColorPicker(group, items, window, text, default, callback)
 
     local function openPicker()
         if pickerFrame then closePicker() return end
+        local _pickerJustOpened = true
+        task.delay(0.1, function() _pickerJustOpened = false end)
         pickerFrame = Instance.new("Frame")
         pickerFrame.Size = UDim2.new(0, 220, 0, 260)
         local absPos = colorBox.AbsolutePosition
@@ -1523,12 +1527,13 @@ local function createColorPicker(group, items, window, text, default, callback)
 
         local inputBeganConn
         inputBeganConn = UIS.InputBegan:Connect(function(input)
+            if _pickerJustOpened then return end
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 local pos = UIS:GetMouseLocation()
                 local absPos_ = pickerFrame.AbsolutePosition
                 local absSize_ = pickerFrame.AbsoluteSize
                 
-                -- Extra check: Is the click on the colorBox button? If so, ignore (openPicker handles it)
+                -- Check if click is on the colorBox button
                 local btnPos = colorBox.AbsolutePosition
                 local btnSize = colorBox.AbsoluteSize
                 if pos.X >= btnPos.X and pos.X <= btnPos.X + btnSize.X and pos.Y >= btnPos.Y and pos.Y <= btnPos.Y + btnSize.Y then
@@ -2028,10 +2033,16 @@ function UILib.Column:addGroup(title)
         dlist.Parent = row
         Instance.new("UICorner", dlist).CornerRadius = UDim.new(0, 4)
         local dstroke2 = Instance.new("UIStroke", dlist)
-        dstroke2.Color = window.theme.Accent
+        dstroke2.Color = window.theme.Border
+        dstroke2.Thickness = 1
         local dlayout = Instance.new("UIListLayout", dlist)
         dlayout.SortOrder = Enum.SortOrder.LayoutOrder
-        dlayout.Padding = UDim.new(0, 0)
+        dlayout.Padding = UDim.new(0, 1)
+        local dpad = Instance.new("UIPadding", dlist)
+        dpad.PaddingTop = UDim.new(0, 3)
+        dpad.PaddingBottom = UDim.new(0, 3)
+        dpad.PaddingLeft = UDim.new(0, 3)
+        dpad.PaddingRight = UDim.new(0, 3)
 
         local checks = {}
         local backgrounds = {}
@@ -2084,27 +2095,32 @@ function UILib.Column:addGroup(title)
                 ol.ZIndex = 52
                 ol.Parent = ob
                 local ck = Instance.new("TextLabel")
-                ck.Size = UDim2.new(0, 18, 1, 0)
-                ck.Position = UDim2.new(1, -20, 0, 0)
-                ck.BackgroundTransparency = 1
-                ck.Text = (opt == currentSelection) and "o" or ""
-                ck.TextColor3 = window.theme.Accent
-                ck.Font = Enum.Font.Roboto
-                ck.TextSize = 10
+                ck.Size = UDim2.new(0, 8, 0, 8)
+                ck.Position = UDim2.new(1, -14, 0.5, -4)
+                ck.BackgroundColor3 = window.theme.Accent
+                ck.BackgroundTransparency = (opt == currentSelection) and 0 or 1
+                ck.Text = ""
                 ck.ZIndex = 52
                 ck.Parent = ob
+                Instance.new("UICorner", ck).CornerRadius = UDim.new(1, 0)
                 checks[opt] = ck
                 ob.MouseEnter:Connect(function() oh.Visible = true ol.TextColor3 = window.theme.White end)
                 ob.MouseLeave:Connect(function() oh.Visible = false if opt ~= currentSelection then ol.TextColor3 = window.theme.GrayLt end end)
                 ob.MouseButton1Click:Connect(function()
                     currentSelection = opt
                     selLbl.Text = opt
-                    for o, c in pairs(checks) do c.Text = (o == opt) and "o" or "" end
+                    for o, c in pairs(checks) do c.BackgroundTransparency = (o == opt) and 0 or 1 end
                     for o, b in pairs(backgrounds) do b.Visible = (o == opt) end
+                    for _, child in ipairs(dlist:GetChildren()) do
+                        if child:IsA("TextButton") then
+                            local l = child:FindFirstChildOfClass("TextLabel")
+                            if l then l.TextColor3 = (l.Text == opt) and window.theme.White or window.theme.GrayLt end
+                        end
+                    end
                     if callback then callback(opt) end
                     window.configs[id].Value = opt
                     dlist.Visible = false
-                    arrow.Text = "v"
+                    arrow.Text = "\226\137\161"
                     row.Size = UDim2.new(1, 0, 0, 52)
                     task.delay(0.1, updateSize)
                 end)
@@ -2768,6 +2784,101 @@ function UILib.SubTab:addGroup(title)
     group.items = items
     group.itemLayout = itemLayout
     group.updateSize = updateSize
+
+    -- Primordial-style split: creates two side-by-side columns within this group
+    function group:split(leftTitle, rightTitle)
+        local splitRow = Instance.new("Frame")
+        splitRow.Size = UDim2.new(1, 0, 0, 0)
+        splitRow.BackgroundTransparency = 1
+        splitRow.AutomaticSize = Enum.AutomaticSize.Y
+        splitRow.Parent = items
+        
+        local function makeSplitColumn(xPos, title_)
+            local col = Instance.new("Frame")
+            col.Size = UDim2.new(0.5, -4, 0, 0)
+            col.Position = xPos
+            col.BackgroundColor3 = window.theme.Item
+            col.BackgroundTransparency = 0.5
+            col.BorderSizePixel = 0
+            col.AutomaticSize = Enum.AutomaticSize.Y
+            col.Parent = splitRow
+            Instance.new("UICorner", col).CornerRadius = UDim.new(0, 6)
+            local colStroke = Instance.new("UIStroke", col)
+            colStroke.Color = window.theme.Border
+            colStroke.Thickness = 1
+            
+            -- Column header
+            local hdr = Instance.new("Frame")
+            hdr.Size = UDim2.new(1, 0, 0, 24)
+            hdr.BackgroundTransparency = 1
+            hdr.Parent = col
+            local hdrLine = Instance.new("Frame")
+            hdrLine.Size = UDim2.new(1, -12, 0, 1)
+            hdrLine.Position = UDim2.new(0, 6, 1, -1)
+            hdrLine.BackgroundColor3 = window.theme.Accent
+            hdrLine.BackgroundTransparency = 0.7
+            hdrLine.BorderSizePixel = 0
+            hdrLine.Parent = hdr
+            if title_ and title_ ~= "" then
+                local hdrLbl = Instance.new("TextLabel")
+                hdrLbl.Size = UDim2.new(1, -10, 1, 0)
+                hdrLbl.Position = UDim2.new(0, 8, 0, 0)
+                hdrLbl.BackgroundTransparency = 1
+                hdrLbl.Text = title_:upper()
+                hdrLbl.TextColor3 = window.theme.Accent
+                hdrLbl.Font = Enum.Font.GothamBold
+                hdrLbl.TextSize = 10
+                hdrLbl.TextXAlignment = Enum.TextXAlignment.Left
+                hdrLbl.Parent = hdr
+            end
+            
+            -- Column items
+            local colItems = Instance.new("Frame")
+            colItems.Size = UDim2.new(1, 0, 0, 0)
+            colItems.Position = UDim2.new(0, 0, 0, 24)
+            colItems.BackgroundTransparency = 1
+            colItems.AutomaticSize = Enum.AutomaticSize.Y
+            colItems.Parent = col
+            local colLayout = Instance.new("UIListLayout", colItems)
+            colLayout.Padding = UDim.new(0, 2)
+            colLayout.SortOrder = Enum.SortOrder.LayoutOrder
+            local colPad = Instance.new("UIPadding", colItems)
+            colPad.PaddingLeft = UDim.new(0, 6)
+            colPad.PaddingRight = UDim.new(0, 6)
+            colPad.PaddingBottom = UDim.new(0, 6)
+            
+            return col, colItems, colLayout
+        end
+        
+        local lCol, lItems, lLayout = makeSplitColumn(UDim2.new(0, 0, 0, 0), leftTitle or "")
+        local rCol, rItems, rLayout = makeSplitColumn(UDim2.new(0.5, 4, 0, 0), rightTitle or "")
+        
+        local function updateSplitSize()
+            local lh = lLayout.AbsoluteContentSize.Y + 32
+            local rh = rLayout.AbsoluteContentSize.Y + 32
+            local maxH = math.max(lh, rh)
+            lCol.Size = UDim2.new(0.5, -4, 0, maxH)
+            rCol.Size = UDim2.new(0.5, -4, 0, maxH)
+            splitRow.Size = UDim2.new(1, 0, 0, maxH)
+            updateSize()
+        end
+        lLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplitSize)
+        rLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplitSize)
+        
+        -- Create proxy groups with element methods
+        local leftGroup = {window = window, frame = lCol, items = lItems, tab = group.tab, sub = group.subtab, updateSize = updateSplitSize}
+        local rightGroup = {window = window, frame = rCol, items = rItems, tab = group.tab, sub = group.subtab, updateSize = updateSplitSize}
+        
+        -- Copy element methods
+        for k, v in pairs(group) do
+            if type(v) == "function" and k ~= "split" then
+                leftGroup[k] = v
+                rightGroup[k] = v
+            end
+        end
+        
+        return leftGroup, rightGroup
+    end
 
     -- Element methods (direct copies, no delegation)
     function group:paragraph(title, text, tooltip)
