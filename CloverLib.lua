@@ -338,6 +338,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     winStroke.Color = self.theme.Border
     winStroke.Thickness = 1
     self.window = win
+    table.insert(self.accentObjects, winStroke)
     self.originalPosition = win.Position
     self.originalSize = win.Size
 
@@ -512,64 +513,15 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     self.activeTab = nil
     self.navList = navList
 
-    -- UI Settings Tab
+    -- Defer UI tab creation so it always appears LAST in the navbar
     if includeUITab ~= false then
-        local uiTab = self:addTab("UI")
-        local uiSub = uiTab:addSubTab("Settings") -- Fixed: redefined here clearly
-        local grp = uiSub:addGroup("Interface")
-        
-        local accentPicker = grp:colorpicker("Accent Color", self.theme.Accent, function(c) 
-            self:updateAccent(c)
-        end, "Update accent color")
-        
-        grp:keybind("Toggle Key", "RightShift", function(_, name) 
-            self.toggleKey = Enum.KeyCode[name] or Enum.KeyCode.RightShift
-            if self.hintLabel then
-                self.hintLabel.Text = "[ " .. name .. " ]  TOGGLE"
+        self._includeUITab = true
+        task.defer(function()
+            if not self._uiTabCreated then
+                self._uiTabCreated = true
+                self:_createUITab()
             end
-        end, "Set key to show/hide menu")
-        
-        grp:toggle("Show Version", self.showVersion, function(v) 
-            self.showVersion = v 
-            if self.versionPill then self.versionPill.Visible = v end
-        end, "Show version pill")
-        
-        grp:toggle("Show Watermark", false, function(v) 
-            if v then self:addWatermark(self.title) else if self.watermark then self.watermark:Destroy(); self.watermark = nil end end
-        end, "Display FPS and ping")
-        
-        grp:button("Unload", function() self:Destroy() end, "Cleanly remove the UI")
-        
-        -- Config Profiles
-        local cfg = uiSub:addGroup("Config Profiles")
-        local currentProfile = "default"
-        local profileList = self:listConfigs()
-        if #profileList == 0 then table.insert(profileList, "default") end
-
-        cfg:textbox("Profile Name", "default", function(val)
-            currentProfile = val
-        end, "Name for save/load")
-
-        cfg:dropdown("Load Profile", profileList, profileList[1] or "default", function(val)
-            currentProfile = val
-            self:loadConfig(self.configPrefix .. val .. ".json")
-        end, "Select a saved profile", function()
-            return self:listConfigs()
         end)
-
-        cfg:button("Save Profile", function()
-            if currentProfile and currentProfile ~= "" then
-                self:saveConfig(self.configPrefix .. currentProfile .. ".json")
-            else
-                self:notify("Enter a profile name first", "warning")
-            end
-        end, "Save current settings")
-
-        cfg:button("Delete Profile", function()
-            if currentProfile and currentProfile ~= "" then
-                self:deleteConfig(self.configPrefix .. currentProfile .. ".json")
-            end
-        end, "Delete selected profile")
     end
 
     -- Context Menu (shared, repositioned on right-click)
@@ -878,6 +830,63 @@ function UILib:addWatermark(name)
     table.insert(self.accentObjects, pingLabel)
     
     return wm
+end
+function UILib:_createUITab()
+    local uiTab = self:addTab("UI")
+    local uiSub = uiTab:addSubTab("Settings")
+    local grp = uiSub:addGroup("Interface")
+    
+    grp:colorpicker("Accent Color", self.theme.Accent, function(c) 
+        self:updateAccent(c)
+    end, "Update accent color")
+    
+    grp:keybind("Toggle Key", "RightShift", function(_, name) 
+        self.toggleKey = Enum.KeyCode[name] or Enum.KeyCode.RightShift
+        if self.hintLabel then
+            self.hintLabel.Text = "[ " .. name .. " ]  TOGGLE"
+        end
+    end, "Set key to show/hide menu")
+    
+    grp:toggle("Show Version", self.showVersion, function(v) 
+        self.showVersion = v 
+        if self.versionPill then self.versionPill.Visible = v end
+    end, "Show version pill")
+    
+    grp:toggle("Show Watermark", false, function(v) 
+        if v then self:addWatermark(self.title) else if self.watermark then self.watermark:Destroy(); self.watermark = nil end end
+    end, "Display FPS and ping")
+    
+    grp:button("Unload", function() self:Destroy() end, "Cleanly remove the UI")
+    
+    local cfg = uiSub:addGroup("Config Profiles")
+    local currentProfile = "default"
+    local profileList = self:listConfigs()
+    if #profileList == 0 then table.insert(profileList, "default") end
+
+    cfg:textbox("Profile Name", "default", function(val)
+        currentProfile = val
+    end, "Name for save/load")
+
+    cfg:dropdown("Load Profile", profileList, profileList[1] or "default", function(val)
+        currentProfile = val
+        self:loadConfig(self.configPrefix .. val .. ".json")
+    end, "Select a saved profile", function()
+        return self:listConfigs()
+    end)
+
+    cfg:button("Save Profile", function()
+        if currentProfile and currentProfile ~= "" then
+            self:saveConfig(self.configPrefix .. currentProfile .. ".json")
+        else
+            self:notify("Enter a profile name first", "warning")
+        end
+    end, "Save current settings")
+
+    cfg:button("Delete Profile", function()
+        if currentProfile and currentProfile ~= "" then
+            self:deleteConfig(self.configPrefix .. currentProfile .. ".json")
+        end
+    end, "Delete selected profile")
 end
 
 function UILib:Destroy()
@@ -1306,6 +1315,7 @@ local function createColorPicker(group, items, window, text, default, callback)
         local pickerStroke = Instance.new("UIStroke", pickerFrame)
         pickerStroke.Color = window.theme.Accent
         pickerStroke.Transparency = 0.5
+        table.insert(window.accentObjects, pickerStroke)
 
         -- Forward-declare all UI element variables so functions can reference them
         local satValSquare, satValKnob, hueSlider, hueKnob, hexBox
@@ -1920,16 +1930,16 @@ function UILib.Column:addGroup(title)
             DefaultValue = default,
             IsToggle = true,
             Mode = "toggle",
-            SetValue = function(val)
-                state = val 
-                elem.Value = state 
-                cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track 
-                cbStroke.Color = state and window.theme.AccentD or window.theme.Border 
-                cbMark.Text = state and "x" or "" 
-                if callback then callback(state) end 
-                window.configs[id].Value = state
-            end
         }
+        elem.SetValue = function(val)
+            state = val 
+            elem.Value = state 
+            cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track 
+            cbStroke.Color = state and window.theme.AccentD or window.theme.Border 
+            cbMark.Text = state and "x" or "" 
+            if callback then callback(state) end 
+            if window.configs[id] then window.configs[id].Value = state end
+        end
         window.configs[id] = elem
         row.MouseButton1Click:Connect(function() 
             if elem.Mode == "always" then return end
@@ -1943,7 +1953,6 @@ function UILib.Column:addGroup(title)
         end)
         if tooltip then attachTooltip(row, tooltip) end
         updateSize()
-        window:registerSearchable(text, row, group.sub)
         return row
     end
 
@@ -1951,7 +1960,6 @@ function UILib.Column:addGroup(title)
         local row = createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step)
         if tooltip then attachTooltip(row, tooltip) end
         updateSize()
-        window:registerSearchable(text, row, group.sub)
         return row
     end
 
@@ -2977,15 +2985,16 @@ function UILib.SubTab:addGroup(title)
             DefaultValue = default,
             IsToggle = true,
             Mode = "toggle",
-            SetValue = function(val)
-                state = val
-                cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track
-                cbStroke.Color = state and window.theme.AccentD or window.theme.Border
-                cbMark.Text = state and "×" or ""
-                if callback then callback(state) end
-                window.configs[id].Value = state
-            end
         }
+        elem.SetValue = function(val)
+            state = val
+            elem.Value = state
+            cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track
+            cbStroke.Color = state and window.theme.AccentD or window.theme.Border
+            cbMark.Text = state and "×" or ""
+            if callback then callback(state) end
+            if window.configs[id] then window.configs[id].Value = state end
+        end
         window.configs[id] = elem
         row.MouseButton1Click:Connect(function() 
             if elem.Mode == "always" then return end
