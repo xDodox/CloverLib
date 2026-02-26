@@ -1645,6 +1645,7 @@ function UILib.Column:addGroup(title)
             DefaultValue = default,
             IsToggle = true,
             Mode = "toggle",
+            SetValue = function(val)
                 state = val 
                 elem.Value = state
                 cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track 
@@ -1852,7 +1853,11 @@ function UILib.Column:addGroup(title)
                     buildOptions(newOpts)
                     local exists = false
                     for _, o in ipairs(newOpts) do if o == currentSelection then exists = true break end end
-                    if not exists then currentSelection = newOpts[1] or "" selLbl.Text = currentSelection if callback then callback(currentSelection) end end
+                    if not exists then 
+                        currentSelection = newOpts[1] or "" 
+                        selLbl.Text = currentSelection 
+                        if callback then callback(currentSelection) end 
+                    end
                 end
             end
         end
@@ -1868,7 +1873,8 @@ function UILib.Column:addGroup(title)
         local elem = {
             ID = id, Value = currentSelection, DefaultValue = default, Refresh = refresh,
             SetValue = function(val)
-                currentSelection = val selLbl.Text = val
+                currentSelection = val 
+                selLbl.Text = val
                 for o, c in pairs(checks) do c.Text = (o == val) and "×" or "" end
                 for o, b in pairs(backgrounds) do b.Visible = (o == val) end
                 if callback then callback(val) end
@@ -2412,7 +2418,7 @@ function UILib.Column:addGroup(title)
         hitRight.MouseButton1Down:Connect(function() dragging = true dragType = "right" end)
         UIS.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then apply(i.Position.X, dragType) end end)
         UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
-        local elem = {ID = id, Value = {currentMin, currentMax}, DefaultValue = {defaultMin, defaultMax}, SetValue = function(t) currentMin, currentMax = t[1], t[2] updateDisplay() if callback then callback(currentMin, currentMax) end window.configs[id].Value = {currentMin, currentMax} end}
+        local elem = {ID = id, Value = {currentMin, currentMax}, DefaultValue = {defaultMin, defaultMax}, SetValue = function(t) currentMin, currentMax = t[1], t[2]; updateDisplay() if callback then callback(currentMin, currentMax) end window.configs[id].Value = {currentMin, currentMax} end}
         window.configs[id] = elem
         row.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton2 then
@@ -3060,7 +3066,14 @@ function UILib.SubTab:addGroup(title)
         function nestedGroup:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip) local row = group:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
         if contentFunc then contentFunc(nestedGroup) end
         local state = default
-        toggleRow.MouseButton1Click:Connect(function() state = not state cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track cbStroke.Color = state and window.theme.AccentD or window.theme.Border cbMark.Text = state and "×" or "" container.Size = UDim2.new(1, 0, 0, 34 + (state and contentLayout.AbsoluteContentSize.Y or 0)) updateSize() end)
+        toggleRow.MouseButton1Click:Connect(function() 
+            state = not state 
+            cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track 
+            cbStroke.Color = state and window.theme.AccentD or window.theme.Border 
+            cbMark.Text = state and "×" or "" 
+            container.Size = UDim2.new(1, 0, 0, 34 + (state and contentLayout.AbsoluteContentSize.Y or 0)) 
+            updateSize() 
+        end)
         if tooltip then attachTooltip(toggleRow, tooltip) end
         updateContentSize()
         return container
@@ -3138,7 +3151,12 @@ function UILib.SubTab:addGroup(title)
         function nestedGroup:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip) local row = group:rangeslider(subText, min, max, defaultMin, defaultMax, subCallback, subTooltip) row.Parent = contentFrame updateContentSize() return row end
         if contentFunc then contentFunc(nestedGroup) end
         local state = default
-        toggleRow.MouseButton1Click:Connect(function() state = not state arrow.Text = state and "▼" or "▶" container.Size = UDim2.new(1, 0, 0, 34 + (state and contentLayout.AbsoluteContentSize.Y or 0)) updateSize() end)
+        toggleRow.MouseButton1Click:Connect(function() 
+            state = not state 
+            arrow.Text = state and "▼" or "▶" 
+            container.Size = UDim2.new(1, 0, 0, 34 + (state and contentLayout.AbsoluteContentSize.Y or 0)) 
+            updateSize() 
+        end)
         if tooltip then attachTooltip(toggleRow, tooltip) end
         updateContentSize()
         return container
@@ -3368,7 +3386,7 @@ function UILib.SubTab:addGroup(title)
         hitRight.MouseButton1Down:Connect(function() dragging = true dragType = "right" end)
         UIS.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then apply(i.Position.X, dragType) end end)
         UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
-        local elem = {ID = id, Value = {currentMin, currentMax}, DefaultValue = {defaultMin, defaultMax}, SetValue = function(t) currentMin, currentMax = t[1], t[2] updateDisplay() if callback then callback(currentMin, currentMax) end window.configs[id].Value = {currentMin, currentMax} end}
+        local elem = {ID = id, Value = {currentMin, currentMax}, DefaultValue = {defaultMin, defaultMax}, SetValue = function(t) currentMin, currentMax = t[1], t[2]; updateDisplay() if callback then callback(currentMin, currentMax) end window.configs[id].Value = {currentMin, currentMax} end}
         window.configs[id] = elem
         row.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton2 then
