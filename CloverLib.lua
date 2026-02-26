@@ -226,6 +226,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     self.notifications = {}
     self.configPrefix = "clover_"
     self.accentObjects = {} -- track objects that need color updates
+    self.allSearchable = {} -- track elements for global search
+    self.allSubTabs = {} -- track subtabs for navigation
     
     function self:updateAccent(color)
         self.theme.Accent = color
@@ -260,20 +262,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     tooltipFrame.ZIndex = 1000
     tooltipFrame.Parent = self.sg
     Instance.new("UICorner", tooltipFrame).CornerRadius = UDim.new(0, 4)
-    local ttStroke = Instance.new("UIStroke", tooltipFrame)
-    ttStroke.Color = self.theme.Accent
-    ttStroke.Thickness = 1
-    tooltipText = Instance.new("TextLabel")
-    tooltipText.Size = UDim2.new(1, -20, 1, -20)
-    tooltipText.Position = UDim2.new(0, 10, 0, 10)
-    tooltipText.BackgroundTransparency = 1
-    tooltipText.TextColor3 = self.theme.White
-    tooltipText.Font = Enum.Font.Roboto
-    tooltipText.TextSize = 12
-    tooltipText.TextWrapped = true
-    tooltipText.ZIndex = 1001
-    tooltipText.Parent = tooltipFrame
-    Instance.new("UICorner", tooltipFrame).CornerRadius = UDim.new(0, 4)
     local tipStroke = Instance.new("UIStroke", tooltipFrame)
     tipStroke.Color = self.theme.Accent
     tipStroke.Thickness = 1
@@ -289,6 +277,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     tooltipText.Font = Enum.Font.Roboto
     tooltipText.TextSize = 12
     tooltipText.TextWrapped = true
+    tooltipText.ZIndex = 1001
     tooltipText.Parent = tooltipFrame
 
     local win = Instance.new("Frame")
@@ -401,6 +390,40 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     hintLabel.ZIndex = 6
     hintLabel.Parent = header
 
+    -- Header Search Bar
+    local searchContainer = Instance.new("Frame")
+    searchContainer.Size = UDim2.new(0, 200, 0, 28)
+    searchContainer.Position = UDim2.new(1, -400, 0.5, -14)
+    searchContainer.BackgroundColor3 = self.theme.Track
+    searchContainer.BorderSizePixel = 0
+    searchContainer.ZIndex = 7
+    searchContainer.Parent = header
+    Instance.new("UICorner", searchContainer).CornerRadius = UDim.new(0, 6)
+    local searchBox = Instance.new("TextBox")
+    searchBox.Size = UDim2.new(1, -30, 1, 0)
+    searchBox.Position = UDim2.new(0, 10, 0, 0)
+    searchBox.BackgroundTransparency = 1
+    searchBox.Text = ""
+    searchBox.PlaceholderText = "Search..."
+    searchBox.PlaceholderColor3 = self.theme.Gray
+    searchBox.TextColor3 = self.theme.White
+    searchBox.Font = Enum.Font.Roboto
+    searchBox.TextSize = 12
+    searchBox.TextXAlignment = Enum.TextXAlignment.Left
+    searchBox.ZIndex = 8
+    searchBox.Parent = searchContainer
+    local searchClear = Instance.new("TextButton")
+    searchClear.Size = UDim2.new(0, 20, 0, 20)
+    searchClear.Position = UDim2.new(1, -24, 0.5, -10)
+    searchClear.BackgroundTransparency = 1
+    searchClear.Text = "x"
+    searchClear.TextColor3 = self.theme.Gray
+    searchClear.Font = Enum.Font.GothamBold
+    searchClear.TextSize = 14
+    searchClear.Visible = false
+    searchClear.ZIndex = 8
+    searchClear.Parent = searchContainer
+
     local sidebar = Instance.new("Frame")
     sidebar.Size = UDim2.new(0, 152, 1, -92)
     sidebar.Position = UDim2.new(0, 0, 0, 46)
@@ -430,7 +453,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
         end
         searchClear.Visible = true
         
-        -- Find best match
+        -- Find best match among registered interactive elements
         local best = nil
         for _, item in ipairs(self.allSearchable) do
             if item.text:find(query, 1, true) then
@@ -442,10 +465,10 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
         if best then
             if best.subtab then
                 best.subtab:select()
-                -- Scroll to object
+                -- Scroll content to show the item
                 task.defer(function()
                     local rel = best.obj.AbsolutePosition.Y - self.content.AbsolutePosition.Y
-                    self.content.CanvasPosition = Vector2.new(0, self.content.CanvasPosition.Y + rel - 50)
+                    self.content.CanvasPosition = Vector2.new(0, math.clamp(self.content.CanvasPosition.Y + rel - 50, 0, self.content.CanvasSize.Y.Offset))
                 end)
             end
         end
@@ -456,7 +479,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     searchClear.MouseButton1Click:Connect(function()
         searchBox.Text = ""
     end)
-    self.filterSubTabs = filterSubTabs
 
     local content = Instance.new("ScrollingFrame")
     content.Size = UDim2.new(0, size.X - 152, 1, -92)
@@ -500,11 +522,11 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     self.activeTab = nil
     self.navList = navList
 
-    -- UI Settings Tab (Hardcoded as First Tab)
+    -- UI Settings Tab
     if includeUITab ~= false then
         local uiTab = self:addTab("UI")
-        local uiSub = uiTab:addSubTab("Interface")
-        local grp = uiSub:addGroup("Theme & Toggle")
+        local uiSub = uiTab:addSubTab("Settings") -- Fixed: redefined here clearly
+        local grp = uiSub:addGroup("Interface")
         
         local accentPicker = grp:colorpicker("Accent Color", self.theme.Accent, function(c) 
             self:updateAccent(c)
@@ -514,32 +536,20 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
             self.toggleKey = Enum.KeyCode[name] or Enum.KeyCode.RightShift 
         end, "Set key to show/hide menu")
         
-        local showVer = grp:toggle("Show Version", self.showVersion, function(v) 
+        grp:toggle("Show Version", self.showVersion, function(v) 
             self.showVersion = v 
             if self.versionPill then self.versionPill.Visible = v end
         end, "Show version pill")
         
-        local showWM = grp:toggle("Show Watermark", false, function(v) 
+        grp:toggle("Show Watermark", false, function(v) 
             if v then self:addWatermark(self.title) else if self.watermark then self.watermark:Destroy(); self.watermark = nil end end
         end, "Display FPS and ping")
         
         grp:button("Unload", function() self:Destroy() end, "Cleanly remove the UI")
         
-        local cfg = uiSub:addGroup("Configuration")
-        local currentProfile = "default"
-        cfg:textbox("Profile Name", "default", function(val) currentProfile = val end)
-        cfg:button("Save Current", function() self:saveConfig(self.configPrefix .. currentProfile .. ".json") end)
-        cfg:button("Scan & Load", function() 
-             local profiles = self:listConfigs()
-             if #profiles > 0 then self:loadConfig(self.configPrefix .. profiles[1] .. ".json") end
-        end)
-    end
-
         -- Config Profiles
         local cfg = uiSub:addGroup("Config Profiles")
         local currentProfile = "default"
-        local profileNameBox = nil
-        local profileDropdown = nil
         local profileList = self:listConfigs()
         if #profileList == 0 then table.insert(profileList, "default") end
 
@@ -1675,13 +1685,6 @@ function UILib.Column:addGroup(title)
         return row
     end
 
-    function group:button(text, callback, tooltip)
-        local row = createButton(group, items, window, text, callback)
-        if tooltip then attachTooltip(row, tooltip) end
-        updateSize()
-        window:registerSearchable(text, row, group.sub)
-        return row
-    end
 
     function group:dropdown(text, options, default, callback, tooltip, refreshCallback)
         local id = generateID()
@@ -1739,7 +1742,15 @@ function UILib.Column:addGroup(title)
         selLbl.TextSize = 12
         selLbl.TextXAlignment = Enum.TextXAlignment.Left
         selLbl.ZIndex = 12
-        selLbl.Parent = dbtn
+        local arrow = Instance.new("TextLabel")
+        arrow.Size = UDim2.new(0, 24, 1, 0)
+        arrow.Position = UDim2.new(1, -26, 0, 0)
+        arrow.BackgroundTransparency = 1
+        arrow.Text = "▼"
+        arrow.TextColor3 = window.theme.Accent
+        arrow.Font = Enum.Font.GothamBold
+        arrow.TextSize = 12
+        arrow.ZIndex = 12
         arrow.Name = "arrow"
         table.insert(window.accentObjects, arrow)
         arrow.Parent = dbtn
