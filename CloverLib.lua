@@ -959,7 +959,9 @@ function UILib:addTab(name)
         end
         btn.TextColor3 = self.theme.White
         underline.Visible = true
-        for _, sub in pairs(tab.subtabOrder) do sub.btn.Visible = true end
+        for _, sub in pairs(tab.subtabOrder) do 
+            if sub.btn then sub.btn.Visible = true end 
+        end
         if tab.firstSub then 
             local first = tab.subtabs[tab.firstSub] 
             if first then 
