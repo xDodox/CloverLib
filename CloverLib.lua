@@ -965,9 +965,7 @@ function UILib:addTab(name)
         if tab.firstSub then 
             local first = tab.subtabs[tab.firstSub] 
             if first then 
-                first.page.Visible = true 
-                if first.selLine then first.selLine.Visible = true end
-                if first.label then first.label.TextColor3 = self.theme.White end
+                first:select()
             end 
         end
         self.sidebar.CanvasSize = UDim2.new(0, 0, 0, #tab.subtabOrder * 26 + 10)
@@ -976,6 +974,16 @@ function UILib:addTab(name)
     btn.MouseButton1Click:Connect(activate)
     tab.activate = activate
     self.tabs[name] = tab
+
+    -- Default Selection: Activate the first tab created
+    if not self.activeTab then
+        task.defer(function()
+            if not self.activeTab then
+                activate()
+            end
+        end)
+    end
+
     return tab
 end
 
@@ -1059,7 +1067,7 @@ function UILib.Tab:addSubTab(name)
     page.ScrollBarThickness = 2
     page.ScrollBarImageColor3 = self.window.theme.Accent
     page.CanvasSize = UDim2.new(0, 0, 0, 0)
-    page.AutomaticCanvasSize = Enum.AutomaticCanvasSize.Y
+    page.AutomaticCanvasSize = Enum.AutomaticSize.Y
     page.Visible = false
     page.ZIndex = 2
     page.Parent = self.window.content
