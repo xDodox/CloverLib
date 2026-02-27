@@ -273,6 +273,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     end)
     table.insert(self.connections, animConn)
     self.allSubTabs = {} -- track subtabs for navigation
+    self.activePopups = {} -- track popups like color pickers
     
     function self:updateAccent(color)
         self.theme.Accent = color
@@ -906,11 +907,17 @@ function UILib:setVisible(visible)
         local tween = TweenService:Create(self.window, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = self.originalSize})
         tween:Play()
     else
-        self.originalPosition = self.window.Position
         self.originalSize = self.window.Size
         local centerPos = UDim2.new(self.originalPosition.X.Scale, self.originalPosition.X.Offset + self.originalSize.X.Offset/2, self.originalPosition.Y.Scale, self.originalPosition.Y.Offset + self.originalSize.Y.Offset/2)
         self.window.AnchorPoint = Vector2.new(0.5, 0.5)
         self.window.Position = centerPos
+        
+        -- Close all active popups when menu is hidden
+        for _, popup in ipairs(self.activePopups) do
+            pcall(function() if popup then popup:Destroy() end end)
+        end
+        self.activePopups = {}
+
         local tween = TweenService:Create(self.window, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)})
         tween:Play()
         tween.Completed:Connect(function() self.window.Visible = false self.window.AnchorPoint = Vector2.new(0, 0) self.window.Size = self.originalSize self.window.Position = self.originalPosition end)
@@ -1322,6 +1329,7 @@ local function createColorPicker(group, items, window, text, default, callback)
         pickerFrame.BorderSizePixel = 0
         pickerFrame.ZIndex = 2000
         pickerFrame.Parent = window.sg
+        table.insert(window.activePopups, pickerFrame)
         Instance.new("UICorner", pickerFrame).CornerRadius = UDim.new(0, 8)
         local pickerStroke = Instance.new("UIStroke", pickerFrame)
         pickerStroke.Color = window.theme.Accent
