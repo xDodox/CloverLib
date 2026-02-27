@@ -1057,6 +1057,7 @@ function UILib.Tab:addSubTab(name)
     page.ScrollBarThickness = 2
     page.ScrollBarImageColor3 = self.window.theme.Accent
     page.CanvasSize = UDim2.new(0, 0, 0, 0)
+    page.AutomaticCanvasSize = Enum.AutomaticCanvasSize.Y
     page.Visible = false
     page.ZIndex = 2
     page.Parent = self.window.content
