@@ -1072,7 +1072,7 @@ function UILib.Tab:addSubTab(name)
     
     local btn = Instance.new("TextButton")
     table.insert(self.subtabOrder, sub)
-    btn.Size = UDim2.new(1, -8, 0, 24)
+    btn.Size = UDim2.new(1, -8, 0, 32)
     btn.Position = UDim2.new(0, 4, 0, 0) -- Manual position removed, controlled by UIListLayout
     btn.BackgroundTransparency = 1
     btn.Text = ""
@@ -2078,18 +2078,6 @@ function UILib.Column:addGroup(title)
         label.Parent = row
 
         local refreshBtn = nil
-        if refreshCallback then
-            refreshBtn = Instance.new("TextButton")
-            refreshBtn.Size = UDim2.new(0, 24, 0, 24)
-            refreshBtn.Position = UDim2.new(1, -28, 0, 0)
-            refreshBtn.BackgroundTransparency = 1
-            refreshBtn.Text = "R" -- Clean symbol
-            refreshBtn.TextColor3 = window.theme.Gray
-            refreshBtn.Font = Enum.Font.RobotoMono
-            refreshBtn.TextSize = 11
-            refreshBtn.ZIndex = 12
-            refreshBtn.Parent = row
-        end
 
         local dbtn = Instance.new("TextButton")
         dbtn.Size = UDim2.new(1, 0, 0, 32)
@@ -2113,11 +2101,12 @@ function UILib.Column:addGroup(title)
         selLbl.TextSize = 12
         selLbl.TextXAlignment = Enum.TextXAlignment.Left
         selLbl.ZIndex = 12
+        selLbl.Parent = dbtn
         local arrow = Instance.new("TextLabel")
         arrow.Size = UDim2.new(0, 24, 1, 0)
         arrow.Position = UDim2.new(1, -26, 0, 0)
         arrow.BackgroundTransparency = 1
-        arrow.Text = "\226\137\161"
+        arrow.Text = "▼"
         arrow.TextColor3 = window.theme.Gray
         arrow.Font = Enum.Font.GothamBold
         arrow.TextSize = 12
@@ -2125,6 +2114,18 @@ function UILib.Column:addGroup(title)
         arrow.Name = "arrow"
         table.insert(window.accentObjects, arrow)
         arrow.Parent = dbtn
+        if refreshCallback then
+            refreshBtn = Instance.new("TextButton")
+            refreshBtn.Size = UDim2.new(0, 20, 0, 20)
+            refreshBtn.Position = UDim2.new(1, -50, 0.5, -10)
+            refreshBtn.BackgroundTransparency = 1
+            refreshBtn.Text = "↻"
+            refreshBtn.TextColor3 = window.theme.Gray
+            refreshBtn.Font = Enum.Font.GothamBold
+            refreshBtn.TextSize = 14
+            refreshBtn.ZIndex = 13
+            refreshBtn.Parent = dbtn
+        end
         local listH = #options * 26
         local dlist = Instance.new("ScrollingFrame")
         dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 104))
@@ -2226,7 +2227,8 @@ function UILib.Column:addGroup(title)
                     if callback then callback(opt) end
                     window.configs[id].Value = opt
                     dlist.Visible = false
-                    arrow.Text = "\226\137\161"
+                    open = false
+                    arrow.Text = "▼"
                     row.Size = UDim2.new(1, 0, 0, 52)
                     task.delay(0.1, updateSize)
                 end)
@@ -2253,7 +2255,7 @@ function UILib.Column:addGroup(title)
         dbtn.MouseButton1Click:Connect(function()
             open = not open
             dlist.Visible = open
-            arrow.Text = "\226\137\161"
+            arrow.Text = open and "▲" or "▼"
             row.Size = UDim2.new(1, 0, 0, 52 + (open and math.min(listH, 104) or 0))
             task.delay(0.1, updateSize)
         end)
