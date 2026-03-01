@@ -51,20 +51,27 @@ local function showTooltip(text, element)
 	tooltipText.Text = text
 	local screenWidth = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 	local screenHeight = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
-	local padding = 10
+	local hPad = 12
 	local textWidth = 160
 	local textSize = game:GetService("TextService"):GetTextSize(text, 12, Enum.Font.Roboto, Vector2.new(textWidth, 500))
-	local height = textSize.Y + padding * 2
-	tooltipFrame.Size = UDim2.new(0, textWidth + padding * 2, 0, height)
+	local tipW = textWidth + hPad * 2
+	local tipH = textSize.Y + 8 * 2
+	tooltipFrame.Size = UDim2.new(0, tipW, 0, tipH)
+	-- Must set size before reading AbsoluteSize, so use computed values directly
 	local absPos = element.AbsolutePosition
 	local absSize = element.AbsoluteSize
-	local targetX = absPos.X + (absSize.X / 2) - (tooltipFrame.AbsoluteSize.X / 2)
+	local mousePos = UIS:GetMouseLocation()
+	-- Default: appear below the element, centered on it
+	local targetX = absPos.X + (absSize.X / 2) - (tipW / 2)
 	local targetY = absPos.Y + absSize.Y + 6
-	if targetY + tooltipFrame.AbsoluteSize.Y > screenHeight - 10 then
-		targetY = absPos.Y - tooltipFrame.AbsoluteSize.Y - 6
+	-- If it would go off the bottom, flip above the element
+	if targetY + tipH > screenHeight - 10 then
+		targetY = absPos.Y - tipH - 6
 	end
-	targetX = math.clamp(targetX, 10, screenWidth - tooltipFrame.AbsoluteSize.X - 10)
-	targetY = math.clamp(targetY, 10, screenHeight - tooltipFrame.AbsoluteSize.Y - 10)
+	-- Clamp horizontally so it never goes off screen edges
+	targetX = math.clamp(targetX, 8, screenWidth - tipW - 8)
+	-- Clamp vertically as a safety net
+	targetY = math.clamp(targetY, 8, screenHeight - tipH - 8)
 	tooltipFrame.Position = UDim2.new(0, targetX, 0, targetY)
 	tooltipFrame.Visible = true
 end
@@ -1197,6 +1204,7 @@ function UILib:newMiniWindow(title, width, posX, posY)
 		collapsed = not collapsed
 		collapseBtn.Text = collapsed and "+" or "−"
 		local targetH = collapsed and 32 or fullH
+		body.Visible = not collapsed
 		TweenService:Create(frame, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			Size = UDim2.new(0, width, 0, targetH)
 		}):Play()
@@ -1728,6 +1736,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 	colorBox.BorderSizePixel = 0
 	colorBox.ZIndex = 4
 	colorBox.Text = ""
+	colorBox.AutoButtonColor = false
 	colorBox.Parent = row
 	Instance.new("UICorner", colorBox).CornerRadius = UDim.new(0, 3)
 	local stroke = Instance.new("UIStroke", colorBox)
@@ -1755,13 +1764,20 @@ local function createColorPicker(group, items, window, text, default, callback)
 		local _pickerJustOpened = true
 		task.delay(0.1, function() _pickerJustOpened = false end)
 		pickerFrame = Instance.new("TextButton")
-		pickerFrame.Size = UDim2.new(0, 220, 0, 260)
+		local pickerW, pickerH = 220, 260
+		pickerFrame.Size = UDim2.new(0, pickerW, 0, pickerH)
 		local absPos = colorBox.AbsolutePosition
-		local posX = absPos.X + colorBox.AbsoluteSize.X + 6
+		local absSize = colorBox.AbsoluteSize
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
-		if posX + 220 > screenW - 10 then posX = absPos.X - 226 end
-		if posX < 10 then posX = 10 end
-		pickerFrame.Position = UDim2.new(0, posX, 0, absPos.Y)
+		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
+		-- Center picker below the color button
+		local posX = absPos.X + absSize.X / 2 - pickerW / 2
+		local posY = absPos.Y + absSize.Y + 6
+		-- Flip above if it would go off bottom
+		if posY + pickerH > screenH - 10 then posY = absPos.Y - pickerH - 6 end
+		posX = math.clamp(posX, 8, screenW - pickerW - 8)
+		posY = math.clamp(posY, 8, screenH - pickerH - 8)
+		pickerFrame.Position = UDim2.new(0, posX, 0, posY)
 		pickerFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
 		pickerFrame.BorderSizePixel = 0
 		pickerFrame.ZIndex = 2000
@@ -2083,7 +2099,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	local dlist = Instance.new("ScrollingFrame")
 	dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 104))
 	dlist.Position = UDim2.new(0, 0, 0, 56)
-	dlist.BackgroundColor3 = window.theme.Item
+	dlist.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 	dlist.BorderSizePixel = 0
 	dlist.ScrollBarThickness = 2
 	dlist.ScrollBarImageColor3 = window.theme.Accent
@@ -2423,13 +2439,18 @@ function UILib.Column:addGroup(title)
 			refreshBtn.Size = UDim2.new(0, 18, 0, 18)
 			refreshBtn.Position = UDim2.new(1, -20, 0, 2)
 			refreshBtn.BackgroundColor3 = window.theme.Track
-			refreshBtn.Text = "↺"
-			refreshBtn.TextColor3 = window.theme.Gray
-			refreshBtn.Font = Enum.Font.GothamBold
-			refreshBtn.TextSize = 13
+			refreshBtn.Text = ""
 			refreshBtn.ZIndex = 12
 			refreshBtn.Parent = row
 			Instance.new("UICorner", refreshBtn).CornerRadius = UDim.new(0, 4)
+			local refreshIcon = Instance.new("ImageLabel")
+			refreshIcon.Size = UDim2.new(0, 12, 0, 12)
+			refreshIcon.Position = UDim2.new(0.5, -6, 0.5, -6)
+			refreshIcon.BackgroundTransparency = 1
+			refreshIcon.Image = "rbxassetid://13492317146"
+			refreshIcon.ImageColor3 = window.theme.Gray
+			refreshIcon.ZIndex = 13
+			refreshIcon.Parent = refreshBtn
 		end
 
 		local dbtn = Instance.new("TextButton")
@@ -2471,7 +2492,7 @@ function UILib.Column:addGroup(title)
 		local dlist = Instance.new("ScrollingFrame")
 		dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 104))
 		dlist.Position = UDim2.new(0, 0, 0, 52)
-		dlist.BackgroundColor3 = window.theme.Item
+		dlist.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 		dlist.BorderSizePixel = 0
 		dlist.ScrollBarThickness = 2
 		dlist.ScrollBarImageColor3 = window.theme.Accent
@@ -2736,10 +2757,12 @@ function UILib.Column:addGroup(title)
 	function group:button(text, callback, tooltip, align, color)
 		local btn = Instance.new("TextButton")
 		btn.Size = UDim2.new(1, 0, 0, 32)
-		btn.BackgroundTransparency = 1
+		btn.BackgroundColor3 = window.theme.Item
+		btn.BackgroundTransparency = 0
 		btn.Text = ""
 		btn.ZIndex = 3
 		btn.Parent = items
+		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
 		local rh = Instance.new("Frame")
 		rh.Size = UDim2.new(1, 0, 1, 0)
 		rh.BackgroundColor3 = window.theme.ItemHov
@@ -3216,35 +3239,37 @@ function UILib.Column:addGroup(title)
 		fill.Parent = track
 		Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 3)
 		local knobLeft = Instance.new("Frame")
-		knobLeft.Size = UDim2.new(0, 14, 0, 14)
-		knobLeft.Position = UDim2.new(pctMin, -7, 0.5, -7)
-		knobLeft.BackgroundColor3 = window.theme.White
+		knobLeft.Size = UDim2.new(0, 10, 0, 10)
+		knobLeft.Position = UDim2.new(pctMin, -5, 0.5, -5)
+		knobLeft.BackgroundColor3 = Color3.new(0, 0, 0)
 		knobLeft.BorderSizePixel = 0
 		knobLeft.ZIndex = 5
 		knobLeft.Parent = track
-		Instance.new("UICorner", knobLeft).CornerRadius = UDim.new(0, 7)
 		local knobLeftStroke = Instance.new("UIStroke", knobLeft)
 		knobLeftStroke.Color = window.theme.Accent
+		knobLeftStroke.Thickness = 2
+		table.insert(window.accentObjects, knobLeftStroke)
 		local knobRight = Instance.new("Frame")
-		knobRight.Size = UDim2.new(0, 14, 0, 14)
-		knobRight.Position = UDim2.new(pctMax, -7, 0.5, -7)
-		knobRight.BackgroundColor3 = window.theme.White
+		knobRight.Size = UDim2.new(0, 10, 0, 10)
+		knobRight.Position = UDim2.new(pctMax, -5, 0.5, -5)
+		knobRight.BackgroundColor3 = Color3.new(0, 0, 0)
 		knobRight.BorderSizePixel = 0
 		knobRight.ZIndex = 5
 		knobRight.Parent = track
-		Instance.new("UICorner", knobRight).CornerRadius = UDim.new(0, 7)
 		local knobRightStroke = Instance.new("UIStroke", knobRight)
 		knobRightStroke.Color = window.theme.Accent
+		knobRightStroke.Thickness = 2
+		table.insert(window.accentObjects, knobRightStroke)
 		local hitLeft = Instance.new("TextButton")
-		hitLeft.Size = UDim2.new(0, 20, 0, 20)
-		hitLeft.Position = UDim2.new(pctMin, -10, 0.5, -10)
+		hitLeft.Size = UDim2.new(0, 18, 0, 18)
+		hitLeft.Position = UDim2.new(pctMin, -9, 0.5, -9)
 		hitLeft.BackgroundTransparency = 1
 		hitLeft.Text = ""
 		hitLeft.ZIndex = 6
 		hitLeft.Parent = track
 		local hitRight = Instance.new("TextButton")
-		hitRight.Size = UDim2.new(0, 20, 0, 20)
-		hitRight.Position = UDim2.new(pctMax, -10, 0.5, -10)
+		hitRight.Size = UDim2.new(0, 18, 0, 18)
+		hitRight.Position = UDim2.new(pctMax, -9, 0.5, -9)
 		hitRight.BackgroundTransparency = 1
 		hitRight.Text = ""
 		hitRight.ZIndex = 6
@@ -3259,10 +3284,10 @@ function UILib.Column:addGroup(title)
 			pctMax = (currentMax - minVal) / (maxVal - minVal)
 			fill.Size = UDim2.new(pctMax - pctMin, 0, 1, 0)
 			fill.Position = UDim2.new(pctMin, 0, 0, 0)
-			knobLeft.Position = UDim2.new(pctMin, -7, 0.5, -7)
-			knobRight.Position = UDim2.new(pctMax, -7, 0.5, -7)
-			hitLeft.Position = UDim2.new(pctMin, -10, 0.5, -10)
-			hitRight.Position = UDim2.new(pctMax, -10, 0.5, -10)
+			knobLeft.Position = UDim2.new(pctMin, -5, 0.5, -5)
+			knobRight.Position = UDim2.new(pctMax, -5, 0.5, -5)
+			hitLeft.Position = UDim2.new(pctMin, -9, 0.5, -9)
+			hitRight.Position = UDim2.new(pctMax, -9, 0.5, -9)
 		end
 		local function apply(pos, which)
 			local rel = math.clamp((pos - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
@@ -3580,13 +3605,18 @@ function UILib.SubTab:addGroup(title)
 			refreshBtn.Size = UDim2.new(0, 18, 0, 18)
 			refreshBtn.Position = UDim2.new(1, -20, 0, 2)
 			refreshBtn.BackgroundColor3 = window.theme.Track
-			refreshBtn.Text = "↺"
-			refreshBtn.TextColor3 = window.theme.Gray
-			refreshBtn.Font = Enum.Font.GothamBold
-			refreshBtn.TextSize = 13
+			refreshBtn.Text = ""
 			refreshBtn.ZIndex = 12
 			refreshBtn.Parent = row
 			Instance.new("UICorner", refreshBtn).CornerRadius = UDim.new(0, 4)
+			local refreshIcon = Instance.new("ImageLabel")
+			refreshIcon.Size = UDim2.new(0, 12, 0, 12)
+			refreshIcon.Position = UDim2.new(0.5, -6, 0.5, -6)
+			refreshIcon.BackgroundTransparency = 1
+			refreshIcon.Image = "rbxassetid://13492317146"
+			refreshIcon.ImageColor3 = window.theme.Gray
+			refreshIcon.ZIndex = 13
+			refreshIcon.Parent = refreshBtn
 		end
 
 		local dbtn = Instance.new("TextButton")
@@ -3628,7 +3658,7 @@ function UILib.SubTab:addGroup(title)
 		local dlist = Instance.new("ScrollingFrame")
 		dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 104))
 		dlist.Position = UDim2.new(0, 0, 0, 56)
-		dlist.BackgroundColor3 = window.theme.Item
+		dlist.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 		dlist.BorderSizePixel = 0
 		dlist.ScrollBarThickness = 2
 		dlist.ScrollBarImageColor3 = window.theme.Accent
@@ -3894,10 +3924,12 @@ function UILib.SubTab:addGroup(title)
 	function group:button(text, callback, tooltip, align, color)
 		local btn = Instance.new("TextButton")
 		btn.Size = UDim2.new(1, 0, 0, 32)
-		btn.BackgroundTransparency = 1
+		btn.BackgroundColor3 = window.theme.Item
+		btn.BackgroundTransparency = 0
 		btn.Text = ""
 		btn.ZIndex = 3
 		btn.Parent = items
+		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
 		local rh = Instance.new("Frame")
 		rh.Size = UDim2.new(1, 0, 1, 0)
 		rh.BackgroundColor3 = window.theme.ItemHov
@@ -4379,35 +4411,37 @@ function UILib.SubTab:addGroup(title)
 		fill.Parent = track
 		Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 3)
 		local knobLeft = Instance.new("Frame")
-		knobLeft.Size = UDim2.new(0, 14, 0, 14)
-		knobLeft.Position = UDim2.new(pctMin, -7, 0.5, -7)
-		knobLeft.BackgroundColor3 = window.theme.White
+		knobLeft.Size = UDim2.new(0, 10, 0, 10)
+		knobLeft.Position = UDim2.new(pctMin, -5, 0.5, -5)
+		knobLeft.BackgroundColor3 = Color3.new(0, 0, 0)
 		knobLeft.BorderSizePixel = 0
 		knobLeft.ZIndex = 5
 		knobLeft.Parent = track
-		Instance.new("UICorner", knobLeft).CornerRadius = UDim.new(0, 7)
 		local knobLeftStroke = Instance.new("UIStroke", knobLeft)
 		knobLeftStroke.Color = window.theme.Accent
+		knobLeftStroke.Thickness = 2
+		table.insert(window.accentObjects, knobLeftStroke)
 		local knobRight = Instance.new("Frame")
-		knobRight.Size = UDim2.new(0, 14, 0, 14)
-		knobRight.Position = UDim2.new(pctMax, -7, 0.5, -7)
-		knobRight.BackgroundColor3 = window.theme.White
+		knobRight.Size = UDim2.new(0, 10, 0, 10)
+		knobRight.Position = UDim2.new(pctMax, -5, 0.5, -5)
+		knobRight.BackgroundColor3 = Color3.new(0, 0, 0)
 		knobRight.BorderSizePixel = 0
 		knobRight.ZIndex = 5
 		knobRight.Parent = track
-		Instance.new("UICorner", knobRight).CornerRadius = UDim.new(0, 7)
 		local knobRightStroke = Instance.new("UIStroke", knobRight)
 		knobRightStroke.Color = window.theme.Accent
+		knobRightStroke.Thickness = 2
+		table.insert(window.accentObjects, knobRightStroke)
 		local hitLeft = Instance.new("TextButton")
-		hitLeft.Size = UDim2.new(0, 20, 0, 20)
-		hitLeft.Position = UDim2.new(pctMin, -10, 0.5, -10)
+		hitLeft.Size = UDim2.new(0, 18, 0, 18)
+		hitLeft.Position = UDim2.new(pctMin, -9, 0.5, -9)
 		hitLeft.BackgroundTransparency = 1
 		hitLeft.Text = ""
 		hitLeft.ZIndex = 6
 		hitLeft.Parent = track
 		local hitRight = Instance.new("TextButton")
-		hitRight.Size = UDim2.new(0, 20, 0, 20)
-		hitRight.Position = UDim2.new(pctMax, -10, 0.5, -10)
+		hitRight.Size = UDim2.new(0, 18, 0, 18)
+		hitRight.Position = UDim2.new(pctMax, -9, 0.5, -9)
 		hitRight.BackgroundTransparency = 1
 		hitRight.Text = ""
 		hitRight.ZIndex = 6
@@ -4422,10 +4456,10 @@ function UILib.SubTab:addGroup(title)
 			pctMax = (currentMax - minVal) / (maxVal - minVal)
 			fill.Size = UDim2.new(pctMax - pctMin, 0, 1, 0)
 			fill.Position = UDim2.new(pctMin, 0, 0, 0)
-			knobLeft.Position = UDim2.new(pctMin, -7, 0.5, -7)
-			knobRight.Position = UDim2.new(pctMax, -7, 0.5, -7)
-			hitLeft.Position = UDim2.new(pctMin, -10, 0.5, -10)
-			hitRight.Position = UDim2.new(pctMax, -10, 0.5, -10)
+			knobLeft.Position = UDim2.new(pctMin, -5, 0.5, -5)
+			knobRight.Position = UDim2.new(pctMax, -5, 0.5, -5)
+			hitLeft.Position = UDim2.new(pctMin, -9, 0.5, -9)
+			hitRight.Position = UDim2.new(pctMax, -9, 0.5, -9)
 		end
 		local function apply(pos, which)
 			local rel = math.clamp((pos - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
