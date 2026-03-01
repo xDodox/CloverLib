@@ -579,6 +579,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	table.insert(self.connections, UIS.InputBegan:Connect(function(input, gpe) if input.KeyCode == self.toggleKey then self:setVisible(not win.Visible) end end))
 
 	self.tabs = {}
+	self.tabOrder = {}
 	self.activeTab = nil
 	self.navList = navList
 
@@ -1371,6 +1372,7 @@ function UILib:addTab(name)
 	btn.MouseButton1Click:Connect(activate)
 	tab.activate = activate
 	self.tabs[name] = tab
+	table.insert(self.tabOrder, tab)
 
 	if not self.activeTab then
 		task.defer(function()
@@ -1379,6 +1381,17 @@ function UILib:addTab(name)
 	end
 
 	return tab
+end
+
+-- Programmatically switch to tab by 1-based index or by name
+function UILib:selectTab(n)
+	local tab
+	if type(n) == "number" then
+		tab = self.tabOrder[n]
+	elseif type(n) == "string" then
+		tab = self.tabs[n]
+	end
+	if tab and tab.activate then tab.activate() end
 end
 
 function UILib.Tab:addSubTab(name)
@@ -1526,6 +1539,169 @@ local function attachTooltip(element, text)
 	end)
 end
 
+-- ────────────────────────────────────────────────────────────
+-- Standalone SubTab helpers  (sit directly on the page, no group wrapper)
+-- Usage: sub:addParagraph(title, body)
+--        sub:addInput(label, default, placeholder, callback, tooltip)
+--        sub:addButton(text, callback, tooltip, color)
+-- ────────────────────────────────────────────────────────────
+
+function UILib.SubTab:addParagraph(ptitle, text)
+	local window = self.window
+	local r = Instance.new("Frame")
+	r.Size = UDim2.new(1, 0, 0, 0)
+	r.BackgroundColor3 = window.theme.Item
+	r.BackgroundTransparency = 0.35
+	r.BorderSizePixel = 0
+	r.AutomaticSize = Enum.AutomaticSize.Y
+	r.Parent = self.page
+	Instance.new("UICorner", r).CornerRadius = UDim.new(0, 6)
+	local stroke = Instance.new("UIStroke", r)
+	stroke.Color = window.theme.Border
+	stroke.Thickness = 1
+	local pad = Instance.new("UIPadding", r)
+	pad.PaddingLeft  = UDim.new(0, 10)
+	pad.PaddingRight = UDim.new(0, 10)
+	pad.PaddingTop   = UDim.new(0, 8)
+	pad.PaddingBottom = UDim.new(0, 10)
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(1, 0, 0, 0)
+	lbl.BackgroundTransparency = 1
+	lbl.Text = ptitle
+	lbl.TextColor3 = window.theme.Accent
+	lbl.Font = Enum.Font.GothamBold
+	lbl.TextSize = 13
+	lbl.TextXAlignment = Enum.TextXAlignment.Left
+	lbl.AutomaticSize = Enum.AutomaticSize.Y
+	lbl.TextWrapped = true
+	lbl.LayoutOrder = 1
+	lbl.ZIndex = 2
+	lbl.Parent = r
+	table.insert(window.accentObjects, lbl)
+	local body = Instance.new("TextLabel")
+	body.Size = UDim2.new(1, 0, 0, 0)
+	body.BackgroundTransparency = 1
+	body.Text = text
+	body.TextColor3 = window.theme.Gray
+	body.Font = Enum.Font.Roboto
+	body.TextSize = 12
+	body.TextXAlignment = Enum.TextXAlignment.Left
+	body.TextWrapped = true
+	body.AutomaticSize = Enum.AutomaticSize.Y
+	body.LayoutOrder = 2
+	body.ZIndex = 2
+	body.Parent = r
+	local layout = Instance.new("UIListLayout", r)
+	layout.Padding = UDim.new(0, 4)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	local ref = {}
+	function ref:setTitle(t) lbl.Text = t end
+	function ref:setDesc(d)  body.Text = d end
+	function ref:SetDesc(d)  body.Text = d end
+	return ref
+end
+
+function UILib.SubTab:addInput(labelText, default, placeholder, callback, tooltip)
+	local window = self.window
+	local id = generateID()
+	local r = Instance.new("Frame")
+	r.Size = UDim2.new(1, 0, 0, 52)
+	r.BackgroundColor3 = window.theme.Item
+	r.BackgroundTransparency = 0.35
+	r.BorderSizePixel = 0
+	r.Parent = self.page
+	Instance.new("UICorner", r).CornerRadius = UDim.new(0, 6)
+	local stroke = Instance.new("UIStroke", r)
+	stroke.Color = window.theme.Border
+	stroke.Thickness = 1
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(1, -10, 0, 18)
+	lbl.Position = UDim2.new(0, 8, 0, 5)
+	lbl.BackgroundTransparency = 1
+	lbl.Text = labelText
+	lbl.TextColor3 = window.theme.GrayLt
+	lbl.Font = Enum.Font.Roboto
+	lbl.TextSize = 12
+	lbl.TextXAlignment = Enum.TextXAlignment.Left
+	lbl.ZIndex = 3
+	lbl.Parent = r
+	local box = Instance.new("TextBox")
+	box.Size = UDim2.new(1, -16, 0, 22)
+	box.Position = UDim2.new(0, 8, 0, 25)
+	box.BackgroundColor3 = window.theme.Track
+	box.ClipsDescendants = true
+	box.BorderSizePixel = 0
+	box.ZIndex = 3
+	box.Text = default or ""
+	box.TextColor3 = window.theme.Accent
+	box.Font = Enum.Font.RobotoMono
+	box.TextSize = 13
+	box.ClearTextOnFocus = false
+	box.PlaceholderText = placeholder or ""
+	box.PlaceholderColor3 = window.theme.Gray
+	box.Parent = r
+	Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
+	local current = default or ""
+	box.FocusLost:Connect(function(enter)
+		if enter then current = box.Text if callback then callback(current) end end
+	end)
+	if tooltip then attachTooltip(r, tooltip) end
+	local elem = {ID = id, Value = current, DefaultValue = default or "",
+		SetValue = function(val) current = val box.Text = val end}
+	function elem:SetDesc(d) lbl.Text = d end
+	return elem
+end
+
+function UILib.SubTab:addButton(text, callback, tooltip, color)
+	local window = self.window
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(1, 0, 0, 36)
+	btn.BackgroundColor3 = window.theme.Item
+	btn.BorderSizePixel = 0
+	btn.Text = ""
+	btn.ZIndex = 3
+	btn.Parent = self.page
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+	local stroke = Instance.new("UIStroke", btn)
+	stroke.Color = window.theme.Border
+	stroke.Thickness = 1
+	local rh = Instance.new("Frame")
+	rh.Size = UDim2.new(1, 0, 1, 0)
+	rh.BackgroundColor3 = window.theme.ItemHov
+	rh.BorderSizePixel = 0
+	rh.Visible = false
+	rh.ZIndex = 2
+	rh.Parent = btn
+	Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 6)
+	btn.MouseEnter:Connect(function() rh.Visible = true end)
+	btn.MouseLeave:Connect(function() rh.Visible = false end)
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(1, -16, 1, 0)
+	lbl.Position = UDim2.new(0, 8, 0, 0)
+	lbl.BackgroundTransparency = 1
+	lbl.Text = text
+	lbl.TextColor3 = color or window.theme.White
+	lbl.Font = Enum.Font.Roboto
+	lbl.TextSize = 13
+	lbl.TextXAlignment = Enum.TextXAlignment.Center
+	lbl.ZIndex = 4
+	lbl.Parent = btn
+	btn.MouseButton1Click:Connect(callback)
+	if tooltip then attachTooltip(btn, tooltip) end
+	return btn
+end
+
+-- ────────────────────────────────────────────────────────────
+
+local function attachTooltip(element, text)
+	if not text then return end
+	element.MouseEnter:Connect(function() startTooltipDelay(text, element) end)
+	element.MouseLeave:Connect(hideTooltip)
+	element.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then hideTooltip() end
+	end)
+end
+
 local function createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step)
 	step = step or 1
 	local id = generateID()
@@ -1640,6 +1816,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		if num then updateSlider(num) else valueLabel.Text = tostring(currentVal) end
 	end)
 	local elem = {ID = id, Value = currentVal, DefaultValue = defaultVal, SetValue = updateSlider}
+	elem.SetDesc = function(d) label.Text = d end
 	window.configs[id] = elem
 	row.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton2 then
@@ -2403,6 +2580,7 @@ function UILib.Column:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
+		elem.SetDesc = function(d) lbl.Text = d end
 		return elem
 	end
 
@@ -2640,6 +2818,7 @@ function UILib.Column:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
+		elem.SetDesc = function(d) lbl.Text = d end
 		return elem
 	end
 
@@ -2718,6 +2897,7 @@ function UILib.Column:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
+		elem.SetDesc = function(d) lbl.Text = d end
 		return elem
 	end
 
@@ -3283,6 +3463,7 @@ function UILib.Column:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
+		elem.SetDesc = function(d) lbl.Text = d end
 		return elem
 	end
 
@@ -3333,6 +3514,7 @@ function UILib.Column:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
+		elem.SetDesc = function(d) lbl.Text = d end
 		return elem
 	end
 
@@ -3462,6 +3644,7 @@ function UILib.Column:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
+		elem.SetDesc = function(d) lbl.Text = d end
 		return elem
 	end
 
@@ -3676,6 +3859,7 @@ function UILib.SubTab:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
+		elem.SetDesc = function(d) lbl.Text = d end
 		return elem
 	end
 
@@ -3910,6 +4094,7 @@ function UILib.SubTab:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
+		elem.SetDesc = function(d) lbl.Text = d end
 		return elem
 	end
 
@@ -3988,6 +4173,7 @@ function UILib.SubTab:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
+		elem.SetDesc = function(d) lbl.Text = d end
 		return elem
 	end
 
@@ -4556,6 +4742,7 @@ function UILib.SubTab:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
+		elem.SetDesc = function(d) lbl.Text = d end
 		return elem
 	end
 
@@ -4606,6 +4793,7 @@ function UILib.SubTab:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
+		elem.SetDesc = function(d) lbl.Text = d end
 		return elem
 	end
 
@@ -4735,6 +4923,7 @@ function UILib.SubTab:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
+		elem.SetDesc = function(d) lbl.Text = d end
 		return elem
 	end
 
