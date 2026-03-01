@@ -194,84 +194,6 @@ function UILib:notify(message, notifType, duration)
     end)
 end
 
-function UILib:confirm(message, onConfirm, onCancel)
-    local backdrop = Instance.new("TextButton")
-    backdrop.Size = UDim2.new(1, 0, 1, 0)
-    backdrop.BackgroundColor3 = Color3.new(0, 0, 0)
-    backdrop.BackgroundTransparency = 0.5
-    backdrop.BorderSizePixel = 0
-    backdrop.Text = ""
-    backdrop.ZIndex = 800
-    backdrop.Parent = self.sg
-    local modal = Instance.new("Frame")
-    modal.Size = UDim2.new(0, 260, 0, 110)
-    modal.AnchorPoint = Vector2.new(0.5, 0.5)
-    modal.Position = UDim2.new(0.5, 0, 0.5, 0)
-    modal.BackgroundColor3 = self.theme.Panel
-    modal.BorderSizePixel = 0
-    modal.ZIndex = 801
-    modal.Parent = self.sg
-    Instance.new("UICorner", modal).CornerRadius = UDim.new(0, 8)
-    local mStroke = Instance.new("UIStroke", modal)
-    mStroke.Color = self.theme.Accent
-    mStroke.Thickness = 1
-    local msg = Instance.new("TextLabel")
-    msg.Size = UDim2.new(1, -24, 0, 50)
-    msg.Position = UDim2.new(0, 12, 0, 10)
-    msg.BackgroundTransparency = 1
-    msg.Text = message
-    msg.TextColor3 = self.theme.White
-    msg.Font = Enum.Font.Roboto
-    msg.TextSize = 13
-    msg.TextWrapped = true
-    msg.TextXAlignment = Enum.TextXAlignment.Left
-    msg.TextYAlignment = Enum.TextYAlignment.Top
-    msg.ZIndex = 802
-    msg.Parent = modal
-    local function closeModal()
-        backdrop:Destroy()
-        modal:Destroy()
-    end
-    local cancelBtn = Instance.new("TextButton")
-    cancelBtn.Size = UDim2.new(0, 110, 0, 28)
-    cancelBtn.Position = UDim2.new(0, 12, 1, -38)
-    cancelBtn.BackgroundColor3 = self.theme.Item
-    cancelBtn.BorderSizePixel = 0
-    cancelBtn.Text = "Cancel"
-    cancelBtn.TextColor3 = self.theme.Gray
-    cancelBtn.Font = Enum.Font.GothamBold
-    cancelBtn.TextSize = 12
-    cancelBtn.ZIndex = 802
-    cancelBtn.Parent = modal
-    Instance.new("UICorner", cancelBtn).CornerRadius = UDim.new(0, 4)
-    local cStroke = Instance.new("UIStroke", cancelBtn)
-    cStroke.Color = self.theme.Border
-    cStroke.Thickness = 1
-    cancelBtn.MouseEnter:Connect(function() cancelBtn.TextColor3 = self.theme.White end)
-    cancelBtn.MouseLeave:Connect(function() cancelBtn.TextColor3 = self.theme.Gray end)
-    cancelBtn.MouseButton1Click:Connect(function() closeModal() if onCancel then onCancel() end end)
-    local confirmBtn = Instance.new("TextButton")
-    confirmBtn.Size = UDim2.new(0, 110, 0, 28)
-    confirmBtn.Position = UDim2.new(1, -122, 1, -38)
-    confirmBtn.BackgroundColor3 = self.theme.Accent
-    confirmBtn.BorderSizePixel = 0
-    confirmBtn.Text = "Confirm"
-    confirmBtn.TextColor3 = Color3.new(1, 1, 1)
-    confirmBtn.Font = Enum.Font.GothamBold
-    confirmBtn.TextSize = 12
-    confirmBtn.ZIndex = 802
-    confirmBtn.Parent = modal
-    Instance.new("UICorner", confirmBtn).CornerRadius = UDim.new(0, 4)
-    confirmBtn.MouseEnter:Connect(function() confirmBtn.BackgroundColor3 = self.theme.AccentD end)
-    confirmBtn.MouseLeave:Connect(function() confirmBtn.BackgroundColor3 = self.theme.Accent end)
-    confirmBtn.MouseButton1Click:Connect(function() closeModal() if onConfirm then onConfirm() end end)
-    backdrop.MouseButton1Click:Connect(function() closeModal() if onCancel then onCancel() end end)
-    modal.Size = UDim2.new(0, 0, 0, 0)
-    TweenService:Create(modal, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 260, 0, 110)
-    }):Play()
-end
-
 function UILib:saveConfig(filename)
     local data = {}
     if not self.configs then return end
@@ -432,7 +354,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     winStroke.Color = self.theme.Border
     winStroke.Thickness = 1
     self.window = win
-    table.insert(self.accentObjects, winStroke)
+    -- winStroke intentionally NOT in accentObjects — border stays neutral when accent changes
     self.originalPosition = win.Position
     self.originalSize = win.Size
 
@@ -485,10 +407,25 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     headerLine.ZIndex = 6
     headerLine.Parent = header
     table.insert(self.accentObjects, headerLine)
-    local titleSize = game:GetService("TextService"):GetTextSize(title, 20, Enum.Font.GothamBold, Vector2.new(1000, 46))
+    -- Title row: UIListLayout so title + version pill auto-flow, never overlapping FPS text
+    local titleRow = Instance.new("Frame")
+    titleRow.Size = UDim2.new(0, 0, 1, 0)
+    titleRow.AutomaticSize = Enum.AutomaticSize.X
+    titleRow.Position = UDim2.new(0, 10, 0, 0)
+    titleRow.BackgroundTransparency = 1
+    titleRow.ZIndex = 6
+    titleRow.ClipsDescendants = false
+    titleRow.Parent = header
+    self.titleRow = titleRow
+    local titleRowLayout = Instance.new("UIListLayout", titleRow)
+    titleRowLayout.FillDirection = Enum.FillDirection.Horizontal
+    titleRowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    titleRowLayout.Padding = UDim.new(0, 8)
+    titleRowLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
     local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(0, titleSize.X + 5, 1, 0)
-    titleLabel.Position = UDim2.new(0, 10, 0, 0)
+    titleLabel.AutomaticSize = Enum.AutomaticSize.X
+    titleLabel.Size = UDim2.new(0, 0, 1, 0)
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = title
     titleLabel.TextColor3 = self.theme.White
@@ -496,26 +433,27 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     titleLabel.TextSize = 20
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.ZIndex = 6
-    titleLabel.Parent = header
+    titleLabel.LayoutOrder = 1
+    titleLabel.Parent = titleRow
     self.titleLabel = titleLabel
 
     if showVersion then
         local versionPill = Instance.new("Frame")
         versionPill.Size = UDim2.new(0, 48, 0, 18)
-        versionPill.Position = UDim2.new(0, titleSize.X + 20, 0.5, 0)
-        versionPill.AnchorPoint = Vector2.new(0, 0.5)
         versionPill.BackgroundColor3 = self.theme.Accent
         versionPill.BorderSizePixel = 0
         versionPill.ZIndex = 6
-        versionPill.Parent = header
+        versionPill.LayoutOrder = 2
+        versionPill.Parent = titleRow
         Instance.new("UICorner", versionPill).CornerRadius = UDim.new(0, 4)
         table.insert(self.accentObjects, versionPill)
-        
+        self.versionPill = versionPill
+
         local versionLabel = Instance.new("TextLabel")
         versionLabel.Size = UDim2.new(1, 0, 1, 0)
         versionLabel.BackgroundTransparency = 1
         versionLabel.Text = "v1.0"
-        versionLabel.TextColor3 = Color3.fromRGB(20,20,20)
+        versionLabel.TextColor3 = Color3.fromRGB(20, 20, 20)
         versionLabel.Font = Enum.Font.GothamBold
         versionLabel.TextSize = 10
         versionLabel.ZIndex = 7
@@ -737,18 +675,45 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
             end)
         end
 
+        -- Copy Value as string
+        if elemConfig and elemConfig.Value ~= nil then
+            addContextMenuItem("Copy Value", "", function()
+                local v = elemConfig.Value
+                local str
+                if type(v) == "boolean" then
+                    str = tostring(v)
+                elseif type(v) == "number" then
+                    str = tostring(math.floor(v * 1000) / 1000)
+                elseif type(v) == "string" then
+                    str = v
+                elseif type(v) == "table" then
+                    str = table.concat(v, ", ")
+                elseif typeof and typeof(v) == "Color3" then
+                    str = string.format("%d, %d, %d", math.floor(v.R*255+0.5), math.floor(v.G*255+0.5), math.floor(v.B*255+0.5))
+                else
+                    str = tostring(v)
+                end
+                if setclipboard then
+                    pcall(setclipboard, str)
+                    self:notify("Copied: " .. str, "info", 2)
+                else
+                    self:notify("Value: " .. str, "info", 2)
+                end
+            end)
+        end
 
+        -- Separator before toggle-specific options
+        if elemConfig and elemConfig.IsToggle then
+            local sepA = Instance.new("Frame")
+            sepA.Size = UDim2.new(1, 0, 0, 1)
+            sepA.BackgroundColor3 = self.theme.Border
+            sepA.BorderSizePixel = 0
+            sepA.ZIndex = 901
+            sepA.Parent = ctxMenu
+        end
 
         -- Toggle Mode (only for toggles)
         if elemConfig and elemConfig.IsToggle then
-            -- Separator
-            local sep = Instance.new("Frame")
-            sep.Size = UDim2.new(1, 0, 0, 1)
-            sep.BackgroundColor3 = self.theme.Border
-            sep.BorderSizePixel = 0
-            sep.ZIndex = 901
-            sep.Parent = ctxMenu
-
             local currentMode = elemConfig.Mode or "toggle"
             local modes = {"always", "toggle", "hold"}
             local modeLabels = {always = "Always On", toggle = "Toggle", hold = "Hold"}
@@ -847,23 +812,45 @@ end
 
 function UILib:addWatermark(name)
     if self.watermark then self.watermark:Destroy() end
+
+    -- Outer frame auto-sizes to content so any name length fits perfectly
     local wm = Instance.new("Frame")
-    wm.Size = UDim2.new(0, 200, 0, 30)
-    wm.Position = UDim2.new(1, -210, 0, 10)  -- right side
+    wm.AutomaticSize = Enum.AutomaticSize.X
+    wm.Size = UDim2.new(0, 0, 0, 30)
+    wm.Position = UDim2.new(1, -10, 0, 10)
+    wm.AnchorPoint = Vector2.new(1, 0)
     wm.BackgroundColor3 = self.theme.Panel
     wm.BorderSizePixel = 0
+    wm.ClipsDescendants = false
     wm.Parent = self.sg
     wm.ZIndex = 200
     Instance.new("UICorner", wm).CornerRadius = UDim.new(0, 6)
-    -- Horizontal separator instead of outline
+
+    -- Accent underline — stretches with the frame
     local sep = Instance.new("Frame")
     sep.Size = UDim2.new(1, -16, 0, 1)
-    sep.Position = UDim2.new(0, 8, 1, -5)
+    sep.Position = UDim2.new(0, 8, 1, -4)
     sep.BackgroundColor3 = self.theme.Accent
     sep.BorderSizePixel = 0
     sep.ZIndex = 201
     sep.Parent = wm
-    
+
+    -- UIListLayout row: name | divider | FPS | ping — all auto-sized
+    local row = Instance.new("Frame")
+    row.AutomaticSize = Enum.AutomaticSize.X
+    row.Size = UDim2.new(0, 0, 1, 0)
+    row.BackgroundTransparency = 1
+    row.ZIndex = 201
+    row.Parent = wm
+    local rowLayout = Instance.new("UIListLayout", row)
+    rowLayout.FillDirection = Enum.FillDirection.Horizontal
+    rowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    rowLayout.Padding = UDim.new(0, 0)
+    rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    local rowPad = Instance.new("UIPadding", row)
+    rowPad.PaddingLeft = UDim.new(0, 10)
+    rowPad.PaddingRight = UDim.new(0, 10)
+
     local watermarkScale = Instance.new("UIScale", wm)
     watermarkScale.Scale = 1
 
@@ -883,17 +870,18 @@ function UILib:addWatermark(name)
     dragBtn.Text = ""
     dragBtn.ZIndex = 205
     dragBtn.Parent = wm
-    
+
     do
         local drag, dragStart, dragPos = false, nil, nil
         dragBtn.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = true dragStart = i.Position dragPos = wm.Position end end)
         table.insert(self.connections, UIS.InputChanged:Connect(function(i) if drag and i.UserInputType == Enum.UserInputType.MouseMovement then local delta = i.Position - dragStart wm.Position = UDim2.new(dragPos.X.Scale, dragPos.X.Offset + delta.X, dragPos.Y.Scale, dragPos.Y.Offset + delta.Y) end end))
         table.insert(self.connections, UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end end))
     end
-    
+
+    -- Name label: auto-sizes to text width
     local nameLbl = Instance.new("TextLabel")
-    nameLbl.Size = UDim2.new(0, 100, 1, 0)
-    nameLbl.Position = UDim2.new(0, 8, 0, 0)
+    nameLbl.AutomaticSize = Enum.AutomaticSize.X
+    nameLbl.Size = UDim2.new(0, 0, 1, 0)
     nameLbl.BackgroundTransparency = 1
     nameLbl.Text = name
     nameLbl.TextColor3 = self.theme.White
@@ -901,29 +889,44 @@ function UILib:addWatermark(name)
     nameLbl.TextSize = 12
     nameLbl.TextXAlignment = Enum.TextXAlignment.Left
     nameLbl.ZIndex = 201
-    nameLbl.Parent = wm
-    
+    nameLbl.LayoutOrder = 1
+    nameLbl.Parent = row
+
+    -- Thin divider between name and stats
+    local divider = Instance.new("Frame")
+    divider.Size = UDim2.new(0, 1, 0, 14)
+    divider.BackgroundColor3 = self.theme.Border
+    divider.BorderSizePixel = 0
+    divider.ZIndex = 201
+    divider.LayoutOrder = 2
+    divider.Parent = row
+    local divPad = Instance.new("UIPadding", divider)
+    divPad.PaddingLeft = UDim.new(0, 6)
+    divPad.PaddingRight = UDim.new(0, 6)
+
     local fpsLabel = Instance.new("TextLabel")
-    fpsLabel.Size = UDim2.new(0, 45, 1, 0)
-    fpsLabel.Position = UDim2.new(0, 110, 0, 0)
+    fpsLabel.AutomaticSize = Enum.AutomaticSize.X
+    fpsLabel.Size = UDim2.new(0, 0, 1, 0)
     fpsLabel.BackgroundTransparency = 1
     fpsLabel.Text = "FPS: 0"
     fpsLabel.TextColor3 = self.theme.Accent
     fpsLabel.Font = Enum.Font.RobotoMono
     fpsLabel.TextSize = 10
     fpsLabel.ZIndex = 201
-    fpsLabel.Parent = wm
-    
+    fpsLabel.LayoutOrder = 3
+    fpsLabel.Parent = row
+
     local pingLabel = Instance.new("TextLabel")
-    pingLabel.Size = UDim2.new(0, 40, 1, 0)
-    pingLabel.Position = UDim2.new(0, 155, 0, 0)
+    pingLabel.AutomaticSize = Enum.AutomaticSize.X
+    pingLabel.Size = UDim2.new(0, 0, 1, 0)
     pingLabel.BackgroundTransparency = 1
     pingLabel.Text = "0ms"
     pingLabel.TextColor3 = self.theme.Accent
     pingLabel.Font = Enum.Font.RobotoMono
     pingLabel.TextSize = 10
     pingLabel.ZIndex = 201
-    pingLabel.Parent = wm
+    pingLabel.LayoutOrder = 4
+    pingLabel.Parent = row
     
     local frameCount = 0
     local lastTime = tick()
@@ -988,6 +991,13 @@ function UILib:_createUITab()
         currentConfig = val
     end, "Name for save/load")
 
+    cfg:textbox("File Prefix", self.configPrefix, function(val)
+        if val and val ~= "" then
+            self.configPrefix = val
+            self:notify("Prefix: " .. val, "info", 2)
+        end
+    end, "Unique prefix for saved files — change this per-script to avoid conflicts")
+
     cfg:button("Create Config", function()
         if currentConfig and currentConfig ~= "" then
             -- Save with current settings immediately
@@ -1017,13 +1027,15 @@ function UILib:_createUITab()
 
     cfg:button("Delete Config", function()
         if currentConfig and currentConfig ~= "" then
-            self:confirm('Delete config "' .. currentConfig .. '"?', function()
-                self:deleteConfig(self.configPrefix .. currentConfig .. ".json")
-            end)
-        else
-            self:notify("No config selected", "warning")
+            self:deleteConfig(self.configPrefix .. currentConfig .. ".json")
         end
     end, "Delete selected config")
+end
+
+function UILib:setTitle(text)
+    if self.titleLabel then
+        self.titleLabel.Text = tostring(text)
+    end
 end
 
 function UILib:Destroy()
@@ -2107,15 +2119,12 @@ function UILib.Column:addGroup(title)
             Mode = "toggle",
         }
         elem.SetValue = function(val)
-            state = val
-            elem.Value = state
-            local targetBG = state and window.theme.Accent or window.theme.Track
-            local targetStroke = state and window.theme.AccentD or window.theme.Border
-            TweenService:Create(cbOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {BackgroundColor3 = targetBG}):Play()
-            cbStroke.Color = targetStroke
-            cbMark.Text = state and "x" or ""
-            label.TextColor3 = state and window.theme.White or window.theme.GrayLt
-            if callback then callback(state) end
+            state = val 
+            elem.Value = state 
+            cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track 
+            cbStroke.Color = state and window.theme.AccentD or window.theme.Border 
+            cbMark.Text = state and "x" or "" 
+            if callback then callback(state) end 
             if window.configs[id] then window.configs[id].Value = state end
         end
         window.configs[id] = elem
@@ -2462,49 +2471,6 @@ function UILib.Column:addGroup(title)
         lbl.ZIndex = 3
         lbl.Parent = f
         if tooltip then attachTooltip(f, tooltip) end
-        updateSize()
-        return f
-    end
-
-    function group:separator(text)
-        local f = Instance.new("Frame")
-        f.Size = UDim2.new(1, 0, 0, text and 18 or 10)
-        f.BackgroundTransparency = 1
-        f.Parent = items
-        if text and text ~= "" then
-            local line1 = Instance.new("Frame")
-            line1.Size = UDim2.new(0.28, 0, 0, 1)
-            line1.Position = UDim2.new(0, 0, 0.5, 0)
-            line1.BackgroundColor3 = window.theme.Border
-            line1.BorderSizePixel = 0
-            line1.ZIndex = 3
-            line1.Parent = f
-            local lbl = Instance.new("TextLabel")
-            lbl.Size = UDim2.new(0.44, 0, 1, 0)
-            lbl.Position = UDim2.new(0.28, 0, 0, 0)
-            lbl.BackgroundTransparency = 1
-            lbl.Text = text:upper()
-            lbl.TextColor3 = window.theme.Border
-            lbl.Font = Enum.Font.GothamBold
-            lbl.TextSize = 9
-            lbl.ZIndex = 3
-            lbl.Parent = f
-            local line2 = Instance.new("Frame")
-            line2.Size = UDim2.new(0.28, 0, 0, 1)
-            line2.Position = UDim2.new(0.72, 0, 0.5, 0)
-            line2.BackgroundColor3 = window.theme.Border
-            line2.BorderSizePixel = 0
-            line2.ZIndex = 3
-            line2.Parent = f
-        else
-            local line = Instance.new("Frame")
-            line.Size = UDim2.new(1, 0, 0, 1)
-            line.Position = UDim2.new(0, 0, 0.5, 0)
-            line.BackgroundColor3 = window.theme.Border
-            line.BorderSizePixel = 0
-            line.ZIndex = 3
-            line.Parent = f
-        end
         updateSize()
         return f
     end
@@ -3210,20 +3176,17 @@ function UILib.SubTab:addGroup(title)
         elem.SetValue = function(val)
             state = val
             elem.Value = state
-            local targetBG = state and window.theme.Accent or window.theme.Track
-            local targetStroke = state and window.theme.AccentD or window.theme.Border
-            TweenService:Create(cbOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {BackgroundColor3 = targetBG}):Play()
-            cbStroke.Color = targetStroke
+            cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track
+            cbStroke.Color = state and window.theme.AccentD or window.theme.Border
             cbMark.Text = state and "×" or ""
-            label.TextColor3 = state and window.theme.White or window.theme.GrayLt
             if callback then callback(state) end
             if window.configs[id] then window.configs[id].Value = state end
         end
         window.configs[id] = elem
-        row.MouseButton1Click:Connect(function()
+        row.MouseButton1Click:Connect(function() 
             if elem.Mode == "always" then return end
-            state = not state
-            elem.SetValue(state)
+            state = not state 
+            elem.SetValue(state) 
         end)
         row.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton2 then
@@ -3558,49 +3521,6 @@ function UILib.SubTab:addGroup(title)
         lbl.ZIndex = 3
         lbl.Parent = f
         if tooltip then attachTooltip(f, tooltip) end
-        updateSize()
-        return f
-    end
-
-    function group:separator(text)
-        local f = Instance.new("Frame")
-        f.Size = UDim2.new(1, 0, 0, text and 18 or 10)
-        f.BackgroundTransparency = 1
-        f.Parent = items
-        if text and text ~= "" then
-            local line1 = Instance.new("Frame")
-            line1.Size = UDim2.new(0.28, 0, 0, 1)
-            line1.Position = UDim2.new(0, 0, 0.5, 0)
-            line1.BackgroundColor3 = window.theme.Border
-            line1.BorderSizePixel = 0
-            line1.ZIndex = 3
-            line1.Parent = f
-            local lbl = Instance.new("TextLabel")
-            lbl.Size = UDim2.new(0.44, 0, 1, 0)
-            lbl.Position = UDim2.new(0.28, 0, 0, 0)
-            lbl.BackgroundTransparency = 1
-            lbl.Text = text:upper()
-            lbl.TextColor3 = window.theme.Border
-            lbl.Font = Enum.Font.GothamBold
-            lbl.TextSize = 9
-            lbl.ZIndex = 3
-            lbl.Parent = f
-            local line2 = Instance.new("Frame")
-            line2.Size = UDim2.new(0.28, 0, 0, 1)
-            line2.Position = UDim2.new(0.72, 0, 0.5, 0)
-            line2.BackgroundColor3 = window.theme.Border
-            line2.BorderSizePixel = 0
-            line2.ZIndex = 3
-            line2.Parent = f
-        else
-            local line = Instance.new("Frame")
-            line.Size = UDim2.new(1, 0, 0, 1)
-            line.Position = UDim2.new(0, 0, 0.5, 0)
-            line.BackgroundColor3 = window.theme.Border
-            line.BorderSizePixel = 0
-            line.ZIndex = 3
-            line.Parent = f
-        end
         updateSize()
         return f
     end
