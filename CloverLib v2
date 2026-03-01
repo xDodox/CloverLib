@@ -703,7 +703,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			local modeLabels = {always = "Always On", toggle = "Toggle", hold = "Hold"}
 			for _, mode in ipairs(modes) do
 				local isActive = (currentMode == mode)
-				local prefix = isActive and "\u2022 " or "  "
+				local prefix = isActive and "• " or "  "
 				local item = addContextMenuItem(prefix .. (modeLabels[mode] or mode), "", function()
 					elemConfig.Mode = mode
 					if mode == "always" then elemConfig:SetValue(true) end
@@ -901,7 +901,7 @@ function UILib:addWatermark(name)
 	return wm
 end
 
--- FIX 2: _createUITab \u2014 add "Create Config" button, change refresh to text button
+-- FIX 2: _createUITab — add "Create Config" button, change refresh to text button
 function UILib:_createUITab()
 	local uiTab = self:addTab("UI")
 	local uiSub = uiTab:addSubTab("Settings")
@@ -1131,7 +1131,7 @@ function UILib:newMiniWindow(title, width, posX, posY)
 	collapseBtn.Size = UDim2.new(0, 24, 0, 24)
 	collapseBtn.Position = UDim2.new(1, -28, 0.5, -12)
 	collapseBtn.BackgroundTransparency = 1
-	collapseBtn.Text = "\u2212"
+	collapseBtn.Text = "−"
 	collapseBtn.TextColor3 = self.theme.Gray
 	collapseBtn.Font = Enum.Font.GothamBold
 	collapseBtn.TextSize = 16
@@ -1169,7 +1169,7 @@ function UILib:newMiniWindow(title, width, posX, posY)
 
 	collapseBtn.MouseButton1Click:Connect(function()
 		collapsed = not collapsed
-		collapseBtn.Text = collapsed and "+" or "\u2212"
+		collapseBtn.Text = collapsed and "+" or "−"
 		local targetH = collapsed and 32 or fullH
 		body.Visible = not collapsed
 		TweenService:Create(frame, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
@@ -1206,7 +1206,7 @@ function UILib:newMiniWindow(title, width, posX, posY)
 		val.Size = UDim2.new(0.45, 0, 1, 0)
 		val.Position = UDim2.new(0.55, 0, 0, 0)
 		val.BackgroundTransparency = 1
-		val.Text = tostring(defaultValue or "\u2014")
+		val.Text = tostring(defaultValue or "—")
 		val.TextColor3 = color or self.window.theme.Accent
 		val.Font = Enum.Font.RobotoMono
 		val.TextSize = 12
@@ -2090,7 +2090,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	arrow.Size = UDim2.new(0, 24, 1, 0)
 	arrow.Position = UDim2.new(1, -26, 0, 0)
 	arrow.BackgroundTransparency = 1
-	arrow.Text = "\u25bc"
+	arrow.Text = "▼"
 	arrow.TextColor3 = window.theme.Gray
 	arrow.Font = Enum.Font.GothamBold
 	arrow.TextSize = 12
@@ -2161,7 +2161,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 		ck.Size = UDim2.new(0, 18, 1, 0)
 		ck.Position = UDim2.new(1, -20, 0, 0)
 		ck.BackgroundTransparency = 1
-		ck.Text = selected[opt] and "\u00d7" or ""
+		ck.Text = selected[opt] and "×" or ""
 		ck.TextColor3 = window.theme.Accent
 		ck.Font = Enum.Font.GothamBold
 		ck.TextSize = 12
@@ -2172,7 +2172,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 		ob.MouseLeave:Connect(function() oh.Visible = false ol.TextColor3 = window.theme.GrayLt end)
 		ob.MouseButton1Click:Connect(function()
 			if selected[opt] then selected[opt] = nil ck.Text = "" bg.Visible = false
-			else selected[opt] = true ck.Text = "\u00d7" bg.Visible = true end
+			else selected[opt] = true ck.Text = "×" bg.Visible = true end
 			local keys = {}
 			for k, _ in pairs(selected) do table.insert(keys, k) end
 			selLbl.Text = #keys > 0 and table.concat(keys, ", ") or "None"
@@ -2184,7 +2184,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	dbtn.MouseButton1Click:Connect(function()
 		open = not open
 		dlist.Visible = open
-		arrow.Text = open and "\u25b2" or "\u25bc"
+		arrow.Text = open and "▲" or "▼"
 		row.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 104) or 0))
 		group.updateSize()
 	end)
@@ -2193,7 +2193,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 		for _, opt in ipairs(t) do selected[opt] = true end
 		for opt, ck in pairs(checks) do
 			local sel = selected[opt] or false
-			ck.Text = sel and "\u00d7" or ""
+			ck.Text = sel and "×" or ""
 			if backgrounds[opt] then backgrounds[opt].Visible = sel end
 		end
 		local keys = {}
@@ -2460,7 +2460,7 @@ function UILib.Column:addGroup(title)
 		arrow.Size = UDim2.new(0, 24, 1, 0)
 		arrow.Position = UDim2.new(1, -26, 0, 0)
 		arrow.BackgroundTransparency = 1
-		arrow.Text = "\u25bc"
+		arrow.Text = "▼"
 		arrow.TextColor3 = window.theme.Accent
 		arrow.Font = Enum.Font.GothamBold
 		arrow.TextSize = 12
@@ -2502,7 +2502,7 @@ function UILib.Column:addGroup(title)
 		local function closeDropdown()
 			open = false
 			dlist.Visible = false
-			arrow.Text = "\u25bc"
+			arrow.Text = "▼"
 			r.Size = UDim2.new(1, 0, 0, 56)
 			updateSize()
 		end
@@ -2603,7 +2603,7 @@ function UILib.Column:addGroup(title)
 		dbtn.MouseButton1Click:Connect(function()
 			open = not open
 			dlist.Visible = open
-			arrow.Text = open and "\u25b2" or "\u25bc"
+			arrow.Text = open and "▲" or "▼"
 			r.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 104) or 0))
 			updateSize()
 		end)
@@ -2613,7 +2613,7 @@ function UILib.Column:addGroup(title)
 			SetValue = function(val)
 				currentSelection = val
 				selLbl.Text = val
-				for o, c in pairs(checks) do c.Text = (o == val) and "\u00d7" or "" end
+				for o, c in pairs(checks) do c.Text = (o == val) and "×" or "" end
 				for o, b in pairs(backgrounds) do b.Visible = (o == val) end
 				if callback then callback(val) end
 			end
@@ -3105,7 +3105,7 @@ function UILib.Column:addGroup(title)
 		arrow.Size = UDim2.new(0, 20, 1, 0)
 		arrow.Position = UDim2.new(1, -22, 0, 0)
 		arrow.BackgroundTransparency = 1
-		arrow.Text = default and "\u25bc" or "\u25b6"
+		arrow.Text = default and "▼" or "▶"
 		arrow.TextColor3 = window.theme.Accent
 		arrow.Font = Enum.Font.GothamBold
 		arrow.TextSize = 14
@@ -3194,7 +3194,7 @@ function UILib.Column:addGroup(title)
 		if contentFunc then contentFunc(nestedGroup) end
 		toggleRow.MouseButton1Click:Connect(function()
 			state = not state
-			arrow.Text = state and "\u25bc" or "\u25b6"
+			arrow.Text = state and "▼" or "▶"
 			container.Size = UDim2.new(1, 0, 0, 34 + (state and contentLayout.AbsoluteContentSize.Y or 0))
 			updateSize()
 		end)
@@ -3706,7 +3706,7 @@ function UILib.SubTab:addGroup(title)
 		arrow.Size = UDim2.new(0, 24, 1, 0)
 		arrow.Position = UDim2.new(1, -26, 0, 0)
 		arrow.BackgroundTransparency = 1
-		arrow.Text = "\u25bc"
+		arrow.Text = "▼"
 		arrow.TextColor3 = window.theme.Accent
 		arrow.Font = Enum.Font.GothamBold
 		arrow.TextSize = 12
@@ -3748,7 +3748,7 @@ function UILib.SubTab:addGroup(title)
 		local function closeDropdown()
 			open = false
 			dlist.Visible = false
-			arrow.Text = "\u25bc"
+			arrow.Text = "▼"
 			r.Size = UDim2.new(1, 0, 0, 56)
 			updateSize()
 		end
@@ -3849,7 +3849,7 @@ function UILib.SubTab:addGroup(title)
 		dbtn.MouseButton1Click:Connect(function()
 			open = not open
 			dlist.Visible = open
-			arrow.Text = open and "\u25b2" or "\u25bc"
+			arrow.Text = open and "▲" or "▼"
 			r.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 104) or 0))
 			updateSize()
 		end)
@@ -3859,7 +3859,7 @@ function UILib.SubTab:addGroup(title)
 			SetValue = function(val)
 				currentSelection = val
 				selLbl.Text = val
-				for o, c in pairs(checks) do c.Text = (o == val) and "\u00d7" or "" end
+				for o, c in pairs(checks) do c.Text = (o == val) and "×" or "" end
 				for o, b in pairs(backgrounds) do b.Visible = (o == val) end
 				if callback then callback(val) end
 			end
@@ -4351,7 +4351,7 @@ function UILib.SubTab:addGroup(title)
 		arrow.Size = UDim2.new(0, 20, 1, 0)
 		arrow.Position = UDim2.new(1, -22, 0, 0)
 		arrow.BackgroundTransparency = 1
-		arrow.Text = default and "\u25bc" or "\u25b6"
+		arrow.Text = default and "▼" or "▶"
 		arrow.TextColor3 = window.theme.Accent
 		arrow.Font = Enum.Font.GothamBold
 		arrow.TextSize = 14
@@ -4440,7 +4440,7 @@ function UILib.SubTab:addGroup(title)
 		if contentFunc then contentFunc(nestedGroup) end
 		toggleRow.MouseButton1Click:Connect(function()
 			state = not state
-			arrow.Text = state and "\u25bc" or "\u25b6"
+			arrow.Text = state and "▼" or "▶"
 			container.Size = UDim2.new(1, 0, 0, 34 + (state and contentLayout.AbsoluteContentSize.Y or 0))
 			updateSize()
 		end)
