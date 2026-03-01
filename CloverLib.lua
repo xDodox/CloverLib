@@ -194,6 +194,84 @@ function UILib:notify(message, notifType, duration)
     end)
 end
 
+function UILib:confirm(message, onConfirm, onCancel)
+    local backdrop = Instance.new("TextButton")
+    backdrop.Size = UDim2.new(1, 0, 1, 0)
+    backdrop.BackgroundColor3 = Color3.new(0, 0, 0)
+    backdrop.BackgroundTransparency = 0.5
+    backdrop.BorderSizePixel = 0
+    backdrop.Text = ""
+    backdrop.ZIndex = 800
+    backdrop.Parent = self.sg
+    local modal = Instance.new("Frame")
+    modal.Size = UDim2.new(0, 260, 0, 110)
+    modal.AnchorPoint = Vector2.new(0.5, 0.5)
+    modal.Position = UDim2.new(0.5, 0, 0.5, 0)
+    modal.BackgroundColor3 = self.theme.Panel
+    modal.BorderSizePixel = 0
+    modal.ZIndex = 801
+    modal.Parent = self.sg
+    Instance.new("UICorner", modal).CornerRadius = UDim.new(0, 8)
+    local mStroke = Instance.new("UIStroke", modal)
+    mStroke.Color = self.theme.Accent
+    mStroke.Thickness = 1
+    local msg = Instance.new("TextLabel")
+    msg.Size = UDim2.new(1, -24, 0, 50)
+    msg.Position = UDim2.new(0, 12, 0, 10)
+    msg.BackgroundTransparency = 1
+    msg.Text = message
+    msg.TextColor3 = self.theme.White
+    msg.Font = Enum.Font.Roboto
+    msg.TextSize = 13
+    msg.TextWrapped = true
+    msg.TextXAlignment = Enum.TextXAlignment.Left
+    msg.TextYAlignment = Enum.TextYAlignment.Top
+    msg.ZIndex = 802
+    msg.Parent = modal
+    local function closeModal()
+        backdrop:Destroy()
+        modal:Destroy()
+    end
+    local cancelBtn = Instance.new("TextButton")
+    cancelBtn.Size = UDim2.new(0, 110, 0, 28)
+    cancelBtn.Position = UDim2.new(0, 12, 1, -38)
+    cancelBtn.BackgroundColor3 = self.theme.Item
+    cancelBtn.BorderSizePixel = 0
+    cancelBtn.Text = "Cancel"
+    cancelBtn.TextColor3 = self.theme.Gray
+    cancelBtn.Font = Enum.Font.GothamBold
+    cancelBtn.TextSize = 12
+    cancelBtn.ZIndex = 802
+    cancelBtn.Parent = modal
+    Instance.new("UICorner", cancelBtn).CornerRadius = UDim.new(0, 4)
+    local cStroke = Instance.new("UIStroke", cancelBtn)
+    cStroke.Color = self.theme.Border
+    cStroke.Thickness = 1
+    cancelBtn.MouseEnter:Connect(function() cancelBtn.TextColor3 = self.theme.White end)
+    cancelBtn.MouseLeave:Connect(function() cancelBtn.TextColor3 = self.theme.Gray end)
+    cancelBtn.MouseButton1Click:Connect(function() closeModal() if onCancel then onCancel() end end)
+    local confirmBtn = Instance.new("TextButton")
+    confirmBtn.Size = UDim2.new(0, 110, 0, 28)
+    confirmBtn.Position = UDim2.new(1, -122, 1, -38)
+    confirmBtn.BackgroundColor3 = self.theme.Accent
+    confirmBtn.BorderSizePixel = 0
+    confirmBtn.Text = "Confirm"
+    confirmBtn.TextColor3 = Color3.new(1, 1, 1)
+    confirmBtn.Font = Enum.Font.GothamBold
+    confirmBtn.TextSize = 12
+    confirmBtn.ZIndex = 802
+    confirmBtn.Parent = modal
+    Instance.new("UICorner", confirmBtn).CornerRadius = UDim.new(0, 4)
+    confirmBtn.MouseEnter:Connect(function() confirmBtn.BackgroundColor3 = self.theme.AccentD end)
+    confirmBtn.MouseLeave:Connect(function() confirmBtn.BackgroundColor3 = self.theme.Accent end)
+    confirmBtn.MouseButton1Click:Connect(function() closeModal() if onConfirm then onConfirm() end end)
+    backdrop.MouseButton1Click:Connect(function() closeModal() if onCancel then onCancel() end end)
+    modal.Size = UDim2.new(0, 0, 0, 0)
+    TweenService:Create(modal, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 260, 0, 110)
+    }):Play()
+end
+
 function UILib:saveConfig(filename)
     local data = {}
     if not self.configs then return end
@@ -939,7 +1017,11 @@ function UILib:_createUITab()
 
     cfg:button("Delete Config", function()
         if currentConfig and currentConfig ~= "" then
-            self:deleteConfig(self.configPrefix .. currentConfig .. ".json")
+            self:confirm('Delete config "' .. currentConfig .. '"?', function()
+                self:deleteConfig(self.configPrefix .. currentConfig .. ".json")
+            end)
+        else
+            self:notify("No config selected", "warning")
         end
     end, "Delete selected config")
 end
@@ -1072,7 +1154,7 @@ function UILib.Tab:addSubTab(name)
     
     local btn = Instance.new("TextButton")
     table.insert(self.subtabOrder, sub)
-    btn.Size = UDim2.new(1, -8, 0, 32)
+    btn.Size = UDim2.new(1, -8, 0, 24)
     btn.Position = UDim2.new(0, 4, 0, 0) -- Manual position removed, controlled by UIListLayout
     btn.BackgroundTransparency = 1
     btn.Text = ""
@@ -2025,12 +2107,15 @@ function UILib.Column:addGroup(title)
             Mode = "toggle",
         }
         elem.SetValue = function(val)
-            state = val 
-            elem.Value = state 
-            cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track 
-            cbStroke.Color = state and window.theme.AccentD or window.theme.Border 
-            cbMark.Text = state and "x" or "" 
-            if callback then callback(state) end 
+            state = val
+            elem.Value = state
+            local targetBG = state and window.theme.Accent or window.theme.Track
+            local targetStroke = state and window.theme.AccentD or window.theme.Border
+            TweenService:Create(cbOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {BackgroundColor3 = targetBG}):Play()
+            cbStroke.Color = targetStroke
+            cbMark.Text = state and "x" or ""
+            label.TextColor3 = state and window.theme.White or window.theme.GrayLt
+            if callback then callback(state) end
             if window.configs[id] then window.configs[id].Value = state end
         end
         window.configs[id] = elem
@@ -2078,6 +2163,18 @@ function UILib.Column:addGroup(title)
         label.Parent = row
 
         local refreshBtn = nil
+        if refreshCallback then
+            refreshBtn = Instance.new("TextButton")
+            refreshBtn.Size = UDim2.new(0, 24, 0, 24)
+            refreshBtn.Position = UDim2.new(1, -28, 0, 0)
+            refreshBtn.BackgroundTransparency = 1
+            refreshBtn.Text = "R" -- Clean symbol
+            refreshBtn.TextColor3 = window.theme.Gray
+            refreshBtn.Font = Enum.Font.RobotoMono
+            refreshBtn.TextSize = 11
+            refreshBtn.ZIndex = 12
+            refreshBtn.Parent = row
+        end
 
         local dbtn = Instance.new("TextButton")
         dbtn.Size = UDim2.new(1, 0, 0, 32)
@@ -2101,12 +2198,11 @@ function UILib.Column:addGroup(title)
         selLbl.TextSize = 12
         selLbl.TextXAlignment = Enum.TextXAlignment.Left
         selLbl.ZIndex = 12
-        selLbl.Parent = dbtn
         local arrow = Instance.new("TextLabel")
         arrow.Size = UDim2.new(0, 24, 1, 0)
         arrow.Position = UDim2.new(1, -26, 0, 0)
         arrow.BackgroundTransparency = 1
-        arrow.Text = "▼"
+        arrow.Text = "\226\137\161"
         arrow.TextColor3 = window.theme.Gray
         arrow.Font = Enum.Font.GothamBold
         arrow.TextSize = 12
@@ -2114,18 +2210,6 @@ function UILib.Column:addGroup(title)
         arrow.Name = "arrow"
         table.insert(window.accentObjects, arrow)
         arrow.Parent = dbtn
-        if refreshCallback then
-            refreshBtn = Instance.new("TextButton")
-            refreshBtn.Size = UDim2.new(0, 20, 0, 20)
-            refreshBtn.Position = UDim2.new(1, -50, 0.5, -10)
-            refreshBtn.BackgroundTransparency = 1
-            refreshBtn.Text = "↻"
-            refreshBtn.TextColor3 = window.theme.Gray
-            refreshBtn.Font = Enum.Font.GothamBold
-            refreshBtn.TextSize = 14
-            refreshBtn.ZIndex = 13
-            refreshBtn.Parent = dbtn
-        end
         local listH = #options * 26
         local dlist = Instance.new("ScrollingFrame")
         dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 104))
@@ -2227,8 +2311,7 @@ function UILib.Column:addGroup(title)
                     if callback then callback(opt) end
                     window.configs[id].Value = opt
                     dlist.Visible = false
-                    open = false
-                    arrow.Text = "▼"
+                    arrow.Text = "\226\137\161"
                     row.Size = UDim2.new(1, 0, 0, 52)
                     task.delay(0.1, updateSize)
                 end)
@@ -2255,7 +2338,7 @@ function UILib.Column:addGroup(title)
         dbtn.MouseButton1Click:Connect(function()
             open = not open
             dlist.Visible = open
-            arrow.Text = open and "▲" or "▼"
+            arrow.Text = "\226\137\161"
             row.Size = UDim2.new(1, 0, 0, 52 + (open and math.min(listH, 104) or 0))
             task.delay(0.1, updateSize)
         end)
@@ -2379,6 +2462,49 @@ function UILib.Column:addGroup(title)
         lbl.ZIndex = 3
         lbl.Parent = f
         if tooltip then attachTooltip(f, tooltip) end
+        updateSize()
+        return f
+    end
+
+    function group:separator(text)
+        local f = Instance.new("Frame")
+        f.Size = UDim2.new(1, 0, 0, text and 18 or 10)
+        f.BackgroundTransparency = 1
+        f.Parent = items
+        if text and text ~= "" then
+            local line1 = Instance.new("Frame")
+            line1.Size = UDim2.new(0.28, 0, 0, 1)
+            line1.Position = UDim2.new(0, 0, 0.5, 0)
+            line1.BackgroundColor3 = window.theme.Border
+            line1.BorderSizePixel = 0
+            line1.ZIndex = 3
+            line1.Parent = f
+            local lbl = Instance.new("TextLabel")
+            lbl.Size = UDim2.new(0.44, 0, 1, 0)
+            lbl.Position = UDim2.new(0.28, 0, 0, 0)
+            lbl.BackgroundTransparency = 1
+            lbl.Text = text:upper()
+            lbl.TextColor3 = window.theme.Border
+            lbl.Font = Enum.Font.GothamBold
+            lbl.TextSize = 9
+            lbl.ZIndex = 3
+            lbl.Parent = f
+            local line2 = Instance.new("Frame")
+            line2.Size = UDim2.new(0.28, 0, 0, 1)
+            line2.Position = UDim2.new(0.72, 0, 0.5, 0)
+            line2.BackgroundColor3 = window.theme.Border
+            line2.BorderSizePixel = 0
+            line2.ZIndex = 3
+            line2.Parent = f
+        else
+            local line = Instance.new("Frame")
+            line.Size = UDim2.new(1, 0, 0, 1)
+            line.Position = UDim2.new(0, 0, 0.5, 0)
+            line.BackgroundColor3 = window.theme.Border
+            line.BorderSizePixel = 0
+            line.ZIndex = 3
+            line.Parent = f
+        end
         updateSize()
         return f
     end
@@ -3084,17 +3210,20 @@ function UILib.SubTab:addGroup(title)
         elem.SetValue = function(val)
             state = val
             elem.Value = state
-            cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track
-            cbStroke.Color = state and window.theme.AccentD or window.theme.Border
+            local targetBG = state and window.theme.Accent or window.theme.Track
+            local targetStroke = state and window.theme.AccentD or window.theme.Border
+            TweenService:Create(cbOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {BackgroundColor3 = targetBG}):Play()
+            cbStroke.Color = targetStroke
             cbMark.Text = state and "×" or ""
+            label.TextColor3 = state and window.theme.White or window.theme.GrayLt
             if callback then callback(state) end
             if window.configs[id] then window.configs[id].Value = state end
         end
         window.configs[id] = elem
-        row.MouseButton1Click:Connect(function() 
+        row.MouseButton1Click:Connect(function()
             if elem.Mode == "always" then return end
-            state = not state 
-            elem.SetValue(state) 
+            state = not state
+            elem.SetValue(state)
         end)
         row.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton2 then
@@ -3429,6 +3558,49 @@ function UILib.SubTab:addGroup(title)
         lbl.ZIndex = 3
         lbl.Parent = f
         if tooltip then attachTooltip(f, tooltip) end
+        updateSize()
+        return f
+    end
+
+    function group:separator(text)
+        local f = Instance.new("Frame")
+        f.Size = UDim2.new(1, 0, 0, text and 18 or 10)
+        f.BackgroundTransparency = 1
+        f.Parent = items
+        if text and text ~= "" then
+            local line1 = Instance.new("Frame")
+            line1.Size = UDim2.new(0.28, 0, 0, 1)
+            line1.Position = UDim2.new(0, 0, 0.5, 0)
+            line1.BackgroundColor3 = window.theme.Border
+            line1.BorderSizePixel = 0
+            line1.ZIndex = 3
+            line1.Parent = f
+            local lbl = Instance.new("TextLabel")
+            lbl.Size = UDim2.new(0.44, 0, 1, 0)
+            lbl.Position = UDim2.new(0.28, 0, 0, 0)
+            lbl.BackgroundTransparency = 1
+            lbl.Text = text:upper()
+            lbl.TextColor3 = window.theme.Border
+            lbl.Font = Enum.Font.GothamBold
+            lbl.TextSize = 9
+            lbl.ZIndex = 3
+            lbl.Parent = f
+            local line2 = Instance.new("Frame")
+            line2.Size = UDim2.new(0.28, 0, 0, 1)
+            line2.Position = UDim2.new(0.72, 0, 0.5, 0)
+            line2.BackgroundColor3 = window.theme.Border
+            line2.BorderSizePixel = 0
+            line2.ZIndex = 3
+            line2.Parent = f
+        else
+            local line = Instance.new("Frame")
+            line.Size = UDim2.new(1, 0, 0, 1)
+            line.Position = UDim2.new(0, 0, 0.5, 0)
+            line.BackgroundColor3 = window.theme.Border
+            line.BorderSizePixel = 0
+            line.ZIndex = 3
+            line.Parent = f
+        end
         updateSize()
         return f
     end
