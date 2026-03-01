@@ -594,25 +594,24 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	end
 
 	local ctxMenu = Instance.new("Frame")
-	ctxMenu.Size = UDim2.new(0, 160, 0, 0)
-	ctxMenu.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	ctxMenu.Size = UDim2.new(0, 180, 0, 0)
+	ctxMenu.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
 	ctxMenu.BorderSizePixel = 0
 	ctxMenu.Visible = false
 	ctxMenu.ZIndex = 900
 	ctxMenu.Parent = self.sg
-	Instance.new("UICorner", ctxMenu).CornerRadius = UDim.new(0, 5)
+	Instance.new("UICorner", ctxMenu).CornerRadius = UDim.new(0, 7)
 	local ctxStroke = Instance.new("UIStroke", ctxMenu)
-	ctxStroke.Color = self.theme.Accent
-	ctxStroke.Transparency = 0.4
+	ctxStroke.Color = Color3.fromRGB(55, 55, 65)
 	ctxStroke.Thickness = 1
 	local ctxLayout = Instance.new("UIListLayout", ctxMenu)
-	ctxLayout.Padding = UDim.new(0, 1)
+	ctxLayout.Padding = UDim.new(0, 2)
 	ctxLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	local ctxPadding = Instance.new("UIPadding", ctxMenu)
-	ctxPadding.PaddingTop = UDim.new(0, 4)
-	ctxPadding.PaddingBottom = UDim.new(0, 4)
-	ctxPadding.PaddingLeft = UDim.new(0, 4)
-	ctxPadding.PaddingRight = UDim.new(0, 4)
+	ctxPadding.PaddingTop = UDim.new(0, 6)
+	ctxPadding.PaddingBottom = UDim.new(0, 6)
+	ctxPadding.PaddingLeft = UDim.new(0, 6)
+	ctxPadding.PaddingRight = UDim.new(0, 6)
 	contextMenuFrame = ctxMenu
 	self.contextMenu = ctxMenu
 	self.contextMenuLayout = ctxLayout
@@ -627,29 +626,33 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	end
 	self.closeContextMenu = closeContextMenu
 
-	local function addContextMenuItem(text, icon, callback)
+	local function addContextMenuItem(text, callback, accent)
 		local btn = Instance.new("TextButton")
-		btn.Size = UDim2.new(1, 0, 0, 26)
+		btn.Size = UDim2.new(1, 0, 0, 28)
 		btn.BackgroundTransparency = 1
 		btn.Text = ""
 		btn.ZIndex = 901
 		btn.Parent = ctxMenu
 		local hov = Instance.new("Frame")
 		hov.Size = UDim2.new(1, 0, 1, 0)
-		hov.BackgroundColor3 = self.theme.ItemHov
+		hov.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
 		hov.BorderSizePixel = 0
-		hov.Visible = false
+		hov.BackgroundTransparency = 1
 		hov.ZIndex = 901
 		hov.Parent = btn
-		Instance.new("UICorner", hov).CornerRadius = UDim.new(0, 4)
-		btn.MouseEnter:Connect(function() hov.Visible = true end)
-		btn.MouseLeave:Connect(function() hov.Visible = false end)
+		Instance.new("UICorner", hov).CornerRadius = UDim.new(0, 5)
+		btn.MouseEnter:Connect(function()
+			TweenService:Create(hov, TweenInfo.new(0.1), {BackgroundTransparency = 0}):Play()
+		end)
+		btn.MouseLeave:Connect(function()
+			TweenService:Create(hov, TweenInfo.new(0.1), {BackgroundTransparency = 1}):Play()
+		end)
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -12, 1, 0)
-		lbl.Position = UDim2.new(0, 8, 0, 0)
+		lbl.Position = UDim2.new(0, 10, 0, 0)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
-		lbl.TextColor3 = self.theme.White
+		lbl.TextColor3 = accent and self.theme.Accent or Color3.fromRGB(210, 210, 220)
 		lbl.Font = Enum.Font.Roboto
 		lbl.TextSize = 12
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
@@ -659,23 +662,36 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			if callback then callback() end
 			closeContextMenu()
 		end)
-		return btn
+		return lbl
+	end
+	local function addCtxSeparator()
+		local sep = Instance.new("Frame")
+		sep.Size = UDim2.new(1, 0, 0, 1)
+		sep.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+		sep.BorderSizePixel = 0
+		sep.ZIndex = 901
+		sep.Parent = ctxMenu
 	end
 	self.addContextMenuItem = addContextMenuItem
 
 	function self:showContextMenu(pos, elemConfig)
 		closeContextMenu()
-		local x, y = pos.X, pos.Y
+		-- Smart position: keep menu on screen
+		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
+		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
+		local menuW, menuH = 180, 200
+		local x = math.clamp(pos.X, 4, screenW - menuW - 4)
+		local y = math.clamp(pos.Y, 4, screenH - menuH - 4)
 		ctxMenu.Position = UDim2.new(0, x, 0, y)
 
 		if elemConfig and elemConfig.DefaultValue ~= nil then
-			addContextMenuItem("Reset to Default", "", function()
+			addContextMenuItem("Reset to Default", function()
 				if elemConfig.SetValue then elemConfig:SetValue(elemConfig.DefaultValue) end
 			end)
 		end
 
 		if elemConfig and elemConfig.Value ~= nil then
-			addContextMenuItem("Copy Value", "", function()
+			addContextMenuItem("Copy Value", function()
 				local v = elemConfig.Value
 				local str
 				if type(v) == "boolean" then str = tostring(v)
@@ -690,42 +706,122 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		end
 
 		if elemConfig and elemConfig.IsToggle then
-			local sepA = Instance.new("Frame")
-			sepA.Size = UDim2.new(1, 0, 0, 1)
-			sepA.BackgroundColor3 = self.theme.Border
-			sepA.BorderSizePixel = 0
-			sepA.ZIndex = 901
-			sepA.Parent = ctxMenu
-		end
+			addCtxSeparator()
 
-		if elemConfig and elemConfig.IsToggle then
-			local currentMode = elemConfig.Mode or "toggle"
-			local modes = {"always", "toggle", "hold"}
-			local modeLabels = {always = "Always On", toggle = "Toggle", hold = "Hold"}
-			for _, mode in ipairs(modes) do
-				local isActive = (currentMode == mode)
-				local prefix = isActive and "• " or "  "
-				local item = addContextMenuItem(prefix .. (modeLabels[mode] or mode), "", function()
+			-- Inline mode label
+			local modeLbl = Instance.new("TextLabel")
+			modeLbl.Size = UDim2.new(1, 0, 0, 18)
+			modeLbl.BackgroundTransparency = 1
+			modeLbl.Text = "  BEHAVIOR"
+			modeLbl.TextColor3 = Color3.fromRGB(100, 100, 115)
+			modeLbl.Font = Enum.Font.GothamBold
+			modeLbl.TextSize = 9
+			modeLbl.TextXAlignment = Enum.TextXAlignment.Left
+			modeLbl.ZIndex = 902
+			modeLbl.Parent = ctxMenu
+
+			-- Compact dropdown row for mode
+			local modeRow = Instance.new("Frame")
+			modeRow.Size = UDim2.new(1, 0, 0, 30)
+			modeRow.BackgroundColor3 = Color3.fromRGB(32, 32, 40)
+			modeRow.BorderSizePixel = 0
+			modeRow.ZIndex = 901
+			modeRow.Parent = ctxMenu
+			Instance.new("UICorner", modeRow).CornerRadius = UDim.new(0, 5)
+			local modeStroke = Instance.new("UIStroke", modeRow)
+			modeStroke.Color = Color3.fromRGB(55, 55, 65)
+			modeStroke.Thickness = 1
+			local modeLabel = Instance.new("TextLabel")
+			modeLabel.Size = UDim2.new(1, -24, 1, 0)
+			modeLabel.Position = UDim2.new(0, 8, 0, 0)
+			modeLabel.BackgroundTransparency = 1
+			local modeNames = {always = "Always On", toggle = "Toggle", hold = "Hold"}
+			modeLabel.Text = modeNames[elemConfig.Mode or "toggle"] or "Toggle"
+			modeLabel.TextColor3 = self.theme.Accent
+			modeLabel.Font = Enum.Font.GothamBold
+			modeLabel.TextSize = 11
+			modeLabel.TextXAlignment = Enum.TextXAlignment.Left
+			modeLabel.ZIndex = 902
+			modeLabel.Parent = modeRow
+			local modeArrow = Instance.new("TextLabel")
+			modeArrow.Size = UDim2.new(0, 18, 1, 0)
+			modeArrow.Position = UDim2.new(1, -20, 0, 0)
+			modeArrow.BackgroundTransparency = 1
+			modeArrow.Text = "▼"
+			modeArrow.TextColor3 = Color3.fromRGB(120, 120, 130)
+			modeArrow.Font = Enum.Font.GothamBold
+			modeArrow.TextSize = 9
+			modeArrow.ZIndex = 902
+			modeArrow.Parent = modeRow
+			-- Mode dropdown list
+			local modeList = Instance.new("Frame")
+			modeList.Size = UDim2.new(1, 0, 0, 0)
+			modeList.Position = UDim2.new(0, 0, 1, 2)
+			modeList.BackgroundColor3 = Color3.fromRGB(28, 28, 36)
+			modeList.BorderSizePixel = 0
+			modeList.Visible = false
+			modeList.ZIndex = 910
+			modeList.Parent = modeRow
+			Instance.new("UICorner", modeList).CornerRadius = UDim.new(0, 5)
+			local modeListStroke = Instance.new("UIStroke", modeList)
+			modeListStroke.Color = Color3.fromRGB(55, 55, 65)
+			modeListStroke.Thickness = 1
+			local modeLL = Instance.new("UIListLayout", modeList)
+			modeLL.Padding = UDim.new(0, 1)
+			local mlPad = Instance.new("UIPadding", modeList)
+			mlPad.PaddingTop = UDim.new(0, 3)
+			mlPad.PaddingBottom = UDim.new(0, 3)
+			mlPad.PaddingLeft = UDim.new(0, 4)
+			mlPad.PaddingRight = UDim.new(0, 4)
+			local modeOpen = false
+			for _, mode in ipairs({"always", "toggle", "hold"}) do
+				local opt = Instance.new("TextButton")
+				opt.Size = UDim2.new(1, 0, 0, 24)
+				opt.BackgroundTransparency = 1
+				opt.Text = modeNames[mode]
+				opt.TextColor3 = (elemConfig.Mode or "toggle") == mode and self.theme.Accent or Color3.fromRGB(180, 180, 190)
+				opt.Font = Enum.Font.Roboto
+				opt.TextSize = 11
+				opt.ZIndex = 911
+				opt.Parent = modeList
+				opt.MouseButton1Click:Connect(function()
 					elemConfig.Mode = mode
+					modeLabel.Text = modeNames[mode]
 					if mode == "always" then elemConfig:SetValue(true) end
 					self:notify("Mode: " .. mode, "info", 1.5)
+					modeList.Visible = false
+					modeArrow.Text = "▼"
+					modeOpen = false
+					closeContextMenu()
 				end)
-				if isActive then
-					local lbl = item:FindFirstChildWhichIsA("TextLabel")
-					if lbl then lbl.TextColor3 = self.theme.Accent end
-				end
 			end
+			modeList.Size = UDim2.new(1, 0, 0, modeLL.AbsoluteContentSize.Y + 6)
+			local modeBtn = Instance.new("TextButton")
+			modeBtn.Size = UDim2.new(1, 0, 1, 0)
+			modeBtn.BackgroundTransparency = 1
+			modeBtn.Text = ""
+			modeBtn.ZIndex = 903
+			modeBtn.Parent = modeRow
+			modeBtn.MouseButton1Click:Connect(function()
+				modeOpen = not modeOpen
+				modeList.Visible = modeOpen
+				modeArrow.Text = modeOpen and "▲" or "▼"
+				if modeOpen then
+					task.defer(function()
+						ctxMenu.Size = UDim2.new(0, 180, 0, ctxLayout.AbsoluteContentSize.Y + 12 + modeList.AbsoluteSize.Y)
+					end)
+				else
+					task.defer(function()
+						ctxMenu.Size = UDim2.new(0, 180, 0, ctxLayout.AbsoluteContentSize.Y + 12)
+					end)
+				end
+			end)
 
-			local sep2 = Instance.new("Frame")
-			sep2.Size = UDim2.new(1, 0, 0, 1)
-			sep2.BackgroundColor3 = self.theme.Border
-			sep2.BorderSizePixel = 0
-			sep2.ZIndex = 901
-			sep2.Parent = ctxMenu
-
+			-- Hotkey row
+			addCtxSeparator()
 			local hotkeyText = elemConfig.Hotkey and elemConfig.Hotkey.Name or "None"
-			addContextMenuItem("Hotkey: [" .. hotkeyText .. "]", "", function()
-				self:notify("Press a key to bind...", "info", 2)
+			local hkLbl = addContextMenuItem("Hotkey:  " .. hotkeyText, function()
+				self:notify("Press a key...", "info", 2)
 				local con
 				con = UIS.InputBegan:Connect(function(input, gpe)
 					if gpe then return end
@@ -738,11 +834,11 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 						self:notify("Hotkey set: " .. input.KeyCode.Name, "success", 1.5)
 					end
 				end)
-			end)
+			end, true)
 		end
 
 		task.defer(function()
-			ctxMenu.Size = UDim2.new(0, 160, 0, ctxLayout.AbsoluteContentSize.Y + 8)
+			ctxMenu.Size = UDim2.new(0, 180, 0, ctxLayout.AbsoluteContentSize.Y + 12)
 		end)
 		ctxMenu.Visible = true
 
@@ -1749,13 +1845,13 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	valueBoxInput.Parent = valueBox
 	Instance.new("UICorner", valueBoxInput).CornerRadius = UDim.new(0, 4)
 	local track = Instance.new("Frame")
-	track.Size = UDim2.new(1, 0, 0, 4)
+	track.Size = UDim2.new(1, 0, 0, 6)
 	track.Position = UDim2.new(0, 0, 0, 34)
 	track.BackgroundColor3 = window.theme.Track
 	track.BorderSizePixel = 0
 	track.ZIndex = 3
 	track.Parent = row
-	Instance.new("UICorner", track).CornerRadius = UDim.new(0, 2)
+	Instance.new("UICorner", track).CornerRadius = UDim.new(0, 3)
 	local fill = Instance.new("Frame")
 	fill.Size = UDim2.new((defaultVal - minVal) / (maxVal - minVal), 0, 1, 0)
 	fill.BackgroundColor3 = window.theme.Accent
@@ -1766,12 +1862,13 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	local gradient = Instance.new("UIGradient", fill)
 	gradient.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, window.theme.Accent), ColorSequenceKeypoint.new(1, Color3.new(window.theme.Accent.r*0.8, window.theme.Accent.g*0.8, window.theme.Accent.b*0.8))})
 	local knob = Instance.new("Frame")
-	knob.Size = UDim2.new(0, 10, 0, 10)
-	knob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), -5, 0.5, -5)
+	knob.Size = UDim2.new(0, 14, 0, 14)
+	knob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), -7, 0.5, -7)
 	knob.BackgroundColor3 = Color3.new(0, 0, 0)
 	knob.BorderSizePixel = 0
 	knob.ZIndex = 5
 	knob.Parent = track
+	Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
 	local knobStroke = Instance.new("UIStroke", knob)
 	knobStroke.Color = window.theme.Accent
 	knobStroke.Thickness = 2
@@ -1792,8 +1889,8 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		val = roundToStep(val)
 		currentVal = val
 		local rel = (val - minVal) / (maxVal - minVal)
-		fill.Size = UDim2.new(rel, 0, 1, 0)
-		knob.Position = UDim2.new(rel, -5, 0.5, -5)
+		TweenService:Create(fill, TweenInfo.new(0.07, Enum.EasingStyle.Linear), {Size = UDim2.new(rel, 0, 1, 0)}):Play()
+		knob.Position = UDim2.new(rel, -7, 0.5, -7)
 		valueLabel.Text = tostring(val)
 		valueBoxInput.Text = tostring(val)
 		if callback then callback(val) end
@@ -1883,26 +1980,23 @@ local function createColorPicker(group, items, window, text, default, callback)
 		local pickerW, pickerH = 220, 290
 		pickerFrame.Size = UDim2.new(0, pickerW, 0, pickerH)
 
-		-- FIX 1: Position picker relative to the colorBox button
-		-- Use AbsolutePosition of colorBox which is in screen coords
+		-- Position picker to the LEFT of colorBox — won't overlap the UI
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
 		task.defer(function()
-			-- Defer so AbsolutePosition is available after layout
 			if not pickerFrame or not pickerFrame.Parent then return end
 			local absPos = colorBox.AbsolutePosition
 			local absSize = colorBox.AbsoluteSize
 
-			-- Try to open below the color button first
-			local posX = absPos.X + absSize.X / 2 - pickerW / 2
-			local posY = absPos.Y + absSize.Y + 6
-
-			-- If not enough space below, open above
-			if posY + pickerH > screenH - 10 then
-				posY = absPos.Y - pickerH - 6
+			-- Try left of the button first
+			local posX = absPos.X - pickerW - 8
+			if posX < 8 then
+				-- Not enough room left — open to the right
+				posX = absPos.X + absSize.X + 8
 			end
 
-			-- If not enough space to the right (for left-positioned items), shift left
+			-- Vertically center on the button, clamped to screen
+			local posY = absPos.Y + absSize.Y / 2 - pickerH / 2
 			posX = math.clamp(posX, 8, screenW - pickerW - 8)
 			posY = math.clamp(posY, 8, screenH - pickerH - 8)
 
@@ -2519,13 +2613,13 @@ function UILib.Column:addGroup(title)
 	function group:toggle(text, default, callback, tooltip)
 		local id = generateID()
 		local r = Instance.new("Frame")
-		r.Size = UDim2.new(1, 0, 0, 32)
+		r.Size = UDim2.new(1, 0, 0, 36)
 		r.BackgroundTransparency = 1
 		r.ZIndex = 3
 		r.Parent = items
 		local cbOuter = Instance.new("TextButton")
-		cbOuter.Size = UDim2.new(0, 18, 0, 18)
-		cbOuter.Position = UDim2.new(1, -22, 0.5, -9)
+		cbOuter.Size = UDim2.new(0, 22, 0, 22)
+		cbOuter.Position = UDim2.new(1, -26, 0.5, -11)
 		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.Track
 		cbOuter.BorderSizePixel = 0
 		cbOuter.ZIndex = 4
@@ -2545,7 +2639,7 @@ function UILib.Column:addGroup(title)
 		cbMark.ZIndex = 5
 		cbMark.Parent = cbOuter
 		local lbl = Instance.new("TextLabel")
-		lbl.Size = UDim2.new(1, -32, 1, 0)
+		lbl.Size = UDim2.new(1, -38, 1, 0)
 		lbl.Position = UDim2.new(0, 4, 0, 0)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
@@ -2560,7 +2654,9 @@ function UILib.Column:addGroup(title)
 		elem.SetValue = function(val)
 			state = val
 			elem.Value = state
-			cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track
+			TweenService:Create(cbOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+				BackgroundColor3 = state and window.theme.Accent or window.theme.Track
+			}):Play()
 			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
 			cbMark.Text = state and "x" or ""
 			if callback then callback(state) end
@@ -2626,7 +2722,7 @@ function UILib.Column:addGroup(title)
 		dbtn.Parent = r
 		Instance.new("UICorner", dbtn).CornerRadius = UDim.new(0, 4)
 		local dstroke = Instance.new("UIStroke", dbtn)
-		dstroke.Color = window.theme.Border
+		dstroke.Color = Color3.fromRGB(45, 45, 55)
 		dstroke.Thickness = 1
 		local selLbl = Instance.new("TextLabel")
 		selLbl.Size = UDim2.new(1, -34, 1, 0)
@@ -2736,21 +2832,22 @@ function UILib.Column:addGroup(title)
 				ol.ZIndex = 52
 				ol.Parent = ob
 				local ck = Instance.new("TextLabel")
-				ck.Size = UDim2.new(0, 8, 0, 8)
-				ck.Position = UDim2.new(1, -14, 0.5, -4)
-				ck.BackgroundColor3 = window.theme.Accent
-				ck.BackgroundTransparency = (opt == currentSelection) and 0 or 1
-				ck.Text = ""
+				ck.Size = UDim2.new(0, 14, 1, 0)
+				ck.Position = UDim2.new(1, -16, 0, 0)
+				ck.BackgroundTransparency = 1
+				ck.Text = (opt == currentSelection) and "✓" or ""
+				ck.TextColor3 = window.theme.Accent
+				ck.Font = Enum.Font.GothamBold
+				ck.TextSize = 11
 				ck.ZIndex = 52
 				ck.Parent = ob
-				Instance.new("UICorner", ck).CornerRadius = UDim.new(1, 0)
 				checks[opt] = ck
 				ob.MouseEnter:Connect(function() oh.Visible = true ol.TextColor3 = window.theme.White end)
 				ob.MouseLeave:Connect(function() oh.Visible = false if opt ~= currentSelection then ol.TextColor3 = window.theme.GrayLt end end)
 				ob.MouseButton1Click:Connect(function()
 					currentSelection = opt
 					selLbl.Text = opt
-					for o, c in pairs(checks) do c.BackgroundTransparency = (o == opt) and 0 or 1 end
+					for o, ck2 in pairs(checks) do ck2.Text = (o == opt) and "✓" or "" end
 					for o, b in pairs(backgrounds) do b.Visible = (o == opt) end
 					for _, child in ipairs(dlist:GetChildren()) do
 						if child:IsA("TextButton") then
@@ -2785,8 +2882,20 @@ function UILib.Column:addGroup(title)
 
 		dbtn.MouseButton1Click:Connect(function()
 			open = not open
-			dlist.Visible = open
 			arrow.Text = open and "▲" or "▼"
+			if open then
+				dlist.Visible = true
+				dlist.Size = UDim2.new(1, 0, 0, 0)
+				TweenService:Create(dlist, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					Size = UDim2.new(1, 0, 0, math.min(listH, 104))
+				}):Play()
+			else
+				local tw = TweenService:Create(dlist, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+					Size = UDim2.new(1, 0, 0, 0)
+				})
+				tw.Completed:Connect(function() dlist.Visible = false end)
+				tw:Play()
+			end
 			r.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 104) or 0))
 			updateSize()
 		end)
@@ -2796,7 +2905,7 @@ function UILib.Column:addGroup(title)
 			SetValue = function(val)
 				currentSelection = val
 				selLbl.Text = val
-				for o, c in pairs(checks) do c.BackgroundTransparency = (o == val) and 0 or 1 end
+				for o, ck2 in pairs(checks) do ck2.Text = (o == val) and "✓" or "" end
 				for o, b in pairs(backgrounds) do b.Visible = (o == val) end
 				if callback then callback(val) end
 			end,
@@ -2979,7 +3088,35 @@ function UILib.Column:addGroup(title)
 		btn.ZIndex = 3
 		btn.Parent = items
 
-		if style == "text" then
+		if style == "split" then
+			-- Full-width variant with visible background + accent left border accent line
+			btn.BackgroundColor3 = window.theme.Item
+			btn.BackgroundTransparency = 0
+			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+			local bstroke = Instance.new("UIStroke", btn)
+			bstroke.Color = Color3.fromRGB(50, 50, 60)
+			bstroke.Thickness = 1
+			local rh = Instance.new("Frame")
+			rh.Size = UDim2.new(1, 0, 1, 0)
+			rh.BackgroundColor3 = window.theme.ItemHov
+			rh.BorderSizePixel = 0
+			rh.Visible = false
+			rh.ZIndex = 2
+			rh.Parent = btn
+			Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 4)
+			btn.MouseEnter:Connect(function() rh.Visible = true end)
+			btn.MouseLeave:Connect(function() rh.Visible = false end)
+			local lbl = Instance.new("TextLabel")
+			lbl.Size = UDim2.new(1, 0, 1, 0)
+			lbl.BackgroundTransparency = 1
+			lbl.Text = text
+			lbl.TextColor3 = color or window.theme.Accent
+			lbl.Font = Enum.Font.GothamBold
+			lbl.TextSize = 13
+			lbl.TextXAlignment = align or Enum.TextXAlignment.Center
+			lbl.ZIndex = 4
+			lbl.Parent = btn
+		elseif style == "text" then
 			-- FIX 4: Text-only button style (no background)
 			btn.BackgroundTransparency = 1
 			local lbl = Instance.new("TextLabel")
@@ -3000,10 +3137,13 @@ function UILib.Column:addGroup(title)
 				lbl.TextColor3 = color or window.theme.Accent
 			end)
 		else
-			-- FIX 4: Default "bg" style with background (original behavior)
+			-- Default "bg" style with background
 			btn.BackgroundColor3 = window.theme.Item
 			btn.BackgroundTransparency = 0
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+			local bstroke = Instance.new("UIStroke", btn)
+			bstroke.Color = Color3.fromRGB(50, 50, 60)
+			bstroke.Thickness = 1
 			local rh = Instance.new("Frame")
 			rh.Size = UDim2.new(1, 0, 1, 0)
 			rh.BackgroundColor3 = window.theme.ItemHov
@@ -3620,37 +3760,39 @@ function UILib.Column:addGroup(title)
 		fill.Parent = track
 		Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 3)
 		local knobLeft = Instance.new("Frame")
-		knobLeft.Size = UDim2.new(0, 10, 0, 10)
-		knobLeft.Position = UDim2.new(pctMin, -5, 0.5, -5)
+		knobLeft.Size = UDim2.new(0, 14, 0, 14)
+		knobLeft.Position = UDim2.new(pctMin, -7, 0.5, -7)
 		knobLeft.BackgroundColor3 = Color3.new(0, 0, 0)
 		knobLeft.BorderSizePixel = 0
 		knobLeft.ZIndex = 5
 		knobLeft.Parent = track
+		Instance.new("UICorner", knobLeft).CornerRadius = UDim.new(1, 0)
 		local knobLeftStroke = Instance.new("UIStroke", knobLeft)
 		knobLeftStroke.Color = window.theme.Accent
 		knobLeftStroke.Thickness = 2
 		table.insert(window.accentObjects, knobLeftStroke)
 		local knobRight = Instance.new("Frame")
-		knobRight.Size = UDim2.new(0, 10, 0, 10)
-		knobRight.Position = UDim2.new(pctMax, -5, 0.5, -5)
+		knobRight.Size = UDim2.new(0, 14, 0, 14)
+		knobRight.Position = UDim2.new(pctMax, -7, 0.5, -7)
 		knobRight.BackgroundColor3 = Color3.new(0, 0, 0)
 		knobRight.BorderSizePixel = 0
 		knobRight.ZIndex = 5
 		knobRight.Parent = track
+		Instance.new("UICorner", knobRight).CornerRadius = UDim.new(1, 0)
 		local knobRightStroke = Instance.new("UIStroke", knobRight)
 		knobRightStroke.Color = window.theme.Accent
 		knobRightStroke.Thickness = 2
 		table.insert(window.accentObjects, knobRightStroke)
 		local hitLeft = Instance.new("TextButton")
-		hitLeft.Size = UDim2.new(0, 18, 0, 18)
-		hitLeft.Position = UDim2.new(pctMin, -9, 0.5, -9)
+		hitLeft.Size = UDim2.new(0, 20, 0, 20)
+		hitLeft.Position = UDim2.new(pctMin, -10, 0.5, -10)
 		hitLeft.BackgroundTransparency = 1
 		hitLeft.Text = ""
 		hitLeft.ZIndex = 6
 		hitLeft.Parent = track
 		local hitRight = Instance.new("TextButton")
-		hitRight.Size = UDim2.new(0, 18, 0, 18)
-		hitRight.Position = UDim2.new(pctMax, -9, 0.5, -9)
+		hitRight.Size = UDim2.new(0, 20, 0, 20)
+		hitRight.Position = UDim2.new(pctMax, -10, 0.5, -10)
 		hitRight.BackgroundTransparency = 1
 		hitRight.Text = ""
 		hitRight.ZIndex = 6
@@ -3665,10 +3807,10 @@ function UILib.Column:addGroup(title)
 			pctMax = (currentMax - minVal) / (maxVal - minVal)
 			fill.Size = UDim2.new(pctMax - pctMin, 0, 1, 0)
 			fill.Position = UDim2.new(pctMin, 0, 0, 0)
-			knobLeft.Position = UDim2.new(pctMin, -5, 0.5, -5)
-			knobRight.Position = UDim2.new(pctMax, -5, 0.5, -5)
-			hitLeft.Position = UDim2.new(pctMin, -9, 0.5, -9)
-			hitRight.Position = UDim2.new(pctMax, -9, 0.5, -9)
+			knobLeft.Position = UDim2.new(pctMin, -7, 0.5, -7)
+			knobRight.Position = UDim2.new(pctMax, -7, 0.5, -7)
+			hitLeft.Position = UDim2.new(pctMin, -10, 0.5, -10)
+			hitRight.Position = UDim2.new(pctMax, -10, 0.5, -10)
 		end
 		local function apply(pos, which)
 			local rel = math.clamp((pos - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
@@ -3847,13 +3989,13 @@ function UILib.SubTab:addGroup(title)
 	function group:toggle(text, default, callback, tooltip)
 		local id = generateID()
 		local r = Instance.new("Frame")
-		r.Size = UDim2.new(1, 0, 0, 32)
+		r.Size = UDim2.new(1, 0, 0, 36)
 		r.BackgroundTransparency = 1
 		r.ZIndex = 3
 		r.Parent = items
 		local cbOuter = Instance.new("TextButton")
-		cbOuter.Size = UDim2.new(0, 18, 0, 18)
-		cbOuter.Position = UDim2.new(1, -22, 0.5, -9)
+		cbOuter.Size = UDim2.new(0, 22, 0, 22)
+		cbOuter.Position = UDim2.new(1, -26, 0.5, -11)
 		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.Track
 		cbOuter.BorderSizePixel = 0
 		cbOuter.ZIndex = 4
@@ -3873,7 +4015,7 @@ function UILib.SubTab:addGroup(title)
 		cbMark.ZIndex = 5
 		cbMark.Parent = cbOuter
 		local lbl = Instance.new("TextLabel")
-		lbl.Size = UDim2.new(1, -32, 1, 0)
+		lbl.Size = UDim2.new(1, -38, 1, 0)
 		lbl.Position = UDim2.new(0, 4, 0, 0)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
@@ -3888,7 +4030,9 @@ function UILib.SubTab:addGroup(title)
 		elem.SetValue = function(val)
 			state = val
 			elem.Value = state
-			cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track
+			TweenService:Create(cbOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+				BackgroundColor3 = state and window.theme.Accent or window.theme.Track
+			}):Play()
 			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
 			cbMark.Text = state and "x" or ""
 			if callback then callback(state) end
@@ -3954,7 +4098,7 @@ function UILib.SubTab:addGroup(title)
 		dbtn.Parent = r
 		Instance.new("UICorner", dbtn).CornerRadius = UDim.new(0, 4)
 		local dstroke = Instance.new("UIStroke", dbtn)
-		dstroke.Color = window.theme.Border
+		dstroke.Color = Color3.fromRGB(45, 45, 55)
 		dstroke.Thickness = 1
 		local selLbl = Instance.new("TextLabel")
 		selLbl.Size = UDim2.new(1, -34, 1, 0)
@@ -4064,21 +4208,22 @@ function UILib.SubTab:addGroup(title)
 				ol.ZIndex = 52
 				ol.Parent = ob
 				local ck = Instance.new("TextLabel")
-				ck.Size = UDim2.new(0, 8, 0, 8)
-				ck.Position = UDim2.new(1, -14, 0.5, -4)
-				ck.BackgroundColor3 = window.theme.Accent
-				ck.BackgroundTransparency = (opt == currentSelection) and 0 or 1
-				ck.Text = ""
+				ck.Size = UDim2.new(0, 14, 1, 0)
+				ck.Position = UDim2.new(1, -16, 0, 0)
+				ck.BackgroundTransparency = 1
+				ck.Text = (opt == currentSelection) and "✓" or ""
+				ck.TextColor3 = window.theme.Accent
+				ck.Font = Enum.Font.GothamBold
+				ck.TextSize = 11
 				ck.ZIndex = 52
 				ck.Parent = ob
-				Instance.new("UICorner", ck).CornerRadius = UDim.new(1, 0)
 				checks[opt] = ck
 				ob.MouseEnter:Connect(function() oh.Visible = true ol.TextColor3 = window.theme.White end)
 				ob.MouseLeave:Connect(function() oh.Visible = false if opt ~= currentSelection then ol.TextColor3 = window.theme.GrayLt end end)
 				ob.MouseButton1Click:Connect(function()
 					currentSelection = opt
 					selLbl.Text = opt
-					for o, c in pairs(checks) do c.BackgroundTransparency = (o == opt) and 0 or 1 end
+					for o, ck2 in pairs(checks) do ck2.Text = (o == opt) and "✓" or "" end
 					for o, b in pairs(backgrounds) do b.Visible = (o == opt) end
 					for _, child in ipairs(dlist:GetChildren()) do
 						if child:IsA("TextButton") then
@@ -4113,8 +4258,20 @@ function UILib.SubTab:addGroup(title)
 
 		dbtn.MouseButton1Click:Connect(function()
 			open = not open
-			dlist.Visible = open
 			arrow.Text = open and "▲" or "▼"
+			if open then
+				dlist.Visible = true
+				dlist.Size = UDim2.new(1, 0, 0, 0)
+				TweenService:Create(dlist, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					Size = UDim2.new(1, 0, 0, math.min(listH, 104))
+				}):Play()
+			else
+				local tw = TweenService:Create(dlist, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+					Size = UDim2.new(1, 0, 0, 0)
+				})
+				tw.Completed:Connect(function() dlist.Visible = false end)
+				tw:Play()
+			end
 			r.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 104) or 0))
 			updateSize()
 		end)
@@ -4124,7 +4281,7 @@ function UILib.SubTab:addGroup(title)
 			SetValue = function(val)
 				currentSelection = val
 				selLbl.Text = val
-				for o, c in pairs(checks) do c.BackgroundTransparency = (o == val) and 0 or 1 end
+				for o, ck2 in pairs(checks) do ck2.Text = (o == val) and "✓" or "" end
 				for o, b in pairs(backgrounds) do b.Visible = (o == val) end
 				if callback then callback(val) end
 			end,
@@ -4304,7 +4461,35 @@ function UILib.SubTab:addGroup(title)
 		btn.ZIndex = 3
 		btn.Parent = items
 
-		if style == "text" then
+		if style == "split" then
+			-- Full-width variant with visible background + accent left border accent line
+			btn.BackgroundColor3 = window.theme.Item
+			btn.BackgroundTransparency = 0
+			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+			local bstroke = Instance.new("UIStroke", btn)
+			bstroke.Color = Color3.fromRGB(50, 50, 60)
+			bstroke.Thickness = 1
+			local rh = Instance.new("Frame")
+			rh.Size = UDim2.new(1, 0, 1, 0)
+			rh.BackgroundColor3 = window.theme.ItemHov
+			rh.BorderSizePixel = 0
+			rh.Visible = false
+			rh.ZIndex = 2
+			rh.Parent = btn
+			Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 4)
+			btn.MouseEnter:Connect(function() rh.Visible = true end)
+			btn.MouseLeave:Connect(function() rh.Visible = false end)
+			local lbl = Instance.new("TextLabel")
+			lbl.Size = UDim2.new(1, 0, 1, 0)
+			lbl.BackgroundTransparency = 1
+			lbl.Text = text
+			lbl.TextColor3 = color or window.theme.Accent
+			lbl.Font = Enum.Font.GothamBold
+			lbl.TextSize = 13
+			lbl.TextXAlignment = align or Enum.TextXAlignment.Center
+			lbl.ZIndex = 4
+			lbl.Parent = btn
+		elseif style == "text" then
 			-- FIX 4: Text-only button style (no background)
 			btn.BackgroundTransparency = 1
 			local lbl = Instance.new("TextLabel")
@@ -4325,10 +4510,13 @@ function UILib.SubTab:addGroup(title)
 				lbl.TextColor3 = color or window.theme.Accent
 			end)
 		else
-			-- FIX 4: Default "bg" style with background (original behavior)
+			-- Default "bg" style with background
 			btn.BackgroundColor3 = window.theme.Item
 			btn.BackgroundTransparency = 0
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+			local bstroke = Instance.new("UIStroke", btn)
+			bstroke.Color = Color3.fromRGB(50, 50, 60)
+			bstroke.Thickness = 1
 			local rh = Instance.new("Frame")
 			rh.Size = UDim2.new(1, 0, 1, 0)
 			rh.BackgroundColor3 = window.theme.ItemHov
@@ -4945,37 +5133,39 @@ function UILib.SubTab:addGroup(title)
 		fill.Parent = track
 		Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 3)
 		local knobLeft = Instance.new("Frame")
-		knobLeft.Size = UDim2.new(0, 10, 0, 10)
-		knobLeft.Position = UDim2.new(pctMin, -5, 0.5, -5)
+		knobLeft.Size = UDim2.new(0, 14, 0, 14)
+		knobLeft.Position = UDim2.new(pctMin, -7, 0.5, -7)
 		knobLeft.BackgroundColor3 = Color3.new(0, 0, 0)
 		knobLeft.BorderSizePixel = 0
 		knobLeft.ZIndex = 5
 		knobLeft.Parent = track
+		Instance.new("UICorner", knobLeft).CornerRadius = UDim.new(1, 0)
 		local knobLeftStroke = Instance.new("UIStroke", knobLeft)
 		knobLeftStroke.Color = window.theme.Accent
 		knobLeftStroke.Thickness = 2
 		table.insert(window.accentObjects, knobLeftStroke)
 		local knobRight = Instance.new("Frame")
-		knobRight.Size = UDim2.new(0, 10, 0, 10)
-		knobRight.Position = UDim2.new(pctMax, -5, 0.5, -5)
+		knobRight.Size = UDim2.new(0, 14, 0, 14)
+		knobRight.Position = UDim2.new(pctMax, -7, 0.5, -7)
 		knobRight.BackgroundColor3 = Color3.new(0, 0, 0)
 		knobRight.BorderSizePixel = 0
 		knobRight.ZIndex = 5
 		knobRight.Parent = track
+		Instance.new("UICorner", knobRight).CornerRadius = UDim.new(1, 0)
 		local knobRightStroke = Instance.new("UIStroke", knobRight)
 		knobRightStroke.Color = window.theme.Accent
 		knobRightStroke.Thickness = 2
 		table.insert(window.accentObjects, knobRightStroke)
 		local hitLeft = Instance.new("TextButton")
-		hitLeft.Size = UDim2.new(0, 18, 0, 18)
-		hitLeft.Position = UDim2.new(pctMin, -9, 0.5, -9)
+		hitLeft.Size = UDim2.new(0, 20, 0, 20)
+		hitLeft.Position = UDim2.new(pctMin, -10, 0.5, -10)
 		hitLeft.BackgroundTransparency = 1
 		hitLeft.Text = ""
 		hitLeft.ZIndex = 6
 		hitLeft.Parent = track
 		local hitRight = Instance.new("TextButton")
-		hitRight.Size = UDim2.new(0, 18, 0, 18)
-		hitRight.Position = UDim2.new(pctMax, -9, 0.5, -9)
+		hitRight.Size = UDim2.new(0, 20, 0, 20)
+		hitRight.Position = UDim2.new(pctMax, -10, 0.5, -10)
 		hitRight.BackgroundTransparency = 1
 		hitRight.Text = ""
 		hitRight.ZIndex = 6
@@ -4990,10 +5180,10 @@ function UILib.SubTab:addGroup(title)
 			pctMax = (currentMax - minVal) / (maxVal - minVal)
 			fill.Size = UDim2.new(pctMax - pctMin, 0, 1, 0)
 			fill.Position = UDim2.new(pctMin, 0, 0, 0)
-			knobLeft.Position = UDim2.new(pctMin, -5, 0.5, -5)
-			knobRight.Position = UDim2.new(pctMax, -5, 0.5, -5)
-			hitLeft.Position = UDim2.new(pctMin, -9, 0.5, -9)
-			hitRight.Position = UDim2.new(pctMax, -9, 0.5, -9)
+			knobLeft.Position = UDim2.new(pctMin, -7, 0.5, -7)
+			knobRight.Position = UDim2.new(pctMax, -7, 0.5, -7)
+			hitLeft.Position = UDim2.new(pctMin, -10, 0.5, -10)
+			hitRight.Position = UDim2.new(pctMax, -10, 0.5, -10)
 		end
 		local function apply(pos, which)
 			local rel = math.clamp((pos - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
