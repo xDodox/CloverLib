@@ -1816,7 +1816,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		if num then updateSlider(num) else valueLabel.Text = tostring(currentVal) end
 	end)
 	local elem = {ID = id, Value = currentVal, DefaultValue = defaultVal, SetValue = updateSlider}
-	elem.SetDesc = function(d) label.Text = d end
+	elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then label.Text = self_or_d else label.Text = d end end
 	window.configs[id] = elem
 	row.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton2 then
@@ -2580,7 +2580,7 @@ function UILib.Column:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
-		elem.SetDesc = function(d) lbl.Text = d end
+		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
 		return elem
 	end
 
@@ -2818,7 +2818,7 @@ function UILib.Column:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
-		elem.SetDesc = function(d) lbl.Text = d end
+		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
 		return elem
 	end
 
@@ -2897,7 +2897,7 @@ function UILib.Column:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
-		elem.SetDesc = function(d) lbl.Text = d end
+		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
 		return elem
 	end
 
@@ -3466,7 +3466,7 @@ function UILib.Column:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
-		elem.SetDesc = function(d) lbl.Text = d end
+		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
 		return elem
 	end
 
@@ -3517,7 +3517,7 @@ function UILib.Column:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
-		elem.SetDesc = function(d) lbl.Text = d end
+		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
 		return elem
 	end
 
@@ -3647,7 +3647,7 @@ function UILib.Column:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
-		elem.SetDesc = function(d) lbl.Text = d end
+		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
 		return elem
 	end
 
@@ -3862,7 +3862,7 @@ function UILib.SubTab:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
-		elem.SetDesc = function(d) lbl.Text = d end
+		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
 		return elem
 	end
 
@@ -4097,7 +4097,7 @@ function UILib.SubTab:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
-		elem.SetDesc = function(d) lbl.Text = d end
+		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
 		return elem
 	end
 
@@ -4176,7 +4176,7 @@ function UILib.SubTab:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
-		elem.SetDesc = function(d) lbl.Text = d end
+		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
 		return elem
 	end
 
@@ -4745,7 +4745,7 @@ function UILib.SubTab:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
-		elem.SetDesc = function(d) lbl.Text = d end
+		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
 		return elem
 	end
 
@@ -4796,7 +4796,7 @@ function UILib.SubTab:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
-		elem.SetDesc = function(d) lbl.Text = d end
+		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
 		return elem
 	end
 
@@ -4926,7 +4926,7 @@ function UILib.SubTab:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
 		elem.frame = r
-		elem.SetDesc = function(d) lbl.Text = d end
+		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
 		return elem
 	end
 
