@@ -4753,7 +4753,7 @@ function UILib.SubTab:addGroup(title)
 			local maxH = math.max(lh, rh)
 			lCol.Size = UDim2.new(0.5, -4, 0, maxH)
 			rCol.Size = UDim2.new(0.5, -4, 0, maxH)
-			splitRow.Size = UDim2.new(1, 0, maxH)
+			splitRow.Size = UDim2.new(1, 0, 0, maxH)
 			updateSize()
 		end
 		lLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplitSize)
