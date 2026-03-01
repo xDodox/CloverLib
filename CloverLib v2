@@ -3478,7 +3478,6 @@ function UILib.Column:addGroup(title)
 	return group
 end
 end
-end
 
 function UILib.SubTab:addGroup(title)
 	local window = self.window
@@ -4773,7 +4772,6 @@ function UILib.SubTab:addGroup(title)
 	end
 
 	return group
-end
 end
 end
 
