@@ -3273,6 +3273,7 @@ function UILib.Column:addGroup(title)
 		function nestedGroup:dropdown(subText, opts, def, subCallback, subTooltip) local r = group:dropdown(subText, opts, def, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:keybind(subText, cur, subCallback, subTooltip) local r = group:keybind(subText, cur, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:label(subText, col, subTooltip) local r = group:label(subText, col, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:separator(subText) local r = group:separator(subText) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:button(subText, subCallback, subTooltip, al, col, sty) local r = group:button(subText, subCallback, subTooltip, al, col, sty) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:colorpicker(subText, def, subCallback, subTooltip) local r = group:colorpicker(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:multidropdown(subText, opts, def, subCallback, subTooltip) local r = group:multidropdown(subText, opts, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
@@ -3392,6 +3393,7 @@ function UILib.Column:addGroup(title)
 		function nestedGroup:dropdown(subText, opts, def, subCallback, subTooltip) local r = group:dropdown(subText, opts, def, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:keybind(subText, cur, subCallback, subTooltip) local r = group:keybind(subText, cur, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:label(subText, col, subTooltip) local r = group:label(subText, col, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:separator(subText) local r = group:separator(subText) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:button(subText, subCallback, subTooltip, al, col, sty) local r = group:button(subText, subCallback, subTooltip, al, col, sty) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:colorpicker(subText, def, subCallback, subTooltip) local r = group:colorpicker(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:multidropdown(subText, opts, def, subCallback, subTooltip) local r = group:multidropdown(subText, opts, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
@@ -4596,6 +4598,7 @@ function UILib.SubTab:addGroup(title)
 		function nestedGroup:dropdown(subText, opts, def, subCallback, subTooltip) local r = group:dropdown(subText, opts, def, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:keybind(subText, cur, subCallback, subTooltip) local r = group:keybind(subText, cur, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:label(subText, col, subTooltip) local r = group:label(subText, col, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:separator(subText) local r = group:separator(subText) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:button(subText, subCallback, subTooltip, al, col, sty) local r = group:button(subText, subCallback, subTooltip, al, col, sty) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:colorpicker(subText, def, subCallback, subTooltip) local r = group:colorpicker(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:multidropdown(subText, opts, def, subCallback, subTooltip) local r = group:multidropdown(subText, opts, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
@@ -4715,6 +4718,7 @@ function UILib.SubTab:addGroup(title)
 		function nestedGroup:dropdown(subText, opts, def, subCallback, subTooltip) local r = group:dropdown(subText, opts, def, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:keybind(subText, cur, subCallback, subTooltip) local r = group:keybind(subText, cur, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:label(subText, col, subTooltip) local r = group:label(subText, col, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:separator(subText) local r = group:separator(subText) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:button(subText, subCallback, subTooltip, al, col, sty) local r = group:button(subText, subCallback, subTooltip, al, col, sty) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:colorpicker(subText, def, subCallback, subTooltip) local r = group:colorpicker(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:multidropdown(subText, opts, def, subCallback, subTooltip) local r = group:multidropdown(subText, opts, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
