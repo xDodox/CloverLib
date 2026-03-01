@@ -194,50 +194,60 @@ function UILib:notify(message, notifType, duration)
     end)
 end
 
-function UILib:saveConfig(filename)
+-- Returns "Clover/GameName/" and ensures folders exist
+function UILib:_configDir()
+    local gameName = (game and game.Name and game.Name ~= "" and game.Name) or "Unknown"
+    -- Sanitize: remove chars that cause issues in folder names
+    gameName = gameName:gsub("[^%w%s%-_]", ""):gsub("%s+", "_"):sub(1, 40)
+    local dir = "Clover/" .. gameName .. "/"
+    pcall(makefolder, "Clover")
+    pcall(makefolder, "Clover/" .. gameName)
+    return dir
+end
+
+function UILib:saveConfig(name)
     local data = {}
     if not self.configs then return end
     for id, elem in pairs(self.configs) do
-        if elem.Value ~= nil then
-            data[id] = elem.Value
-        end
+        if elem.Value ~= nil then data[id] = elem.Value end
     end
     local json = HS:JSONEncode(data)
-    local success, err = pcall(writefile, filename, json)
-    if success then self:notify("Config saved: " .. filename, "success") else self:notify("Save failed: " .. tostring(err), "error") end
+    local path = self:_configDir() .. name .. ".json"
+    local success, err = pcall(writefile, path, json)
+    if success then self:notify("Saved: " .. name, "success")
+    else self:notify("Save failed: " .. tostring(err), "error") end
 end
 
-function UILib:loadConfig(filename)
-    local success, content = pcall(readfile, filename)
-    if not success then self:notify("File not found: " .. filename, "error") return end
+function UILib:loadConfig(name)
+    local path = self:_configDir() .. name .. ".json"
+    local success, content = pcall(readfile, path)
+    if not success then self:notify("Not found: " .. name, "error") return end
     local ok, data = pcall(HS.JSONDecode, HS, content)
-    if not ok or not data then self:notify("Invalid config file", "error") return end
+    if not ok or not data then self:notify("Invalid config", "error") return end
     for id, value in pairs(data) do
         if self.configs and self.configs[id] then
-            local s, e = pcall(self.configs[id].SetValue, value)
-            if not s then warn("Failed to set config " .. id .. ": " .. tostring(e)) end
+            pcall(self.configs[id].SetValue, value)
         end
     end
-    self:notify("Config loaded: " .. filename, "success")
+    self:notify("Loaded: " .. name, "success")
 end
 
-function UILib:deleteConfig(filename)
-    local success = pcall(delfile, filename)
-    if success then self:notify("Deleted: " .. filename, "success") else self:notify("Delete failed", "error") end
+function UILib:deleteConfig(name)
+    local path = self:_configDir() .. name .. ".json"
+    local success = pcall(delfile, path)
+    if success then self:notify("Deleted: " .. name, "success")
+    else self:notify("Delete failed", "error") end
 end
 
-function UILib:listConfigs(prefix)
-    prefix = prefix or "clover_"
-    local ok, files = pcall(listfiles, "")
-    if not ok then return {} end
+function UILib:listConfigs()
+    local dir = self:_configDir()
+    local ok, files = pcall(listfiles, dir)
+    if not ok or not files then return {} end
     local configs = {}
     for _, f in ipairs(files) do
-        local name = f:match("([^/\\]+)$") -- get filename only
-        if name and name:match("^" .. prefix) and name:match("%.json$") then
-            local profileName = name:match("^" .. prefix .. "(.+)%.json$")
-            if profileName then
-                table.insert(configs, profileName)
-            end
+        local name = f:match("([^/\\]+)$")
+        if name and name:match("%.json$") then
+            table.insert(configs, name:match("^(.+)%.json$"))
         end
     end
     return configs
@@ -845,7 +855,7 @@ function UILib:addWatermark(name)
     local rowLayout = Instance.new("UIListLayout", row)
     rowLayout.FillDirection = Enum.FillDirection.Horizontal
     rowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-    rowLayout.Padding = UDim.new(0, 0)
+    rowLayout.Padding = UDim.new(0, 6)  -- space between all items
     rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
     local rowPad = Instance.new("UIPadding", row)
     rowPad.PaddingLeft = UDim.new(0, 10)
@@ -900,9 +910,6 @@ function UILib:addWatermark(name)
     divider.ZIndex = 201
     divider.LayoutOrder = 2
     divider.Parent = row
-    local divPad = Instance.new("UIPadding", divider)
-    divPad.PaddingLeft = UDim.new(0, 6)
-    divPad.PaddingRight = UDim.new(0, 6)
 
     local fpsLabel = Instance.new("TextLabel")
     fpsLabel.AutomaticSize = Enum.AutomaticSize.X
@@ -981,45 +988,26 @@ function UILib:_createUITab()
     
     grp:button("Unload", function() self:Destroy() end, "Cleanly remove the UI")
 
-    -- RIGHT: Config Profiles (renamed from "Profile" to "Config")
+    -- RIGHT: Config Profiles
     local cfg = uiR:addGroup("Configs")
     local currentConfig = "default"
-    local configList = self:listConfigs()
-    if #configList == 0 then table.insert(configList, "default") end
 
     cfg:textbox("Config Name", "default", function(val)
+        currentConfig = (val ~= "" and val or "default")
+    end, "Name for save/load/delete")
+
+    cfg:dropdown("Load Config", self:listConfigs(), "", function(val)
         currentConfig = val
-    end, "Name for save/load")
-
-    cfg:textbox("File Prefix", self.configPrefix, function(val)
-        if val and val ~= "" then
-            self.configPrefix = val
-            self:notify("Prefix: " .. val, "info", 2)
-        end
-    end, "Unique prefix for saved files — change this per-script to avoid conflicts")
-
-    cfg:button("Create Config", function()
-        if currentConfig and currentConfig ~= "" then
-            -- Save with current settings immediately
-            self:saveConfig(self.configPrefix .. currentConfig .. ".json")
-            -- Rebuild dropdown with new list
-            configList = self:listConfigs()
-            self:notify("Config created: " .. currentConfig, "success")
-        else
-            self:notify("Enter a config name first", "warning")
-        end
-    end, "Create a new config with current settings")
-
-    cfg:dropdown("Load Config", configList, configList[1] or "default", function(val)
-        currentConfig = val
-        self:loadConfig(self.configPrefix .. val .. ".json")
-    end, "Select a saved config", function()
-        return self:listConfigs()
+        self:loadConfig(val)
+    end, "Select a saved config to load", function()
+        local list = self:listConfigs()
+        if #list == 0 then list = {"(no configs)"} end
+        return list
     end)
 
     cfg:button("Save Config", function()
         if currentConfig and currentConfig ~= "" then
-            self:saveConfig(self.configPrefix .. currentConfig .. ".json")
+            self:saveConfig(currentConfig)
         else
             self:notify("Enter a config name first", "warning")
         end
@@ -1027,7 +1015,11 @@ function UILib:_createUITab()
 
     cfg:button("Delete Config", function()
         if currentConfig and currentConfig ~= "" then
-            self:deleteConfig(self.configPrefix .. currentConfig .. ".json")
+            self:confirm('Delete config "' .. currentConfig .. '"?', function()
+                self:deleteConfig(currentConfig)
+            end)
+        else
+            self:notify("No config selected", "warning")
         end
     end, "Delete selected config")
 end
@@ -1725,17 +1717,26 @@ local function createColorPicker(group, items, window, text, default, callback)
             satValKnob.Position = UDim2.new(s, -5, 1 - v, -5)
             update()
         end)
-        pickBtn.MouseButton1Click:Connect(closePicker)
+        pickBtn.MouseButton1Click:Connect(function()
+            -- Apply current color then close
+            if callback then callback(current) end
+            colorBox.BackgroundColor3 = current
+            closePicker()
+        end)
 
         local inputBeganConn
         inputBeganConn = UIS.InputBegan:Connect(function(input)
             if _pickerJustOpened then return end
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 local pos = UIS:GetMouseLocation()
+                if not pickerFrame or not pickerFrame.Parent then
+                    inputBeganConn:Disconnect()
+                    return
+                end
                 local absPos_ = pickerFrame.AbsolutePosition
                 local absSize_ = pickerFrame.AbsoluteSize
-                
-                -- Check if click is on the colorBox button
+
+                -- Don't close if clicking on colorBox
                 local btnPos = colorBox.AbsolutePosition
                 local btnSize = colorBox.AbsoluteSize
                 if pos.X >= btnPos.X and pos.X <= btnPos.X + btnSize.X and pos.Y >= btnPos.Y and pos.Y <= btnPos.Y + btnSize.Y then
@@ -2207,11 +2208,12 @@ function UILib.Column:addGroup(title)
         selLbl.TextSize = 12
         selLbl.TextXAlignment = Enum.TextXAlignment.Left
         selLbl.ZIndex = 12
+        selLbl.Parent = dbtn
         local arrow = Instance.new("TextLabel")
         arrow.Size = UDim2.new(0, 24, 1, 0)
         arrow.Position = UDim2.new(1, -26, 0, 0)
         arrow.BackgroundTransparency = 1
-        arrow.Text = "\226\137\161"
+        arrow.Text = "▼"
         arrow.TextColor3 = window.theme.Gray
         arrow.Font = Enum.Font.GothamBold
         arrow.TextSize = 12
@@ -2320,7 +2322,7 @@ function UILib.Column:addGroup(title)
                     if callback then callback(opt) end
                     window.configs[id].Value = opt
                     dlist.Visible = false
-                    arrow.Text = "\226\137\161"
+                    arrow.Text = "▼"
                     row.Size = UDim2.new(1, 0, 0, 52)
                     task.delay(0.1, updateSize)
                 end)
@@ -2347,7 +2349,7 @@ function UILib.Column:addGroup(title)
         dbtn.MouseButton1Click:Connect(function()
             open = not open
             dlist.Visible = open
-            arrow.Text = "\226\137\161"
+            arrow.Text = open and "▲" or "▼"
             row.Size = UDim2.new(1, 0, 0, 52 + (open and math.min(listH, 104) or 0))
             task.delay(0.1, updateSize)
         end)
@@ -2707,10 +2709,10 @@ function UILib.Column:addGroup(title)
         label.ZIndex = 3
         label.Parent = row
         local box = Instance.new("TextBox")
-        box.Size = UDim2.new(0, 150, 0, 22)
-        box.Position = UDim2.new(1, -154, 0, 2)
+        box.Size = UDim2.new(1, -8, 0, 22)
+        box.Position = UDim2.new(0, 4, 1, -26)
         box.BackgroundColor3 = window.theme.Track
-        box.ClipsDescendants = true -- Fix overflow
+        box.ClipsDescendants = true
         box.BorderSizePixel = 0
         box.ZIndex = 3
         box.Parent = row
@@ -3769,10 +3771,10 @@ function UILib.SubTab:addGroup(title)
         label.ZIndex = 3
         label.Parent = row
         local box = Instance.new("TextBox")
-        box.Size = UDim2.new(0, 150, 0, 22)
-        box.Position = UDim2.new(1, -154, 0, 2)
+        box.Size = UDim2.new(1, -8, 0, 22)
+        box.Position = UDim2.new(0, 4, 1, -26)
         box.BackgroundColor3 = window.theme.Track
-        box.ClipsDescendants = true -- Fix overflow
+        box.ClipsDescendants = true
         box.BorderSizePixel = 0
         box.ZIndex = 3
         box.Parent = row
