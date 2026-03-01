@@ -3477,7 +3477,6 @@ function UILib.Column:addGroup(title)
 
 	return group
 end
-end
 
 function UILib.SubTab:addGroup(title)
 	local window = self.window
@@ -4773,36 +4772,7 @@ function UILib.SubTab:addGroup(title)
 
 	return group
 end
-end
 
-function UILib.SubTab:split()
-	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, 0, 0, 0)
-	row.BackgroundTransparency = 1
-	row.AutomaticSize = Enum.AutomaticSize.Y
-	row.Parent = self.page
-	row.LayoutOrder = 0
-	local left = Instance.new("Frame")
-	left.Size = UDim2.new(0.5, -6, 0, 0)
-	left.BackgroundTransparency = 1
-	left.AutomaticSize = Enum.AutomaticSize.Y
-	left.Parent = row
-	local right = Instance.new("Frame")
-	right.Size = UDim2.new(0.5, -6, 0, 0)
-	right.Position = UDim2.new(0.5, 6, 0, 0)
-	right.BackgroundTransparency = 1
-	right.AutomaticSize = Enum.AutomaticSize.Y
-	right.Parent = row
-	local leftLayout = Instance.new("UIListLayout", left)
-	leftLayout.Padding = UDim.new(0, 8)
-	leftLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	local rightLayout = Instance.new("UIListLayout", right)
-	rightLayout.Padding = UDim.new(0, 8)
-	rightLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	local leftCol = setmetatable({ frame = left, window = self.window, tab = self.tab, sub = self }, UILib.Column)
-	local rightCol = setmetatable({ frame = right, window = self.window, tab = self.tab, sub = self }, UILib.Column)
-	return leftCol, rightCol
-end
 
 
 return UILib
