@@ -2924,6 +2924,50 @@ function UILib.Column:addGroup(title)
 		function ref:setColor(c) lbl.TextColor3 = c end
 		return ref
 	end
+	function group:separator(text)
+		local f = Instance.new("Frame")
+		f.Size = UDim2.new(1, 0, 0, text and 18 or 10)
+		f.BackgroundTransparency = 1
+		f.Parent = items
+		if text and text ~= "" then
+			local line1 = Instance.new("Frame")
+			line1.Size = UDim2.new(0.28, 0, 0, 1)
+			line1.Position = UDim2.new(0, 0, 0.5, 0)
+			line1.BackgroundColor3 = window.theme.Border
+			line1.BorderSizePixel = 0
+			line1.ZIndex = 3
+			line1.Parent = f
+			local lbl = Instance.new("TextLabel")
+			lbl.Size = UDim2.new(0.44, 0, 1, 0)
+			lbl.Position = UDim2.new(0.28, 0, 0, 0)
+			lbl.BackgroundTransparency = 1
+			lbl.Text = text:upper()
+			lbl.TextColor3 = window.theme.Border
+			lbl.Font = Enum.Font.GothamBold
+			lbl.TextSize = 9
+			lbl.ZIndex = 3
+			lbl.Parent = f
+			local line2 = Instance.new("Frame")
+			line2.Size = UDim2.new(0.28, 0, 0, 1)
+			line2.Position = UDim2.new(0.72, 0, 0.5, 0)
+			line2.BackgroundColor3 = window.theme.Border
+			line2.BorderSizePixel = 0
+			line2.ZIndex = 3
+			line2.Parent = f
+			updateSize()
+		else
+			local line = Instance.new("Frame")
+			line.Size = UDim2.new(1, 0, 0, 1)
+			line.Position = UDim2.new(0, 0, 0.5, 0)
+			line.BackgroundColor3 = window.theme.Border
+			line.BorderSizePixel = 0
+			line.ZIndex = 3
+			line.Parent = f
+			updateSize()
+		end
+		return f
+	end
+
 
 	-- FIX 4: button supports style param: "bg" (default, with background) or "text" (plain text only)
 	function group:button(text, callback, tooltip, align, color, style)
@@ -4203,6 +4247,50 @@ function UILib.SubTab:addGroup(title)
 		function ref:setColor(c) lbl.TextColor3 = c end
 		return ref
 	end
+	function group:separator(text)
+		local f = Instance.new("Frame")
+		f.Size = UDim2.new(1, 0, 0, text and 18 or 10)
+		f.BackgroundTransparency = 1
+		f.Parent = items
+		if text and text ~= "" then
+			local line1 = Instance.new("Frame")
+			line1.Size = UDim2.new(0.28, 0, 0, 1)
+			line1.Position = UDim2.new(0, 0, 0.5, 0)
+			line1.BackgroundColor3 = window.theme.Border
+			line1.BorderSizePixel = 0
+			line1.ZIndex = 3
+			line1.Parent = f
+			local lbl = Instance.new("TextLabel")
+			lbl.Size = UDim2.new(0.44, 0, 1, 0)
+			lbl.Position = UDim2.new(0.28, 0, 0, 0)
+			lbl.BackgroundTransparency = 1
+			lbl.Text = text:upper()
+			lbl.TextColor3 = window.theme.Border
+			lbl.Font = Enum.Font.GothamBold
+			lbl.TextSize = 9
+			lbl.ZIndex = 3
+			lbl.Parent = f
+			local line2 = Instance.new("Frame")
+			line2.Size = UDim2.new(0.28, 0, 0, 1)
+			line2.Position = UDim2.new(0.72, 0, 0.5, 0)
+			line2.BackgroundColor3 = window.theme.Border
+			line2.BorderSizePixel = 0
+			line2.ZIndex = 3
+			line2.Parent = f
+			updateSize()
+		else
+			local line = Instance.new("Frame")
+			line.Size = UDim2.new(1, 0, 0, 1)
+			line.Position = UDim2.new(0, 0, 0.5, 0)
+			line.BackgroundColor3 = window.theme.Border
+			line.BorderSizePixel = 0
+			line.ZIndex = 3
+			line.Parent = f
+			updateSize()
+		end
+		return f
+	end
+
 
 	-- FIX 4: button supports style param: "bg" (default, with background) or "text" (plain text only)
 	function group:button(text, callback, tooltip, align, color, style)
