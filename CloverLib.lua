@@ -104,6 +104,12 @@ function UILib:notify(message, notifType, duration)
     notifType = notifType or "info"
     duration = duration or 3
     if not self.notifications then self.notifications = {} end
+    -- Clean dead entries first
+    for i = #self.notifications, 1, -1 do
+        if not self.notifications[i] or not self.notifications[i].Parent then
+            table.remove(self.notifications, i)
+        end
+    end
     local accentColor = NOTIF_COLORS[notifType] or NOTIF_COLORS.info
     local index = #self.notifications + 1
     local yPos = 10 + (index - 1) * 50
@@ -121,7 +127,7 @@ function UILib:notify(message, notifType, duration)
     -- Progress Bar
     local progressOuter = Instance.new("Frame")
     progressOuter.Size = UDim2.new(1, 0, 0, 2)
-    progressOuter.Position = UDim2.new(0, 0, 1, -2) -- Adjusted to stay visible on the edge
+    progressOuter.Position = UDim2.new(0, 0, 1, -2)
     progressOuter.BackgroundTransparency = 1
     progressOuter.BorderSizePixel = 0
     progressOuter.ZIndex = 502
@@ -129,7 +135,7 @@ function UILib:notify(message, notifType, duration)
     Instance.new("UICorner", progressOuter).CornerRadius = UDim.new(0, 2)
     
     local progressBar = Instance.new("Frame")
-    progressBar.Name = "indicator" -- Mark for accent updates if needed, though usually fixed to notif type
+    progressBar.Name = "indicator"
     progressBar.Size = UDim2.new(1, 0, 1, 0)
     progressBar.BackgroundColor3 = accentColor
     progressBar.BorderSizePixel = 0
@@ -150,32 +156,41 @@ function UILib:notify(message, notifType, duration)
     label.ZIndex = 501
     label.Parent = notif
     table.insert(self.notifications, notif)
-    -- Slide in
-    local tween = TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(1, -250, 0, yPos)})
-    tween:Play()
+    
+    local targetX = UDim2.new(1, -250, 0, yPos)
+    -- Slide in immediately (no delay, cancel-safe)
+    notif.Position = UDim2.new(1, 0, 0, yPos)
+    local tweenIn = TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = targetX})
+    tweenIn:Play()
     
     -- Animate progress
     TweenService:Create(progressBar, TweenInfo.new(duration, Enum.EasingStyle.Linear), {Size = UDim2.new(0, 0, 1, 0)}):Play()
+    
     -- Auto dismiss
     task.delay(duration, function()
-        if notif and notif.Parent then
-            local out = TweenService:Create(notif, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(1, 0, 0, yPos)})
-            out:Play()
-            out.Completed:Connect(function()
-                notif:Destroy()
-                -- Remove from list and restack
-                if self.notifications then
-                    for i, n in ipairs(self.notifications) do
-                        if n == notif then table.remove(self.notifications, i) break end
-                    end
-                    for i, n in ipairs(self.notifications) do
-                        if n and n.Parent then
-                            TweenService:Create(n, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(n.Position.X.Scale, n.Position.X.Offset, 0, 10 + (i-1) * 50)}):Play()
-                        end
+        if not notif or not notif.Parent then return end
+        local out = TweenService:Create(notif, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(1, 0, 0, yPos)})
+        out:Play()
+        out.Completed:Connect(function()
+            if notif and notif.Parent then notif:Destroy() end
+            -- Remove from list
+            if self.notifications then
+                for i = #self.notifications, 1, -1 do
+                    if self.notifications[i] == notif or not self.notifications[i] or not self.notifications[i].Parent then
+                        table.remove(self.notifications, i)
                     end
                 end
-            end)
-        end
+                -- Restack remaining
+                for i, n in ipairs(self.notifications) do
+                    if n and n.Parent then
+                        local newY = 10 + (i-1) * 50
+                        TweenService:Create(n, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                            Position = UDim2.new(1, -250, 0, newY)
+                        }):Play()
+                    end
+                end
+            end
+        end)
     end)
 end
 
@@ -478,17 +493,21 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     content.BackgroundColor3 = self.theme.BG
     content.BorderSizePixel = 0
     content.Parent = win
-    content.ScrollBarThickness = 4
-    content.ScrollBarImageColor3 = self.theme.Accent
+    content.ScrollBarThickness = 0   -- no scrollbar
     content.CanvasSize = UDim2.new(0, 0, 0, 0)
     content.ScrollingDirection = Enum.ScrollingDirection.XY
     self.content = content
 
-    local navbar = Instance.new("Frame")
+    local navbar = Instance.new("ScrollingFrame")
     navbar.Size = UDim2.new(1, 0, 0, 46)
     navbar.Position = UDim2.new(0, 0, 1, -46)
     navbar.BackgroundColor3 = self.theme.Panel
     navbar.BorderSizePixel = 0
+    navbar.ScrollBarThickness = 0
+    navbar.ScrollingDirection = Enum.ScrollingDirection.X
+    navbar.AutomaticCanvasSize = Enum.AutomaticSize.X
+    navbar.CanvasSize = UDim2.new(0, 0, 0, 0)
+    navbar.ClipsDescendants = false
     navbar.Parent = win
     Instance.new("UICorner", navbar).CornerRadius = UDim.new(0, 6)
     local navbarStroke = Instance.new("UIStroke", navbar)
@@ -500,6 +519,25 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
     navList.HorizontalAlignment = Enum.HorizontalAlignment.Center
     navList.VerticalAlignment = Enum.VerticalAlignment.Center
     navList.Padding = UDim.new(0, 0)
+
+    -- Make navbar a ScrollingFrame when needed (>= 6 tabs)
+    -- We swap navbar to ScrollingFrame after tabs are added (deferred)
+    self._navTabCount = 0
+    self._navScrollEnabled = false
+    local function updateNavScroll()
+        self._navTabCount = self._navTabCount + 1
+        if self._navTabCount >= 6 and not self._navScrollEnabled then
+            self._navScrollEnabled = true
+            navbar.ClipsDescendants = true
+            -- Shrink tab buttons so they scroll
+            for _, child in ipairs(navbar:GetChildren()) do
+                if child:IsA("TextButton") then
+                    child.Size = UDim2.new(0, 90, 0, 46)
+                end
+            end
+        end
+    end
+    self._updateNavScroll = updateNavScroll
 
     do
         local drag, dragStart, dragPos = false, nil, nil
@@ -835,7 +873,10 @@ end
 function UILib:_createUITab()
     local uiTab = self:addTab("UI")
     local uiSub = uiTab:addSubTab("Settings")
-    local grp = uiSub:addGroup("Interface")
+    local uiL, uiR = uiSub:split()
+
+    -- LEFT: Interface settings
+    local grp = uiL:addGroup("Interface")
     
     grp:colorpicker("Accent Color", self.theme.Accent, function(c) 
         self:updateAccent(c)
@@ -858,36 +899,49 @@ function UILib:_createUITab()
     end, "Display FPS and ping")
     
     grp:button("Unload", function() self:Destroy() end, "Cleanly remove the UI")
-    
-    local cfg = uiSub:addGroup("Config Profiles")
-    local currentProfile = "default"
-    local profileList = self:listConfigs()
-    if #profileList == 0 then table.insert(profileList, "default") end
 
-    cfg:textbox("Profile Name", "default", function(val)
-        currentProfile = val
+    -- RIGHT: Config Profiles (renamed from "Profile" to "Config")
+    local cfg = uiR:addGroup("Configs")
+    local currentConfig = "default"
+    local configList = self:listConfigs()
+    if #configList == 0 then table.insert(configList, "default") end
+
+    cfg:textbox("Config Name", "default", function(val)
+        currentConfig = val
     end, "Name for save/load")
 
-    cfg:dropdown("Load Profile", profileList, profileList[1] or "default", function(val)
-        currentProfile = val
+    cfg:button("Create Config", function()
+        if currentConfig and currentConfig ~= "" then
+            -- Save with current settings immediately
+            self:saveConfig(self.configPrefix .. currentConfig .. ".json")
+            -- Rebuild dropdown with new list
+            configList = self:listConfigs()
+            self:notify("Config created: " .. currentConfig, "success")
+        else
+            self:notify("Enter a config name first", "warning")
+        end
+    end, "Create a new config with current settings")
+
+    cfg:dropdown("Load Config", configList, configList[1] or "default", function(val)
+        currentConfig = val
         self:loadConfig(self.configPrefix .. val .. ".json")
-    end, "Select a saved profile", function()
+    end, "Select a saved config", function()
         return self:listConfigs()
     end)
 
-    cfg:button("Save Profile", function()
-        if currentProfile and currentProfile ~= "" then
-            self:saveConfig(self.configPrefix .. currentProfile .. ".json")
+    cfg:button("Save Config", function()
+        if currentConfig and currentConfig ~= "" then
+            self:saveConfig(self.configPrefix .. currentConfig .. ".json")
         else
-            self:notify("Enter a profile name first", "warning")
+            self:notify("Enter a config name first", "warning")
         end
     end, "Save current settings")
 
-    cfg:button("Delete Profile", function()
-        if currentProfile and currentProfile ~= "" then
-            self:deleteConfig(self.configPrefix .. currentProfile .. ".json")
+    cfg:button("Delete Config", function()
+        if currentConfig and currentConfig ~= "" then
+            self:deleteConfig(self.configPrefix .. currentConfig .. ".json")
         end
-    end, "Delete selected profile")
+    end, "Delete selected config")
 end
 
 function UILib:Destroy()
@@ -931,8 +985,23 @@ function UILib:addTab(name)
     tab.subtabs = {}
     tab.subtabOrder = {}
     tab.firstSub = nil
+    
+    -- Count tabs; at 6+ shrink buttons so navbar scrolls
+    self._navTabCount = (self._navTabCount or 0) + 1
+    local TAB_WIDTH = self._navTabCount >= 6 and 90 or 110
+    
+    -- If we just hit 6, resize all existing tab buttons and enable clipping
+    if self._navTabCount == 6 then
+        for _, child in ipairs(self.navbar:GetChildren()) do
+            if child:IsA("TextButton") then
+                child.Size = UDim2.new(0, 90, 0, 46)
+            end
+        end
+        self.navbar.ClipsDescendants = true
+    end
+    
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 110, 0, 46)
+    btn.Size = UDim2.new(0, TAB_WIDTH, 0, 46)
     btn.BackgroundTransparency = 1
     btn.Text = name:upper()
     btn.TextColor3 = self.theme.Gray
@@ -1036,7 +1105,7 @@ function UILib.Tab:addSubTab(name)
     label.TextColor3 = self.window.theme.Gray
     label.Font = Enum.Font.Roboto
     label.TextSize = 12
-    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.TextXAlignment = Enum.TextXAlignment.Center
     label.ZIndex = 6
     label.Parent = btn
     
@@ -1071,8 +1140,7 @@ function UILib.Tab:addSubTab(name)
     page.Position = UDim2.new(0, 7, 0, 6)
     page.BackgroundTransparency = 1
     page.BorderSizePixel = 0
-    page.ScrollBarThickness = 2
-    page.ScrollBarImageColor3 = self.window.theme.Accent
+    page.ScrollBarThickness = 0   -- no scrollbar
     page.CanvasSize = UDim2.new(0, 0, 0, 0)
     page.AutomaticCanvasSize = Enum.AutomaticSize.Y
     page.Visible = false
@@ -1081,6 +1149,12 @@ function UILib.Tab:addSubTab(name)
     local layout = Instance.new("UIListLayout", page)
     layout.Padding = UDim.new(0, 8)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
+    -- Padding so content doesn't clip against edges
+    local pagePadding = Instance.new("UIPadding", page)
+    pagePadding.PaddingLeft   = UDim.new(0, 8)
+    pagePadding.PaddingRight  = UDim.new(0, 8)
+    pagePadding.PaddingTop    = UDim.new(0, 8)
+    pagePadding.PaddingBottom = UDim.new(0, 12)
     sub.btn = btn
     sub.hov = hov
     sub.selLine = selLine
@@ -1206,13 +1280,13 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
     local gradient = Instance.new("UIGradient", fill)
     gradient.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, window.theme.Accent), ColorSequenceKeypoint.new(1, Color3.new(window.theme.Accent.r*0.8, window.theme.Accent.g*0.8, window.theme.Accent.b*0.8))})
     local knob = Instance.new("Frame")
-    knob.Size = UDim2.new(0, 16, 0, 16)
-    knob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), -8, 0.5, -8)
-    knob.BackgroundColor3 = window.theme.White
+    knob.Size = UDim2.new(0, 10, 0, 10)
+    knob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), -5, 0.5, -5)
+    knob.BackgroundColor3 = Color3.new(0, 0, 0)
     knob.BorderSizePixel = 0
     knob.ZIndex = 5
     knob.Parent = track
-    Instance.new("UICorner", knob).CornerRadius = UDim.new(0, 8)
+    -- Square: no UICorner
     local knobStroke = Instance.new("UIStroke", knob)
     knobStroke.Color = window.theme.Accent
     knobStroke.Thickness = 2
@@ -1234,7 +1308,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
         currentVal = val
         local rel = (val - minVal) / (maxVal - minVal)
         fill.Size = UDim2.new(rel, 0, 1, 0)
-        knob.Position = UDim2.new(rel, -8, 0.5, -8)
+        knob.Position = UDim2.new(rel, -5, 0.5, -5)
         valueLabel.Text = tostring(val)
         valueBoxInput.Text = tostring(val)
         if callback then callback(val) end
@@ -1632,7 +1706,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
     arrow.Size = UDim2.new(0, 24, 1, 0)
     arrow.Position = UDim2.new(1, -26, 0, 0)
     arrow.BackgroundTransparency = 1
-    arrow.Text = "\226\137\161" -- Hamburger 
+    arrow.Text = "▼"
     arrow.TextColor3 = window.theme.Gray
     arrow.Font = Enum.Font.GothamBold
     arrow.TextSize = 12
@@ -1733,7 +1807,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
     dbtn.MouseButton1Click:Connect(function()
         open = not open
         dlist.Visible = open
-        arrow.Text = "\226\137\161"
+        arrow.Text = open and "▲" or "▼"
         row.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 104) or 0))
         group.updateSize()
     end)
@@ -3091,8 +3165,6 @@ function UILib.SubTab:addGroup(title)
         arrow.Name = "arrow"
         table.insert(window.accentObjects, arrow)
         arrow.Parent = dbtn
-        local listH = #options * 26
-        local dlist = Instance.new("ScrollingFrame")
         dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 104))
         dlist.Position = UDim2.new(0, 0, 0, 56)
         dlist.BackgroundColor3 = window.theme.Item
@@ -3223,7 +3295,7 @@ function UILib.SubTab:addGroup(title)
         dbtn.MouseButton1Click:Connect(function()
             open = not open
             dlist.Visible = open
-            arrow.Text = "\226\137\161"
+            arrow.Text = open and "▲" or "▼"
             row.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 104) or 0))
             updateSize()
         end)
