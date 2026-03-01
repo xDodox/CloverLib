@@ -1646,7 +1646,8 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 			window:showContextMenu(UIS:GetMouseLocation(), elem)
 		end
 	end)
-	return row
+	elem.frame = row
+	return row, elem
 end
 
 -- FIX 1: Color picker opens positioned below (or beside) the color button
@@ -2041,7 +2042,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		end)
 	end
 	colorBox.MouseButton1Click:Connect(openPicker)
-	return row
+	return row, elem
 end
 
 local function createMultiDropdown(group, items, window, text, options, default, callback)
@@ -2202,7 +2203,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 		if callback then callback(keys) end
 	end}
 	window.configs[id] = elem
-	return row
+	return row, elem
 end
 
 -- ============================================================
@@ -2332,7 +2333,10 @@ function UILib.Column:addGroup(title)
 		Instance.new("UIPadding", r).PaddingBottom = UDim.new(0, 6)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
-		return r
+		local ref = {}
+		function ref:setTitle(t) lbl.Text = t end
+		function ref:setDesc(d) body.Text = d updateSize() end
+		return ref
 	end
 
 	function group:toggle(text, default, callback, tooltip)
@@ -2398,14 +2402,15 @@ function UILib.Column:addGroup(title)
 		end)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
-		return r
+		elem.frame = r
+		return elem
 	end
 
 	function group:slider(text, minVal, maxVal, defaultVal, callback, step, tooltip)
-		local r = createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step)
+		local r, elem = createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
-		return r
+		return elem
 	end
 
 	function group:dropdown(text, options, default, callback, tooltip, refreshCallback)
@@ -2613,9 +2618,19 @@ function UILib.Column:addGroup(title)
 			SetValue = function(val)
 				currentSelection = val
 				selLbl.Text = val
-				for o, c in pairs(checks) do c.Text = (o == val) and "×" or "" end
+				for o, c in pairs(checks) do c.BackgroundTransparency = (o == val) and 0 or 1 end
 				for o, b in pairs(backgrounds) do b.Visible = (o == val) end
 				if callback then callback(val) end
+			end,
+			SetValues = function(self, newOpts)
+				closeDropdown()
+				buildOptions(newOpts)
+				local exists = false
+				for _, o in ipairs(newOpts) do if o == currentSelection then exists = true break end end
+				if not exists then
+					currentSelection = newOpts[1] or ""
+					selLbl.Text = currentSelection
+				end
 			end
 		}
 		window.configs[id] = elem
@@ -2624,7 +2639,8 @@ function UILib.Column:addGroup(title)
 		end)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
-		return r
+		elem.frame = r
+		return elem
 	end
 
 	function group:keybind(text, currentName, onChange, tooltip)
@@ -2701,7 +2717,8 @@ function UILib.Column:addGroup(title)
 		window.configs[id] = elem
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
-		return r
+		elem.frame = r
+		return elem
 	end
 
 	function group:label(text, color, tooltip)
@@ -3024,18 +3041,21 @@ function UILib.Column:addGroup(title)
 		end
 		contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
 		local nestedGroup = {}
-		function nestedGroup:toggle(subText, subDefault, subCallback, subTooltip) local r = group:toggle(subText, subDefault, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:slider(subText, min, max, def, subCallback, step, subTooltip) local r = group:slider(subText, min, max, def, subCallback, step, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:dropdown(subText, opts, def, subCallback, subTooltip) local r = group:dropdown(subText, opts, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:keybind(subText, cur, subCallback, subTooltip) local r = group:keybind(subText, cur, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:label(subText, col, subTooltip) local r = group:label(subText, col, subTooltip) r.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:toggle(subText, subDefault, subCallback, subTooltip) local r = group:toggle(subText, subDefault, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:slider(subText, min, max, def, subCallback, step, subTooltip) local r = group:slider(subText, min, max, def, subCallback, step, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:dropdown(subText, opts, def, subCallback, subTooltip) local r = group:dropdown(subText, opts, def, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:keybind(subText, cur, subCallback, subTooltip) local r = group:keybind(subText, cur, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:label(subText, col, subTooltip) local r = group:label(subText, col, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:button(subText, subCallback, subTooltip, al, col, sty) local r = group:button(subText, subCallback, subTooltip, al, col, sty) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:colorpicker(subText, def, subCallback, subTooltip) local r = group:colorpicker(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:multidropdown(subText, opts, def, subCallback, subTooltip) local r = group:multidropdown(subText, opts, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:textbox(subText, def, subCallback, subTooltip) local r = group:textbox(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:numberbox(subText, def, mn, mx, subCallback, subTooltip) local r = group:numberbox(subText, def, mn, mx, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) local r = group:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:textbox(subText, def, subCallback, subTooltip) local r = group:textbox(subText, def, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:numberbox(subText, def, mn, mx, subCallback, subTooltip) local r = group:numberbox(subText, def, mn, mx, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) local r = group:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:badge(subText, col, subTooltip, pos) local r = group:badge(subText, col, subTooltip, pos) r.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:paragraph(subTitle, subText, subTooltip) local r = group:paragraph(subTitle, subText, subTooltip) updateContentSize() return r end
+		function nestedGroup:progress(subText, val, maxV, col, subTooltip) local r = group:progress(subText, val, maxV, col, subTooltip) r.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:image(url, h, subTooltip) local r = group:image(url, h, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:split()
 			local splitRow = Instance.new("Frame")
 			splitRow.Size = UDim2.new(1, 0, 0, 0)
@@ -3140,18 +3160,21 @@ function UILib.Column:addGroup(title)
 		end
 		contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
 		local nestedGroup = {}
-		function nestedGroup:toggle(subText, subDefault, subCallback, subTooltip) local r = group:toggle(subText, subDefault, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:slider(subText, min, max, def, subCallback, step, subTooltip) local r = group:slider(subText, min, max, def, subCallback, step, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:dropdown(subText, opts, def, subCallback, subTooltip) local r = group:dropdown(subText, opts, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:keybind(subText, cur, subCallback, subTooltip) local r = group:keybind(subText, cur, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:label(subText, col, subTooltip) local r = group:label(subText, col, subTooltip) r.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:toggle(subText, subDefault, subCallback, subTooltip) local r = group:toggle(subText, subDefault, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:slider(subText, min, max, def, subCallback, step, subTooltip) local r = group:slider(subText, min, max, def, subCallback, step, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:dropdown(subText, opts, def, subCallback, subTooltip) local r = group:dropdown(subText, opts, def, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:keybind(subText, cur, subCallback, subTooltip) local r = group:keybind(subText, cur, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:label(subText, col, subTooltip) local r = group:label(subText, col, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:button(subText, subCallback, subTooltip, al, col, sty) local r = group:button(subText, subCallback, subTooltip, al, col, sty) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:colorpicker(subText, def, subCallback, subTooltip) local r = group:colorpicker(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:multidropdown(subText, opts, def, subCallback, subTooltip) local r = group:multidropdown(subText, opts, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:textbox(subText, def, subCallback, subTooltip) local r = group:textbox(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:numberbox(subText, def, mn, mx, subCallback, subTooltip) local r = group:numberbox(subText, def, mn, mx, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) local r = group:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:textbox(subText, def, subCallback, subTooltip) local r = group:textbox(subText, def, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:numberbox(subText, def, mn, mx, subCallback, subTooltip) local r = group:numberbox(subText, def, mn, mx, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) local r = group:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:badge(subText, col, subTooltip, pos) local r = group:badge(subText, col, subTooltip, pos) r.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:paragraph(subTitle, subText, subTooltip) local r = group:paragraph(subTitle, subText, subTooltip) updateContentSize() return r end
+		function nestedGroup:progress(subText, val, maxV, col, subTooltip) local r = group:progress(subText, val, maxV, col, subTooltip) r.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:image(url, h, subTooltip) local r = group:image(url, h, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:split()
 			local splitRow = Instance.new("Frame")
 			splitRow.Size = UDim2.new(1, 0, 0, 0)
@@ -3204,20 +3227,20 @@ function UILib.Column:addGroup(title)
 	end
 
 	function group:colorpicker(text, default, callback, tooltip)
-		local r = createColorPicker(group, items, window, text, default, callback)
+		local r, elem = createColorPicker(group, items, window, text, default, callback)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
-		return r
+		return elem
 	end
 
 	function group:multidropdown(text, options, default, callback, tooltip)
-		local r = createMultiDropdown(group, items, window, text, options, default, callback)
+		local r, elem = createMultiDropdown(group, items, window, text, options, default, callback)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
-		return r
+		return elem
 	end
 
-	function group:textbox(text, default, callback, tooltip)
+	function group:textbox(text, default, placeholder, callback, tooltip)
 		local id = generateID()
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, 46)
@@ -3247,6 +3270,8 @@ function UILib.Column:addGroup(title)
 		box.Font = Enum.Font.RobotoMono
 		box.TextSize = 13
 		box.ClearTextOnFocus = false
+		box.PlaceholderText = placeholder or ""
+		box.PlaceholderColor3 = window.theme.Gray
 		Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
 		local current = default or ""
 		box.FocusLost:Connect(function(enter) if enter then current = box.Text if callback then callback(current) end window.configs[id].Value = current end end)
@@ -3257,7 +3282,8 @@ function UILib.Column:addGroup(title)
 		end)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
-		return r
+		elem.frame = r
+		return elem
 	end
 
 	function group:numberbox(text, default, min, max, callback, tooltip)
@@ -3306,7 +3332,8 @@ function UILib.Column:addGroup(title)
 		end)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
-		return r
+		elem.frame = r
+		return elem
 	end
 
 	function group:rangeslider(text, minVal, maxVal, defaultMin, defaultMax, callback, tooltip)
@@ -3434,7 +3461,8 @@ function UILib.Column:addGroup(title)
 		end)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
-		return r
+		elem.frame = r
+		return elem
 	end
 
 	function group:split()
@@ -3578,7 +3606,10 @@ function UILib.SubTab:addGroup(title)
 		Instance.new("UIPadding", r).PaddingBottom = UDim.new(0, 6)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
-		return r
+		local ref = {}
+		function ref:setTitle(t) lbl.Text = t end
+		function ref:setDesc(d) body.Text = d updateSize() end
+		return ref
 	end
 
 	function group:toggle(text, default, callback, tooltip)
@@ -3644,14 +3675,15 @@ function UILib.SubTab:addGroup(title)
 		end)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
-		return r
+		elem.frame = r
+		return elem
 	end
 
 	function group:slider(text, minVal, maxVal, defaultVal, callback, step, tooltip)
-		local r = createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step)
+		local r, elem = createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
-		return r
+		return elem
 	end
 
 	function group:dropdown(text, options, default, callback, tooltip, refreshCallback)
@@ -3859,9 +3891,16 @@ function UILib.SubTab:addGroup(title)
 			SetValue = function(val)
 				currentSelection = val
 				selLbl.Text = val
-				for o, c in pairs(checks) do c.Text = (o == val) and "×" or "" end
+				for o, c in pairs(checks) do c.BackgroundTransparency = (o == val) and 0 or 1 end
 				for o, b in pairs(backgrounds) do b.Visible = (o == val) end
 				if callback then callback(val) end
+			end,
+			SetValues = function(self, newOpts)
+				closeDropdown()
+				buildOptions(newOpts)
+				local exists = false
+				for _, o in ipairs(newOpts) do if o == currentSelection then exists = true break end end
+				if not exists then currentSelection = newOpts[1] or "" selLbl.Text = currentSelection end
 			end
 		}
 		window.configs[id] = elem
@@ -3870,7 +3909,8 @@ function UILib.SubTab:addGroup(title)
 		end)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
-		return r
+		elem.frame = r
+		return elem
 	end
 
 	function group:keybind(text, currentName, onChange, tooltip)
@@ -3943,11 +3983,12 @@ function UILib.SubTab:addGroup(title)
 				else kbtn.Text = currentName kbtn.TextColor3 = window.theme.Accent end
 			end)
 		end)
-		local elem = {ID = id, Value = currentName, SetValue = function(val) kbtn.Text = val end}
+		local elem = {ID = id, Value = currentName, SetValue = function(val) kbtn.Text = val window.configs[id].Value = val end}
 		window.configs[id] = elem
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
-		return r
+		elem.frame = r
+		return elem
 	end
 
 	function group:label(text, color, tooltip)
@@ -3968,7 +4009,10 @@ function UILib.SubTab:addGroup(title)
 		lbl.Parent = f
 		if tooltip then attachTooltip(f, tooltip) end
 		updateSize()
-		return f
+		local ref = {frame = f}
+		function ref:setText(t) lbl.Text = t end
+		function ref:setColor(c) lbl.TextColor3 = c end
+		return ref
 	end
 
 	-- FIX 4: button supports style param: "bg" (default, with background) or "text" (plain text only)
@@ -4270,18 +4314,21 @@ function UILib.SubTab:addGroup(title)
 		end
 		contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
 		local nestedGroup = {}
-		function nestedGroup:toggle(subText, subDefault, subCallback, subTooltip) local r = group:toggle(subText, subDefault, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:slider(subText, min, max, def, subCallback, step, subTooltip) local r = group:slider(subText, min, max, def, subCallback, step, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:dropdown(subText, opts, def, subCallback, subTooltip) local r = group:dropdown(subText, opts, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:keybind(subText, cur, subCallback, subTooltip) local r = group:keybind(subText, cur, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:label(subText, col, subTooltip) local r = group:label(subText, col, subTooltip) r.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:toggle(subText, subDefault, subCallback, subTooltip) local r = group:toggle(subText, subDefault, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:slider(subText, min, max, def, subCallback, step, subTooltip) local r = group:slider(subText, min, max, def, subCallback, step, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:dropdown(subText, opts, def, subCallback, subTooltip) local r = group:dropdown(subText, opts, def, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:keybind(subText, cur, subCallback, subTooltip) local r = group:keybind(subText, cur, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:label(subText, col, subTooltip) local r = group:label(subText, col, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:button(subText, subCallback, subTooltip, al, col, sty) local r = group:button(subText, subCallback, subTooltip, al, col, sty) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:colorpicker(subText, def, subCallback, subTooltip) local r = group:colorpicker(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:multidropdown(subText, opts, def, subCallback, subTooltip) local r = group:multidropdown(subText, opts, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:textbox(subText, def, subCallback, subTooltip) local r = group:textbox(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:numberbox(subText, def, mn, mx, subCallback, subTooltip) local r = group:numberbox(subText, def, mn, mx, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) local r = group:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:textbox(subText, def, subCallback, subTooltip) local r = group:textbox(subText, def, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:numberbox(subText, def, mn, mx, subCallback, subTooltip) local r = group:numberbox(subText, def, mn, mx, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) local r = group:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:badge(subText, col, subTooltip, pos) local r = group:badge(subText, col, subTooltip, pos) r.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:paragraph(subTitle, subText, subTooltip) local r = group:paragraph(subTitle, subText, subTooltip) updateContentSize() return r end
+		function nestedGroup:progress(subText, val, maxV, col, subTooltip) local r = group:progress(subText, val, maxV, col, subTooltip) r.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:image(url, h, subTooltip) local r = group:image(url, h, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:split()
 			local splitRow = Instance.new("Frame")
 			splitRow.Size = UDim2.new(1, 0, 0, 0)
@@ -4386,18 +4433,21 @@ function UILib.SubTab:addGroup(title)
 		end
 		contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
 		local nestedGroup = {}
-		function nestedGroup:toggle(subText, subDefault, subCallback, subTooltip) local r = group:toggle(subText, subDefault, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:slider(subText, min, max, def, subCallback, step, subTooltip) local r = group:slider(subText, min, max, def, subCallback, step, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:dropdown(subText, opts, def, subCallback, subTooltip) local r = group:dropdown(subText, opts, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:keybind(subText, cur, subCallback, subTooltip) local r = group:keybind(subText, cur, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:label(subText, col, subTooltip) local r = group:label(subText, col, subTooltip) r.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:toggle(subText, subDefault, subCallback, subTooltip) local r = group:toggle(subText, subDefault, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:slider(subText, min, max, def, subCallback, step, subTooltip) local r = group:slider(subText, min, max, def, subCallback, step, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:dropdown(subText, opts, def, subCallback, subTooltip) local r = group:dropdown(subText, opts, def, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:keybind(subText, cur, subCallback, subTooltip) local r = group:keybind(subText, cur, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:label(subText, col, subTooltip) local r = group:label(subText, col, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:button(subText, subCallback, subTooltip, al, col, sty) local r = group:button(subText, subCallback, subTooltip, al, col, sty) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:colorpicker(subText, def, subCallback, subTooltip) local r = group:colorpicker(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:multidropdown(subText, opts, def, subCallback, subTooltip) local r = group:multidropdown(subText, opts, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:textbox(subText, def, subCallback, subTooltip) local r = group:textbox(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:numberbox(subText, def, mn, mx, subCallback, subTooltip) local r = group:numberbox(subText, def, mn, mx, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) local r = group:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:textbox(subText, def, subCallback, subTooltip) local r = group:textbox(subText, def, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:numberbox(subText, def, mn, mx, subCallback, subTooltip) local r = group:numberbox(subText, def, mn, mx, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) local r = group:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:badge(subText, col, subTooltip, pos) local r = group:badge(subText, col, subTooltip, pos) r.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:paragraph(subTitle, subText, subTooltip) local r = group:paragraph(subTitle, subText, subTooltip) updateContentSize() return r end
+		function nestedGroup:progress(subText, val, maxV, col, subTooltip) local r = group:progress(subText, val, maxV, col, subTooltip) r.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:image(url, h, subTooltip) local r = group:image(url, h, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:split()
 			local splitRow = Instance.new("Frame")
 			splitRow.Size = UDim2.new(1, 0, 0, 0)
@@ -4450,20 +4500,20 @@ function UILib.SubTab:addGroup(title)
 	end
 
 	function group:colorpicker(text, default, callback, tooltip)
-		local r = createColorPicker(group, items, window, text, default, callback)
+		local r, elem = createColorPicker(group, items, window, text, default, callback)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
-		return r
+		return elem
 	end
 
 	function group:multidropdown(text, options, default, callback, tooltip)
-		local r = createMultiDropdown(group, items, window, text, options, default, callback)
+		local r, elem = createMultiDropdown(group, items, window, text, options, default, callback)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
-		return r
+		return elem
 	end
 
-	function group:textbox(text, default, callback, tooltip)
+	function group:textbox(text, default, placeholder, callback, tooltip)
 		local id = generateID()
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, 46)
@@ -4493,6 +4543,8 @@ function UILib.SubTab:addGroup(title)
 		box.Font = Enum.Font.RobotoMono
 		box.TextSize = 13
 		box.ClearTextOnFocus = false
+		box.PlaceholderText = placeholder or ""
+		box.PlaceholderColor3 = window.theme.Gray
 		Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
 		local current = default or ""
 		box.FocusLost:Connect(function(enter) if enter then current = box.Text if callback then callback(current) end window.configs[id].Value = current end end)
@@ -4503,7 +4555,8 @@ function UILib.SubTab:addGroup(title)
 		end)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
-		return r
+		elem.frame = r
+		return elem
 	end
 
 	function group:numberbox(text, default, min, max, callback, tooltip)
@@ -4552,7 +4605,8 @@ function UILib.SubTab:addGroup(title)
 		end)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
-		return r
+		elem.frame = r
+		return elem
 	end
 
 	function group:rangeslider(text, minVal, maxVal, defaultMin, defaultMax, callback, tooltip)
@@ -4680,7 +4734,8 @@ function UILib.SubTab:addGroup(title)
 		end)
 		if tooltip then attachTooltip(r, tooltip) end
 		updateSize()
-		return r
+		elem.frame = r
+		return elem
 	end
 
 	function group:split(leftTitle, rightTitle)
@@ -4762,8 +4817,8 @@ function UILib.SubTab:addGroup(title)
 
 		for k, v in pairs(group) do
 			if type(v) == "function" and k ~= "split" then
-				leftGroup[k] = v
-				rightGroup[k] = v
+				leftGroup[k] = function(self_, ...) return v(leftGroup, ...) end
+				rightGroup[k] = function(self_, ...) return v(rightGroup, ...) end
 			end
 		end
 
