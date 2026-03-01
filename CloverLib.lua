@@ -1434,6 +1434,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		pickerFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
 		pickerFrame.BorderSizePixel = 0
 		pickerFrame.ZIndex = 2000
+		pickerFrame.Active = true
 		pickerFrame.Parent = window.sg
 		table.insert(window.activePopups, pickerFrame)
 		Instance.new("UICorner", pickerFrame).CornerRadius = UDim.new(0, 8)
@@ -1998,14 +1999,6 @@ function UILib.Column:addGroup(title)
 		row.BackgroundTransparency = 1
 		row.ZIndex = 3
 		row.Parent = items
-		local rh = Instance.new("Frame")
-		rh.Size = UDim2.new(1, 0, 1, 0)
-		rh.BackgroundColor3 = window.theme.ItemHov
-		rh.BorderSizePixel = 0
-		rh.Visible = false
-		rh.ZIndex = 2
-		rh.Parent = row
-		Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 4)
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0, 18, 0, 18)
 		cbOuter.Position = UDim2.new(1, -22, 0.5, -9)
@@ -2050,8 +2043,6 @@ function UILib.Column:addGroup(title)
 			if window.configs[id] then window.configs[id].Value = state end
 		end
 		window.configs[id] = elem
-		row.MouseEnter:Connect(function() rh.Visible = true end)
-		row.MouseLeave:Connect(function() rh.Visible = false end)
 		cbOuter.MouseButton1Click:Connect(function()
 			if elem.Mode == "always" then return end
 			state = not state
@@ -2455,16 +2446,6 @@ function UILib.Column:addGroup(title)
 		toggleRow.BackgroundTransparency = 1
 		toggleRow.ZIndex = 3
 		toggleRow.Parent = container
-		local rh = Instance.new("Frame")
-		rh.Size = UDim2.new(1, 0, 1, 0)
-		rh.BackgroundColor3 = window.theme.ItemHov
-		rh.BorderSizePixel = 0
-		rh.Visible = false
-		rh.ZIndex = 2
-		rh.Parent = toggleRow
-		Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 4)
-		toggleRow.MouseEnter:Connect(function() rh.Visible = true end)
-		toggleRow.MouseLeave:Connect(function() rh.Visible = false end)
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0, 18, 0, 18)
 		cbOuter.Position = UDim2.new(1, -22, 0.5, -9)
@@ -2551,16 +2532,6 @@ function UILib.Column:addGroup(title)
 		toggleRow.Text = ""
 		toggleRow.ZIndex = 3
 		toggleRow.Parent = container
-		local rh = Instance.new("Frame")
-		rh.Size = UDim2.new(1, 0, 1, 0)
-		rh.BackgroundColor3 = window.theme.ItemHov
-		rh.BorderSizePixel = 0
-		rh.Visible = false
-		rh.ZIndex = 2
-		rh.Parent = toggleRow
-		Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 4)
-		toggleRow.MouseEnter:Connect(function() rh.Visible = true end)
-		toggleRow.MouseLeave:Connect(function() rh.Visible = false end)
 		local arrow = Instance.new("TextLabel")
 		arrow.Size = UDim2.new(0, 20, 1, 0)
 		arrow.Position = UDim2.new(1, -22, 0, 0)
@@ -3052,14 +3023,6 @@ function UILib.SubTab:addGroup(title)
 		row.BackgroundTransparency = 1
 		row.ZIndex = 3
 		row.Parent = items
-		local rh = Instance.new("Frame")
-		rh.Size = UDim2.new(1, 0, 1, 0)
-		rh.BackgroundColor3 = window.theme.ItemHov
-		rh.BorderSizePixel = 0
-		rh.Visible = false
-		rh.ZIndex = 2
-		rh.Parent = row
-		Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 4)
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0, 18, 0, 18)
 		cbOuter.Position = UDim2.new(1, -22, 0.5, -9)
@@ -3104,8 +3067,6 @@ function UILib.SubTab:addGroup(title)
 			if window.configs[id] then window.configs[id].Value = state end
 		end
 		window.configs[id] = elem
-		row.MouseEnter:Connect(function() rh.Visible = true end)
-		row.MouseLeave:Connect(function() rh.Visible = false end)
 		cbOuter.MouseButton1Click:Connect(function()
 			if elem.Mode == "always" then return end
 			state = not state
@@ -3510,16 +3471,6 @@ function UILib.SubTab:addGroup(title)
 		toggleRow.BackgroundTransparency = 1
 		toggleRow.ZIndex = 3
 		toggleRow.Parent = container
-		local rh = Instance.new("Frame")
-		rh.Size = UDim2.new(1, 0, 1, 0)
-		rh.BackgroundColor3 = window.theme.ItemHov
-		rh.BorderSizePixel = 0
-		rh.Visible = false
-		rh.ZIndex = 2
-		rh.Parent = toggleRow
-		Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 4)
-		toggleRow.MouseEnter:Connect(function() rh.Visible = true end)
-		toggleRow.MouseLeave:Connect(function() rh.Visible = false end)
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0, 18, 0, 18)
 		cbOuter.Position = UDim2.new(1, -22, 0.5, -9)
@@ -3606,16 +3557,6 @@ function UILib.SubTab:addGroup(title)
 		toggleRow.Text = ""
 		toggleRow.ZIndex = 3
 		toggleRow.Parent = container
-		local rh = Instance.new("Frame")
-		rh.Size = UDim2.new(1, 0, 1, 0)
-		rh.BackgroundColor3 = window.theme.ItemHov
-		rh.BorderSizePixel = 0
-		rh.Visible = false
-		rh.ZIndex = 2
-		rh.Parent = toggleRow
-		Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 4)
-		toggleRow.MouseEnter:Connect(function() rh.Visible = true end)
-		toggleRow.MouseLeave:Connect(function() rh.Visible = false end)
 		local arrow = Instance.new("TextLabel")
 		arrow.Size = UDim2.new(0, 20, 1, 0)
 		arrow.Position = UDim2.new(1, -22, 0, 0)
