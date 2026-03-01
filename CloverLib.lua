@@ -374,6 +374,9 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 				kbtn.Position = UDim2.new(1, -(kw + 2), 0.5, -11)
 			end)
 		end
+		if self._refreshTabWidths then
+			self._refreshTabWidths()
+		end
 	end
 	self.updateResponsiveLayout = updateResponsiveLayout
 
@@ -545,7 +548,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	self.navbar = navbar
 	local navList = Instance.new("UIListLayout", navbar)
 	navList.FillDirection = Enum.FillDirection.Horizontal
-	navList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	navList.HorizontalAlignment = Enum.HorizontalAlignment.Left
 	navList.VerticalAlignment = Enum.VerticalAlignment.Center
 	navList.Padding = UDim.new(0, 0)
 
@@ -1028,25 +1031,32 @@ function UILib:addTab(name)
 	tab.firstSub = nil
 
 	self._navTabCount = (self._navTabCount or 0) + 1
-	local TAB_WIDTH = self._navTabCount >= 6 and 90 or 110
 
-	if self._navTabCount == 6 then
+	local MIN_TAB_WIDTH = 80
+	local function refreshTabWidths()
+		local navW = self.navbar.AbsoluteSize.X
+		if navW <= 0 then navW = self.size.X end
+		local count = self._navTabCount
+		local evenW = math.floor(navW / count)
+		local useW = evenW >= MIN_TAB_WIDTH and evenW or MIN_TAB_WIDTH
 		for _, child in ipairs(self.navbar:GetChildren()) do
 			if child:IsA("TextButton") then
-				child.Size = UDim2.new(0, 90, 0, 46)
+				child.Size = UDim2.new(0, useW, 0, 46)
 			end
 		end
-		self.navbar.ClipsDescendants = true
 	end
+	self._refreshTabWidths = refreshTabWidths
 
 	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(0, TAB_WIDTH, 0, 46)
+	btn.Size = UDim2.new(0, MIN_TAB_WIDTH, 0, 46)
 	btn.BackgroundTransparency = 1
 	btn.Text = name:upper()
 	btn.TextColor3 = self.theme.Gray
 	btn.Font = Enum.Font.GothamBold
 	btn.TextSize = 12
 	btn.Parent = self.navbar
+
+	task.defer(refreshTabWidths)
 	local underline = Instance.new("Frame")
 	underline.Size = UDim2.new(0.55, 0, 0, 2)
 	underline.Position = UDim2.new(0.225, 0, 1, -3)
@@ -1423,7 +1433,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		if pickerFrame then closePicker() return end
 		local _pickerJustOpened = true
 		task.delay(0.1, function() _pickerJustOpened = false end)
-		pickerFrame = Instance.new("Frame")
+		pickerFrame = Instance.new("TextButton")
 		pickerFrame.Size = UDim2.new(0, 220, 0, 260)
 		local absPos = colorBox.AbsolutePosition
 		local posX = absPos.X + colorBox.AbsoluteSize.X + 6
@@ -1434,7 +1444,8 @@ local function createColorPicker(group, items, window, text, default, callback)
 		pickerFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
 		pickerFrame.BorderSizePixel = 0
 		pickerFrame.ZIndex = 2000
-		pickerFrame.Active = true
+		pickerFrame.Text = ""
+		pickerFrame.AutoButtonColor = false
 		pickerFrame.Parent = window.sg
 		table.insert(window.activePopups, pickerFrame)
 		Instance.new("UICorner", pickerFrame).CornerRadius = UDim.new(0, 8)
