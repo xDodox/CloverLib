@@ -55,22 +55,17 @@ local function showTooltip(text, element)
 	local textWidth = 160
 	local textSize = game:GetService("TextService"):GetTextSize(text, 12, Enum.Font.Roboto, Vector2.new(textWidth, 500))
 	local tipW = textWidth + hPad * 2
-	local tipH = textSize.Y + 8 * 2
+	local tipH = textSize.Y + 16
 	tooltipFrame.Size = UDim2.new(0, tipW, 0, tipH)
-	-- Must set size before reading AbsoluteSize, so use computed values directly
-	local absPos = element.AbsolutePosition
-	local absSize = element.AbsoluteSize
 	local mousePos = UIS:GetMouseLocation()
-	-- Default: appear below the element, centered on it
-	local targetX = absPos.X + (absSize.X / 2) - (tipW / 2)
-	local targetY = absPos.Y + absSize.Y + 6
-	-- If it would go off the bottom, flip above the element
-	if targetY + tipH > screenHeight - 10 then
-		targetY = absPos.Y - tipH - 6
+	-- Follow the mouse cursor, appear above it
+	local targetX = mousePos.X - tipW / 2
+	local targetY = mousePos.Y - tipH - 10
+	-- If no room above, show below
+	if targetY < 8 then
+		targetY = mousePos.Y + 18
 	end
-	-- Clamp horizontally so it never goes off screen edges
 	targetX = math.clamp(targetX, 8, screenWidth - tipW - 8)
-	-- Clamp vertically as a safety net
 	targetY = math.clamp(targetY, 8, screenHeight - tipH - 8)
 	tooltipFrame.Position = UDim2.new(0, targetX, 0, targetY)
 	tooltipFrame.Visible = true
@@ -298,6 +293,14 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 					obj.TextColor3 = color
 				end
 			end)
+		end
+		-- Update live toggle states that are currently enabled
+		if self.configs then
+			for _, elem in pairs(self.configs) do
+				if elem.IsToggle and elem.Value == true then
+					pcall(function() elem.SetValue(true) end)
+				end
+			end
 		end
 	end
 
@@ -989,7 +992,7 @@ function UILib:_createUITab()
 		else
 			self:notify("No config selected", "warning")
 		end
-	end, "Delete selected config")
+	end, "Delete selected config (asks for confirmation)")
 end
 
 function UILib:setTitle(text)
@@ -1042,7 +1045,7 @@ function UILib:confirm(message, onYes, onNo)
 	table.insert(self.activePopups, overlay)
 
 	local modal = Instance.new("Frame")
-	modal.Size = UDim2.new(0, 320, 0, 140)
+	modal.Size = UDim2.new(0, 300, 0, 130)
 	modal.AnchorPoint = Vector2.new(0.5, 0.5)
 	modal.Position = UDim2.new(0.5, 0, 0.5, 0)
 	modal.BackgroundColor3 = self.theme.Panel
@@ -1051,35 +1054,24 @@ function UILib:confirm(message, onYes, onNo)
 	modal.Parent = self.sg
 	table.insert(self.activePopups, modal)
 	Instance.new("UICorner", modal).CornerRadius = UDim.new(0, 8)
-	local mStroke = Instance.new("UIStroke", modal)
-	mStroke.Color = self.theme.Accent
-	mStroke.Transparency = 0.6
-	mStroke.Thickness = 1
-
-	local accentLine = Instance.new("Frame")
-	accentLine.Size = UDim2.new(1, 0, 0, 2)
-	accentLine.BackgroundColor3 = self.theme.Accent
-	accentLine.BorderSizePixel = 0
-	accentLine.ZIndex = 802
-	accentLine.Parent = modal
 
 	local msgLabel = Instance.new("TextLabel")
-	msgLabel.Size = UDim2.new(1, -32, 0, 60)
-	msgLabel.Position = UDim2.new(0, 16, 0, 16)
+	msgLabel.Size = UDim2.new(1, -32, 0, 54)
+	msgLabel.Position = UDim2.new(0, 16, 0, 12)
 	msgLabel.BackgroundTransparency = 1
 	msgLabel.Text = message
 	msgLabel.TextColor3 = self.theme.White
 	msgLabel.Font = Enum.Font.Roboto
 	msgLabel.TextSize = 14
 	msgLabel.TextWrapped = true
-	msgLabel.TextXAlignment = Enum.TextXAlignment.Left
-	msgLabel.TextYAlignment = Enum.TextYAlignment.Top
+	msgLabel.TextXAlignment = Enum.TextXAlignment.Center
+	msgLabel.TextYAlignment = Enum.TextYAlignment.Center
 	msgLabel.ZIndex = 802
 	msgLabel.Parent = modal
 
 	local btnRow = Instance.new("Frame")
-	btnRow.Size = UDim2.new(1, -32, 0, 36)
-	btnRow.Position = UDim2.new(0, 16, 1, -48)
+	btnRow.Size = UDim2.new(1, -32, 0, 34)
+	btnRow.Position = UDim2.new(0, 16, 1, -44)
 	btnRow.BackgroundTransparency = 1
 	btnRow.ZIndex = 802
 	btnRow.Parent = modal
@@ -1107,8 +1099,8 @@ function UILib:confirm(message, onYes, onNo)
 	makeBtn("Cancel", self.theme.Track, 0, onNo)
 	makeBtn("Confirm", self.theme.Accent, 0.5, onYes)
 
-	local tweenIn = TweenService:Create(modal, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 320, 0, 140)})
-	modal.Size = UDim2.new(0, 280, 0, 110)
+	local tweenIn = TweenService:Create(modal, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 300, 0, 130)})
+	modal.Size = UDim2.new(0, 260, 0, 100)
 	tweenIn:Play()
 end
 
@@ -1139,12 +1131,12 @@ function UILib:newMiniWindow(title, width, posX, posY)
 	header.Parent = frame
 
 	local accentLine = Instance.new("Frame")
-	accentLine.Size = UDim2.new(1, 0, 0, 2)
-	accentLine.Position = UDim2.new(0, 0, 1, -2)
+	accentLine.Size = UDim2.new(1, -2, 0, 2)
+	accentLine.Position = UDim2.new(0, 1, 0, 30)
 	accentLine.BackgroundColor3 = self.theme.Accent
 	accentLine.BorderSizePixel = 0
-	accentLine.ZIndex = 302
-	accentLine.Parent = header
+	accentLine.ZIndex = 299
+	accentLine.Parent = frame
 
 	local titleLbl = Instance.new("TextLabel")
 	titleLbl.Size = UDim2.new(1, -40, 1, 0)
@@ -1764,7 +1756,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		local _pickerJustOpened = true
 		task.delay(0.1, function() _pickerJustOpened = false end)
 		pickerFrame = Instance.new("TextButton")
-		local pickerW, pickerH = 220, 260
+		local pickerW, pickerH = 220, 290
 		pickerFrame.Size = UDim2.new(0, pickerW, 0, pickerH)
 		local absPos = colorBox.AbsolutePosition
 		local absSize = colorBox.AbsoluteSize
@@ -1951,9 +1943,68 @@ local function createColorPicker(group, items, window, text, default, callback)
 		applyBtn.Parent = hexRow
 		Instance.new("UICorner", applyBtn).CornerRadius = UDim.new(0, 4)
 
+		-- Transparency slider
+		local alphaLbl = Instance.new("TextLabel")
+		alphaLbl.Size = UDim2.new(0.5, 0, 0, 14)
+		alphaLbl.Position = UDim2.new(0, 8, 0, 203)
+		alphaLbl.BackgroundTransparency = 1
+		alphaLbl.Text = "Transparency"
+		alphaLbl.TextColor3 = window.theme.Gray
+		alphaLbl.Font = Enum.Font.Roboto
+		alphaLbl.TextSize = 10
+		alphaLbl.TextXAlignment = Enum.TextXAlignment.Left
+		alphaLbl.ZIndex = 2001
+		alphaLbl.Parent = pickerFrame
+		local alphaTrack = Instance.new("Frame")
+		alphaTrack.Size = UDim2.new(1, -16, 0, 8)
+		alphaTrack.Position = UDim2.new(0, 8, 0, 219)
+		alphaTrack.ZIndex = 2001
+		alphaTrack.BorderSizePixel = 0
+		alphaTrack.Parent = pickerFrame
+		Instance.new("UICorner", alphaTrack).CornerRadius = UDim.new(0, 4)
+		local alphaGrad = Instance.new("UIGradient", alphaTrack)
+		alphaGrad.Color = ColorSequence.new(Color3.new(0,0,0), Color3.new(1,1,1))
+		local alphaFill = Instance.new("Frame")
+		alphaFill.Size = UDim2.new(1, 0, 1, 0)
+		alphaFill.BackgroundColor3 = Color3.fromRGB(50,50,50)
+		alphaFill.BackgroundTransparency = 0.5
+		alphaFill.BorderSizePixel = 0
+		alphaFill.ZIndex = 2001
+		alphaFill.Parent = alphaTrack
+		Instance.new("UICorner", alphaFill).CornerRadius = UDim.new(0, 4)
+		local alphaKnob = Instance.new("Frame")
+		alphaKnob.Size = UDim2.new(0, 12, 0, 12)
+		alphaKnob.Position = UDim2.new(1 - (elem.Alpha or 0), -6, 0.5, -6)
+		alphaKnob.BackgroundColor3 = window.theme.White
+		alphaKnob.ZIndex = 2002
+		alphaKnob.Parent = alphaTrack
+		Instance.new("UICorner", alphaKnob).CornerRadius = UDim.new(1, 0)
+		Instance.new("UIStroke", alphaKnob).Color = Color3.new(0, 0, 0)
+		local alphaDragging = false
+		alphaTrack.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				alphaDragging = true
+				local rel = math.clamp((input.Position.X - alphaTrack.AbsolutePosition.X) / alphaTrack.AbsoluteSize.X, 0, 1)
+				alphaKnob.Position = UDim2.new(rel, -6, 0.5, -6)
+				elem.Alpha = 1 - rel
+			end
+		end)
+		local alphaConn = UIS.InputChanged:Connect(function(i)
+			if alphaDragging and i.UserInputType == Enum.UserInputType.MouseMovement then
+				local rel = math.clamp((i.Position.X - alphaTrack.AbsolutePosition.X) / alphaTrack.AbsoluteSize.X, 0, 1)
+				alphaKnob.Position = UDim2.new(rel, -6, 0.5, -6)
+				elem.Alpha = 1 - rel
+			end
+		end)
+		local alphaEndConn = UIS.InputEnded:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1 then alphaDragging = false end
+		end)
+		table.insert(window.connections, alphaConn)
+		table.insert(window.connections, alphaEndConn)
+
 		local footer = Instance.new("Frame")
 		footer.Size = UDim2.new(1, -16, 0, 24)
-		footer.Position = UDim2.new(0, 8, 0, 204)
+		footer.Position = UDim2.new(0, 8, 0, 234)
 		footer.BackgroundTransparency = 1
 		footer.Parent = pickerFrame
 		local resetBtn = Instance.new("TextButton")
@@ -2993,6 +3044,45 @@ function UILib.Column:addGroup(title)
 		function nestedGroup:textbox(subText, def, subCallback, subTooltip) local r = group:textbox(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:numberbox(subText, def, mn, mx, subCallback, subTooltip) local r = group:numberbox(subText, def, mn, mx, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) local r = group:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:split()
+			local splitRow = Instance.new("Frame")
+			splitRow.Size = UDim2.new(1, 0, 0, 0)
+			splitRow.BackgroundTransparency = 1
+			splitRow.AutomaticSize = Enum.AutomaticSize.Y
+			splitRow.Parent = contentFrame
+			local lFrame = Instance.new("Frame")
+			lFrame.Size = UDim2.new(0.5, -4, 0, 0)
+			lFrame.BackgroundTransparency = 1
+			lFrame.AutomaticSize = Enum.AutomaticSize.Y
+			lFrame.Parent = splitRow
+			Instance.new("UIListLayout", lFrame).Padding = UDim.new(0, 2)
+			local rFrame = Instance.new("Frame")
+			rFrame.Size = UDim2.new(0.5, -4, 0, 0)
+			rFrame.Position = UDim2.new(0.5, 4, 0, 0)
+			rFrame.BackgroundTransparency = 1
+			rFrame.AutomaticSize = Enum.AutomaticSize.Y
+			rFrame.Parent = splitRow
+			Instance.new("UIListLayout", rFrame).Padding = UDim.new(0, 2)
+			local function updateSplit()
+				local lh = lFrame.UIListLayout.AbsoluteContentSize.Y
+				local rh = rFrame.UIListLayout.AbsoluteContentSize.Y
+				splitRow.Size = UDim2.new(1, 0, 0, math.max(lh, rh))
+				updateContentSize()
+			end
+			lFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplit)
+			rFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplit)
+			local function wrapGroup(frame)
+				local g = {window = window, items = frame, updateSize = updateSplit}
+				for k, v in pairs(nestedGroup) do
+					if type(v) == "function" and k ~= "split" then
+						local fn = v
+						g[k] = function(self2, ...) return fn(self2, ...) end
+					end
+				end
+				return g
+			end
+			return wrapGroup(lFrame), wrapGroup(rFrame)
+		end
 		if contentFunc then contentFunc(nestedGroup) end
 		local state = default
 		cbOuter.MouseButton1Click:Connect(function()
@@ -3068,6 +3158,45 @@ function UILib.Column:addGroup(title)
 		function nestedGroup:textbox(subText, def, subCallback, subTooltip) local r = group:textbox(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:numberbox(subText, def, mn, mx, subCallback, subTooltip) local r = group:numberbox(subText, def, mn, mx, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) local r = group:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:split()
+			local splitRow = Instance.new("Frame")
+			splitRow.Size = UDim2.new(1, 0, 0, 0)
+			splitRow.BackgroundTransparency = 1
+			splitRow.AutomaticSize = Enum.AutomaticSize.Y
+			splitRow.Parent = contentFrame
+			local lFrame = Instance.new("Frame")
+			lFrame.Size = UDim2.new(0.5, -4, 0, 0)
+			lFrame.BackgroundTransparency = 1
+			lFrame.AutomaticSize = Enum.AutomaticSize.Y
+			lFrame.Parent = splitRow
+			Instance.new("UIListLayout", lFrame).Padding = UDim.new(0, 2)
+			local rFrame = Instance.new("Frame")
+			rFrame.Size = UDim2.new(0.5, -4, 0, 0)
+			rFrame.Position = UDim2.new(0.5, 4, 0, 0)
+			rFrame.BackgroundTransparency = 1
+			rFrame.AutomaticSize = Enum.AutomaticSize.Y
+			rFrame.Parent = splitRow
+			Instance.new("UIListLayout", rFrame).Padding = UDim.new(0, 2)
+			local function updateSplit()
+				local lh = lFrame.UIListLayout.AbsoluteContentSize.Y
+				local rh = rFrame.UIListLayout.AbsoluteContentSize.Y
+				splitRow.Size = UDim2.new(1, 0, 0, math.max(lh, rh))
+				updateContentSize()
+			end
+			lFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplit)
+			rFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplit)
+			local function wrapGroup(frame)
+				local g = {window = window, items = frame, updateSize = updateSplit}
+				for k, v in pairs(nestedGroup) do
+					if type(v) == "function" and k ~= "split" then
+						local fn = v
+						g[k] = function(self2, ...) return fn(self2, ...) end
+					end
+				end
+				return g
+			end
+			return wrapGroup(lFrame), wrapGroup(rFrame)
+		end
 		if contentFunc then contentFunc(nestedGroup) end
 		local state = default
 		toggleRow.MouseButton1Click:Connect(function() state = not state arrow.Text = state and "v" or ">" container.Size = UDim2.new(1, 0, 0, 34 + (state and contentLayout.AbsoluteContentSize.Y or 0)) updateSize() end)
@@ -3144,7 +3273,7 @@ function UILib.Column:addGroup(title)
 		row.BackgroundTransparency = 1
 		row.Parent = items
 		local label = Instance.new("TextLabel")
-		label.Size = UDim2.new(1, -48, 0, 18)
+		label.Size = UDim2.new(0.45, -8, 0, 18)
 		label.Position = UDim2.new(0, 4, 0, 3)
 		label.BackgroundTransparency = 1
 		label.Text = text
@@ -3155,8 +3284,8 @@ function UILib.Column:addGroup(title)
 		label.ZIndex = 3
 		label.Parent = row
 		local box = Instance.new("TextBox")
-		box.Size = UDim2.new(0, 150, 0, 22)
-		box.Position = UDim2.new(1, -154, 0, 2)
+		box.Size = UDim2.new(0.55, 0, 0, 22)
+		box.Position = UDim2.new(0.45, 0, 0, 2)
 		box.BackgroundColor3 = window.theme.Track
 		box.ClipsDescendants = true
 		box.BorderSizePixel = 0
@@ -4160,6 +4289,45 @@ function UILib.SubTab:addGroup(title)
 		function nestedGroup:textbox(subText, def, subCallback, subTooltip) local r = group:textbox(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:numberbox(subText, def, mn, mx, subCallback, subTooltip) local r = group:numberbox(subText, def, mn, mx, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) local r = group:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:split()
+			local splitRow = Instance.new("Frame")
+			splitRow.Size = UDim2.new(1, 0, 0, 0)
+			splitRow.BackgroundTransparency = 1
+			splitRow.AutomaticSize = Enum.AutomaticSize.Y
+			splitRow.Parent = contentFrame
+			local lFrame = Instance.new("Frame")
+			lFrame.Size = UDim2.new(0.5, -4, 0, 0)
+			lFrame.BackgroundTransparency = 1
+			lFrame.AutomaticSize = Enum.AutomaticSize.Y
+			lFrame.Parent = splitRow
+			Instance.new("UIListLayout", lFrame).Padding = UDim.new(0, 2)
+			local rFrame = Instance.new("Frame")
+			rFrame.Size = UDim2.new(0.5, -4, 0, 0)
+			rFrame.Position = UDim2.new(0.5, 4, 0, 0)
+			rFrame.BackgroundTransparency = 1
+			rFrame.AutomaticSize = Enum.AutomaticSize.Y
+			rFrame.Parent = splitRow
+			Instance.new("UIListLayout", rFrame).Padding = UDim.new(0, 2)
+			local function updateSplit()
+				local lh = lFrame.UIListLayout.AbsoluteContentSize.Y
+				local rh = rFrame.UIListLayout.AbsoluteContentSize.Y
+				splitRow.Size = UDim2.new(1, 0, 0, math.max(lh, rh))
+				updateContentSize()
+			end
+			lFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplit)
+			rFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplit)
+			local function wrapGroup(frame)
+				local g = {window = window, items = frame, updateSize = updateSplit}
+				for k, v in pairs(nestedGroup) do
+					if type(v) == "function" and k ~= "split" then
+						local fn = v
+						g[k] = function(self2, ...) return fn(self2, ...) end
+					end
+				end
+				return g
+			end
+			return wrapGroup(lFrame), wrapGroup(rFrame)
+		end
 		if contentFunc then contentFunc(nestedGroup) end
 		local state = default
 		cbOuter.MouseButton1Click:Connect(function()
@@ -4235,6 +4403,45 @@ function UILib.SubTab:addGroup(title)
 		function nestedGroup:textbox(subText, def, subCallback, subTooltip) local r = group:textbox(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:numberbox(subText, def, mn, mx, subCallback, subTooltip) local r = group:numberbox(subText, def, mn, mx, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) local r = group:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:split()
+			local splitRow = Instance.new("Frame")
+			splitRow.Size = UDim2.new(1, 0, 0, 0)
+			splitRow.BackgroundTransparency = 1
+			splitRow.AutomaticSize = Enum.AutomaticSize.Y
+			splitRow.Parent = contentFrame
+			local lFrame = Instance.new("Frame")
+			lFrame.Size = UDim2.new(0.5, -4, 0, 0)
+			lFrame.BackgroundTransparency = 1
+			lFrame.AutomaticSize = Enum.AutomaticSize.Y
+			lFrame.Parent = splitRow
+			Instance.new("UIListLayout", lFrame).Padding = UDim.new(0, 2)
+			local rFrame = Instance.new("Frame")
+			rFrame.Size = UDim2.new(0.5, -4, 0, 0)
+			rFrame.Position = UDim2.new(0.5, 4, 0, 0)
+			rFrame.BackgroundTransparency = 1
+			rFrame.AutomaticSize = Enum.AutomaticSize.Y
+			rFrame.Parent = splitRow
+			Instance.new("UIListLayout", rFrame).Padding = UDim.new(0, 2)
+			local function updateSplit()
+				local lh = lFrame.UIListLayout.AbsoluteContentSize.Y
+				local rh = rFrame.UIListLayout.AbsoluteContentSize.Y
+				splitRow.Size = UDim2.new(1, 0, 0, math.max(lh, rh))
+				updateContentSize()
+			end
+			lFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplit)
+			rFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplit)
+			local function wrapGroup(frame)
+				local g = {window = window, items = frame, updateSize = updateSplit}
+				for k, v in pairs(nestedGroup) do
+					if type(v) == "function" and k ~= "split" then
+						local fn = v
+						g[k] = function(self2, ...) return fn(self2, ...) end
+					end
+				end
+				return g
+			end
+			return wrapGroup(lFrame), wrapGroup(rFrame)
+		end
 		if contentFunc then contentFunc(nestedGroup) end
 		local state = default
 		toggleRow.MouseButton1Click:Connect(function()
@@ -4316,7 +4523,7 @@ function UILib.SubTab:addGroup(title)
 		row.BackgroundTransparency = 1
 		row.Parent = items
 		local label = Instance.new("TextLabel")
-		label.Size = UDim2.new(1, -48, 0, 18)
+		label.Size = UDim2.new(0.45, -8, 0, 18)
 		label.Position = UDim2.new(0, 4, 0, 3)
 		label.BackgroundTransparency = 1
 		label.Text = text
@@ -4327,8 +4534,8 @@ function UILib.SubTab:addGroup(title)
 		label.ZIndex = 3
 		label.Parent = row
 		local box = Instance.new("TextBox")
-		box.Size = UDim2.new(0, 150, 0, 22)
-		box.Position = UDim2.new(1, -154, 0, 2)
+		box.Size = UDim2.new(0.55, 0, 0, 22)
+		box.Position = UDim2.new(0.45, 0, 0, 2)
 		box.BackgroundColor3 = window.theme.Track
 		box.ClipsDescendants = true
 		box.BorderSizePixel = 0
