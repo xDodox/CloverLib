@@ -933,7 +933,7 @@ function UILib:_createUITab()
 	local cfg = uiR:addGroup("Configs")
 	local currentConfig = "default"
 
-	cfg:textbox("Config Name", "default", function(val)
+	cfg:textbox("Config Name", "default", "", function(val)
 		currentConfig = (val ~= "" and val or "default")
 	end, "Name for save/load/delete")
 
@@ -2919,7 +2919,10 @@ function UILib.Column:addGroup(title)
 		lbl.Parent = f
 		if tooltip then attachTooltip(f, tooltip) end
 		updateSize()
-		return f
+		local ref = {frame = f}
+		function ref:setText(t) lbl.Text = t end
+		function ref:setColor(c) lbl.TextColor3 = c end
+		return ref
 	end
 
 	-- FIX 4: button supports style param: "bg" (default, with background) or "text" (plain text only)
@@ -3229,7 +3232,7 @@ function UILib.Column:addGroup(title)
 		function nestedGroup:button(subText, subCallback, subTooltip, al, col, sty) local r = group:button(subText, subCallback, subTooltip, al, col, sty) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:colorpicker(subText, def, subCallback, subTooltip) local r = group:colorpicker(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:multidropdown(subText, opts, def, subCallback, subTooltip) local r = group:multidropdown(subText, opts, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:textbox(subText, def, subCallback, subTooltip) local r = group:textbox(subText, def, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:textbox(subText, def, placeholder, subCallback, subTooltip) local r = group:textbox(subText, def, placeholder or "", subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:numberbox(subText, def, mn, mx, subCallback, subTooltip) local r = group:numberbox(subText, def, mn, mx, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) local r = group:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:badge(subText, col, subTooltip, pos) local r = group:badge(subText, col, subTooltip, pos) r.Parent = contentFrame updateContentSize() return r end
@@ -3348,7 +3351,7 @@ function UILib.Column:addGroup(title)
 		function nestedGroup:button(subText, subCallback, subTooltip, al, col, sty) local r = group:button(subText, subCallback, subTooltip, al, col, sty) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:colorpicker(subText, def, subCallback, subTooltip) local r = group:colorpicker(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:multidropdown(subText, opts, def, subCallback, subTooltip) local r = group:multidropdown(subText, opts, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:textbox(subText, def, subCallback, subTooltip) local r = group:textbox(subText, def, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:textbox(subText, def, placeholder, subCallback, subTooltip) local r = group:textbox(subText, def, placeholder or "", subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:numberbox(subText, def, mn, mx, subCallback, subTooltip) local r = group:numberbox(subText, def, mn, mx, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) local r = group:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:badge(subText, col, subTooltip, pos) local r = group:badge(subText, col, subTooltip, pos) r.Parent = contentFrame updateContentSize() return r end
@@ -4508,7 +4511,7 @@ function UILib.SubTab:addGroup(title)
 		function nestedGroup:button(subText, subCallback, subTooltip, al, col, sty) local r = group:button(subText, subCallback, subTooltip, al, col, sty) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:colorpicker(subText, def, subCallback, subTooltip) local r = group:colorpicker(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:multidropdown(subText, opts, def, subCallback, subTooltip) local r = group:multidropdown(subText, opts, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:textbox(subText, def, subCallback, subTooltip) local r = group:textbox(subText, def, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:textbox(subText, def, placeholder, subCallback, subTooltip) local r = group:textbox(subText, def, placeholder or "", subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:numberbox(subText, def, mn, mx, subCallback, subTooltip) local r = group:numberbox(subText, def, mn, mx, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) local r = group:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:badge(subText, col, subTooltip, pos) local r = group:badge(subText, col, subTooltip, pos) r.Parent = contentFrame updateContentSize() return r end
@@ -4627,7 +4630,7 @@ function UILib.SubTab:addGroup(title)
 		function nestedGroup:button(subText, subCallback, subTooltip, al, col, sty) local r = group:button(subText, subCallback, subTooltip, al, col, sty) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:colorpicker(subText, def, subCallback, subTooltip) local r = group:colorpicker(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:multidropdown(subText, opts, def, subCallback, subTooltip) local r = group:multidropdown(subText, opts, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:textbox(subText, def, subCallback, subTooltip) local r = group:textbox(subText, def, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
+		function nestedGroup:textbox(subText, def, placeholder, subCallback, subTooltip) local r = group:textbox(subText, def, placeholder or "", subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:numberbox(subText, def, mn, mx, subCallback, subTooltip) local r = group:numberbox(subText, def, mn, mx, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) local r = group:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
 		function nestedGroup:badge(subText, col, subTooltip, pos) local r = group:badge(subText, col, subTooltip, pos) r.Parent = contentFrame updateContentSize() return r end
