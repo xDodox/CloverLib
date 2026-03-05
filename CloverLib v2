@@ -349,11 +349,13 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		return math.max(MIN_KEYBIND_WIDTH, math.min(MAX_KEYBIND_WIDTH, math.floor(self.size.X * 0.13)))
 	end
 
+	-- ── CHANGE 1: updateResponsiveLayout respects per-tab sidebar visibility ──
 	local function updateResponsiveLayout()
 		local sw = getSidebarWidth()
+		local showSidebar = not self.activeTab or self.activeTab.showSidebar ~= false
 		if self.sidebar then
 			self.sidebar.Size = UDim2.new(0, sw, 1, -92)
-			-- FIX 5: sidebar buttons use full width (handled in addSubTab)
+			self.sidebar.Visible = showSidebar
 			for _, sub in ipairs(self.allSubTabs) do
 				if sub.btn then
 					sub.btn.Size = UDim2.new(1, 0, 0, 28)
@@ -362,12 +364,18 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			end
 		end
 		if self.sidebarEdge then
+			self.sidebarEdge.Visible = showSidebar
 			self.sidebarEdge.Position = UDim2.new(0, sw, 0, 46)
 			self.sidebarEdge.Size = UDim2.new(0, 1, 1, -92)
 		end
 		if self.content then
-			self.content.Size = UDim2.new(0, self.size.X - sw - 1, 1, -92)
-			self.content.Position = UDim2.new(0, sw + 1, 0, 46)
+			if showSidebar then
+				self.content.Size = UDim2.new(0, self.size.X - sw - 1, 1, -92)
+				self.content.Position = UDim2.new(0, sw + 1, 0, 46)
+			else
+				self.content.Size = UDim2.new(0, self.size.X, 1, -92)
+				self.content.Position = UDim2.new(0, 0, 0, 46)
+			end
 		end
 		local kw = getKeybindWidth()
 		for _, kbtn in ipairs(self.keybindButtons) do
@@ -493,7 +501,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 
 	local initialSW = getSidebarWidth()
 
-	-- FIX 5: Sidebar with no padding so buttons can fill full width
 	local sidebar = Instance.new("ScrollingFrame")
 	sidebar.Size = UDim2.new(0, initialSW, 1, -92)
 	sidebar.Position = UDim2.new(0, 0, 0, 46)
@@ -510,7 +517,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	local sidebarLayout = Instance.new("UIListLayout", sidebar)
 	sidebarLayout.Padding = UDim.new(0, 2)
 	sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	-- FIX 5: Only vertical padding, no horizontal padding so buttons fill full width
 	local sidebarPad = Instance.new("UIPadding", sidebar)
 	sidebarPad.PaddingTop = UDim.new(0, 4)
 	sidebarPad.PaddingBottom = UDim.new(0, 4)
@@ -689,7 +695,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		local y = math.clamp(pos.Y, 4, screenH - 200)
 		ctxMenu.Position = UDim2.new(0, x, 0, y)
 
-		-- Section header helper
 		local function addSection(txt)
 			local f = Instance.new("Frame")
 			f.Size = UDim2.new(1, 0, 0, 18)
@@ -708,7 +713,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			l.ZIndex = 902
 		end
 
-		-- Actions section
 		addSection("Actions")
 		if elemConfig and elemConfig.DefaultValue ~= nil then
 			addContextMenuItem("Reset to Default", function()
@@ -735,12 +739,10 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			addCtxSeparator()
 			addSection("Behavior")
 
-			-- Compact inline mode dropdown (always/toggle/hold)
 			local modeNames = {always = "Always On", toggle = "Toggle", hold = "Hold"}
 			local modeOrder = {"always", "toggle", "hold"}
 			local currentMode = elemConfig.Mode or "toggle"
 
-			-- Dropdown button row
 			local modeRow = Instance.new("Frame")
 			modeRow.Size = UDim2.new(1, 0, 0, 28)
 			modeRow.BackgroundColor3 = Color3.fromRGB(32, 32, 40)
@@ -775,7 +777,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			modeArrow.ZIndex = 902
 			modeArrow.Parent = modeRow
 
-			-- Dropdown list (hidden by default, expands below modeRow)
 			local modeList = Instance.new("Frame")
 			modeList.Size = UDim2.new(1, 0, 0, #modeOrder * 26 + 6)
 			modeList.Position = UDim2.new(0, 0, 1, 3)
@@ -840,7 +841,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 				end)
 			end
 
-			-- Toggle button (transparent, sits on top of modeRow to intercept clicks)
 			local modeBtn = Instance.new("TextButton")
 			modeBtn.Size = UDim2.new(1, 0, 1, 0)
 			modeBtn.BackgroundTransparency = 1
@@ -861,7 +861,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			addCtxSeparator()
 			addSection("Hotkey")
 
-			-- Hotkey display row (label + small box showing current key)
 			local hkRow = Instance.new("Frame")
 			hkRow.Size = UDim2.new(1, 0, 0, 28)
 			hkRow.BackgroundTransparency = 1
@@ -1082,7 +1081,6 @@ function UILib:addWatermark(name)
 	return wm
 end
 
--- FIX 2: _createUITab — add "Create Config" button, change refresh to text button
 function UILib:_createUITab()
 	local uiTab = self:addTab("UI")
 	local uiSub = uiTab:addSubTab("Settings")
@@ -1117,7 +1115,6 @@ function UILib:_createUITab()
 		currentConfig = (val ~= "" and val or "default")
 	end, "Name for save/load/delete")
 
-	-- FIX 2: "Create Config" button (saves as new config by the entered name)
 	cfg:button("Create Config", function()
 		if currentConfig and currentConfig ~= "" then
 			self:saveConfig(currentConfig)
@@ -1126,7 +1123,6 @@ function UILib:_createUITab()
 		end
 	end, "Create and save a new config with the entered name")
 
-	-- FIX 2: Load Config dropdown with text "Refresh" button instead of icon
 	cfg:dropdown("Load Config", self:listConfigs(), "", function(val)
 		currentConfig = val
 		self:loadConfig(val)
@@ -1188,7 +1184,6 @@ function UILib:setVisible(visible)
 	end
 end
 
--- FIX 3: Confirm dialog text color changed to pure white Color3.new(1,1,1)
 function UILib:confirm(message, onYes, onNo)
 	local overlay = Instance.new("TextButton")
 	overlay.Size = UDim2.new(1, 0, 1, 0)
@@ -1212,13 +1207,12 @@ function UILib:confirm(message, onYes, onNo)
 	table.insert(self.activePopups, modal)
 	Instance.new("UICorner", modal).CornerRadius = UDim.new(0, 8)
 
-	-- FIX 3: Explicit white color for dialog text
 	local msgLabel = Instance.new("TextLabel")
 	msgLabel.Size = UDim2.new(1, -32, 0, 54)
 	msgLabel.Position = UDim2.new(0, 16, 0, 12)
 	msgLabel.BackgroundTransparency = 1
 	msgLabel.Text = message
-	msgLabel.TextColor3 = Color3.new(1, 1, 1)  -- FIX 3: pure white
+	msgLabel.TextColor3 = Color3.new(1, 1, 1)
 	msgLabel.Font = Enum.Font.Roboto
 	msgLabel.TextSize = 14
 	msgLabel.TextWrapped = true
@@ -1241,7 +1235,7 @@ function UILib:confirm(message, onYes, onNo)
 		btn.BackgroundColor3 = color
 		btn.BorderSizePixel = 0
 		btn.Text = text
-		btn.TextColor3 = Color3.new(1, 1, 1)  -- FIX 3: white text on buttons too
+		btn.TextColor3 = Color3.new(1, 1, 1)
 		btn.Font = Enum.Font.GothamBold
 		btn.TextSize = 13
 		btn.ZIndex = 803
@@ -1480,13 +1474,17 @@ function UILib:newMiniWindow(title, width, posX, posY)
 	return mini
 end
 
-function UILib:addTab(name)
+-- ── CHANGE 2: addTab accepts optional options table with sidebar bool ──
+function UILib:addTab(name, options)
+	options = options or {}
 	local tab = setmetatable({}, UILib.Tab)
 	tab.name = name
 	tab.window = self
 	tab.subtabs = {}
 	tab.subtabOrder = {}
 	tab.firstSub = nil
+	-- NEW: per-tab sidebar visibility (default true)
+	tab.showSidebar = options.sidebar ~= false
 
 	self._navTabCount = (self._navTabCount or 0) + 1
 
@@ -1526,6 +1524,7 @@ function UILib:addTab(name)
 	tab.btn = btn
 	tab.underline = underline
 
+	-- ── CHANGE 3: activate() shows/hides sidebar based on tab.showSidebar ──
 	local function activate()
 		for _, t in pairs(self.tabs) do
 			for _, sub in pairs(t.subtabs) do
@@ -1550,6 +1549,19 @@ function UILib:addTab(name)
 		end
 		self.sidebar.CanvasSize = UDim2.new(0, 0, 0, #tab.subtabOrder * 30 + 10)
 		self.activeTab = tab
+
+		-- NEW: update sidebar visibility for this tab
+		local showSidebar = tab.showSidebar ~= false
+		self.sidebar.Visible = showSidebar
+		self.sidebarEdge.Visible = showSidebar
+		local sw = math.max(MIN_SIDEBAR_WIDTH, math.min(MAX_SIDEBAR_WIDTH, math.floor(self.size.X * 0.22)))
+		if showSidebar then
+			self.content.Size = UDim2.new(0, self.size.X - sw - 1, 1, -92)
+			self.content.Position = UDim2.new(0, sw + 1, 0, 46)
+		else
+			self.content.Size = UDim2.new(0, self.size.X, 1, -92)
+			self.content.Position = UDim2.new(0, 0, 0, 46)
+		end
 	end
 	btn.MouseButton1Click:Connect(activate)
 	tab.activate = activate
@@ -1565,7 +1577,6 @@ function UILib:addTab(name)
 	return tab
 end
 
--- Programmatically switch to tab by 1-based index or by name
 function UILib:selectTab(n)
 	local tab
 	if type(n) == "number" then
@@ -1583,18 +1594,17 @@ function UILib.Tab:addSubTab(name)
 	sub.window = self.window
 	sub.groups = {}
 
-	-- FIX 5: Full-width sidebar buttons
 	local btn = Instance.new("TextButton")
 	table.insert(self.subtabOrder, sub)
-	btn.Size = UDim2.new(1, 0, 0, 28)   -- FIX 5: full width, slightly taller
-	btn.Position = UDim2.new(0, 0, 0, 0) -- FIX 5: no left offset
+	btn.Size = UDim2.new(1, 0, 0, 28)
+	btn.Position = UDim2.new(0, 0, 0, 0)
 	btn.BackgroundTransparency = 1
 	btn.Text = ""
 	btn.ZIndex = 5
 	btn.Parent = self.window.sidebar
 
 	local hov = Instance.new("Frame")
-	hov.Size = UDim2.new(1, 0, 1, 0)   -- FIX 5: full width hover
+	hov.Size = UDim2.new(1, 0, 1, 0)
 	hov.BackgroundColor3 = self.window.theme.ItemHov
 	hov.BorderSizePixel = 0
 	hov.Visible = false
@@ -1603,7 +1613,7 @@ function UILib.Tab:addSubTab(name)
 	Instance.new("UICorner", hov).CornerRadius = UDim.new(0, 4)
 
 	local selLine = Instance.new("Frame")
-	selLine.Size = UDim2.new(0, 3, 1, -8)  -- FIX 5: slightly wider selection indicator
+	selLine.Size = UDim2.new(0, 3, 1, -8)
 	selLine.Position = UDim2.new(0, 0, 0, 4)
 	selLine.BackgroundColor3 = self.window.theme.Accent
 	selLine.BorderSizePixel = 0
@@ -1612,7 +1622,7 @@ function UILib.Tab:addSubTab(name)
 	selLine.Parent = btn
 
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, -10, 1, 0)  -- FIX 5: adjusted for full width
+	label.Size = UDim2.new(1, -10, 1, 0)
 	label.Position = UDim2.new(0, 10, 0, 0)
 	label.BackgroundTransparency = 1
 	label.Text = name
@@ -1720,13 +1730,6 @@ local function attachTooltip(element, text)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then hideTooltip() end
 	end)
 end
-
--- ────────────────────────────────────────────────────────────
--- Standalone SubTab helpers  (sit directly on the page, no group wrapper)
--- Usage: sub:addParagraph(title, body)
---        sub:addInput(label, default, placeholder, callback, tooltip)
---        sub:addButton(text, callback, tooltip, color)
--- ────────────────────────────────────────────────────────────
 
 function UILib.SubTab:addParagraph(ptitle, text)
 	local window = self.window
@@ -1873,8 +1876,6 @@ function UILib.SubTab:addButton(text, callback, tooltip, color)
 	return btn
 end
 
--- ────────────────────────────────────────────────────────────
-
 local function attachTooltip(element, text)
 	if not text then return end
 	element.MouseEnter:Connect(function() startTooltipDelay(text, element) end)
@@ -2011,7 +2012,6 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	return row, elem
 end
 
--- FIX 1: Color picker opens positioned below (or beside) the color button
 local function createColorPicker(group, items, window, text, default, callback)
 	local id = generateID()
 	local row = Instance.new("Frame")
@@ -2067,26 +2067,19 @@ local function createColorPicker(group, items, window, text, default, callback)
 		local pickerW, pickerH = 220, 290
 		pickerFrame.Size = UDim2.new(0, pickerW, 0, pickerH)
 
-		-- Position picker to the LEFT of colorBox — won't overlap the UI
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
 		task.defer(function()
 			if not pickerFrame or not pickerFrame.Parent then return end
 			local absPos = colorBox.AbsolutePosition
 			local absSize = colorBox.AbsoluteSize
-
-			-- Open BELOW the color button; shift left/right to stay on screen
 			local posX = absPos.X + absSize.X / 2 - pickerW / 2
 			local posY = absPos.Y + absSize.Y + 6
-
-			-- If not enough space below, open above
 			if posY + pickerH > screenH - 10 then
 				posY = absPos.Y - pickerH - 6
 			end
-
 			posX = math.clamp(posX, 8, screenW - pickerW - 8)
 			posY = math.clamp(posY, 8, screenH - pickerH - 8)
-
 			pickerFrame.Position = UDim2.new(0, posX, 0, posY)
 		end)
 
@@ -2220,7 +2213,6 @@ local function createColorPicker(group, items, window, text, default, callback)
 		Instance.new("UICorner", hueKnob).CornerRadius = UDim.new(1, 0)
 		Instance.new("UIStroke", hueKnob).Color = Color3.new(0, 0, 0)
 
-		-- Transparency row (directly below hue)
 		local alphaLbl = Instance.new("TextLabel")
 		alphaLbl.Size = UDim2.new(0.5, 0, 0, 14)
 		alphaLbl.Position = UDim2.new(0, 8, 0, 180)
@@ -2240,7 +2232,6 @@ local function createColorPicker(group, items, window, text, default, callback)
 		alphaTrack.Parent = pickerFrame
 		Instance.new("UICorner", alphaTrack).CornerRadius = UDim.new(0, 5)
 
-		-- Hex row (below alpha)
 		local hexRow = Instance.new("Frame")
 		hexRow.Size = UDim2.new(1, -16, 0, 24)
 		hexRow.Position = UDim2.new(0, 8, 0, 214)
@@ -2566,15 +2557,13 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	return row, elem
 end
 
--- ============================================================
--- FIX 2: dropdown with text "Refresh" button instead of image icon
 local function buildDropdownRefreshBtn(row, window, refreshCallback)
 	if not refreshCallback then return nil end
 	local refreshBtn = Instance.new("TextButton")
-	refreshBtn.Size = UDim2.new(0, 52, 0, 18)   -- FIX 2: wider for text
+	refreshBtn.Size = UDim2.new(0, 52, 0, 18)
 	refreshBtn.Position = UDim2.new(1, -54, 0, 2)
 	refreshBtn.BackgroundColor3 = window.theme.Track
-	refreshBtn.Text = "Refresh"                   -- FIX 2: text instead of icon
+	refreshBtn.Text = "Refresh"
 	refreshBtn.TextColor3 = window.theme.GrayLt
 	refreshBtn.Font = Enum.Font.Roboto
 	refreshBtn.TextSize = 10
@@ -2757,7 +2746,6 @@ function UILib.Column:addGroup(title)
 			state = not state
 			elem.SetValue(state)
 		end)
-		-- Right-click on both the row AND the checkbox button
 		local function openCtx() window:showContextMenu(UIS:GetMouseLocation(), elem) end
 		r.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton2 then openCtx() end
@@ -2801,7 +2789,6 @@ function UILib.Column:addGroup(title)
 		lbl.ZIndex = 11
 		lbl.Parent = r
 
-		-- FIX 2: text "Refresh" button instead of icon
 		local refreshBtn = buildDropdownRefreshBtn(r, window, refreshCallback)
 
 		local dbtn = Instance.new("TextButton")
@@ -3129,6 +3116,7 @@ function UILib.Column:addGroup(title)
 		function ref:setColor(c) lbl.TextColor3 = c end
 		return ref
 	end
+
 	function group:separator(text)
 		local f = Instance.new("Frame")
 		f.Size = UDim2.new(1, 0, 0, text and 18 or 10)
@@ -3173,8 +3161,6 @@ function UILib.Column:addGroup(title)
 		return f
 	end
 
-
-	-- FIX 4: button supports style param: "bg" (default, with background) or "text" (plain text only)
 	function group:button(text, callback, tooltip, align, color, style)
 		style = style or "bg"
 		local btn = Instance.new("TextButton")
@@ -3185,7 +3171,6 @@ function UILib.Column:addGroup(title)
 		btn.Parent = items
 
 		if style == "split" then
-			-- Full-width variant with visible background + accent left border accent line
 			btn.BackgroundColor3 = window.theme.Item
 			btn.BackgroundTransparency = 0
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
@@ -3213,27 +3198,21 @@ function UILib.Column:addGroup(title)
 			lbl.ZIndex = 4
 			lbl.Parent = btn
 		elseif style == "text" then
-			-- FIX 4: Text-only button style (no background)
 			btn.BackgroundTransparency = 1
 			local lbl = Instance.new("TextLabel")
 			lbl.Size = UDim2.new(1, 0, 1, 0)
 			lbl.Position = UDim2.new(0, 4, 0, 0)
 			lbl.BackgroundTransparency = 1
 			lbl.Text = text
-			lbl.TextColor3 = color or window.theme.Accent  -- accent color for text buttons
+			lbl.TextColor3 = color or window.theme.Accent
 			lbl.Font = Enum.Font.Roboto
 			lbl.TextSize = 13
 			lbl.TextXAlignment = align or Enum.TextXAlignment.Left
 			lbl.ZIndex = 4
 			lbl.Parent = btn
-			btn.MouseEnter:Connect(function()
-				lbl.TextColor3 = window.theme.White
-			end)
-			btn.MouseLeave:Connect(function()
-				lbl.TextColor3 = color or window.theme.Accent
-			end)
+			btn.MouseEnter:Connect(function() lbl.TextColor3 = window.theme.White end)
+			btn.MouseLeave:Connect(function() lbl.TextColor3 = color or window.theme.Accent end)
 		else
-			-- Default "bg" style with background
 			btn.BackgroundColor3 = window.theme.Item
 			btn.BackgroundTransparency = 0
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
@@ -3355,8 +3334,6 @@ function UILib.Column:addGroup(title)
 		return ref
 	end
 
-	-- FIX 6: badge supports position param: "below" (default), "inline" (beside prev element), "above"
-	-- Also adds "right" alignment option to show badge on the right side of its row
 	function group:badge(text, color, tooltip, position)
 		position = position or "below"
 		local r = Instance.new("Frame")
@@ -3364,7 +3341,6 @@ function UILib.Column:addGroup(title)
 		r.Parent = items
 
 		if position == "inline" then
-			-- FIX 6: Inline badge - appears as a compact row with no extra height overhead
 			r.Size = UDim2.new(1, 0, 0, 24)
 			local pill = Instance.new("Frame")
 			pill.AutomaticSize = Enum.AutomaticSize.X
@@ -3402,7 +3378,6 @@ function UILib.Column:addGroup(title)
 			updateSize()
 			return ref
 		else
-			-- Default "below" style (original)
 			r.Size = UDim2.new(1, 0, 0, 28)
 			local pill = Instance.new("Frame")
 			pill.AutomaticSize = Enum.AutomaticSize.X
@@ -3442,7 +3417,6 @@ function UILib.Column:addGroup(title)
 		end
 	end
 
-	-- FIX 7: expandableToggle - use `state` instead of `default` in updateContentSize
 	function group:expandableToggle(text, default, contentFunc, tooltip)
 		local container = Instance.new("Frame")
 		container.Size = UDim2.new(1, 0, 0, 34)
@@ -3494,11 +3468,10 @@ function UILib.Column:addGroup(title)
 		local contentLayout = Instance.new("UIListLayout", contentFrame)
 		contentLayout.Padding = UDim.new(0, 2)
 		contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		local state = default  -- track current toggle state
+		local state = default
 		local function updateContentSize()
 			local h = contentLayout.AbsoluteContentSize.Y
 			contentFrame.Size = UDim2.new(1, 0, 0, h)
-			-- FIX 7: use `state` (current toggle state) not `default` (initial value)
 			container.Size = UDim2.new(1, 0, 0, 34 + (state and h or 0))
 			updateSize()
 		end
@@ -3614,11 +3587,10 @@ function UILib.Column:addGroup(title)
 		local contentLayout = Instance.new("UIListLayout", contentFrame)
 		contentLayout.Padding = UDim.new(0, 2)
 		contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		local state = default  -- FIX 7: track state separately
+		local state = default
 		local function updateContentSize()
 			local h = contentLayout.AbsoluteContentSize.Y
 			contentFrame.Size = UDim2.new(1, 0, 0, h)
-			-- FIX 7: use `state` not `default`
 			container.Size = UDim2.new(1, 0, 0, 34 + (state and h or 0))
 			updateSize()
 		end
@@ -3988,7 +3960,7 @@ function UILib.SubTab:addGroup(title)
 	group.window = window
 	group.tab = tab
 	group.sub = subtab
-	group.subtab = subtab  -- SubTab:addGroup alias
+	group.subtab = subtab
 	group.columnFrame = self.page
 
 	local grp = Instance.new("Frame")
@@ -4142,7 +4114,6 @@ function UILib.SubTab:addGroup(title)
 			state = not state
 			elem.SetValue(state)
 		end)
-		-- Right-click on both the row AND the checkbox button
 		local function openCtx() window:showContextMenu(UIS:GetMouseLocation(), elem) end
 		r.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton2 then openCtx() end
@@ -4186,7 +4157,6 @@ function UILib.SubTab:addGroup(title)
 		lbl.ZIndex = 11
 		lbl.Parent = r
 
-		-- FIX 2: text "Refresh" button instead of icon
 		local refreshBtn = buildDropdownRefreshBtn(r, window, refreshCallback)
 
 		local dbtn = Instance.new("TextButton")
@@ -4511,6 +4481,7 @@ function UILib.SubTab:addGroup(title)
 		function ref:setColor(c) lbl.TextColor3 = c end
 		return ref
 	end
+
 	function group:separator(text)
 		local f = Instance.new("Frame")
 		f.Size = UDim2.new(1, 0, 0, text and 18 or 10)
@@ -4555,8 +4526,6 @@ function UILib.SubTab:addGroup(title)
 		return f
 	end
 
-
-	-- FIX 4: button supports style param: "bg" (default, with background) or "text" (plain text only)
 	function group:button(text, callback, tooltip, align, color, style)
 		style = style or "bg"
 		local btn = Instance.new("TextButton")
@@ -4567,7 +4536,6 @@ function UILib.SubTab:addGroup(title)
 		btn.Parent = items
 
 		if style == "split" then
-			-- Full-width variant with visible background + accent left border accent line
 			btn.BackgroundColor3 = window.theme.Item
 			btn.BackgroundTransparency = 0
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
@@ -4595,27 +4563,21 @@ function UILib.SubTab:addGroup(title)
 			lbl.ZIndex = 4
 			lbl.Parent = btn
 		elseif style == "text" then
-			-- FIX 4: Text-only button style (no background)
 			btn.BackgroundTransparency = 1
 			local lbl = Instance.new("TextLabel")
 			lbl.Size = UDim2.new(1, 0, 1, 0)
 			lbl.Position = UDim2.new(0, 4, 0, 0)
 			lbl.BackgroundTransparency = 1
 			lbl.Text = text
-			lbl.TextColor3 = color or window.theme.Accent  -- accent color for text buttons
+			lbl.TextColor3 = color or window.theme.Accent
 			lbl.Font = Enum.Font.Roboto
 			lbl.TextSize = 13
 			lbl.TextXAlignment = align or Enum.TextXAlignment.Left
 			lbl.ZIndex = 4
 			lbl.Parent = btn
-			btn.MouseEnter:Connect(function()
-				lbl.TextColor3 = window.theme.White
-			end)
-			btn.MouseLeave:Connect(function()
-				lbl.TextColor3 = color or window.theme.Accent
-			end)
+			btn.MouseEnter:Connect(function() lbl.TextColor3 = window.theme.White end)
+			btn.MouseLeave:Connect(function() lbl.TextColor3 = color or window.theme.Accent end)
 		else
-			-- Default "bg" style with background
 			btn.BackgroundColor3 = window.theme.Item
 			btn.BackgroundTransparency = 0
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
@@ -4737,8 +4699,6 @@ function UILib.SubTab:addGroup(title)
 		return ref
 	end
 
-	-- FIX 6: badge supports position param: "below" (default), "inline" (beside prev element), "above"
-	-- Also adds "right" alignment option to show badge on the right side of its row
 	function group:badge(text, color, tooltip, position)
 		position = position or "below"
 		local r = Instance.new("Frame")
@@ -4746,7 +4706,6 @@ function UILib.SubTab:addGroup(title)
 		r.Parent = items
 
 		if position == "inline" then
-			-- FIX 6: Inline badge - appears as a compact row with no extra height overhead
 			r.Size = UDim2.new(1, 0, 0, 24)
 			local pill = Instance.new("Frame")
 			pill.AutomaticSize = Enum.AutomaticSize.X
@@ -4784,7 +4743,6 @@ function UILib.SubTab:addGroup(title)
 			updateSize()
 			return ref
 		else
-			-- Default "below" style (original)
 			r.Size = UDim2.new(1, 0, 0, 28)
 			local pill = Instance.new("Frame")
 			pill.AutomaticSize = Enum.AutomaticSize.X
@@ -4824,7 +4782,6 @@ function UILib.SubTab:addGroup(title)
 		end
 	end
 
-	-- FIX 7: expandableToggle - use `state` instead of `default` in updateContentSize
 	function group:expandableToggle(text, default, contentFunc, tooltip)
 		local container = Instance.new("Frame")
 		container.Size = UDim2.new(1, 0, 0, 34)
@@ -4876,11 +4833,10 @@ function UILib.SubTab:addGroup(title)
 		local contentLayout = Instance.new("UIListLayout", contentFrame)
 		contentLayout.Padding = UDim.new(0, 2)
 		contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		local state = default  -- track current toggle state
+		local state = default
 		local function updateContentSize()
 			local h = contentLayout.AbsoluteContentSize.Y
 			contentFrame.Size = UDim2.new(1, 0, 0, h)
-			-- FIX 7: use `state` (current toggle state) not `default` (initial value)
 			container.Size = UDim2.new(1, 0, 0, 34 + (state and h or 0))
 			updateSize()
 		end
@@ -4996,11 +4952,10 @@ function UILib.SubTab:addGroup(title)
 		local contentLayout = Instance.new("UIListLayout", contentFrame)
 		contentLayout.Padding = UDim.new(0, 2)
 		contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		local state = default  -- FIX 7: track state separately
+		local state = default
 		local function updateContentSize()
 			local h = contentLayout.AbsoluteContentSize.Y
 			contentFrame.Size = UDim2.new(1, 0, 0, h)
-			-- FIX 7: use `state` not `default`
 			container.Size = UDim2.new(1, 0, 0, 34 + (state and h or 0))
 			updateSize()
 		end
