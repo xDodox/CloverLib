@@ -540,6 +540,18 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	content.ScrollingDirection = Enum.ScrollingDirection.XY
 	self.content = content
 
+	-- Tab transition overlay (flash on tab switch)
+	local tabOverlay = Instance.new("Frame")
+	tabOverlay.Size = UDim2.new(1, 0, 1, -92)
+	tabOverlay.Position = UDim2.new(0, 0, 0, 46)
+	tabOverlay.BackgroundColor3 = self.theme.BG
+	tabOverlay.BackgroundTransparency = 1
+	tabOverlay.BorderSizePixel = 0
+	tabOverlay.ZIndex = 50
+	tabOverlay.Active = false
+	tabOverlay.Parent = win
+	self.tabOverlay = tabOverlay
+
 	local navbar = Instance.new("ScrollingFrame")
 	navbar.Size = UDim2.new(1, 0, 0, 46)
 	navbar.Position = UDim2.new(0, 0, 1, -46)
@@ -1165,6 +1177,7 @@ end
 function UILib:setVisible(visible)
 	if not self.window then return end
 	if visible then
+		self._visibleTarget = true
 		self.window.Visible = true
 		self.window.AnchorPoint = Vector2.new(0, 0)
 		self.window.Size = UDim2.new(0, 0, 0, 0)
@@ -1172,6 +1185,7 @@ function UILib:setVisible(visible)
 		local tween = TweenService:Create(self.window, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = self.originalSize})
 		tween:Play()
 	else
+		self._visibleTarget = false
 		self.originalSize = self.window.Size
 		local centerPos = UDim2.new(self.originalPosition.X.Scale, self.originalPosition.X.Offset + self.originalSize.X.Offset/2, self.originalPosition.Y.Scale, self.originalPosition.Y.Offset + self.originalSize.Y.Offset/2)
 		self.window.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1180,7 +1194,13 @@ function UILib:setVisible(visible)
 		self.activePopups = {}
 		local tween = TweenService:Create(self.window, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)})
 		tween:Play()
-		tween.Completed:Connect(function() self.window.Visible = false self.window.AnchorPoint = Vector2.new(0, 0) self.window.Size = self.originalSize self.window.Position = self.originalPosition end)
+		tween.Completed:Connect(function()
+			if self._visibleTarget then return end  -- reopened during tween; abort hide
+			self.window.Visible = false
+			self.window.AnchorPoint = Vector2.new(0, 0)
+			self.window.Size = self.originalSize
+			self.window.Position = self.originalPosition
+		end)
 	end
 end
 
@@ -1526,6 +1546,12 @@ function UILib:addTab(name, options)
 
 	-- ── CHANGE 3: activate() shows/hides sidebar based on tab.showSidebar ──
 	local function activate()
+		-- Tab transition: flash overlay
+		if self.tabOverlay and self.activeTab then
+			self.tabOverlay.BackgroundTransparency = 0.15
+			TweenService:Create(self.tabOverlay, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+		end
+
 		for _, t in pairs(self.tabs) do
 			for _, sub in pairs(t.subtabs) do
 				sub.btn.Visible = false
@@ -2448,13 +2474,13 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	arrow.TextSize = 12
 	arrow.ZIndex = 12
 	arrow.Parent = dbtn
-	local listH = #options * 26
+	local listH = #options * 27 + 6
 	local dlist = Instance.new("ScrollingFrame")
-	dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 104))
+	dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 135))
 	dlist.Position = UDim2.new(0, 0, 0, 56)
 	dlist.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 	dlist.BorderSizePixel = 0
-	dlist.ScrollBarThickness = 2
+	dlist.ScrollBarThickness = listH > 135 and 3 or 0
 	dlist.ScrollBarImageColor3 = window.theme.Accent
 	dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
 	dlist.Visible = false
@@ -2537,7 +2563,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 		open = not open
 		dlist.Visible = open
 		arrow.Text = open and "▲" or "▼"
-		row.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 104) or 0))
+		row.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 135) or 0))
 		group.updateSize()
 	end)
 	local elem = {ID = id, Value = selected, SetValue = function(t)
@@ -2826,13 +2852,13 @@ function UILib.Column:addGroup(title)
 		arrow.Name = "arrow"
 		table.insert(window.accentObjects, arrow)
 		arrow.Parent = dbtn
-		local listH = #options * 26
+		local listH = #options * 27 + 6
 		local dlist = Instance.new("ScrollingFrame")
-		dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 104))
+		dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 135))
 		dlist.Position = UDim2.new(0, 0, 0, 56)
 		dlist.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 		dlist.BorderSizePixel = 0
-		dlist.ScrollBarThickness = 2
+		dlist.ScrollBarThickness = listH > 135 and 3 or 0
 		dlist.ScrollBarImageColor3 = window.theme.Accent
 		dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
 		dlist.Visible = false
@@ -2871,7 +2897,7 @@ function UILib.Column:addGroup(title)
 			checks = {}
 			backgrounds = {}
 			currentOptions = opts
-			listH = #opts * 26
+			listH = #opts * 27 + 6
 			dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
 			for _, opt in ipairs(opts) do
 				local ob = Instance.new("TextButton")
@@ -2969,7 +2995,7 @@ function UILib.Column:addGroup(title)
 				dlist.Visible = true
 				dlist.Size = UDim2.new(1, 0, 0, 0)
 				TweenService:Create(dlist, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-					Size = UDim2.new(1, 0, 0, math.min(listH, 104))
+					Size = UDim2.new(1, 0, 0, math.min(listH, 135))
 				}):Play()
 			else
 				local tw = TweenService:Create(dlist, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
@@ -2978,7 +3004,7 @@ function UILib.Column:addGroup(title)
 				tw.Completed:Connect(function() dlist.Visible = false end)
 				tw:Play()
 			end
-			r.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 104) or 0))
+			r.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 135) or 0))
 			updateSize()
 		end)
 
@@ -3161,7 +3187,7 @@ function UILib.Column:addGroup(title)
 		return f
 	end
 
-	function group:button(text, callback, tooltip, align, color, style)
+	function group:button(text, callback, tooltip, align, color, style, bgColor)
 		style = style or "bg"
 		local btn = Instance.new("TextButton")
 		btn.Size = UDim2.new(1, 0, 0, 32)
@@ -3213,16 +3239,16 @@ function UILib.Column:addGroup(title)
 			btn.MouseEnter:Connect(function() lbl.TextColor3 = window.theme.White end)
 			btn.MouseLeave:Connect(function() lbl.TextColor3 = color or window.theme.Accent end)
 		else
-			btn.BackgroundColor3 = window.theme.Item
+			btn.BackgroundColor3 = bgColor or window.theme.Item
 			btn.BackgroundTransparency = 0
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
 			local bstroke = Instance.new("UIStroke", btn)
-			bstroke.Color = Color3.fromRGB(50, 50, 60)
+			bstroke.Color = bgColor and Color3.new(bgColor.r*0.7, bgColor.g*0.7, bgColor.b*0.7) or Color3.fromRGB(50, 50, 60)
 			bstroke.Thickness = 1
 			local rh = Instance.new("Frame")
 			rh.Size = UDim2.new(1, 0, 1, 0)
 			rh.BackgroundColor3 = window.theme.ItemHov
-			rh.BorderSizePixel = 0
+			rh.BackgroundColor3 = bgColor and Color3.new(bgColor.r*0.85, bgColor.g*0.85, bgColor.b*0.85) or window.theme.ItemHov
 			rh.Visible = false
 			rh.ZIndex = 2
 			rh.Parent = btn
@@ -4194,13 +4220,13 @@ function UILib.SubTab:addGroup(title)
 		arrow.Name = "arrow"
 		table.insert(window.accentObjects, arrow)
 		arrow.Parent = dbtn
-		local listH = #options * 26
+		local listH = #options * 27 + 6
 		local dlist = Instance.new("ScrollingFrame")
-		dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 104))
+		dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 135))
 		dlist.Position = UDim2.new(0, 0, 0, 56)
 		dlist.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 		dlist.BorderSizePixel = 0
-		dlist.ScrollBarThickness = 2
+		dlist.ScrollBarThickness = listH > 135 and 3 or 0
 		dlist.ScrollBarImageColor3 = window.theme.Accent
 		dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
 		dlist.Visible = false
@@ -4239,7 +4265,7 @@ function UILib.SubTab:addGroup(title)
 			checks = {}
 			backgrounds = {}
 			currentOptions = opts
-			listH = #opts * 26
+			listH = #opts * 27 + 6
 			dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
 			for _, opt in ipairs(opts) do
 				local ob = Instance.new("TextButton")
@@ -4337,7 +4363,7 @@ function UILib.SubTab:addGroup(title)
 				dlist.Visible = true
 				dlist.Size = UDim2.new(1, 0, 0, 0)
 				TweenService:Create(dlist, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-					Size = UDim2.new(1, 0, 0, math.min(listH, 104))
+					Size = UDim2.new(1, 0, 0, math.min(listH, 135))
 				}):Play()
 			else
 				local tw = TweenService:Create(dlist, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
@@ -4346,7 +4372,7 @@ function UILib.SubTab:addGroup(title)
 				tw.Completed:Connect(function() dlist.Visible = false end)
 				tw:Play()
 			end
-			r.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 104) or 0))
+			r.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 135) or 0))
 			updateSize()
 		end)
 
@@ -4526,7 +4552,7 @@ function UILib.SubTab:addGroup(title)
 		return f
 	end
 
-	function group:button(text, callback, tooltip, align, color, style)
+	function group:button(text, callback, tooltip, align, color, style, bgColor)
 		style = style or "bg"
 		local btn = Instance.new("TextButton")
 		btn.Size = UDim2.new(1, 0, 0, 32)
@@ -4578,15 +4604,15 @@ function UILib.SubTab:addGroup(title)
 			btn.MouseEnter:Connect(function() lbl.TextColor3 = window.theme.White end)
 			btn.MouseLeave:Connect(function() lbl.TextColor3 = color or window.theme.Accent end)
 		else
-			btn.BackgroundColor3 = window.theme.Item
+			btn.BackgroundColor3 = bgColor or window.theme.Item
 			btn.BackgroundTransparency = 0
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
 			local bstroke = Instance.new("UIStroke", btn)
-			bstroke.Color = Color3.fromRGB(50, 50, 60)
+			bstroke.Color = bgColor and Color3.new(bgColor.r*0.7, bgColor.g*0.7, bgColor.b*0.7) or Color3.fromRGB(50, 50, 60)
 			bstroke.Thickness = 1
 			local rh = Instance.new("Frame")
 			rh.Size = UDim2.new(1, 0, 1, 0)
-			rh.BackgroundColor3 = window.theme.ItemHov
+			rh.BackgroundColor3 = bgColor and Color3.new(bgColor.r*0.85, bgColor.g*0.85, bgColor.b*0.85) or window.theme.ItemHov
 			rh.BorderSizePixel = 0
 			rh.Visible = false
 			rh.ZIndex = 2
