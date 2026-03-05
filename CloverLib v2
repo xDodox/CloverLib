@@ -45,10 +45,20 @@ local contextMenuConnections = {}
 local tooltipFrame = nil
 local tooltipText = nil
 local tooltipTimer = nil
+local tooltipActiveElement = nil  -- track which element the tooltip is for
 
 local function showTooltip(text, element)
 	if not tooltipFrame or not element then return end
+	-- If the element is no longer under the mouse, don't show
+	local mp = UIS:GetMouseLocation()
+	if element and element.AbsolutePosition and element.AbsoluteSize then
+		local ap, as = element.AbsolutePosition, element.AbsoluteSize
+		if mp.X < ap.X or mp.X > ap.X + as.X or mp.Y < ap.Y or mp.Y > ap.Y + as.Y then
+			return
+		end
+	end
 	tooltipText.Text = text
+	tooltipActiveElement = element
 	local screenWidth = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 	local screenHeight = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
 	local hPad = 12
@@ -70,11 +80,27 @@ end
 local function hideTooltip()
 	if tooltipTimer then task.cancel(tooltipTimer) tooltipTimer = nil end
 	if tooltipFrame then tooltipFrame.Visible = false end
+	tooltipActiveElement = nil
 end
 
 local function startTooltipDelay(text, element)
 	hideTooltip()
 	tooltipTimer = task.delay(0.5, function() showTooltip(text, element) end)
+end
+
+-- Global mouse move: hide tooltip if mouse has left the active element
+local function initTooltipMouseTracker(sg)
+	game:GetService("UserInputService").InputChanged:Connect(function(input)
+		if input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
+		if not tooltipActiveElement or not tooltipFrame or not tooltipFrame.Visible then return end
+		local ok, ap = pcall(function() return tooltipActiveElement.AbsolutePosition end)
+		local ok2, as = pcall(function() return tooltipActiveElement.AbsoluteSize end)
+		if not ok or not ok2 then hideTooltip() return end
+		local mp = UIS:GetMouseLocation()
+		if mp.X < ap.X or mp.X > ap.X + as.X or mp.Y < ap.Y or mp.Y > ap.Y + as.Y then
+			hideTooltip()
+		end
+	end)
 end
 
 function UILib:notify(message, notifType, duration)
@@ -322,6 +348,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	tooltipText.TextWrapped = true
 	tooltipText.ZIndex = 1001
 	tooltipText.Parent = tooltipFrame
+	initTooltipMouseTracker(self.sg)
 
 	local win = Instance.new("Frame")
 	win.Size = UDim2.new(0, size.X, 0, size.Y)
@@ -592,7 +619,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	do
 		local drag, dragStart, dragPos = false, nil, nil
 		header.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = true dragStart = i.Position dragPos = win.Position end end)
-		table.insert(self.connections, UIS.InputChanged:Connect(function(i) if drag and i.UserInputType == Enum.UserInputType.MouseMovement then local delta = i.Position - dragStart win.Position = UDim2.new(dragPos.X.Scale, dragPos.X.Offset + delta.X, dragPos.Y.Scale, dragPos.Y.Offset + delta.Y) self.originalPosition = win.Position end end))
+		table.insert(self.connections, UIS.InputChanged:Connect(function(i) if drag and i.UserInputType == Enum.UserInputType.MouseMovement then local delta = i.Position - dragStart win.Position = UDim2.new(dragPos.X.Scale, dragPos.X.Offset + delta.X, dragPos.Y.Scale, dragPos.Y.Offset + delta.Y) self.originalPosition = win.Position self._truePos = win.Position end end))
 		table.insert(self.connections, UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end end))
 	end
 
@@ -1176,30 +1203,54 @@ end
 
 function UILib:setVisible(visible)
 	if not self.window then return end
+	-- Ensure UIScale exists for animation
+	if not self._winScale then
+		self._winScale = Instance.new("UIScale", self.window)
+		self._winScale.Scale = 1
+	end
 	if visible then
 		self._visibleTarget = true
+		-- Save the full position/size before any animation corrupts them
+		local targetSize = self._trueSize or self.originalSize
+		local targetPos  = self._truePos  or self.originalPosition
+		self.window.AnchorPoint = Vector2.new(0.5, 0.5)
+		-- Calculate center anchor position from top-left coords
+		local cx = targetPos.X.Offset + targetSize.X.Offset * 0.5
+		local cy = targetPos.Y.Offset + targetSize.Y.Offset * 0.5
+		self.window.Position = UDim2.new(0, cx, 0, cy)
+		self.window.Size = targetSize
+		self._winScale.Scale = 0.92
 		self.window.Visible = true
-		self.window.AnchorPoint = Vector2.new(0, 0)
-		self.window.Size = UDim2.new(0, 0, 0, 0)
-		self.window.Position = self.originalPosition
-		local tween = TweenService:Create(self.window, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = self.originalSize})
-		tween:Play()
+		TweenService:Create(self._winScale, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 1, false, 0), {Scale = 1.0}):Play()
 	else
 		self._visibleTarget = false
-		self.originalSize = self.window.Size
-		local centerPos = UDim2.new(self.originalPosition.X.Scale, self.originalPosition.X.Offset + self.originalSize.X.Offset/2, self.originalPosition.Y.Scale, self.originalPosition.Y.Offset + self.originalSize.Y.Offset/2)
+		-- Save true size/pos from the current non-animated state
+		self._trueSize = self.window.Size
+		-- Convert back to top-left origin for consistent storage
+		local ap = self.window.AnchorPoint
+		self._truePos = UDim2.new(
+			self.window.Position.X.Scale,
+			self.window.Position.X.Offset - self.window.Size.X.Offset * ap.X,
+			self.window.Position.Y.Scale,
+			self.window.Position.Y.Offset - self.window.Size.Y.Offset * ap.Y
+		)
+		self.originalPosition = self._truePos
+		-- Ensure anchor is at center for shrink animation
+		local cx = self._truePos.X.Offset + self._trueSize.X.Offset * 0.5
+		local cy = self._truePos.Y.Offset + self._trueSize.Y.Offset * 0.5
 		self.window.AnchorPoint = Vector2.new(0.5, 0.5)
-		self.window.Position = centerPos
+		self.window.Position = UDim2.new(0, cx, 0, cy)
 		for _, popup in ipairs(self.activePopups) do pcall(function() if popup then popup:Destroy() end end) end
 		self.activePopups = {}
-		local tween = TweenService:Create(self.window, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)})
+		local tween = TweenService:Create(self._winScale, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Scale = 0.92})
 		tween:Play()
 		tween.Completed:Connect(function()
-			if self._visibleTarget then return end  -- reopened during tween; abort hide
+			if self._visibleTarget then
+				self._winScale.Scale = 1
+				return
+			end
 			self.window.Visible = false
-			self.window.AnchorPoint = Vector2.new(0, 0)
-			self.window.Size = self.originalSize
-			self.window.Position = self.originalPosition
+			self._winScale.Scale = 1
 		end)
 	end
 end
@@ -1976,16 +2027,16 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	local gradient = Instance.new("UIGradient", fill)
 	gradient.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, window.theme.Accent), ColorSequenceKeypoint.new(1, Color3.new(window.theme.Accent.r*0.8, window.theme.Accent.g*0.8, window.theme.Accent.b*0.8))})
 	local knob = Instance.new("Frame")
-	knob.Size = UDim2.new(0, 14, 0, 14)
-	knob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), -7, 0.5, -7)
-	knob.BackgroundColor3 = Color3.new(0, 0, 0)
+	knob.Size = UDim2.new(0, 8, 0, 18)
+	knob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), -4, 0.5, -9)
+	knob.BackgroundColor3 = Color3.new(1, 1, 1)
 	knob.BorderSizePixel = 0
 	knob.ZIndex = 5
 	knob.Parent = track
-	Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
+	Instance.new("UICorner", knob).CornerRadius = UDim.new(0, 3)
 	local knobStroke = Instance.new("UIStroke", knob)
 	knobStroke.Color = window.theme.Accent
-	knobStroke.Thickness = 2
+	knobStroke.Thickness = 1.5
 	table.insert(window.accentObjects, fill)
 	table.insert(window.accentObjects, knobStroke)
 	local hit = Instance.new("TextButton")
@@ -2004,7 +2055,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		currentVal = val
 		local rel = (val - minVal) / (maxVal - minVal)
 		TweenService:Create(fill, TweenInfo.new(0.07, Enum.EasingStyle.Linear), {Size = UDim2.new(rel, 0, 1, 0)}):Play()
-		knob.Position = UDim2.new(rel, -7, 0.5, -7)
+		knob.Position = UDim2.new(rel, -4, 0.5, -9)
 		valueLabel.Text = tostring(val)
 		valueBoxInput.Text = tostring(val)
 		if callback then callback(val) end
@@ -2099,11 +2150,14 @@ local function createColorPicker(group, items, window, text, default, callback)
 			if not pickerFrame or not pickerFrame.Parent then return end
 			local absPos = colorBox.AbsolutePosition
 			local absSize = colorBox.AbsoluteSize
-			local posX = absPos.X + absSize.X / 2 - pickerW / 2
-			local posY = absPos.Y + absSize.Y + 6
-			if posY + pickerH > screenH - 10 then
-				posY = absPos.Y - pickerH - 6
+			-- Try right of the button first
+			local posX = absPos.X + absSize.X + 8
+			local posY = absPos.Y + absSize.Y / 2 - pickerH / 2
+			-- If it would go off the right edge, open to the left instead
+			if posX + pickerW > screenW - 8 then
+				posX = absPos.X - pickerW - 8
 			end
+			-- Vertical clamp
 			posX = math.clamp(posX, 8, screenW - pickerW - 8)
 			posY = math.clamp(posY, 8, screenH - pickerH - 8)
 			pickerFrame.Position = UDim2.new(0, posX, 0, posY)
@@ -3856,39 +3910,39 @@ function UILib.Column:addGroup(title)
 		fill.Parent = track
 		Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 3)
 		local knobLeft = Instance.new("Frame")
-		knobLeft.Size = UDim2.new(0, 14, 0, 14)
-		knobLeft.Position = UDim2.new(pctMin, -7, 0.5, -7)
-		knobLeft.BackgroundColor3 = Color3.new(0, 0, 0)
+		knobLeft.Size = UDim2.new(0, 8, 0, 18)
+		knobLeft.Position = UDim2.new(pctMin, -4, 0.5, -9)
+		knobLeft.BackgroundColor3 = Color3.new(1, 1, 1)
 		knobLeft.BorderSizePixel = 0
 		knobLeft.ZIndex = 5
 		knobLeft.Parent = track
-		Instance.new("UICorner", knobLeft).CornerRadius = UDim.new(1, 0)
+		Instance.new("UICorner", knobLeft).CornerRadius = UDim.new(0, 3)
 		local knobLeftStroke = Instance.new("UIStroke", knobLeft)
 		knobLeftStroke.Color = window.theme.Accent
 		knobLeftStroke.Thickness = 2
 		table.insert(window.accentObjects, knobLeftStroke)
 		local knobRight = Instance.new("Frame")
-		knobRight.Size = UDim2.new(0, 14, 0, 14)
-		knobRight.Position = UDim2.new(pctMax, -7, 0.5, -7)
-		knobRight.BackgroundColor3 = Color3.new(0, 0, 0)
+		knobRight.Size = UDim2.new(0, 8, 0, 18)
+		knobRight.Position = UDim2.new(pctMax, -4, 0.5, -9)
+		knobRight.BackgroundColor3 = Color3.new(1, 1, 1)
 		knobRight.BorderSizePixel = 0
 		knobRight.ZIndex = 5
 		knobRight.Parent = track
-		Instance.new("UICorner", knobRight).CornerRadius = UDim.new(1, 0)
+		Instance.new("UICorner", knobRight).CornerRadius = UDim.new(0, 3)
 		local knobRightStroke = Instance.new("UIStroke", knobRight)
 		knobRightStroke.Color = window.theme.Accent
 		knobRightStroke.Thickness = 2
 		table.insert(window.accentObjects, knobRightStroke)
 		local hitLeft = Instance.new("TextButton")
-		hitLeft.Size = UDim2.new(0, 20, 0, 20)
-		hitLeft.Position = UDim2.new(pctMin, -10, 0.5, -10)
+		hitLeft.Size = UDim2.new(0, 16, 0, 22)
+		hitLeft.Position = UDim2.new(pctMin, -8, 0.5, -11)
 		hitLeft.BackgroundTransparency = 1
 		hitLeft.Text = ""
 		hitLeft.ZIndex = 6
 		hitLeft.Parent = track
 		local hitRight = Instance.new("TextButton")
-		hitRight.Size = UDim2.new(0, 20, 0, 20)
-		hitRight.Position = UDim2.new(pctMax, -10, 0.5, -10)
+		hitRight.Size = UDim2.new(0, 16, 0, 22)
+		hitRight.Position = UDim2.new(pctMax, -8, 0.5, -11)
 		hitRight.BackgroundTransparency = 1
 		hitRight.Text = ""
 		hitRight.ZIndex = 6
@@ -3903,10 +3957,10 @@ function UILib.Column:addGroup(title)
 			pctMax = (currentMax - minVal) / (maxVal - minVal)
 			fill.Size = UDim2.new(pctMax - pctMin, 0, 1, 0)
 			fill.Position = UDim2.new(pctMin, 0, 0, 0)
-			knobLeft.Position = UDim2.new(pctMin, -7, 0.5, -7)
-			knobRight.Position = UDim2.new(pctMax, -7, 0.5, -7)
-			hitLeft.Position = UDim2.new(pctMin, -10, 0.5, -10)
-			hitRight.Position = UDim2.new(pctMax, -10, 0.5, -10)
+			knobLeft.Position = UDim2.new(pctMin, -4, 0.5, -9)
+			knobRight.Position = UDim2.new(pctMax, -4, 0.5, -9)
+			hitLeft.Position = UDim2.new(pctMin, -8, 0.5, -11)
+			hitRight.Position = UDim2.new(pctMax, -8, 0.5, -11)
 		end
 		local function apply(pos, which)
 			local rel = math.clamp((pos - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
@@ -5221,39 +5275,39 @@ function UILib.SubTab:addGroup(title)
 		fill.Parent = track
 		Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 3)
 		local knobLeft = Instance.new("Frame")
-		knobLeft.Size = UDim2.new(0, 14, 0, 14)
-		knobLeft.Position = UDim2.new(pctMin, -7, 0.5, -7)
-		knobLeft.BackgroundColor3 = Color3.new(0, 0, 0)
+		knobLeft.Size = UDim2.new(0, 8, 0, 18)
+		knobLeft.Position = UDim2.new(pctMin, -4, 0.5, -9)
+		knobLeft.BackgroundColor3 = Color3.new(1, 1, 1)
 		knobLeft.BorderSizePixel = 0
 		knobLeft.ZIndex = 5
 		knobLeft.Parent = track
-		Instance.new("UICorner", knobLeft).CornerRadius = UDim.new(1, 0)
+		Instance.new("UICorner", knobLeft).CornerRadius = UDim.new(0, 3)
 		local knobLeftStroke = Instance.new("UIStroke", knobLeft)
 		knobLeftStroke.Color = window.theme.Accent
 		knobLeftStroke.Thickness = 2
 		table.insert(window.accentObjects, knobLeftStroke)
 		local knobRight = Instance.new("Frame")
-		knobRight.Size = UDim2.new(0, 14, 0, 14)
-		knobRight.Position = UDim2.new(pctMax, -7, 0.5, -7)
-		knobRight.BackgroundColor3 = Color3.new(0, 0, 0)
+		knobRight.Size = UDim2.new(0, 8, 0, 18)
+		knobRight.Position = UDim2.new(pctMax, -4, 0.5, -9)
+		knobRight.BackgroundColor3 = Color3.new(1, 1, 1)
 		knobRight.BorderSizePixel = 0
 		knobRight.ZIndex = 5
 		knobRight.Parent = track
-		Instance.new("UICorner", knobRight).CornerRadius = UDim.new(1, 0)
+		Instance.new("UICorner", knobRight).CornerRadius = UDim.new(0, 3)
 		local knobRightStroke = Instance.new("UIStroke", knobRight)
 		knobRightStroke.Color = window.theme.Accent
 		knobRightStroke.Thickness = 2
 		table.insert(window.accentObjects, knobRightStroke)
 		local hitLeft = Instance.new("TextButton")
-		hitLeft.Size = UDim2.new(0, 20, 0, 20)
-		hitLeft.Position = UDim2.new(pctMin, -10, 0.5, -10)
+		hitLeft.Size = UDim2.new(0, 16, 0, 22)
+		hitLeft.Position = UDim2.new(pctMin, -8, 0.5, -11)
 		hitLeft.BackgroundTransparency = 1
 		hitLeft.Text = ""
 		hitLeft.ZIndex = 6
 		hitLeft.Parent = track
 		local hitRight = Instance.new("TextButton")
-		hitRight.Size = UDim2.new(0, 20, 0, 20)
-		hitRight.Position = UDim2.new(pctMax, -10, 0.5, -10)
+		hitRight.Size = UDim2.new(0, 16, 0, 22)
+		hitRight.Position = UDim2.new(pctMax, -8, 0.5, -11)
 		hitRight.BackgroundTransparency = 1
 		hitRight.Text = ""
 		hitRight.ZIndex = 6
@@ -5268,10 +5322,10 @@ function UILib.SubTab:addGroup(title)
 			pctMax = (currentMax - minVal) / (maxVal - minVal)
 			fill.Size = UDim2.new(pctMax - pctMin, 0, 1, 0)
 			fill.Position = UDim2.new(pctMin, 0, 0, 0)
-			knobLeft.Position = UDim2.new(pctMin, -7, 0.5, -7)
-			knobRight.Position = UDim2.new(pctMax, -7, 0.5, -7)
-			hitLeft.Position = UDim2.new(pctMin, -10, 0.5, -10)
-			hitRight.Position = UDim2.new(pctMax, -10, 0.5, -10)
+			knobLeft.Position = UDim2.new(pctMin, -4, 0.5, -9)
+			knobRight.Position = UDim2.new(pctMax, -4, 0.5, -9)
+			hitLeft.Position = UDim2.new(pctMin, -8, 0.5, -11)
+			hitRight.Position = UDim2.new(pctMax, -8, 0.5, -11)
 		end
 		local function apply(pos, which)
 			local rel = math.clamp((pos - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
