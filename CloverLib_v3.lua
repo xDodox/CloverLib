@@ -1240,20 +1240,32 @@ function UILib:setVisible(visible)
 		local cy = targetPos.Y.Offset + targetSize.Y.Offset * 0.5
 		self.window.Position = UDim2.new(0, cx, 0, cy)
 		self.window.Size = targetSize
-		-- Start: scaled down, overlay covering (opaque)
+		-- Keep scrollbars hidden until animation completes
+		for _, sf in ipairs(self.sg:GetDescendants()) do
+			if sf:IsA("ScrollingFrame") then sf.ScrollBarThickness = 0 end
+		end
 		self._winScale.Scale = 0.94
 		self._fadeOverlay.BackgroundTransparency = 0
 		self.window.Visible = true
-		-- Animate scale up
 		TweenService:Create(self._winScale,
-			TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 			{Scale = 1.0}
 		):Play()
-		-- Animate fade in (overlay becomes transparent = window appears)
-		TweenService:Create(self._fadeOverlay,
-			TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		local showTween = TweenService:Create(self._fadeOverlay,
+			TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 			{BackgroundTransparency = 1}
-		):Play()
+		)
+		showTween:Play()
+		showTween.Completed:Connect(function()
+			if not self._visibleTarget then return end
+			-- Restore scrollbars after animation
+			for _, sf in ipairs(self.sg:GetDescendants()) do
+				if sf:IsA("ScrollingFrame") then
+					local saved = sf:GetAttribute("_sbThick")
+					if saved then sf.ScrollBarThickness = saved end
+				end
+			end
+		end)
 	else
 		self._visibleTarget = false
 		self._trueSize = self.window.Size
@@ -1271,20 +1283,24 @@ function UILib:setVisible(visible)
 		self.window.Position = UDim2.new(0, cx, 0, cy)
 		for _, popup in ipairs(self.activePopups) do pcall(function() if popup then popup:Destroy() end end) end
 		self.activePopups = {}
-		-- Animate scale down
+		-- Hide all scrollbars immediately before animating out
+		for _, sf in ipairs(self.sg:GetDescendants()) do
+			if sf:IsA("ScrollingFrame") and sf.ScrollBarThickness > 0 then
+				sf:SetAttribute("_sbThick", sf.ScrollBarThickness)
+				sf.ScrollBarThickness = 0
+			end
+		end
 		TweenService:Create(self._winScale,
-			TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+			TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
 			{Scale = 0.94}
 		):Play()
-		-- Animate fade out (overlay covers window content)
 		local fadeTween = TweenService:Create(self._fadeOverlay,
-			TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+			TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
 			{BackgroundTransparency = 0}
 		)
 		fadeTween:Play()
 		fadeTween.Completed:Connect(function()
 			if self._visibleTarget then
-				-- Toggled back on before animation finished
 				self._winScale.Scale = 1
 				self._fadeOverlay.BackgroundTransparency = 1
 				return
@@ -1656,6 +1672,15 @@ function UILib:addTab(name, options)
 		end
 	end
 
+	-- Determine display mode:
+	--   iconOnly=true  → show icon only, no text (navbar stays 46px height)
+	--   textOnly=true  → show text only, no icon (default when no icon given)
+	--   default        → icon + text stacked (navbar expands to 58px)
+	local iconOnly = options.iconOnly == true and tabIconId ~= nil
+	local textOnly = options.textOnly == true or not tabIconId
+	local showIcon = tabIconId ~= nil and not textOnly
+	local showText = not iconOnly
+
 	local btn = Instance.new("TextButton")
 	btn.Size = UDim2.new(0, MIN_TAB_WIDTH, 0, self._navbarHeight or 46)
 	btn.BackgroundTransparency = 1
@@ -1663,30 +1688,45 @@ function UILib:addTab(name, options)
 	btn.AutoButtonColor = false
 	btn.Parent = self.navbar
 
-	-- Icon image — vertically grouped with text (13px gap between icon bottom and text top)
+	-- Icon image
 	local tabIcon = Instance.new("ImageLabel")
-	tabIcon.Size = UDim2.new(0, 14, 0, 14)
-	tabIcon.AnchorPoint = Vector2.new(0.5, 1)
-	tabIcon.Position = UDim2.new(0.5, 0, 0.5, -3)
+	tabIcon.Size = UDim2.new(0, 16, 0, 16)
+	tabIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+	if iconOnly then
+		-- Icon only: perfectly centered
+		tabIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
+	elseif showIcon then
+		-- Icon + text: icon sits above center, text below center
+		tabIcon.Position = UDim2.new(0.5, 0, 0.5, -9)
+	else
+		tabIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
+	end
 	tabIcon.BackgroundTransparency = 1
 	tabIcon.Image = tabIconId or ""
 	tabIcon.ImageColor3 = self.theme.Gray
 	tabIcon.ScaleType = Enum.ScaleType.Fit
 	tabIcon.ZIndex = 3
-	tabIcon.Visible = tabIconId ~= nil
+	tabIcon.Visible = showIcon
 	tabIcon.Parent = btn
 
-	-- Tab name label — anchored below icon (y=8+16+4=28) when icon present, else scale-centered
+	-- Tab name label
 	local tabLbl = Instance.new("TextLabel")
 	tabLbl.Size = UDim2.new(1, 0, 0, 13)
-	tabLbl.AnchorPoint = Vector2.new(0.5, 0)
-	tabLbl.Position = tabIconId and UDim2.new(0.5, 0, 0.5, 10) or UDim2.new(0.5, 0, 0.5, -6)
+	tabLbl.AnchorPoint = Vector2.new(0.5, 0.5)
+	if showIcon and showText then
+		-- Below icon
+		tabLbl.Position = UDim2.new(0.5, 0, 0.5, 9)
+	else
+		-- Centered (text only or icon only mode)
+		tabLbl.Position = UDim2.new(0.5, 0, 0.5, 0)
+	end
 	tabLbl.BackgroundTransparency = 1
 	tabLbl.Text = name:upper()
 	tabLbl.TextColor3 = self.theme.Gray
 	tabLbl.Font = Enum.Font.GothamBold
 	tabLbl.TextSize = 10
 	tabLbl.TextXAlignment = Enum.TextXAlignment.Center
+	tabLbl.Visible = showText
 	tabLbl.ZIndex = 3
 	tabLbl.Parent = btn
 
@@ -2123,7 +2163,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	valueLabel.Text = tostring(defaultVal)
 	valueLabel.TextColor3 = window.theme.Accent
 	valueLabel.Font = Enum.Font.RobotoMono
-	valueLabel.TextSize = 11
+	valueLabel.TextSize = 13
 	valueLabel.ZIndex = 4
 	valueLabel.Parent = valueBox
 	table.insert(window.accentObjects, valueLabel)
@@ -2184,7 +2224,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		val = roundToStep(val)
 		currentVal = val
 		local rel = (val - minVal) / (maxVal - minVal)
-		TweenService:Create(fill, TweenInfo.new(0.07, Enum.EasingStyle.Linear), {Size = UDim2.new(rel, 0, 1, 0)}):Play()
+		fill.Size = UDim2.new(rel, 0, 1, 0)
 		knob.Position = UDim2.new(rel, -6, 0.5, -6)
 		valueLabel.Text = tostring(val)
 		valueBoxInput.Text = tostring(val)
@@ -2894,25 +2934,35 @@ function UILib.Column:addGroup(title)
 	dragHandle.MouseEnter:Connect(function() dragHandle.TextColor3 = window.theme.GrayLt end)
 	dragHandle.MouseLeave:Connect(function() dragHandle.TextColor3 = window.theme.Border end)
 	do
-		local draggingGrp, dragStartPos, grpStartPos = false, nil, nil
+		local draggingGrp = false
+		local dragStartMouse, dragStartAbsPos = nil, nil
+		local origParent, origLayoutOrder
 		dragHandle.InputBegan:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 then
-				draggingGrp = true
-				dragStartPos = i.Position
-				grpStartPos = grp.Position
-			end
+			if i.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+			draggingGrp = true
+			dragStartMouse = Vector2.new(i.Position.X, i.Position.Y)
+			dragStartAbsPos = grp.AbsolutePosition
+			origParent = grp.Parent
+			origLayoutOrder = grp.LayoutOrder
+			-- Lift out of list layout so Position isn't overridden
+			grp.Size = UDim2.new(0, grp.AbsoluteSize.X, 0, grp.AbsoluteSize.Y)
+			grp.Position = UDim2.new(0, dragStartAbsPos.X, 0, dragStartAbsPos.Y)
+			grp.Parent = window.sg
+			grp.ZIndex = 200
 		end)
 		UIS.InputChanged:Connect(function(i)
-			if draggingGrp and i.UserInputType == Enum.UserInputType.MouseMovement then
-				local delta = i.Position - dragStartPos
-				grp.Position = UDim2.new(
-					grpStartPos.X.Scale, grpStartPos.X.Offset + delta.X,
-					grpStartPos.Y.Scale, grpStartPos.Y.Offset + delta.Y
-				)
-			end
+			if not draggingGrp then return end
+			if i.UserInputType ~= Enum.UserInputType.MouseMovement then return end
+			local delta = Vector2.new(i.Position.X - dragStartMouse.X, i.Position.Y - dragStartMouse.Y)
+			grp.Position = UDim2.new(0, dragStartAbsPos.X + delta.X, 0, dragStartAbsPos.Y + delta.Y)
 		end)
 		UIS.InputEnded:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 then draggingGrp = false end
+			if i.UserInputType ~= Enum.UserInputType.MouseButton1 or not draggingGrp then return end
+			draggingGrp = false
+			-- Drop back: restore to original parent, reset size to 100% width
+			grp.Parent = origParent
+			grp.Size = UDim2.new(1, 0, 0, grp.AbsoluteSize.Y)
+			grp.ZIndex = 1
 		end)
 	end
 
@@ -3397,7 +3447,7 @@ function UILib.Column:addGroup(title)
 		kbtn.BorderSizePixel = 0
 		kbtn.Text = currentName
 		kbtn.TextColor3 = window.theme.Accent
-		kbtn.Font = Enum.Font.GothamBold
+		kbtn.Font = Enum.Font.Roboto
 		kbtn.TextSize = 11
 		kbtn.AutoButtonColor = false
 		kbtn.ZIndex = 4
@@ -3501,7 +3551,7 @@ function UILib.Column:addGroup(title)
 			lbl.Position = UDim2.new(0.28, 0, 0, 0)
 			lbl.BackgroundTransparency = 1
 			lbl.Text = text:upper()
-			lbl.TextColor3 = window.theme.Border
+			lbl.TextColor3 = window.theme.Gray
 			lbl.Font = Enum.Font.GothamBold
 			lbl.TextSize = 9
 			lbl.ZIndex = 3
@@ -3583,7 +3633,7 @@ function UILib.Column:addGroup(title)
 			btn.BackgroundTransparency = 0
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
 			local bstroke = Instance.new("UIStroke", btn)
-			bstroke.Color = bgColor and Color3.new(bgColor.r*0.7, bgColor.g*0.7, bgColor.b*0.7) or Color3.fromRGB(50, 50, 60)
+			bstroke.Color = bgColor and Color3.new(bgColor.r*0.7, bgColor.g*0.7, bgColor.b*0.7) or window.theme.Border
 			bstroke.Thickness = 1
 			local rh = Instance.new("Frame")
 			rh.Size = UDim2.new(1, 0, 1, 0)
@@ -4184,13 +4234,13 @@ function UILib.Column:addGroup(title)
 		valueLabel.Parent = valueBox
 		table.insert(window.accentObjects, valueLabel)
 		local track = Instance.new("Frame")
-		track.Size = UDim2.new(1, 0, 0, 6)
+		track.Size = UDim2.new(1, 0, 0, 4)
 		track.Position = UDim2.new(0, 0, 0, 28)
 		track.BackgroundColor3 = window.theme.Track
 		track.BorderSizePixel = 0
 		track.ZIndex = 3
 		track.Parent = r
-		Instance.new("UICorner", track).CornerRadius = UDim.new(0, 3)
+		Instance.new("UICorner", track).CornerRadius = UDim.new(0, 2)
 		local pctMin = (defaultMin - minVal) / (maxVal - minVal)
 		local pctMax = (defaultMax - minVal) / (maxVal - minVal)
 		local fill = Instance.new("Frame")
@@ -4200,27 +4250,27 @@ function UILib.Column:addGroup(title)
 		fill.BorderSizePixel = 0
 		fill.ZIndex = 4
 		fill.Parent = track
-		Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 3)
+		Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 2)
 		local knobLeft = Instance.new("Frame")
-		knobLeft.Size = UDim2.new(0, 8, 0, 18)
-		knobLeft.Position = UDim2.new(pctMin, -4, 0.5, -9)
-		knobLeft.BackgroundColor3 = Color3.new(1, 1, 1)
+		knobLeft.Size = UDim2.new(0, 12, 0, 12)
+		knobLeft.Position = UDim2.new(pctMin, -6, 0.5, -6)
+		knobLeft.BackgroundColor3 = window.theme.BG
 		knobLeft.BorderSizePixel = 0
 		knobLeft.ZIndex = 5
 		knobLeft.Parent = track
-		Instance.new("UICorner", knobLeft).CornerRadius = UDim.new(0, 3)
+		Instance.new("UICorner", knobLeft).CornerRadius = UDim.new(1, 0)
 		local knobLeftStroke = Instance.new("UIStroke", knobLeft)
 		knobLeftStroke.Color = window.theme.Accent
 		knobLeftStroke.Thickness = 2
 		table.insert(window.accentObjects, knobLeftStroke)
 		local knobRight = Instance.new("Frame")
-		knobRight.Size = UDim2.new(0, 8, 0, 18)
-		knobRight.Position = UDim2.new(pctMax, -4, 0.5, -9)
-		knobRight.BackgroundColor3 = Color3.new(1, 1, 1)
+		knobRight.Size = UDim2.new(0, 12, 0, 12)
+		knobRight.Position = UDim2.new(pctMax, -6, 0.5, -6)
+		knobRight.BackgroundColor3 = window.theme.BG
 		knobRight.BorderSizePixel = 0
 		knobRight.ZIndex = 5
 		knobRight.Parent = track
-		Instance.new("UICorner", knobRight).CornerRadius = UDim.new(0, 3)
+		Instance.new("UICorner", knobRight).CornerRadius = UDim.new(1, 0)
 		local knobRightStroke = Instance.new("UIStroke", knobRight)
 		knobRightStroke.Color = window.theme.Accent
 		knobRightStroke.Thickness = 2
@@ -4249,10 +4299,10 @@ function UILib.Column:addGroup(title)
 			pctMax = (currentMax - minVal) / (maxVal - minVal)
 			fill.Size = UDim2.new(pctMax - pctMin, 0, 1, 0)
 			fill.Position = UDim2.new(pctMin, 0, 0, 0)
-			knobLeft.Position = UDim2.new(pctMin, -4, 0.5, -9)
-			knobRight.Position = UDim2.new(pctMax, -4, 0.5, -9)
-			hitLeft.Position = UDim2.new(pctMin, -8, 0.5, -11)
-			hitRight.Position = UDim2.new(pctMax, -8, 0.5, -11)
+			knobLeft.Position = UDim2.new(pctMin, -6, 0.5, -6)
+			knobRight.Position = UDim2.new(pctMax, -6, 0.5, -6)
+			hitLeft.Position = UDim2.new(pctMin, -10, 0.5, -11)
+			hitRight.Position = UDim2.new(pctMax, -10, 0.5, -11)
 		end
 		local function apply(pos, which)
 			local rel = math.clamp((pos - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
