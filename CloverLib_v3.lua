@@ -2742,20 +2742,19 @@ function UILib.Column:addGroup(title)
 	row.BackgroundTransparency = 1
 	row.Parent = grp
 
-	-- Icon label (hidden until group:setIcon() is called)
-	local iconLbl = Instance.new("TextLabel")
-	iconLbl.Size = UDim2.new(0, 18, 1, 0)
-	iconLbl.Position = UDim2.new(0, 8, 0, 0)
-	iconLbl.BackgroundTransparency = 1
-	iconLbl.Text = ""
-	iconLbl.TextColor3 = window.theme.Accent
-	iconLbl.Font = Enum.Font.GothamBold
-	iconLbl.TextSize = 14
-	iconLbl.TextXAlignment = Enum.TextXAlignment.Center
-	iconLbl.ZIndex = 2
-	iconLbl.Visible = false
-	iconLbl.Parent = row
-	table.insert(window.accentObjects, iconLbl)
+	-- Icon image (hidden until group:setIcon() is called)
+	-- Accepts "rbxassetid://NUMBER" or plain number string
+	local iconImg = Instance.new("ImageLabel")
+	iconImg.Size = UDim2.new(0, 16, 0, 16)
+	iconImg.Position = UDim2.new(0, 8, 0.5, -8)
+	iconImg.BackgroundTransparency = 1
+	iconImg.Image = ""
+	iconImg.ImageColor3 = window.theme.Accent
+	iconImg.ScaleType = Enum.ScaleType.Fit
+	iconImg.ZIndex = 2
+	iconImg.Visible = false
+	iconImg.Parent = row
+	table.insert(window.accentObjects, iconImg)
 
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, -52, 1, 0)
@@ -2834,37 +2833,42 @@ function UILib.Column:addGroup(title)
 	group.itemLayout = itemLayout
 	group.updateSize = updateSize
 
-	-- setIcon(icon): show an emoji/text icon on the left of the group title
-	function group:setIcon(icon)
-		if icon and icon ~= "" then
-			iconLbl.Text = icon
-			iconLbl.Visible = true
+	-- setIcon(assetId): show a Roblox image icon in the group header
+	-- Pass a number (e.g. 7743875413) or full string ("rbxassetid://7743875413")
+	function group:setIcon(assetId)
+		if assetId then
+			local id = tostring(assetId)
+			if not id:find("rbxassetid://") then id = "rbxassetid://" .. id end
+			iconImg.Image = id
+			iconImg.Visible = true
 			label.Position = UDim2.new(0, 30, 0, 0)
 			label.Size = UDim2.new(1, -54, 1, 0)
 		else
-			iconLbl.Visible = false
+			iconImg.Visible = false
 			label.Position = UDim2.new(0, 10, 0, 0)
 			label.Size = UDim2.new(1, -52, 1, 0)
 		end
 	end
 
-	-- applyRowIcon: helper used by toggle/button/slider/dropdown/colorpicker when icon param passed
-	local function applyRowIcon(rowFrame, mainLabel, icon, baseX)
-		if not icon or icon == "" then return end
-		local iLbl = Instance.new("TextLabel")
-		iLbl.Size = UDim2.new(0, 18, 1, 0)
-		iLbl.Position = UDim2.new(0, baseX or 4, 0, 0)
-		iLbl.BackgroundTransparency = 1
-		iLbl.Text = icon
-		iLbl.TextColor3 = window.theme.Accent
-		iLbl.Font = Enum.Font.GothamBold
-		iLbl.TextSize = 13
-		iLbl.TextXAlignment = Enum.TextXAlignment.Center
-		iLbl.ZIndex = (mainLabel.ZIndex or 3)
-		iLbl.Parent = rowFrame
-		table.insert(window.accentObjects, iLbl)
-		mainLabel.Position = UDim2.new(0, (baseX or 4) + 20, mainLabel.Position.Y.Scale, mainLabel.Position.Y.Offset)
-		mainLabel.Size = UDim2.new(mainLabel.Size.X.Scale, mainLabel.Size.X.Offset - 20, mainLabel.Size.Y.Scale, mainLabel.Size.Y.Offset)
+	-- applyRowIcon: inject a small ImageLabel on the left of any control row
+	-- assetId: number or "rbxassetid://..." string
+	local function applyRowIcon(rowFrame, mainLabel, assetId, baseX)
+		if not assetId then return end
+		local id = tostring(assetId)
+		if not id:find("rbxassetid://") then id = "rbxassetid://" .. id end
+		local iImg = Instance.new("ImageLabel")
+		iImg.Size = UDim2.new(0, 14, 0, 14)
+		iImg.Position = UDim2.new(0, baseX or 4, 0.5, -7)
+		iImg.BackgroundTransparency = 1
+		iImg.Image = id
+		iImg.ImageColor3 = window.theme.Accent
+		iImg.ScaleType = Enum.ScaleType.Fit
+		iImg.ZIndex = (mainLabel.ZIndex or 3)
+		iImg.Parent = rowFrame
+		table.insert(window.accentObjects, iImg)
+		-- Shift the label right to make room
+		mainLabel.Position = UDim2.new(0, (baseX or 4) + 18, mainLabel.Position.Y.Scale, mainLabel.Position.Y.Offset)
+		mainLabel.Size = UDim2.new(mainLabel.Size.X.Scale, mainLabel.Size.X.Offset - 18, mainLabel.Size.Y.Scale, mainLabel.Size.Y.Offset)
 	end
 
 	function group:paragraph(ptitle, text, tooltip)
