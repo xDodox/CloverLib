@@ -1165,7 +1165,10 @@ function UILib:_createUITab()
 		end
 	end, "Create and save a new config with the entered name")
 
-	cfg:dropdown("Load Config", self:listConfigs(), "", function(val)
+	local _initialConfigs = self:listConfigs()
+	if #_initialConfigs == 0 then _initialConfigs = {"(no configs)"} end
+	cfg:dropdown("Load Config", _initialConfigs, "", function(val)
+		if val == "" or val == "(no configs)" then return end
 		currentConfig = val
 		self:loadConfig(val)
 	end, "Select a saved config to load", function()
@@ -1235,78 +1238,41 @@ function UILib:setVisible(visible)
 		self._visibleTarget = true
 		local targetSize = self._trueSize or self.originalSize
 		local targetPos  = self._truePos  or self.originalPosition
-		self.window.AnchorPoint = Vector2.new(0.5, 0.5)
-		local cx = targetPos.X.Offset + targetSize.X.Offset * 0.5
-		local cy = targetPos.Y.Offset + targetSize.Y.Offset * 0.5
-		self.window.Position = UDim2.new(0, cx, 0, cy)
+		-- Restore true position (no AnchorPoint gymnastics needed)
+		self.window.AnchorPoint = Vector2.new(0, 0)
+		self.window.Position = targetPos
 		self.window.Size = targetSize
-		-- Keep scrollbars hidden until animation completes
-		for _, sf in ipairs(self.sg:GetDescendants()) do
-			if sf:IsA("ScrollingFrame") then sf.ScrollBarThickness = 0 end
-		end
-		self._winScale.Scale = 0.94
-		self._fadeOverlay.BackgroundTransparency = 0
+		self._fadeOverlay.BackgroundTransparency = 1
 		self.window.Visible = true
-		TweenService:Create(self._winScale,
-			TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-			{Scale = 1.0}
-		):Play()
-		local showTween = TweenService:Create(self._fadeOverlay,
-			TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		-- Fade in only — no scale, no shrink artefacts
+		self._fadeOverlay.BackgroundTransparency = 1
+		self.sg.Enabled = true
+		-- Brief fade from black overlay
+		self._fadeOverlay.BackgroundTransparency = 0
+		TweenService:Create(self._fadeOverlay,
+			TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 			{BackgroundTransparency = 1}
-		)
-		showTween:Play()
-		showTween.Completed:Connect(function()
-			if not self._visibleTarget then return end
-			-- Restore scrollbars after animation
-			for _, sf in ipairs(self.sg:GetDescendants()) do
-				if sf:IsA("ScrollingFrame") then
-					local saved = sf:GetAttribute("_sbThick")
-					if saved then sf.ScrollBarThickness = saved end
-				end
-			end
-		end)
+		):Play()
 	else
 		self._visibleTarget = false
+		-- Save position before hiding
 		self._trueSize = self.window.Size
-		local ap = self.window.AnchorPoint
-		self._truePos = UDim2.new(
-			self.window.Position.X.Scale,
-			self.window.Position.X.Offset - self.window.Size.X.Offset * ap.X,
-			self.window.Position.Y.Scale,
-			self.window.Position.Y.Offset - self.window.Size.Y.Offset * ap.Y
-		)
-		self.originalPosition = self._truePos
-		local cx = self._truePos.X.Offset + self._trueSize.X.Offset * 0.5
-		local cy = self._truePos.Y.Offset + self._trueSize.Y.Offset * 0.5
-		self.window.AnchorPoint = Vector2.new(0.5, 0.5)
-		self.window.Position = UDim2.new(0, cx, 0, cy)
+		self._truePos  = self.window.Position
 		for _, popup in ipairs(self.activePopups) do pcall(function() if popup then popup:Destroy() end end) end
 		self.activePopups = {}
-		-- Hide all scrollbars immediately before animating out
-		for _, sf in ipairs(self.sg:GetDescendants()) do
-			if sf:IsA("ScrollingFrame") and sf.ScrollBarThickness > 0 then
-				sf:SetAttribute("_sbThick", sf.ScrollBarThickness)
-				sf.ScrollBarThickness = 0
-			end
-		end
-		TweenService:Create(self._winScale,
-			TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-			{Scale = 0.94}
-		):Play()
+		-- Fade out only — no scale
+		self._fadeOverlay.BackgroundTransparency = 1
 		local fadeTween = TweenService:Create(self._fadeOverlay,
-			TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+			TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
 			{BackgroundTransparency = 0}
 		)
 		fadeTween:Play()
 		fadeTween.Completed:Connect(function()
 			if self._visibleTarget then
-				self._winScale.Scale = 1
 				self._fadeOverlay.BackgroundTransparency = 1
 				return
 			end
 			self.window.Visible = false
-			self._winScale.Scale = 1
 			self._fadeOverlay.BackgroundTransparency = 1
 		end)
 	end
@@ -2705,9 +2671,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	dbtn.ZIndex = 11
 	dbtn.Parent = row
 	Instance.new("UICorner", dbtn).CornerRadius = UDim.new(0, 4)
-	local dstroke = Instance.new("UIStroke", dbtn)
-	dstroke.Color = window.theme.Border
-	dstroke.Thickness = 1
+	-- No border on multidropdown button
 	local selLbl = Instance.new("TextLabel")
 	selLbl.Size = UDim2.new(1, -34, 1, 0)
 	selLbl.Position = UDim2.new(0, 10, 0, 0)
@@ -2742,11 +2706,8 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	dlist.Visible = false
 	dlist.ZIndex = 50
 	dlist.Parent = row
-	Instance.new("UICorner", dlist).CornerRadius = UDim.new(0, 4)
-	local listStroke = Instance.new("UIStroke", dlist)
-	listStroke.Color = window.theme.Border
-	listStroke.Thickness = 1
-	table.insert(window.accentObjects, listStroke)
+	Instance.new("UICorner", dlist).CornerRadius = UDim.new(0, 6)
+	-- No border on multidropdown list
 	local dlayout = Instance.new("UIListLayout", dlist)
 	dlayout.SortOrder = Enum.SortOrder.LayoutOrder
 	dlayout.Padding = UDim.new(0, 0)
@@ -2924,7 +2885,7 @@ function UILib.Column:addGroup(title)
 	dragHandle.Size = UDim2.new(0, 20, 1, 0)
 	dragHandle.Position = UDim2.new(1, -22, 0, 0)
 	dragHandle.BackgroundTransparency = 1
-	dragHandle.Text = "⠿"
+	dragHandle.Text = "···"
 	dragHandle.TextColor3 = window.theme.Border
 	dragHandle.Font = Enum.Font.GothamBold
 	dragHandle.TextSize = 14
@@ -3191,9 +3152,7 @@ function UILib.Column:addGroup(title)
 		dbtn.Parent = r
 		local dbtnCornerOrig = Instance.new("UICorner", dbtn)
 		dbtnCornerOrig.CornerRadius = UDim.new(0, 4)
-		local dstroke = Instance.new("UIStroke", dbtn)
-		dstroke.Color = window.theme.Border
-		dstroke.Thickness = 1
+		-- No border on closed dropdown button
 		local selLbl = Instance.new("TextLabel")
 		selLbl.Size = UDim2.new(1, -34, 1, 0)
 		selLbl.Position = UDim2.new(0, 10, 0, 0)
@@ -3234,11 +3193,7 @@ function UILib.Column:addGroup(title)
 		local dlistCorner = Instance.new("UICorner", dlist)
 		dlistCorner.CornerRadius = UDim.new(0, 6)
 		local dbtnCorner = dbtnCornerOrig  -- reuse the corner created earlier
-		local dstroke2 = Instance.new("UIStroke", dlist)
-		dstroke2.Color = window.theme.Accent
-		dstroke2.Transparency = 0.7
-		dstroke2.Thickness = 1
-		table.insert(window.accentObjects, dstroke2)
+		-- No border on dropdown list either
 		local dlayout = Instance.new("UIListLayout", dlist)
 		dlayout.SortOrder = Enum.SortOrder.LayoutOrder
 		dlayout.Padding = UDim.new(0, 0)
@@ -3440,28 +3395,26 @@ function UILib.Column:addGroup(title)
 		-- Keybind button: auto-width so short keys (E) are square, long keys (CapsLock) expand
 		local kbtn = Instance.new("TextButton")
 		kbtn.AutomaticSize = Enum.AutomaticSize.X
-		kbtn.Size = UDim2.new(0, 0, 0, 22)
+		kbtn.Size = UDim2.new(0, 0, 0, 20)
 		kbtn.AnchorPoint = Vector2.new(1, 0.5)
 		kbtn.Position = UDim2.new(1, -2, 0.5, 0)
-		kbtn.BackgroundColor3 = window.theme.Track
+		kbtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+		kbtn.BackgroundTransparency = 0.6
 		kbtn.BorderSizePixel = 0
 		kbtn.Text = currentName
-		kbtn.TextColor3 = window.theme.Accent
-		kbtn.Font = Enum.Font.Roboto
+		kbtn.TextColor3 = window.theme.GrayLt
+		kbtn.Font = Enum.Font.RobotoMono
 		kbtn.TextSize = 11
 		kbtn.AutoButtonColor = false
 		kbtn.ZIndex = 4
 		kbtn.Parent = r
-		Instance.new("UICorner", kbtn).CornerRadius = UDim.new(0, 4)
+		Instance.new("UICorner", kbtn).CornerRadius = UDim.new(0, 3)
 		local kbtnPad = Instance.new("UIPadding", kbtn)
-		kbtnPad.PaddingLeft = UDim.new(0, 8)
-		kbtnPad.PaddingRight = UDim.new(0, 8)
+		kbtnPad.PaddingLeft = UDim.new(0, 7)
+		kbtnPad.PaddingRight = UDim.new(0, 7)
 		local kstroke = Instance.new("UIStroke", kbtn)
-		kstroke.Color = window.theme.Accent
-		kstroke.Transparency = 0.4
+		kstroke.Color = window.theme.Border
 		kstroke.Thickness = 1
-		table.insert(window.accentObjects, kstroke)
-		table.insert(window.accentObjects, kbtn)
 		table.insert(window.keybindButtons, kbtn)
 		local listening = false
 		local skipNext = false
@@ -3472,15 +3425,17 @@ function UILib.Column:addGroup(title)
 			kbtn.Text = "..."
 			kbtn.TextColor3 = window.theme.White
 			kbtn.BackgroundColor3 = window.theme.Accent
+			kbtn.BackgroundTransparency = 0
 			kstroke.Color = window.theme.AccentD
 			local con
 			con = UIS.InputBegan:Connect(function(i)
 				if skipNext and i.UserInputType == Enum.UserInputType.MouseButton1 then skipNext = false return end
 				listening = false
 				con:Disconnect()
-				kbtn.BackgroundColor3 = window.theme.Track
-				kstroke.Color = window.theme.Accent
-				kstroke.Transparency = 0.4
+				kbtn.BackgroundColor3 = Color3.fromRGB(0,0,0)
+				kbtn.BackgroundTransparency = 0.6
+				kbtn.TextColor3 = window.theme.GrayLt
+				kstroke.Color = window.theme.Border
 				if i.KeyCode == Enum.KeyCode.Escape then kbtn.Text = currentName kbtn.TextColor3 = window.theme.Accent return end
 				local u = i.UserInputType
 				if u == Enum.UserInputType.Keyboard then
@@ -3629,7 +3584,9 @@ function UILib.Column:addGroup(title)
 			btn.MouseEnter:Connect(function() lbl.TextColor3 = window.theme.White end)
 			btn.MouseLeave:Connect(function() lbl.TextColor3 = color or window.theme.Accent end)
 		else
-			btn.BackgroundColor3 = bgColor or window.theme.Item
+			-- Use a slightly elevated background so the button is always distinct
+			local btnBg = bgColor or Color3.fromRGB(32, 32, 40)
+			btn.BackgroundColor3 = btnBg
 			btn.BackgroundTransparency = 0
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
 			local bstroke = Instance.new("UIStroke", btn)
@@ -3637,8 +3594,7 @@ function UILib.Column:addGroup(title)
 			bstroke.Thickness = 1
 			local rh = Instance.new("Frame")
 			rh.Size = UDim2.new(1, 0, 1, 0)
-			rh.BackgroundColor3 = window.theme.ItemHov
-			rh.BackgroundColor3 = bgColor and Color3.new(bgColor.r*0.85, bgColor.g*0.85, bgColor.b*0.85) or window.theme.ItemHov
+			rh.BackgroundColor3 = bgColor and Color3.new(bgColor.r*0.85, bgColor.g*0.85, bgColor.b*0.85) or Color3.fromRGB(44, 44, 54)
 			rh.Visible = false
 			rh.ZIndex = 2
 			rh.Parent = btn
