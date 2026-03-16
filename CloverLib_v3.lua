@@ -23,8 +23,8 @@ local DEFAULT_THEME = {
 	Panel = Color3.fromRGB(16, 16, 20),    -- sidebar / navbar
 	Item = Color3.fromRGB(22, 22, 28),     -- group card bg
 	ItemHov = Color3.fromRGB(32, 32, 40),  -- hover state
-	Accent = Color3.fromRGB(0, 255, 163),  -- green
-	AccentD = Color3.fromRGB(0, 180, 115), -- darker green
+	Accent = Color3.fromRGB(0, 210, 135),  -- green (slightly dimmed)
+	AccentD = Color3.fromRGB(0, 155,  95), -- darker green
 	White = Color3.new(1, 1, 1),
 	Gray = Color3.fromRGB(120, 120, 135),
 	GrayLt = Color3.fromRGB(175, 175, 190),
@@ -1649,6 +1649,8 @@ function UILib:addTab(name, options)
 				-- No icon on existing tabs: re-center text in taller button
 				if not existingTab.tabIconId then
 					existingTab.tabLbl.Position = UDim2.new(0.5, 0, 0.5, -6)
+				else
+					existingTab.tabLbl.Position = UDim2.new(0.5, 0, 0.5, 10)
 				end
 			end
 		end
@@ -1661,11 +1663,11 @@ function UILib:addTab(name, options)
 	btn.AutoButtonColor = false
 	btn.Parent = self.navbar
 
-	-- Icon image — centered horizontally, sits at y=7 from top (in 58px btn: icon=16px, gap=4px, text=13px → total=33px, centered = (58-33)/2=12.5 → y≈7)
+	-- Icon image — vertically grouped with text (13px gap between icon bottom and text top)
 	local tabIcon = Instance.new("ImageLabel")
-	tabIcon.Size = UDim2.new(0, 16, 0, 16)
-	tabIcon.AnchorPoint = Vector2.new(0.5, 0)
-	tabIcon.Position = UDim2.new(0.5, 0, 0, 8)
+	tabIcon.Size = UDim2.new(0, 14, 0, 14)
+	tabIcon.AnchorPoint = Vector2.new(0.5, 1)
+	tabIcon.Position = UDim2.new(0.5, 0, 0.5, -3)
 	tabIcon.BackgroundTransparency = 1
 	tabIcon.Image = tabIconId or ""
 	tabIcon.ImageColor3 = self.theme.Gray
@@ -1678,7 +1680,7 @@ function UILib:addTab(name, options)
 	local tabLbl = Instance.new("TextLabel")
 	tabLbl.Size = UDim2.new(1, 0, 0, 13)
 	tabLbl.AnchorPoint = Vector2.new(0.5, 0)
-	tabLbl.Position = tabIconId and UDim2.new(0.5, 0, 0, 28) or UDim2.new(0.5, 0, 0.5, -6)
+	tabLbl.Position = tabIconId and UDim2.new(0.5, 0, 0.5, 10) or UDim2.new(0.5, 0, 0.5, -6)
 	tabLbl.BackgroundTransparency = 1
 	tabLbl.Text = name:upper()
 	tabLbl.TextColor3 = self.theme.Gray
@@ -2155,16 +2157,16 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	local gradient = Instance.new("UIGradient", fill)
 	gradient.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, window.theme.Accent), ColorSequenceKeypoint.new(1, Color3.new(window.theme.Accent.r*0.8, window.theme.Accent.g*0.8, window.theme.Accent.b*0.8))})
 	local knob = Instance.new("Frame")
-	knob.Size = UDim2.new(0, 6, 0, 14)
-	knob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), -3, 0.5, -7)
-	knob.BackgroundColor3 = Color3.new(1, 1, 1)
+	knob.Size = UDim2.new(0, 12, 0, 12)
+	knob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), -6, 0.5, -6)
+	knob.BackgroundColor3 = window.theme.BG
 	knob.BorderSizePixel = 0
 	knob.ZIndex = 5
 	knob.Parent = track
-	Instance.new("UICorner", knob).CornerRadius = UDim.new(0, 3)
+	Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
 	local knobStroke = Instance.new("UIStroke", knob)
 	knobStroke.Color = window.theme.Accent
-	knobStroke.Thickness = 1.5
+	knobStroke.Thickness = 2
 	table.insert(window.accentObjects, fill)
 	table.insert(window.accentObjects, knobStroke)
 	local hit = Instance.new("TextButton")
@@ -2183,7 +2185,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		currentVal = val
 		local rel = (val - minVal) / (maxVal - minVal)
 		TweenService:Create(fill, TweenInfo.new(0.07, Enum.EasingStyle.Linear), {Size = UDim2.new(rel, 0, 1, 0)}):Play()
-		knob.Position = UDim2.new(rel, -3, 0.5, -7)
+		knob.Position = UDim2.new(rel, -6, 0.5, -6)
 		valueLabel.Text = tostring(val)
 		valueBoxInput.Text = tostring(val)
 		if callback then callback(val) end
@@ -3036,7 +3038,7 @@ function UILib.Column:addGroup(title)
 		cbOuter.Parent = r
 		Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
 		local cbStroke = Instance.new("UIStroke", cbOuter)
-		cbStroke.Color = default and window.theme.AccentD or window.theme.Border
+		cbStroke.Color = default and window.theme.AccentD or Color3.fromRGB(60, 80, 72)
 		cbStroke.Thickness = 1
 		local cbMark = Instance.new("TextLabel")
 		cbMark.Size = UDim2.new(1, 0, 1, 0)
@@ -3067,7 +3069,7 @@ function UILib.Column:addGroup(title)
 			TweenService:Create(cbOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
 				BackgroundColor3 = state and window.theme.Accent or window.theme.Track
 			}):Play()
-			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
+			cbStroke.Color = state and window.theme.AccentD or Color3.fromRGB(60, 80, 72)
 			cbMark.Text = state and "x" or ""
 			if callback then callback(state) end
 			if window.configs[id] then window.configs[id].Value = state end
@@ -3137,7 +3139,8 @@ function UILib.Column:addGroup(title)
 		dbtn.Text = ""
 		dbtn.ZIndex = 11
 		dbtn.Parent = r
-		Instance.new("UICorner", dbtn).CornerRadius = UDim.new(0, 4)
+		local dbtnCornerOrig = Instance.new("UICorner", dbtn)
+		dbtnCornerOrig.CornerRadius = UDim.new(0, 4)
 		local dstroke = Instance.new("UIStroke", dbtn)
 		dstroke.Color = window.theme.Border
 		dstroke.Thickness = 1
@@ -3169,7 +3172,7 @@ function UILib.Column:addGroup(title)
 		local listH = #options * itemH + 8
 		local dlist = Instance.new("ScrollingFrame")
 		dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 160))
-		dlist.Position = UDim2.new(0, 0, 0, 56)
+		dlist.Position = UDim2.new(0, 0, 0, 53)
 		dlist.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
 		dlist.BorderSizePixel = 0
 		dlist.ScrollBarThickness = listH > 160 and 2 or 0
@@ -3178,7 +3181,9 @@ function UILib.Column:addGroup(title)
 		dlist.Visible = false
 		dlist.ZIndex = 50
 		dlist.Parent = r
-		Instance.new("UICorner", dlist).CornerRadius = UDim.new(0, 6)
+		local dlistCorner = Instance.new("UICorner", dlist)
+		dlistCorner.CornerRadius = UDim.new(0, 6)
+		local dbtnCorner = dbtnCornerOrig  -- reuse the corner created earlier
 		local dstroke2 = Instance.new("UIStroke", dlist)
 		dstroke2.Color = window.theme.Accent
 		dstroke2.Transparency = 0.7
@@ -3304,17 +3309,22 @@ function UILib.Column:addGroup(title)
 
 		dbtn.MouseButton1Click:Connect(function()
 			open = not open
-			-- Rotate chevron 180° when open
+			-- Rotate chevron
 			TweenService:Create(arrow, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
 				Rotation = open and 180 or 0
 			}):Play()
 			if open then
+				-- Square bottom corners on button, square top on list = connected look
+				dbtnCorner.CornerRadius = UDim.new(0, 4)
+				dlistCorner.CornerRadius = UDim.new(0, 4)
 				dlist.Visible = true
 				dlist.Size = UDim2.new(1, 0, 0, 0)
 				TweenService:Create(dlist, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 					Size = UDim2.new(1, 0, 0, math.min(listH, 160))
 				}):Play()
 			else
+				dbtnCorner.CornerRadius = UDim.new(0, 4)
+				dlistCorner.CornerRadius = UDim.new(0, 4)
 				local tw = TweenService:Create(dlist, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 					Size = UDim2.new(1, 0, 0, 0)
 				})
@@ -3397,8 +3407,10 @@ function UILib.Column:addGroup(title)
 		kbtnPad.PaddingLeft = UDim.new(0, 8)
 		kbtnPad.PaddingRight = UDim.new(0, 8)
 		local kstroke = Instance.new("UIStroke", kbtn)
-		kstroke.Color = window.theme.Border
+		kstroke.Color = window.theme.Accent
+		kstroke.Transparency = 0.4
 		kstroke.Thickness = 1
+		table.insert(window.accentObjects, kstroke)
 		table.insert(window.accentObjects, kbtn)
 		table.insert(window.keybindButtons, kbtn)
 		local listening = false
@@ -3417,7 +3429,8 @@ function UILib.Column:addGroup(title)
 				listening = false
 				con:Disconnect()
 				kbtn.BackgroundColor3 = window.theme.Track
-				kstroke.Color = window.theme.Border
+				kstroke.Color = window.theme.Accent
+				kstroke.Transparency = 0.4
 				if i.KeyCode == Enum.KeyCode.Escape then kbtn.Text = currentName kbtn.TextColor3 = window.theme.Accent return end
 				local u = i.UserInputType
 				if u == Enum.UserInputType.Keyboard then
@@ -3793,7 +3806,7 @@ function UILib.Column:addGroup(title)
 		cbOuter.Parent = toggleRow
 		Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
 		local cbStroke = Instance.new("UIStroke", cbOuter)
-		cbStroke.Color = default and window.theme.AccentD or window.theme.Border
+		cbStroke.Color = default and window.theme.AccentD or Color3.fromRGB(60, 80, 72)
 		cbStroke.Thickness = 1
 		local cbMark = Instance.new("TextLabel")
 		cbMark.Size = UDim2.new(1, 0, 1, 0)
@@ -3891,7 +3904,7 @@ function UILib.Column:addGroup(title)
 		cbOuter.MouseButton1Click:Connect(function()
 			state = not state
 			cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track
-			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
+			cbStroke.Color = state and window.theme.AccentD or Color3.fromRGB(60, 80, 72)
 			cbMark.Text = state and "x" or ""
 			container.Size = UDim2.new(1, 0, 0, 34 + (state and contentLayout.AbsoluteContentSize.Y or 0))
 			updateSize()
