@@ -19,17 +19,17 @@ local RunService = game:GetService("RunService")
 
 local activeWindow = nil
 local DEFAULT_THEME = {
-	BG = Color3.fromRGB(20,20,20),
-	Panel = Color3.fromRGB(30,30,30),
-	Item = Color3.fromRGB(35,35,35),
-	ItemHov = Color3.fromRGB(45,45,45),
-	Accent = Color3.fromRGB(0,255,163),
-	AccentD = Color3.fromRGB(0,191,122),
-	White = Color3.new(1,1,1),
-	Gray = Color3.fromRGB(160,160,160),
-	GrayLt = Color3.fromRGB(200,200,200),
-	Border = Color3.fromRGB(50,50,50),
-	Track = Color3.fromRGB(60,60,60)
+	BG = Color3.fromRGB(10, 10, 12),       -- near-black window bg
+	Panel = Color3.fromRGB(16, 16, 20),    -- sidebar / navbar
+	Item = Color3.fromRGB(22, 22, 28),     -- group card bg
+	ItemHov = Color3.fromRGB(32, 32, 40),  -- hover state
+	Accent = Color3.fromRGB(0, 255, 163),  -- green
+	AccentD = Color3.fromRGB(0, 180, 115), -- darker green
+	White = Color3.new(1, 1, 1),
+	Gray = Color3.fromRGB(120, 120, 135),
+	GrayLt = Color3.fromRGB(175, 175, 190),
+	Border = Color3.fromRGB(38, 38, 50),   -- subtle borders
+	Track = Color3.fromRGB(30, 30, 38)     -- slider/input bg
 }
 
 local NOTIF_COLORS = {
@@ -2677,23 +2677,24 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	selLbl.TextXAlignment = Enum.TextXAlignment.Left
 	selLbl.ZIndex = 12
 	selLbl.Parent = dbtn
-	local arrow = Instance.new("TextLabel")
-	arrow.Size = UDim2.new(0, 24, 1, 0)
-	arrow.Position = UDim2.new(1, -26, 0, 0)
+	local arrow = Instance.new("ImageLabel")
+	arrow.Size = UDim2.new(0, 10, 0, 10)
+	arrow.AnchorPoint = Vector2.new(1, 0.5)
+	arrow.Position = UDim2.new(1, -10, 0.5, 0)
 	arrow.BackgroundTransparency = 1
-	arrow.Text = "▼"
-	arrow.TextColor3 = window.theme.Gray
-	arrow.Font = Enum.Font.GothamBold
-	arrow.TextSize = 12
+	arrow.Image = "rbxassetid://6034818379"
+	arrow.ImageColor3 = window.theme.Accent
+	arrow.ScaleType = Enum.ScaleType.Fit
 	arrow.ZIndex = 12
 	arrow.Parent = dbtn
-	local listH = #options * 27 + 6
+	table.insert(window.accentObjects, arrow)
+	local listH = #options * 28 + 8
 	local dlist = Instance.new("ScrollingFrame")
-	dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 135))
+	dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 160))
 	dlist.Position = UDim2.new(0, 0, 0, 56)
-	dlist.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	dlist.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
 	dlist.BorderSizePixel = 0
-	dlist.ScrollBarThickness = listH > 135 and 3 or 0
+	dlist.ScrollBarThickness = listH > 160 and 2 or 0
 	dlist.ScrollBarImageColor3 = window.theme.Accent
 	dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
 	dlist.Visible = false
@@ -2775,8 +2776,10 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	dbtn.MouseButton1Click:Connect(function()
 		open = not open
 		dlist.Visible = open
-		arrow.Text = open and "▲" or "▼"
-		row.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 135) or 0))
+		TweenService:Create(arrow, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+			Rotation = open and 180 or 0
+		}):Play()
+		row.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 160) or 0))
 		group.updateSize()
 	end)
 	local elem = {ID = id, Value = selected, SetValue = function(t)
@@ -3149,43 +3152,46 @@ function UILib.Column:addGroup(title)
 		selLbl.TextXAlignment = Enum.TextXAlignment.Left
 		selLbl.ZIndex = 12
 		selLbl.Parent = dbtn
-		local arrow = Instance.new("TextLabel")
-		arrow.Size = UDim2.new(0, 24, 1, 0)
-		arrow.Position = UDim2.new(1, -26, 0, 0)
+		-- Chevron arrow: ImageLabel so it renders cleanly at any size
+		local arrow = Instance.new("ImageLabel")
+		arrow.Size = UDim2.new(0, 10, 0, 10)
+		arrow.AnchorPoint = Vector2.new(1, 0.5)
+		arrow.Position = UDim2.new(1, -10, 0.5, 0)
 		arrow.BackgroundTransparency = 1
-		arrow.Text = "▼"
-		arrow.TextColor3 = window.theme.Accent
-		arrow.Font = Enum.Font.GothamBold
-		arrow.TextSize = 12
+		arrow.Image = "rbxassetid://6034818379"  -- chevron-down icon
+		arrow.ImageColor3 = window.theme.Accent
+		arrow.ScaleType = Enum.ScaleType.Fit
 		arrow.ZIndex = 12
 		arrow.Name = "arrow"
 		table.insert(window.accentObjects, arrow)
 		arrow.Parent = dbtn
-		local listH = #options * 27 + 6
+		local itemH = 28
+		local listH = #options * itemH + 8
 		local dlist = Instance.new("ScrollingFrame")
-		dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 135))
+		dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 160))
 		dlist.Position = UDim2.new(0, 0, 0, 56)
-		dlist.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+		dlist.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
 		dlist.BorderSizePixel = 0
-		dlist.ScrollBarThickness = listH > 135 and 3 or 0
+		dlist.ScrollBarThickness = listH > 160 and 2 or 0
 		dlist.ScrollBarImageColor3 = window.theme.Accent
 		dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
 		dlist.Visible = false
 		dlist.ZIndex = 50
 		dlist.Parent = r
-		table.insert(window.accentObjects, dlist)
-		Instance.new("UICorner", dlist).CornerRadius = UDim.new(0, 4)
+		Instance.new("UICorner", dlist).CornerRadius = UDim.new(0, 6)
 		local dstroke2 = Instance.new("UIStroke", dlist)
-		dstroke2.Color = window.theme.Border
+		dstroke2.Color = window.theme.Accent
+		dstroke2.Transparency = 0.7
 		dstroke2.Thickness = 1
+		table.insert(window.accentObjects, dstroke2)
 		local dlayout = Instance.new("UIListLayout", dlist)
 		dlayout.SortOrder = Enum.SortOrder.LayoutOrder
-		dlayout.Padding = UDim.new(0, 1)
+		dlayout.Padding = UDim.new(0, 0)
 		local dpad = Instance.new("UIPadding", dlist)
-		dpad.PaddingTop = UDim.new(0, 3)
-		dpad.PaddingBottom = UDim.new(0, 3)
-		dpad.PaddingLeft = UDim.new(0, 3)
-		dpad.PaddingRight = UDim.new(0, 3)
+		dpad.PaddingTop = UDim.new(0, 4)
+		dpad.PaddingBottom = UDim.new(0, 4)
+		dpad.PaddingLeft = UDim.new(0, 4)
+		dpad.PaddingRight = UDim.new(0, 4)
 
 		local checks = {}
 		local backgrounds = {}
@@ -3196,7 +3202,7 @@ function UILib.Column:addGroup(title)
 		local function closeDropdown()
 			open = false
 			dlist.Visible = false
-			arrow.Text = "▼"
+			arrow.Rotation = 0
 			r.Size = UDim2.new(1, 0, 0, 56)
 			updateSize()
 		end
@@ -3206,70 +3212,69 @@ function UILib.Column:addGroup(title)
 			checks = {}
 			backgrounds = {}
 			currentOptions = opts
-			listH = #opts * 27 + 6
+			listH = #opts * 28 + 8
 			dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
 			for _, opt in ipairs(opts) do
+				local isSelected = (opt == currentSelection)
 				local ob = Instance.new("TextButton")
-				ob.Size = UDim2.new(1, 0, 0, 26)
-				ob.BackgroundTransparency = 1
+				ob.Size = UDim2.new(1, 0, 0, 28)
+				ob.BackgroundColor3 = isSelected and Color3.fromRGB(18, 28, 24) or Color3.fromRGB(10, 10, 14)
+				ob.BackgroundTransparency = 0
+				ob.AutoButtonColor = false
 				ob.Text = ""
 				ob.ZIndex = 51
 				ob.Parent = dlist
-				local bg = Instance.new("Frame")
-				bg.Size = UDim2.new(1, -4, 1, -2)
-				bg.Position = UDim2.new(0, 2, 0, 1)
-				bg.BackgroundColor3 = window.theme.Accent
-				bg.BackgroundTransparency = 0.85
-				bg.BorderSizePixel = 0
-				bg.Visible = (opt == currentSelection)
-				bg.ZIndex = 50
-				bg.Parent = ob
-				Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 4)
-				backgrounds[opt] = bg
-				table.insert(window.accentObjects, bg)
-				local oh = Instance.new("Frame")
-				oh.Size = UDim2.new(1, -4, 1, -2)
-				oh.Position = UDim2.new(0, 2, 0, 1)
-				oh.BackgroundColor3 = window.theme.ItemHov
-				oh.BorderSizePixel = 0
-				oh.Visible = false
-				oh.ZIndex = 51
-				oh.Parent = ob
-				Instance.new("UICorner", oh).CornerRadius = UDim.new(0, 4)
+				-- Left accent bar shown on selected item
+				local bar = Instance.new("Frame")
+				bar.Size = UDim2.new(0, 2, 0, 14)
+				bar.Position = UDim2.new(0, 0, 0.5, -7)
+				bar.BackgroundColor3 = window.theme.Accent
+				bar.BorderSizePixel = 0
+				bar.Visible = isSelected
+				bar.ZIndex = 53
+				bar.Parent = ob
+				Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 1)
+				backgrounds[opt] = bar
+				table.insert(window.accentObjects, bar)
+				-- Option text
 				local ol = Instance.new("TextLabel")
-				ol.Size = UDim2.new(1, -22, 1, 0)
+				ol.Size = UDim2.new(1, -12, 1, 0)
 				ol.Position = UDim2.new(0, 10, 0, 0)
 				ol.BackgroundTransparency = 1
 				ol.Text = opt
-				ol.TextColor3 = (opt == currentSelection) and window.theme.White or window.theme.GrayLt
-				ol.Font = Enum.Font.Roboto
+				ol.TextColor3 = isSelected and window.theme.White or window.theme.Gray
+				ol.Font = isSelected and Enum.Font.GothamBold or Enum.Font.Roboto
 				ol.TextSize = 12
 				ol.TextXAlignment = Enum.TextXAlignment.Left
 				ol.ZIndex = 52
 				ol.Parent = ob
-				local ck = Instance.new("TextLabel")
-				ck.Size = UDim2.new(0, 14, 1, 0)
-				ck.Position = UDim2.new(1, -16, 0, 0)
-				ck.BackgroundTransparency = 1
-				ck.Text = (opt == currentSelection) and "✓" or ""
-				ck.TextColor3 = window.theme.Accent
-				ck.Font = Enum.Font.GothamBold
-				ck.TextSize = 11
-				ck.ZIndex = 52
-				ck.Parent = ob
-				checks[opt] = ck
-				table.insert(window.accentObjects, ck)
-				ob.MouseEnter:Connect(function() oh.Visible = true ol.TextColor3 = window.theme.White end)
-				ob.MouseLeave:Connect(function() oh.Visible = false if opt ~= currentSelection then ol.TextColor3 = window.theme.GrayLt end end)
+				checks[opt] = ol
+				ob.MouseEnter:Connect(function()
+					if opt ~= currentSelection then
+						TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = Color3.fromRGB(22, 22, 30)}):Play()
+						ol.TextColor3 = window.theme.GrayLt
+					end
+				end)
+				ob.MouseLeave:Connect(function()
+					if opt ~= currentSelection then
+						TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = Color3.fromRGB(10, 10, 14)}):Play()
+						ol.TextColor3 = window.theme.Gray
+					end
+				end)
 				ob.MouseButton1Click:Connect(function()
 					currentSelection = opt
 					selLbl.Text = opt
-					for o, ck2 in pairs(checks) do ck2.Text = (o == opt) and "✓" or "" end
+					for o, lbl2 in pairs(checks) do
+						local sel = (o == opt)
+						lbl2.TextColor3 = sel and window.theme.White or window.theme.Gray
+						lbl2.Font = sel and Enum.Font.GothamBold or Enum.Font.Roboto
+					end
 					for o, b in pairs(backgrounds) do b.Visible = (o == opt) end
 					for _, child in ipairs(dlist:GetChildren()) do
 						if child:IsA("TextButton") then
-							local l = child:FindFirstChildOfClass("TextLabel")
-							if l then l.TextColor3 = (l.Text == opt) and window.theme.White or window.theme.GrayLt end
+							local isSel = child:FindFirstChildOfClass("TextLabel") and
+								child:FindFirstChildOfClass("TextLabel").Text == opt
+							child.BackgroundColor3 = isSel and Color3.fromRGB(18, 28, 24) or Color3.fromRGB(10, 10, 14)
 						end
 					end
 					if callback then callback(opt) end
@@ -3299,12 +3304,15 @@ function UILib.Column:addGroup(title)
 
 		dbtn.MouseButton1Click:Connect(function()
 			open = not open
-			arrow.Text = open and "▲" or "▼"
+			-- Rotate chevron 180° when open
+			TweenService:Create(arrow, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+				Rotation = open and 180 or 0
+			}):Play()
 			if open then
 				dlist.Visible = true
 				dlist.Size = UDim2.new(1, 0, 0, 0)
 				TweenService:Create(dlist, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-					Size = UDim2.new(1, 0, 0, math.min(listH, 135))
+					Size = UDim2.new(1, 0, 0, math.min(listH, 160))
 				}):Play()
 			else
 				local tw = TweenService:Create(dlist, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
@@ -3313,7 +3321,7 @@ function UILib.Column:addGroup(title)
 				tw.Completed:Connect(function() dlist.Visible = false end)
 				tw:Play()
 			end
-			r.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 135) or 0))
+			r.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 160) or 0))
 			updateSize()
 		end)
 
@@ -3322,7 +3330,11 @@ function UILib.Column:addGroup(title)
 			SetValue = function(val)
 				currentSelection = val
 				selLbl.Text = val
-				for o, ck2 in pairs(checks) do ck2.Text = (o == val) and "✓" or "" end
+				for o, lbl2 in pairs(checks) do
+					local sel = (o == val)
+					lbl2.TextColor3 = sel and window.theme.White or window.theme.Gray
+					lbl2.Font = sel and Enum.Font.GothamBold or Enum.Font.Roboto
+				end
 				for o, b in pairs(backgrounds) do b.Visible = (o == val) end
 				if callback then callback(val) end
 			end,
