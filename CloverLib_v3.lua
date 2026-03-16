@@ -1206,9 +1206,29 @@ end
 
 function UILib:setVisible(visible)
 	if not self.window then return end
+
+	-- UIScale for the scale animation
 	if not self._winScale then
 		self._winScale = Instance.new("UIScale", self.window)
 		self._winScale.Scale = 1
+	end
+
+	-- Full-cover overlay Frame for the fade animation.
+	-- BackgroundTransparency 0 = black = fully hidden window content.
+	-- BackgroundTransparency 1 = transparent = window fully visible.
+	-- ClipsDescendants on the window means this covers everything inside.
+	if not self._fadeOverlay then
+		local overlay = Instance.new("Frame")
+		overlay.Name = "_FadeOverlay"
+		overlay.Size = UDim2.new(1, 0, 1, 0)
+		overlay.Position = UDim2.new(0, 0, 0, 0)
+		overlay.BackgroundColor3 = Color3.fromRGB(20, 20, 20)  -- matches BG
+		overlay.BackgroundTransparency = 1  -- start visible (transparent = no cover)
+		overlay.BorderSizePixel = 0
+		overlay.ZIndex = 998
+		overlay.Parent = self.window
+		Instance.new("UICorner", overlay).CornerRadius = UDim.new(0, 8)
+		self._fadeOverlay = overlay
 	end
 
 	if visible then
@@ -1220,18 +1240,19 @@ function UILib:setVisible(visible)
 		local cy = targetPos.Y.Offset + targetSize.Y.Offset * 0.5
 		self.window.Position = UDim2.new(0, cx, 0, cy)
 		self.window.Size = targetSize
-		self.window.Visible = true
-		-- Start from slightly scaled down + fully transparent
+		-- Start: scaled down, overlay covering (opaque)
 		self._winScale.Scale = 0.94
-		self.window.GroupTransparency = 1
-		-- Animate scale to 1 and fade in
+		self._fadeOverlay.BackgroundTransparency = 0
+		self.window.Visible = true
+		-- Animate scale up
 		TweenService:Create(self._winScale,
-			TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 			{Scale = 1.0}
 		):Play()
-		TweenService:Create(self.window,
-			TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-			{GroupTransparency = 0}
+		-- Animate fade in (overlay becomes transparent = window appears)
+		TweenService:Create(self._fadeOverlay,
+			TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{BackgroundTransparency = 1}
 		):Play()
 	else
 		self._visibleTarget = false
@@ -1250,26 +1271,27 @@ function UILib:setVisible(visible)
 		self.window.Position = UDim2.new(0, cx, 0, cy)
 		for _, popup in ipairs(self.activePopups) do pcall(function() if popup then popup:Destroy() end end) end
 		self.activePopups = {}
-		-- Animate scale down + fade out simultaneously
+		-- Animate scale down
 		TweenService:Create(self._winScale,
-			TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+			TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
 			{Scale = 0.94}
 		):Play()
-		local fadeTween = TweenService:Create(self.window,
-			TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-			{GroupTransparency = 1}
+		-- Animate fade out (overlay covers window content)
+		local fadeTween = TweenService:Create(self._fadeOverlay,
+			TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+			{BackgroundTransparency = 0}
 		)
 		fadeTween:Play()
 		fadeTween.Completed:Connect(function()
 			if self._visibleTarget then
-				-- Was re-shown during animation; restore
+				-- Toggled back on before animation finished
 				self._winScale.Scale = 1
-				self.window.GroupTransparency = 0
+				self._fadeOverlay.BackgroundTransparency = 1
 				return
 			end
 			self.window.Visible = false
 			self._winScale.Scale = 1
-			self.window.GroupTransparency = 0
+			self._fadeOverlay.BackgroundTransparency = 1
 		end)
 	end
 end
