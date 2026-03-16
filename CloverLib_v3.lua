@@ -1630,9 +1630,12 @@ function UILib:addTab(name, options)
 			if existingTab.tabLbl then
 				-- No icon on existing tabs: re-center text in taller button
 				if not existingTab.tabIconId then
-					existingTab.tabLbl.Position = UDim2.new(0.5, 0, 0.5, -6)
+					-- Text-only: keep full height, vertically centered text
+					existingTab.tabLbl.Size = UDim2.new(1, 0, 1, 0)
+					existingTab.tabLbl.Position = UDim2.new(0.5, 0, 0, 0)
+					existingTab.tabLbl.AnchorPoint = Vector2.new(0.5, 0)
 				else
-					existingTab.tabLbl.Position = UDim2.new(0.5, 0, 0.5, 10)
+					existingTab.tabLbl.Position = UDim2.new(0.5, 0, 0.5, 9)
 				end
 			end
 		end
@@ -1677,14 +1680,18 @@ function UILib:addTab(name, options)
 
 	-- Tab name label
 	local tabLbl = Instance.new("TextLabel")
-	tabLbl.Size = UDim2.new(1, 0, 0, 13)
+	tabLbl.Size = UDim2.new(1, 0, 1, 0)
 	tabLbl.AnchorPoint = Vector2.new(0.5, 0.5)
 	if showIcon and showText then
-		-- Below icon
+		-- Below icon: center of full-height label shifted down
 		tabLbl.Position = UDim2.new(0.5, 0, 0.5, 9)
+		tabLbl.AnchorPoint = Vector2.new(0.5, 0)
+		tabLbl.Size = UDim2.new(1, 0, 0, 13)
 	else
-		-- Centered (text only or icon only mode)
-		tabLbl.Position = UDim2.new(0.5, 0, 0.5, 0)
+		-- Text only or icon only: fill height and center text
+		tabLbl.Position = UDim2.new(0.5, 0, 0, 0)
+		tabLbl.AnchorPoint = Vector2.new(0.5, 0)
+		tabLbl.Size = UDim2.new(1, 0, 1, 0)
 	end
 	tabLbl.BackgroundTransparency = 1
 	tabLbl.Text = name:upper()
@@ -2697,7 +2704,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	local listH = #options * 28 + 8
 	local dlist = Instance.new("ScrollingFrame")
 	dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 160))
-	dlist.Position = UDim2.new(0, 0, 0, 56)
+	dlist.Position = UDim2.new(0, 0, 0, 54)
 	dlist.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
 	dlist.BorderSizePixel = 0
 	dlist.ScrollBarThickness = listH > 160 and 2 or 0
@@ -2706,8 +2713,17 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	dlist.Visible = false
 	dlist.ZIndex = 50
 	dlist.Parent = row
-	Instance.new("UICorner", dlist).CornerRadius = UDim.new(0, 6)
-	-- No border on multidropdown list
+	-- No UICorner - flat top connects to button
+	local multiBridge = Instance.new("Frame")
+	multiBridge.Size = UDim2.new(1, 0, 0, 6)
+	multiBridge.Position = UDim2.new(0, 0, 0, 48)
+	multiBridge.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
+	multiBridge.BorderSizePixel = 0
+	multiBridge.ZIndex = 49
+	multiBridge.Visible = false
+	multiBridge.Parent = row
+	local multiDbtnCorner = Instance.new("UICorner", dbtn)
+	multiDbtnCorner.CornerRadius = UDim.new(0, 4)
 	local dlayout = Instance.new("UIListLayout", dlist)
 	dlayout.SortOrder = Enum.SortOrder.LayoutOrder
 	dlayout.Padding = UDim.new(0, 0)
@@ -2715,59 +2731,65 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	local checks = {}
 	local backgrounds = {}
 	for _, opt in ipairs(options) do
+		local isSel = selected[opt] and true or false
 		local ob = Instance.new("TextButton")
-		ob.Size = UDim2.new(1, 0, 0, 26)
-		ob.BackgroundTransparency = 1
+		ob.Size = UDim2.new(1, 0, 0, 28)
+		ob.BackgroundColor3 = isSel and Color3.fromRGB(18, 28, 24) or Color3.fromRGB(10, 10, 14)
+		ob.BackgroundTransparency = 0
+		ob.AutoButtonColor = false
 		ob.Text = ""
 		ob.ZIndex = 51
 		ob.Parent = dlist
-		local bg = Instance.new("Frame")
-		bg.Size = UDim2.new(1, -4, 1, -2)
-		bg.Position = UDim2.new(0, 2, 0, 1)
-		bg.BackgroundColor3 = window.theme.Accent
-		bg.BackgroundTransparency = 0.8
-		bg.BorderSizePixel = 0
-		bg.Visible = selected[opt] and true or false
-		bg.ZIndex = 51
-		bg.Parent = ob
-		Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 4)
-		backgrounds[opt] = bg
-		local oh = Instance.new("Frame")
-		oh.Size = UDim2.new(1, -4, 1, -2)
-		oh.Position = UDim2.new(0, 2, 0, 1)
-		oh.BackgroundColor3 = window.theme.ItemHov
-		oh.BorderSizePixel = 0
-		oh.Visible = false
-		oh.ZIndex = 51
-		oh.Parent = ob
-		Instance.new("UICorner", oh).CornerRadius = UDim.new(0, 4)
+		-- Left accent bar for selected
+		local bar = Instance.new("Frame")
+		bar.Size = UDim2.new(0, 2, 0, 14)
+		bar.Position = UDim2.new(0, 0, 0.5, -7)
+		bar.BackgroundColor3 = window.theme.Accent
+		bar.BorderSizePixel = 0
+		bar.Visible = isSel
+		bar.ZIndex = 53
+		bar.Parent = ob
+		Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 1)
+		backgrounds[opt] = bar
+		table.insert(window.accentObjects, bar)
 		local ol = Instance.new("TextLabel")
-		ol.Size = UDim2.new(1, -22, 1, 0)
+		ol.Size = UDim2.new(1, -12, 1, 0)
 		ol.Position = UDim2.new(0, 10, 0, 0)
 		ol.BackgroundTransparency = 1
 		ol.Text = opt
-		ol.TextColor3 = window.theme.GrayLt
-		ol.Font = Enum.Font.Roboto
+		ol.TextColor3 = isSel and window.theme.White or window.theme.Gray
+		ol.Font = isSel and Enum.Font.GothamBold or Enum.Font.Roboto
 		ol.TextSize = 12
 		ol.TextXAlignment = Enum.TextXAlignment.Left
 		ol.ZIndex = 52
 		ol.Parent = ob
-		local ck = Instance.new("TextLabel")
-		ck.Size = UDim2.new(0, 18, 1, 0)
-		ck.Position = UDim2.new(1, -20, 0, 0)
-		ck.BackgroundTransparency = 1
-		ck.Text = selected[opt] and "×" or ""
-		ck.TextColor3 = window.theme.Accent
-		ck.Font = Enum.Font.GothamBold
-		ck.TextSize = 12
-		ck.ZIndex = 52
-		ck.Parent = ob
-		checks[opt] = ck
-		ob.MouseEnter:Connect(function() oh.Visible = true ol.TextColor3 = window.theme.White end)
-		ob.MouseLeave:Connect(function() oh.Visible = false ol.TextColor3 = window.theme.GrayLt end)
+		checks[opt] = ol
+		ob.MouseEnter:Connect(function()
+			if not selected[opt] then
+				TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = Color3.fromRGB(22, 22, 30)}):Play()
+				ol.TextColor3 = window.theme.GrayLt
+			end
+		end)
+		ob.MouseLeave:Connect(function()
+			if not selected[opt] then
+				TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = Color3.fromRGB(10, 10, 14)}):Play()
+				ol.TextColor3 = window.theme.Gray
+			end
+		end)
 		ob.MouseButton1Click:Connect(function()
-			if selected[opt] then selected[opt] = nil ck.Text = "" bg.Visible = false
-			else selected[opt] = true ck.Text = "×" bg.Visible = true end
+			if selected[opt] then
+				selected[opt] = nil
+				bar.Visible = false
+				ol.TextColor3 = window.theme.Gray
+				ol.Font = Enum.Font.Roboto
+				TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = Color3.fromRGB(10, 10, 14)}):Play()
+			else
+				selected[opt] = true
+				bar.Visible = true
+				ol.TextColor3 = window.theme.White
+				ol.Font = Enum.Font.GothamBold
+				TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = Color3.fromRGB(18, 28, 24)}):Play()
+			end
 			local keys = {}
 			for k, _ in pairs(selected) do table.insert(keys, k) end
 			selLbl.Text = #keys > 0 and table.concat(keys, ", ") or "None"
@@ -2778,10 +2800,26 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	local open = false
 	dbtn.MouseButton1Click:Connect(function()
 		open = not open
-		dlist.Visible = open
 		TweenService:Create(arrow, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
 			Rotation = open and 180 or 0
 		}):Play()
+		if open then
+			multiDbtnCorner.CornerRadius = UDim.new(0, 0)
+			multiBridge.Visible = true
+			dlist.Visible = true
+			dlist.Size = UDim2.new(1, 0, 0, 0)
+			TweenService:Create(dlist, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Size = UDim2.new(1, 0, 0, math.min(listH, 160))
+			}):Play()
+		else
+			multiDbtnCorner.CornerRadius = UDim.new(0, 4)
+			multiBridge.Visible = false
+			local tw = TweenService:Create(dlist, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				Size = UDim2.new(1, 0, 0, 0)
+			})
+			tw.Completed:Connect(function() dlist.Visible = false end)
+			tw:Play()
+		end
 		row.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 160) or 0))
 		group.updateSize()
 	end)
@@ -2920,10 +2958,8 @@ function UILib.Column:addGroup(title)
 		UIS.InputEnded:Connect(function(i)
 			if i.UserInputType ~= Enum.UserInputType.MouseButton1 or not draggingGrp then return end
 			draggingGrp = false
-			-- Drop back: restore to original parent, reset size to 100% width
-			grp.Parent = origParent
-			grp.Size = UDim2.new(1, 0, 0, grp.AbsoluteSize.Y)
-			grp.ZIndex = 1
+			-- Keep floating in sg — group stays where the user dropped it
+			-- (still interactive, just free-floating above the UI)
 		end)
 	end
 
@@ -3181,7 +3217,7 @@ function UILib.Column:addGroup(title)
 		local listH = #options * itemH + 8
 		local dlist = Instance.new("ScrollingFrame")
 		dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 160))
-		dlist.Position = UDim2.new(0, 0, 0, 53)
+		dlist.Position = UDim2.new(0, 0, 0, 54)
 		dlist.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
 		dlist.BorderSizePixel = 0
 		dlist.ScrollBarThickness = listH > 160 and 2 or 0
@@ -3190,8 +3226,18 @@ function UILib.Column:addGroup(title)
 		dlist.Visible = false
 		dlist.ZIndex = 50
 		dlist.Parent = r
+		-- No UICorner on list - flat top connects to button bottom
+		-- Bridge frame fills gap between button bottom and list top
+		local bridge = Instance.new("Frame")
+		bridge.Size = UDim2.new(1, 0, 0, 6)
+		bridge.Position = UDim2.new(0, 0, 0, 49)
+		bridge.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
+		bridge.BorderSizePixel = 0
+		bridge.ZIndex = 49
+		bridge.Visible = false
+		bridge.Parent = r
 		local dlistCorner = Instance.new("UICorner", dlist)
-		dlistCorner.CornerRadius = UDim.new(0, 6)
+		dlistCorner.CornerRadius = UDim.new(0, 0)
 		local dbtnCorner = dbtnCornerOrig  -- reuse the corner created earlier
 		-- No border on dropdown list either
 		local dlayout = Instance.new("UIListLayout", dlist)
@@ -3314,22 +3360,22 @@ function UILib.Column:addGroup(title)
 
 		dbtn.MouseButton1Click:Connect(function()
 			open = not open
-			-- Rotate chevron
 			TweenService:Create(arrow, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
 				Rotation = open and 180 or 0
 			}):Play()
 			if open then
-				-- Square bottom corners on button, square top on list = connected look
-				dbtnCorner.CornerRadius = UDim.new(0, 4)
-				dlistCorner.CornerRadius = UDim.new(0, 4)
+				-- Flatten button bottom corners to connect with list
+				dbtnCorner.CornerRadius = UDim.new(0, 0)
+				bridge.Visible = true
 				dlist.Visible = true
 				dlist.Size = UDim2.new(1, 0, 0, 0)
 				TweenService:Create(dlist, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 					Size = UDim2.new(1, 0, 0, math.min(listH, 160))
 				}):Play()
 			else
+				-- Restore button corners
 				dbtnCorner.CornerRadius = UDim.new(0, 4)
-				dlistCorner.CornerRadius = UDim.new(0, 4)
+				bridge.Visible = false
 				local tw = TweenService:Create(dlist, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 					Size = UDim2.new(1, 0, 0, 0)
 				})
@@ -3909,11 +3955,16 @@ function UILib.Column:addGroup(title)
 		if contentFunc then contentFunc(nestedGroup) end
 		cbOuter.MouseButton1Click:Connect(function()
 			state = not state
-			cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.Track
+			TweenService:Create(cbOuter, TweenInfo.new(0.12, Enum.EasingStyle.Quad), {
+				BackgroundColor3 = state and window.theme.Accent or window.theme.Track
+			}):Play()
 			cbStroke.Color = state and window.theme.AccentD or Color3.fromRGB(60, 80, 72)
 			cbMark.Text = state and "x" or ""
-			container.Size = UDim2.new(1, 0, 0, 34 + (state and contentLayout.AbsoluteContentSize.Y or 0))
-			updateSize()
+			local targetH = 34 + (state and contentLayout.AbsoluteContentSize.Y or 0)
+			TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Size = UDim2.new(1, 0, 0, targetH)
+			}):Play()
+			task.delay(0.2, updateSize)
 		end)
 		if tooltip then attachTooltip(toggleRow, tooltip) end
 		updateContentSize()
