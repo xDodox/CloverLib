@@ -1210,17 +1210,6 @@ function UILib:setVisible(visible)
 		self._winScale = Instance.new("UIScale", self.window)
 		self._winScale.Scale = 1
 	end
-	if not self._winTransparency then
-		-- We fade via a semi-transparent overlay frame instead of messing with all child transparencies
-		self._winTransparency = Instance.new("Frame")
-		self._winTransparency.Size = UDim2.new(1, 0, 1, 0)
-		self._winTransparency.BackgroundColor3 = Color3.new(0, 0, 0)
-		self._winTransparency.BackgroundTransparency = 1
-		self._winTransparency.BorderSizePixel = 0
-		self._winTransparency.ZIndex = 999
-		self._winTransparency.Visible = false
-		self._winTransparency.Parent = self.window
-	end
 
 	if visible then
 		self._visibleTarget = true
@@ -1231,11 +1220,18 @@ function UILib:setVisible(visible)
 		local cy = targetPos.Y.Offset + targetSize.Y.Offset * 0.5
 		self.window.Position = UDim2.new(0, cx, 0, cy)
 		self.window.Size = targetSize
-		self._winScale.Scale = 0.96
 		self.window.Visible = true
+		-- Start from slightly scaled down + fully transparent
+		self._winScale.Scale = 0.94
+		self.window.GroupTransparency = 1
+		-- Animate scale to 1 and fade in
 		TweenService:Create(self._winScale,
-			TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 			{Scale = 1.0}
+		):Play()
+		TweenService:Create(self.window,
+			TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{GroupTransparency = 0}
 		):Play()
 	else
 		self._visibleTarget = false
@@ -1254,18 +1250,26 @@ function UILib:setVisible(visible)
 		self.window.Position = UDim2.new(0, cx, 0, cy)
 		for _, popup in ipairs(self.activePopups) do pcall(function() if popup then popup:Destroy() end end) end
 		self.activePopups = {}
-		local tween = TweenService:Create(self._winScale,
-			TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-			{Scale = 0.96}
+		-- Animate scale down + fade out simultaneously
+		TweenService:Create(self._winScale,
+			TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+			{Scale = 0.94}
+		):Play()
+		local fadeTween = TweenService:Create(self.window,
+			TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+			{GroupTransparency = 1}
 		)
-		tween:Play()
-		tween.Completed:Connect(function()
+		fadeTween:Play()
+		fadeTween.Completed:Connect(function()
 			if self._visibleTarget then
+				-- Was re-shown during animation; restore
 				self._winScale.Scale = 1
+				self.window.GroupTransparency = 0
 				return
 			end
 			self.window.Visible = false
 			self._winScale.Scale = 1
+			self.window.GroupTransparency = 0
 		end)
 	end
 end
@@ -1976,12 +1980,12 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	step = step or 1
 	local id = generateID()
 	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, 0, 0, 50)
+	row.Size = UDim2.new(1, 0, 0, 42)
 	row.BackgroundTransparency = 1
 	row.Parent = items
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, -70, 0, 18)
-	label.Position = UDim2.new(0, 4, 0, 3)
+	label.Size = UDim2.new(1, -80, 0, 16)
+	label.Position = UDim2.new(0, 4, 0, 2)
 	label.BackgroundTransparency = 1
 	label.Text = text
 	label.TextColor3 = window.theme.GrayLt
@@ -1990,26 +1994,34 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.ZIndex = 3
 	label.Parent = row
+	-- Value box: auto-width so "50" is small, "10000" is wider
 	local valueBox = Instance.new("Frame")
-	valueBox.Size = UDim2.new(0, 60, 0, 22)
-	valueBox.Position = UDim2.new(1, -64, 0, 1)
+	valueBox.AutomaticSize = Enum.AutomaticSize.X
+	valueBox.Size = UDim2.new(0, 0, 0, 18)
+	valueBox.AnchorPoint = Vector2.new(1, 0)
+	valueBox.Position = UDim2.new(1, -2, 0, 2)
 	valueBox.BackgroundColor3 = window.theme.Track
 	valueBox.BorderSizePixel = 0
 	valueBox.ZIndex = 3
 	valueBox.Parent = row
 	Instance.new("UICorner", valueBox).CornerRadius = UDim.new(0, 4)
+	local _vbPad = Instance.new("UIPadding", valueBox)
+	_vbPad.PaddingLeft = UDim.new(0, 6)
+	_vbPad.PaddingRight = UDim.new(0, 6)
 	local valueLabel = Instance.new("TextLabel")
-	valueLabel.Size = UDim2.new(1, 0, 1, 0)
+	valueLabel.AutomaticSize = Enum.AutomaticSize.X
+	valueLabel.Size = UDim2.new(0, 0, 1, 0)
 	valueLabel.BackgroundTransparency = 1
 	valueLabel.Text = tostring(defaultVal)
 	valueLabel.TextColor3 = window.theme.Accent
 	valueLabel.Font = Enum.Font.RobotoMono
-	valueLabel.TextSize = 12
+	valueLabel.TextSize = 11
 	valueLabel.ZIndex = 4
 	valueLabel.Parent = valueBox
 	table.insert(window.accentObjects, valueLabel)
 	local valueBoxInput = Instance.new("TextBox")
-	valueBoxInput.Size = UDim2.new(1, 0, 1, 0)
+	valueBoxInput.AutomaticSize = Enum.AutomaticSize.X
+	valueBoxInput.Size = UDim2.new(0, 0, 1, 0)
 	valueBoxInput.BackgroundTransparency = 1
 	valueBoxInput.Text = tostring(defaultVal)
 	valueBoxInput.TextColor3 = window.theme.Accent
@@ -2020,8 +2032,8 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	valueBoxInput.Parent = valueBox
 	Instance.new("UICorner", valueBoxInput).CornerRadius = UDim.new(0, 4)
 	local track = Instance.new("Frame")
-	track.Size = UDim2.new(1, 0, 0, 6)
-	track.Position = UDim2.new(0, 0, 0, 34)
+	track.Size = UDim2.new(1, 0, 0, 4)
+	track.Position = UDim2.new(0, 0, 0, 28)
 	track.BackgroundColor3 = window.theme.Track
 	track.BorderSizePixel = 0
 	track.ZIndex = 3
@@ -2037,8 +2049,8 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	local gradient = Instance.new("UIGradient", fill)
 	gradient.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, window.theme.Accent), ColorSequenceKeypoint.new(1, Color3.new(window.theme.Accent.r*0.8, window.theme.Accent.g*0.8, window.theme.Accent.b*0.8))})
 	local knob = Instance.new("Frame")
-	knob.Size = UDim2.new(0, 8, 0, 18)
-	knob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), -4, 0.5, -9)
+	knob.Size = UDim2.new(0, 6, 0, 14)
+	knob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), -3, 0.5, -7)
 	knob.BackgroundColor3 = Color3.new(1, 1, 1)
 	knob.BorderSizePixel = 0
 	knob.ZIndex = 5
@@ -2065,7 +2077,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		currentVal = val
 		local rel = (val - minVal) / (maxVal - minVal)
 		TweenService:Create(fill, TweenInfo.new(0.07, Enum.EasingStyle.Linear), {Size = UDim2.new(rel, 0, 1, 0)}):Play()
-		knob.Position = UDim2.new(rel, -4, 0.5, -9)
+		knob.Position = UDim2.new(rel, -3, 0.5, -7)
 		valueLabel.Text = tostring(val)
 		valueBoxInput.Text = tostring(val)
 		if callback then callback(val) end
@@ -2117,8 +2129,8 @@ local function createColorPicker(group, items, window, text, default, callback)
 	label.ZIndex = 3
 	label.Parent = row
 	local colorBox = Instance.new("TextButton")
-	colorBox.Size = UDim2.new(0, 40, 0, 20)
-	colorBox.Position = UDim2.new(1, -44, 0.5, -10)
+	colorBox.Size = UDim2.new(0, 22, 0, 22)
+	colorBox.Position = UDim2.new(1, -26, 0.5, -11)
 	colorBox.BackgroundColor3 = default
 	colorBox.BorderSizePixel = 0
 	colorBox.ZIndex = 4
@@ -2183,7 +2195,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		local PAD = 10
 		local pickerW = 224
 		-- rows: tabs=22, sv=112, hue=12, alpha_lbl=14, alpha=12, hex=24, btns=26 + gaps
-		local pickerH = 308
+		local pickerH = 268
 
 		pickerFrame = Instance.new("TextButton")
 		pickerFrame.Size = UDim2.new(0, pickerW, 0, pickerH)
@@ -2469,27 +2481,6 @@ local function createColorPicker(group, items, window, text, default, callback)
 		copyBtn.Size = UDim2.new(0, 48, 1, 0)
 		copyBtn.Position = UDim2.new(1, -48, 0, 0)
 
-		-- ── ACTION BUTTONS ────────────────────────────────────────────────
-		local btnY = hexY + 26 + 8
-		local btnRow = Instance.new("Frame")
-		btnRow.Size = UDim2.new(1, -PAD*2, 0, 26)
-		btnRow.Position = UDim2.new(0, PAD, 0, btnY)
-		btnRow.BackgroundTransparency = 1
-		btnRow.Parent = pickerFrame
-
-		local resetBtn = makePickerBtn(btnRow, "Reset", 0, 1/3, false)
-		resetBtn.Size = UDim2.new(1/3, -3, 1, 0)
-		resetBtn.Position = UDim2.new(0, 0, 0, 0)
-
-		local applyBtn = makePickerBtn(btnRow, "Apply", 1/3, 1/3, false)
-		applyBtn.Size = UDim2.new(1/3, -3, 1, 0)
-		applyBtn.Position = UDim2.new(1/3, 2, 0, 0)
-
-		local pickBtn = makePickerBtn(btnRow, "Pick", 2/3, 1/3, true)
-		pickBtn.Size = UDim2.new(1/3, -3, 1, 0)
-		pickBtn.Position = UDim2.new(2/3, 4, 0, 0)
-		pickBtn.TextColor3 = window.theme.Accent
-
 		-- ── DRAG CONNECTIONS ─────────────────────────────────────────────
 		local pickerDragEndConn = UIS.InputEnded:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1 then hueDragging = false svDragging = false end
@@ -2502,7 +2493,8 @@ local function createColorPicker(group, items, window, text, default, callback)
 		satValSquare.InputChanged:Connect(function(input) if svDragging and input.UserInputType == Enum.UserInputType.MouseMovement then updateSV(input.Position) end end)
 
 		copyBtn.MouseButton1Click:Connect(function() pcall(setclipboard, hexBox.Text) end)
-		applyBtn.MouseButton1Click:Connect(function()
+		-- Apply hex on FocusLost (no separate Apply/Pick buttons needed — picker is live)
+		hexBox.FocusLost:Connect(function()
 			local ok, hexColor = pcall(Color3.fromHex, hexBox.Text:gsub("#", ""))
 			if ok then
 				current = hexColor
@@ -2511,21 +2503,6 @@ local function createColorPicker(group, items, window, text, default, callback)
 				satValKnob.Position = UDim2.new(s, -6, 1 - v, -6)
 				update()
 			end
-		end)
-		resetBtn.MouseButton1Click:Connect(function()
-			current = default
-			elem.Alpha = 0
-			alphaKnob.Position = UDim2.new(1, -7, 0.5, -7)
-			alphaValLbl.Text = "0%"
-			local h, s, v = Color3.toHSV(current)
-			hueKnob.Position = UDim2.new(h, -7, 0.5, -7)
-			satValKnob.Position = UDim2.new(s, -6, 1 - v, -6)
-			update()
-		end)
-		pickBtn.MouseButton1Click:Connect(function()
-			colorBox.BackgroundColor3 = current
-			if callback then callback(current) end
-			closePicker()
 		end)
 
 		-- ── CLOSE ON OUTSIDE CLICK ────────────────────────────────────────
@@ -2573,8 +2550,9 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	local dbtn = Instance.new("TextButton")
 	dbtn.Size = UDim2.new(1, 0, 0, 28)
 	dbtn.Position = UDim2.new(0, 0, 0, 26)
-	dbtn.BackgroundColor3 = window.theme.Track
+	dbtn.BackgroundColor3 = window.theme.BG
 	dbtn.BorderSizePixel = 0
+	dbtn.AutoButtonColor = false
 	dbtn.Text = ""
 	dbtn.ZIndex = 11
 	dbtn.Parent = row
@@ -2764,8 +2742,23 @@ function UILib.Column:addGroup(title)
 	row.BackgroundTransparency = 1
 	row.Parent = grp
 
+	-- Icon label (hidden until group:setIcon() is called)
+	local iconLbl = Instance.new("TextLabel")
+	iconLbl.Size = UDim2.new(0, 18, 1, 0)
+	iconLbl.Position = UDim2.new(0, 8, 0, 0)
+	iconLbl.BackgroundTransparency = 1
+	iconLbl.Text = ""
+	iconLbl.TextColor3 = window.theme.Accent
+	iconLbl.Font = Enum.Font.GothamBold
+	iconLbl.TextSize = 14
+	iconLbl.TextXAlignment = Enum.TextXAlignment.Center
+	iconLbl.ZIndex = 2
+	iconLbl.Visible = false
+	iconLbl.Parent = row
+	table.insert(window.accentObjects, iconLbl)
+
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, -30, 1, 0)
+	label.Size = UDim2.new(1, -52, 1, 0)
 	label.Position = UDim2.new(0, 10, 0, 0)
 	label.BackgroundTransparency = 1
 	label.Text = title:upper()
@@ -2775,6 +2768,43 @@ function UILib.Column:addGroup(title)
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.ZIndex = 2
 	label.Parent = row
+
+	-- Drag-to-reorder handle (top-right of group header)
+	local dragHandle = Instance.new("TextButton")
+	dragHandle.Size = UDim2.new(0, 20, 1, 0)
+	dragHandle.Position = UDim2.new(1, -22, 0, 0)
+	dragHandle.BackgroundTransparency = 1
+	dragHandle.Text = "⠿"
+	dragHandle.TextColor3 = window.theme.Border
+	dragHandle.Font = Enum.Font.GothamBold
+	dragHandle.TextSize = 14
+	dragHandle.AutoButtonColor = false
+	dragHandle.ZIndex = 6
+	dragHandle.Parent = row
+	dragHandle.MouseEnter:Connect(function() dragHandle.TextColor3 = window.theme.GrayLt end)
+	dragHandle.MouseLeave:Connect(function() dragHandle.TextColor3 = window.theme.Border end)
+	do
+		local draggingGrp, dragStartPos, grpStartPos = false, nil, nil
+		dragHandle.InputBegan:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1 then
+				draggingGrp = true
+				dragStartPos = i.Position
+				grpStartPos = grp.Position
+			end
+		end)
+		UIS.InputChanged:Connect(function(i)
+			if draggingGrp and i.UserInputType == Enum.UserInputType.MouseMovement then
+				local delta = i.Position - dragStartPos
+				grp.Position = UDim2.new(
+					grpStartPos.X.Scale, grpStartPos.X.Offset + delta.X,
+					grpStartPos.Y.Scale, grpStartPos.Y.Offset + delta.Y
+				)
+			end
+		end)
+		UIS.InputEnded:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1 then draggingGrp = false end
+		end)
+	end
 
 	local items = Instance.new("Frame")
 	items.Position = UDim2.new(0, 0, 0, 30)
@@ -2803,6 +2833,39 @@ function UILib.Column:addGroup(title)
 	group.items = items
 	group.itemLayout = itemLayout
 	group.updateSize = updateSize
+
+	-- setIcon(icon): show an emoji/text icon on the left of the group title
+	function group:setIcon(icon)
+		if icon and icon ~= "" then
+			iconLbl.Text = icon
+			iconLbl.Visible = true
+			label.Position = UDim2.new(0, 30, 0, 0)
+			label.Size = UDim2.new(1, -54, 1, 0)
+		else
+			iconLbl.Visible = false
+			label.Position = UDim2.new(0, 10, 0, 0)
+			label.Size = UDim2.new(1, -52, 1, 0)
+		end
+	end
+
+	-- applyRowIcon: helper used by toggle/button/slider/dropdown/colorpicker when icon param passed
+	local function applyRowIcon(rowFrame, mainLabel, icon, baseX)
+		if not icon or icon == "" then return end
+		local iLbl = Instance.new("TextLabel")
+		iLbl.Size = UDim2.new(0, 18, 1, 0)
+		iLbl.Position = UDim2.new(0, baseX or 4, 0, 0)
+		iLbl.BackgroundTransparency = 1
+		iLbl.Text = icon
+		iLbl.TextColor3 = window.theme.Accent
+		iLbl.Font = Enum.Font.GothamBold
+		iLbl.TextSize = 13
+		iLbl.TextXAlignment = Enum.TextXAlignment.Center
+		iLbl.ZIndex = (mainLabel.ZIndex or 3)
+		iLbl.Parent = rowFrame
+		table.insert(window.accentObjects, iLbl)
+		mainLabel.Position = UDim2.new(0, (baseX or 4) + 20, mainLabel.Position.Y.Scale, mainLabel.Position.Y.Offset)
+		mainLabel.Size = UDim2.new(mainLabel.Size.X.Scale, mainLabel.Size.X.Offset - 20, mainLabel.Size.Y.Scale, mainLabel.Size.Y.Offset)
+	end
 
 	function group:paragraph(ptitle, text, tooltip)
 		local r = Instance.new("Frame")
@@ -2842,7 +2905,7 @@ function UILib.Column:addGroup(title)
 		return ref
 	end
 
-	function group:toggle(text, default, callback, tooltip)
+	function group:toggle(text, default, callback, tooltip, icon)
 		local id = generateID()
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, 36)
@@ -2882,6 +2945,7 @@ function UILib.Column:addGroup(title)
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 4
 		lbl.Parent = r
+		if icon then applyRowIcon(r, lbl, icon, 4) end
 		local state = default
 		local elem = {ID = id, Value = state, DefaultValue = default, IsToggle = true, Mode = "toggle"}
 		elem.SetValue = function(val)
@@ -2915,14 +2979,18 @@ function UILib.Column:addGroup(title)
 		return elem
 	end
 
-	function group:slider(text, minVal, maxVal, defaultVal, callback, step, tooltip)
+	function group:slider(text, minVal, maxVal, defaultVal, callback, step, tooltip, icon)
 		local r, elem = createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step)
 		if tooltip then attachTooltip(r, tooltip) end
+		if icon then
+			local iLabel = r:FindFirstChildOfClass("TextLabel")
+			if iLabel then applyRowIcon(r, iLabel, icon, 4) end
+		end
 		updateSize()
 		return elem
 	end
 
-	function group:dropdown(text, options, default, callback, tooltip, refreshCallback)
+	function group:dropdown(text, options, default, callback, tooltip, refreshCallback, icon)
 		local id = generateID()
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, 56)
@@ -2944,19 +3012,21 @@ function UILib.Column:addGroup(title)
 		lbl.ZIndex = 11
 		lbl.Parent = r
 
+		if icon then applyRowIcon(r, lbl, icon, 4) end
 		local refreshBtn = buildDropdownRefreshBtn(r, window, refreshCallback)
 
 		local dbtn = Instance.new("TextButton")
 		dbtn.Size = UDim2.new(1, 0, 0, 32)
 		dbtn.Position = UDim2.new(0, 0, 0, 22)
-		dbtn.BackgroundColor3 = window.theme.Track
+		dbtn.BackgroundColor3 = window.theme.BG
 		dbtn.BorderSizePixel = 0
+		dbtn.AutoButtonColor = false
 		dbtn.Text = ""
 		dbtn.ZIndex = 11
 		dbtn.Parent = r
 		Instance.new("UICorner", dbtn).CornerRadius = UDim.new(0, 4)
 		local dstroke = Instance.new("UIStroke", dbtn)
-		dstroke.Color = Color3.fromRGB(70, 70, 85)
+		dstroke.Color = window.theme.Border
 		dstroke.Thickness = 1
 		local selLbl = Instance.new("TextLabel")
 		selLbl.Size = UDim2.new(1, -34, 1, 0)
@@ -3185,19 +3255,25 @@ function UILib.Column:addGroup(title)
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 3
 		lbl.Parent = r
-		local kw = math.max(MIN_KEYBIND_WIDTH, math.min(MAX_KEYBIND_WIDTH, math.floor(window.size.X * 0.13)))
+		-- Keybind button: auto-width so short keys (E) are square, long keys (CapsLock) expand
 		local kbtn = Instance.new("TextButton")
-		kbtn.Size = UDim2.new(0, kw, 0, 22)
-		kbtn.Position = UDim2.new(1, -(kw + 2), 0.5, -11)
+		kbtn.AutomaticSize = Enum.AutomaticSize.X
+		kbtn.Size = UDim2.new(0, 0, 0, 22)
+		kbtn.AnchorPoint = Vector2.new(1, 0.5)
+		kbtn.Position = UDim2.new(1, -2, 0.5, 0)
 		kbtn.BackgroundColor3 = window.theme.Track
 		kbtn.BorderSizePixel = 0
 		kbtn.Text = currentName
 		kbtn.TextColor3 = window.theme.Accent
 		kbtn.Font = Enum.Font.GothamBold
 		kbtn.TextSize = 11
+		kbtn.AutoButtonColor = false
 		kbtn.ZIndex = 4
 		kbtn.Parent = r
 		Instance.new("UICorner", kbtn).CornerRadius = UDim.new(0, 4)
+		local kbtnPad = Instance.new("UIPadding", kbtn)
+		kbtnPad.PaddingLeft = UDim.new(0, 8)
+		kbtnPad.PaddingRight = UDim.new(0, 8)
 		local kstroke = Instance.new("UIStroke", kbtn)
 		kstroke.Color = window.theme.Border
 		kstroke.Thickness = 1
@@ -3209,7 +3285,7 @@ function UILib.Column:addGroup(title)
 			if listening then return end
 			listening = true
 			skipNext = true
-			kbtn.Text = "[...]"
+			kbtn.Text = "..."
 			kbtn.TextColor3 = window.theme.White
 			kbtn.BackgroundColor3 = window.theme.Accent
 			kstroke.Color = window.theme.AccentD
@@ -3316,7 +3392,7 @@ function UILib.Column:addGroup(title)
 		return f
 	end
 
-	function group:button(text, callback, tooltip, align, color, style, bgColor)
+	function group:button(text, callback, tooltip, align, color, style, bgColor, icon)
 		style = style or "bg"
 		local btn = Instance.new("TextButton")
 		btn.Size = UDim2.new(1, 0, 0, 32)
@@ -3395,6 +3471,7 @@ function UILib.Column:addGroup(title)
 			lbl.TextXAlignment = align or Enum.TextXAlignment.Left
 			lbl.ZIndex = 4
 			lbl.Parent = btn
+			if icon then applyRowIcon(btn, lbl, icon, 4) end
 		end
 
 		btn.MouseButton1Click:Connect(callback)
@@ -3819,9 +3896,13 @@ function UILib.Column:addGroup(title)
 		return container
 	end
 
-	function group:colorpicker(text, default, callback, tooltip)
+	function group:colorpicker(text, default, callback, tooltip, icon)
 		local r, elem = createColorPicker(group, items, window, text, default, callback)
 		if tooltip then attachTooltip(r, tooltip) end
+		if icon then
+			local iLabel = r:FindFirstChildOfClass("TextLabel")
+			if iLabel then applyRowIcon(r, iLabel, icon, 4) end
+		end
 		updateSize()
 		return elem
 	end
