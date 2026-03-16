@@ -378,7 +378,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		local sw = getSidebarWidth()
 		local showSidebar = not self.activeTab or self.activeTab.showSidebar ~= false
 		if self.sidebar then
-			self.sidebar.Size = UDim2.new(0, sw, 1, -92)
+			self.sidebar.Size = UDim2.new(0, sw, 1, -104)
 			self.sidebar.Visible = showSidebar
 			for _, sub in ipairs(self.allSubTabs) do
 				if sub.btn then
@@ -390,14 +390,14 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		if self.sidebarEdge then
 			self.sidebarEdge.Visible = showSidebar
 			self.sidebarEdge.Position = UDim2.new(0, sw, 0, 46)
-			self.sidebarEdge.Size = UDim2.new(0, 1, 1, -92)
+			self.sidebarEdge.Size = UDim2.new(0, 1, 1, -104)
 		end
 		if self.content then
 			if showSidebar then
-				self.content.Size = UDim2.new(0, self.size.X - sw - 1, 1, -92)
+				self.content.Size = UDim2.new(0, self.size.X - sw - 1, 1, -104)
 				self.content.Position = UDim2.new(0, sw + 1, 0, 46)
 			else
-				self.content.Size = UDim2.new(0, self.size.X, 1, -92)
+				self.content.Size = UDim2.new(0, self.size.X, 1, -104)
 				self.content.Position = UDim2.new(0, 0, 0, 46)
 			end
 		end
@@ -526,7 +526,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	local initialSW = getSidebarWidth()
 
 	local sidebar = Instance.new("ScrollingFrame")
-	sidebar.Size = UDim2.new(0, initialSW, 1, -92)
+	sidebar.Size = UDim2.new(0, initialSW, 1, -104)
 	sidebar.Position = UDim2.new(0, 0, 0, 46)
 	sidebar.BackgroundColor3 = self.theme.Panel
 	sidebar.BackgroundTransparency = 0
@@ -546,7 +546,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	sidebarPad.PaddingBottom = UDim.new(0, 4)
 
 	local sidebarEdge = Instance.new("Frame")
-	sidebarEdge.Size = UDim2.new(0, 1, 1, -92)
+	sidebarEdge.Size = UDim2.new(0, 1, 1, -104)
 	sidebarEdge.Position = UDim2.new(0, initialSW, 0, 46)
 	sidebarEdge.BackgroundColor3 = self.theme.Border
 	sidebarEdge.BorderSizePixel = 0
@@ -554,7 +554,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	self.sidebarEdge = sidebarEdge
 
 	local content = Instance.new("ScrollingFrame")
-	content.Size = UDim2.new(0, size.X - initialSW - 1, 1, -92)
+	content.Size = UDim2.new(0, size.X - initialSW - 1, 1, -104)
 	content.Position = UDim2.new(0, initialSW + 1, 0, 46)
 	content.BackgroundColor3 = self.theme.BG
 	content.BorderSizePixel = 0
@@ -565,7 +565,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	self.content = content
 
 	local tabOverlay = Instance.new("Frame")
-	tabOverlay.Size = UDim2.new(1, 0, 1, -92)
+	tabOverlay.Size = UDim2.new(1, 0, 1, -104)
 	tabOverlay.Position = UDim2.new(0, 0, 0, 46)
 	tabOverlay.BackgroundColor3 = self.theme.BG
 	tabOverlay.BackgroundTransparency = 1
@@ -576,8 +576,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	self.tabOverlay = tabOverlay
 
 	local navbar = Instance.new("ScrollingFrame")
-	navbar.Size = UDim2.new(1, 0, 0, 46)
-	navbar.Position = UDim2.new(0, 0, 1, -46)
+	navbar.Size = UDim2.new(1, 0, 0, 58)
+	navbar.Position = UDim2.new(0, 0, 1, -58)
 	navbar.BackgroundColor3 = self.theme.Panel
 	navbar.BorderSizePixel = 0
 	navbar.ScrollBarThickness = 0
@@ -606,7 +606,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			self._navScrollEnabled = true
 			navbar.ClipsDescendants = true
 			for _, child in ipairs(navbar:GetChildren()) do
-				if child:IsA("TextButton") then child.Size = UDim2.new(0, 90, 0, 46) end
+				if child:IsA("TextButton") then child.Size = UDim2.new(0, 90, 0, 58) end
 			end
 		end
 	end
@@ -1589,27 +1589,74 @@ function UILib:addTab(name, options)
 	end
 	self._refreshTabWidths = refreshTabWidths
 
+	-- Resolve icon asset id (number or "rbxassetid://..." string or nil)
+	local tabIconId = options.icon
+	if tabIconId then
+		local s = tostring(tabIconId)
+		if not s:find("rbxassetid://") then s = "rbxassetid://" .. s end
+		tabIconId = s
+	end
+
 	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(0, MIN_TAB_WIDTH, 0, 46)
+	btn.Size = UDim2.new(0, MIN_TAB_WIDTH, 0, 58)
 	btn.BackgroundTransparency = 1
-	btn.Text = name:upper()
-	btn.TextColor3 = self.theme.Gray
-	btn.Font = Enum.Font.GothamBold
-	btn.TextSize = 12
+	btn.Text = ""
+	btn.AutoButtonColor = false
 	btn.Parent = self.navbar
+
+	-- Icon image (shown above text when options.icon provided)
+	local tabIcon = Instance.new("ImageLabel")
+	tabIcon.Size = UDim2.new(0, 16, 0, 16)
+	tabIcon.AnchorPoint = Vector2.new(0.5, 0)
+	tabIcon.Position = tabIconId and UDim2.new(0.5, 0, 0, 8) or UDim2.new(0.5, 0, 0, -100)
+	tabIcon.BackgroundTransparency = 1
+	tabIcon.Image = tabIconId or ""
+	tabIcon.ImageColor3 = self.theme.Gray
+	tabIcon.ScaleType = Enum.ScaleType.Fit
+	tabIcon.ZIndex = 3
+	tabIcon.Visible = tabIconId ~= nil
+	tabIcon.Parent = btn
+
+	-- Tab name label (below icon when icon present, centered when no icon)
+	local tabLbl = Instance.new("TextLabel")
+	tabLbl.Size = UDim2.new(1, 0, 0, 14)
+	tabLbl.AnchorPoint = Vector2.new(0.5, 1)
+	tabLbl.Position = tabIconId and UDim2.new(0.5, 0, 1, -8) or UDim2.new(0.5, 0, 0.5, 7)
+	tabLbl.BackgroundTransparency = 1
+	tabLbl.Text = name:upper()
+	tabLbl.TextColor3 = self.theme.Gray
+	tabLbl.Font = Enum.Font.GothamBold
+	tabLbl.TextSize = 10
+	tabLbl.TextXAlignment = Enum.TextXAlignment.Center
+	tabLbl.ZIndex = 3
+	tabLbl.Parent = btn
 
 	task.defer(refreshTabWidths)
 	local underline = Instance.new("Frame")
-	underline.Size = UDim2.new(0.55, 0, 0, 2)
-	underline.Position = UDim2.new(0.225, 0, 1, -3)
+	underline.Size = UDim2.new(0.5, 0, 0, 2)
+	underline.AnchorPoint = Vector2.new(0.5, 1)
+	underline.Position = UDim2.new(0.5, 0, 1, -1)
 	underline.BackgroundColor3 = self.theme.Accent
 	underline.BorderSizePixel = 0
 	underline.Visible = false
 	underline.Parent = btn
 	table.insert(self.accentObjects, underline)
-	btn.MouseEnter:Connect(function() if btn.TextColor3 ~= self.theme.White then btn.TextColor3 = self.theme.GrayLt end end)
-	btn.MouseLeave:Connect(function() if btn.TextColor3 ~= self.theme.White then btn.TextColor3 = self.theme.Gray end end)
+	btn.MouseEnter:Connect(function()
+		if tabLbl.TextColor3 ~= self.theme.White then
+			tabLbl.TextColor3 = self.theme.GrayLt
+			if tabIconId then tabIcon.ImageColor3 = self.theme.GrayLt end
+		end
+	end)
+	btn.MouseLeave:Connect(function()
+		if tabLbl.TextColor3 ~= self.theme.White then
+			tabLbl.TextColor3 = self.theme.Gray
+			if tabIconId then tabIcon.ImageColor3 = self.theme.Gray end
+		end
+	end)
 	tab.btn = btn
+	tab.tabLbl = tabLbl
+	tab.tabIcon = tabIcon
+	tab.tabIconId = tabIconId
 	tab.underline = underline
 
 	local function activate()
@@ -1627,10 +1674,12 @@ function UILib:addTab(name, options)
 			end
 		end
 		if self.activeTab then
-			self.activeTab.btn.TextColor3 = self.theme.Gray
+			if self.activeTab.tabLbl then self.activeTab.tabLbl.TextColor3 = self.theme.Gray end
+			if self.activeTab.tabIcon and self.activeTab.tabIconId then self.activeTab.tabIcon.ImageColor3 = self.theme.Gray end
 			if self.activeTab.underline then self.activeTab.underline.Visible = false end
 		end
-		btn.TextColor3 = self.theme.White
+		tabLbl.TextColor3 = self.theme.White
+		if tabIconId then tabIcon.ImageColor3 = self.theme.Accent end
 		underline.Visible = true
 		for _, sub in pairs(tab.subtabOrder) do
 			if sub.btn then sub.btn.Visible = true end
@@ -1647,10 +1696,10 @@ function UILib:addTab(name, options)
 		self.sidebarEdge.Visible = showSidebar
 		local sw = math.max(MIN_SIDEBAR_WIDTH, math.min(MAX_SIDEBAR_WIDTH, math.floor(self.size.X * 0.22)))
 		if showSidebar then
-			self.content.Size = UDim2.new(0, self.size.X - sw - 1, 1, -92)
+			self.content.Size = UDim2.new(0, self.size.X - sw - 1, 1, -104)
 			self.content.Position = UDim2.new(0, sw + 1, 0, 46)
 		else
-			self.content.Size = UDim2.new(0, self.size.X, 1, -92)
+			self.content.Size = UDim2.new(0, self.size.X, 1, -104)
 			self.content.Position = UDim2.new(0, 0, 0, 46)
 		end
 	end
