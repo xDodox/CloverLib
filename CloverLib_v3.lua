@@ -563,6 +563,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	content.ScrollBarThickness = 0
 	content.CanvasSize = UDim2.new(0, 0, 0, 0)
 	content.ScrollingDirection = Enum.ScrollingDirection.XY
+	content.ClipsDescendants = true
 	self.content = content
 
 	local tabOverlay = Instance.new("Frame")
@@ -2913,53 +2914,7 @@ function UILib.Column:addGroup(title)
 	label.ZIndex = 2
 	label.Parent = row
 
-	-- Drag-to-reorder handle (top-right of group header)
-	local dragHandle = Instance.new("TextButton")
-	dragHandle.Size = UDim2.new(0, 20, 1, 0)
-	dragHandle.Position = UDim2.new(1, -22, 0, 0)
-	dragHandle.BackgroundTransparency = 1
-	dragHandle.Text = "···"
-	dragHandle.TextColor3 = window.theme.Border
-	dragHandle.Font = Enum.Font.GothamBold
-	dragHandle.TextSize = 14
-	dragHandle.AutoButtonColor = false
-	dragHandle.ZIndex = 6
-	dragHandle.Parent = row
-	dragHandle.MouseEnter:Connect(function() dragHandle.TextColor3 = window.theme.GrayLt end)
-	dragHandle.MouseLeave:Connect(function() dragHandle.TextColor3 = window.theme.Border end)
-	do
-		local draggingGrp = false
-		local dragStartMouse, dragStartAbsPos = nil, nil
-		local origParent, origLayoutOrder
-		dragHandle.InputBegan:Connect(function(i)
-			if i.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
-			draggingGrp = true
-			dragStartMouse = Vector2.new(i.Position.X, i.Position.Y)
-			dragStartAbsPos = grp.AbsolutePosition
-			origParent = grp.Parent
-			origLayoutOrder = grp.LayoutOrder
-			-- Lift out of list layout so Position isn't overridden
-			grp.Size = UDim2.new(0, grp.AbsoluteSize.X, 0, grp.AbsoluteSize.Y)
-			grp.Position = UDim2.new(0, dragStartAbsPos.X, 0, dragStartAbsPos.Y)
-			grp.Parent = window.sg
-			grp.ZIndex = 200
-		end)
-		UIS.InputChanged:Connect(function(i)
-			if not draggingGrp then return end
-			if i.UserInputType ~= Enum.UserInputType.MouseMovement then return end
-			local delta = Vector2.new(i.Position.X - dragStartMouse.X, i.Position.Y - dragStartMouse.Y)
-			grp.Position = UDim2.new(0, dragStartAbsPos.X + delta.X, 0, dragStartAbsPos.Y + delta.Y)
-		end)
-		UIS.InputEnded:Connect(function(i)
-			if i.UserInputType ~= Enum.UserInputType.MouseButton1 or not draggingGrp then return end
-			draggingGrp = false
-			-- Snap back into the column layout
-			grp.Parent = origParent
-			grp.Size = UDim2.new(1, 0, 0, grp.AbsoluteSize.Y)
-			grp.Position = UDim2.new(0, 0, 0, 0)
-			grp.ZIndex = 1
-		end)
-	end
+	-- (drag handle removed - caused groups to escape window bounds)
 
 	local items = Instance.new("Frame")
 	items.Position = UDim2.new(0, 0, 0, 30)
