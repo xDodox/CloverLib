@@ -588,14 +588,15 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	navbar.ClipsDescendants = true
 	navbar.Parent = win
 	Instance.new("UICorner", navbar).CornerRadius = UDim.new(0, 6)
-	-- Top separator line instead of UIStroke (which clips content in ScrollingFrame)
+	-- Separator line as sibling of navbar (NOT inside) to avoid UIListLayout interference
 	local navTopLine = Instance.new("Frame")
 	navTopLine.Size = UDim2.new(1, 0, 0, 1)
-	navTopLine.Position = UDim2.new(0, 0, 0, 0)
+	navTopLine.Position = UDim2.new(0, 0, 1, -46)
 	navTopLine.BackgroundColor3 = self.theme.Border
 	navTopLine.BorderSizePixel = 0
 	navTopLine.ZIndex = 10
-	navTopLine.Parent = navbar
+	navTopLine.Parent = win
+	self._navTopLine = navTopLine
 	self.navbar = navbar
 	local navList = Instance.new("UIListLayout", navbar)
 	navList.FillDirection = Enum.FillDirection.Horizontal
@@ -1602,6 +1603,8 @@ function UILib:addTab(name, options)
 		self._navbarHeight = 58
 		self.navbar.Size = UDim2.new(1, 0, 0, 58)
 		self.navbar.Position = UDim2.new(0, 0, 1, -58)
+		-- Move the separator line to match navbar top
+		if self._navTopLine then self._navTopLine.Position = UDim2.new(0, 0, 1, -58) end
 		-- Adjust sidebar, content, sidebarEdge to account for taller navbar
 		local sw = self.sidebar and self.sidebar.Size.X.Offset or 120
 		if self.sidebar then self.sidebar.Size = UDim2.new(0, sw, 1, -104) end
