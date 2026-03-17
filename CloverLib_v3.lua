@@ -365,6 +365,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	self.window = win
 	self.originalPosition = win.Position
 	self.originalSize = win.Size
+	self._visibleTarget = true
 
 	local function getSidebarWidth()
 		return math.max(MIN_SIDEBAR_WIDTH, math.min(MAX_SIDEBAR_WIDTH, math.floor(self.size.X * 0.22)))
@@ -587,9 +588,14 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	navbar.ClipsDescendants = true
 	navbar.Parent = win
 	Instance.new("UICorner", navbar).CornerRadius = UDim.new(0, 6)
-	local navbarStroke = Instance.new("UIStroke", navbar)
-	navbarStroke.Color = self.theme.Border
-	navbarStroke.Thickness = 1
+	-- Top separator line instead of UIStroke (which clips content in ScrollingFrame)
+	local navTopLine = Instance.new("Frame")
+	navTopLine.Size = UDim2.new(1, 0, 0, 1)
+	navTopLine.Position = UDim2.new(0, 0, 0, 0)
+	navTopLine.BackgroundColor3 = self.theme.Border
+	navTopLine.BorderSizePixel = 0
+	navTopLine.ZIndex = 10
+	navTopLine.Parent = navbar
 	self.navbar = navbar
 	local navList = Instance.new("UIListLayout", navbar)
 	navList.FillDirection = Enum.FillDirection.Horizontal
@@ -1210,69 +1216,56 @@ end
 function UILib:setVisible(visible)
 	if not self.window then return end
 
-	-- UIScale for the scale animation
-	if not self._winScale then
-		self._winScale = Instance.new("UIScale", self.window)
-		self._winScale.Scale = 1
-	end
-
-	-- Full-cover overlay Frame for the fade animation.
-	-- BackgroundTransparency 0 = black = fully hidden window content.
-	-- BackgroundTransparency 1 = transparent = window fully visible.
-	-- ClipsDescendants on the window means this covers everything inside.
+	-- Blackout overlay lives in the ScreenGui so it covers everything (navbar, header, content)
 	if not self._fadeOverlay then
 		local overlay = Instance.new("Frame")
 		overlay.Name = "_FadeOverlay"
 		overlay.Size = UDim2.new(1, 0, 1, 0)
 		overlay.Position = UDim2.new(0, 0, 0, 0)
-		overlay.BackgroundColor3 = Color3.fromRGB(20, 20, 20)  -- matches BG
-		overlay.BackgroundTransparency = 1  -- start visible (transparent = no cover)
+		overlay.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
+		overlay.BackgroundTransparency = 1
 		overlay.BorderSizePixel = 0
-		overlay.ZIndex = 998
-		overlay.Parent = self.window
-		Instance.new("UICorner", overlay).CornerRadius = UDim.new(0, 8)
+		overlay.ZIndex = 9999
+		overlay.Parent = self.sg
 		self._fadeOverlay = overlay
 	end
 
 	if visible then
+		if self._visibleTarget then return end
 		self._visibleTarget = true
+		local targetPos = self._truePos or self.originalPosition
 		local targetSize = self._trueSize or self.originalSize
-		local targetPos  = self._truePos  or self.originalPosition
-		-- Restore true position (no AnchorPoint gymnastics needed)
-		self.window.AnchorPoint = Vector2.new(0, 0)
 		self.window.Position = targetPos
 		self.window.Size = targetSize
-		self._fadeOverlay.BackgroundTransparency = 1
-		self.window.Visible = true
-		-- Fade in only — no scale, no shrink artefacts
-		self._fadeOverlay.BackgroundTransparency = 1
-		self.sg.Enabled = true
-		-- Brief fade from black overlay
 		self._fadeOverlay.BackgroundTransparency = 0
+		self.sg.Enabled = true
+		self.window.Visible = true
 		TweenService:Create(self._fadeOverlay,
-			TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 			{BackgroundTransparency = 1}
 		):Play()
 	else
+		if not self._visibleTarget then return end
 		self._visibleTarget = false
-		-- Save position before hiding
-		self._trueSize = self.window.Size
 		self._truePos  = self.window.Position
-		for _, popup in ipairs(self.activePopups) do pcall(function() if popup then popup:Destroy() end end) end
+		self._trueSize = self.window.Size
+		for _, popup in ipairs(self.activePopups) do
+			pcall(function() if popup then popup:Destroy() end end)
+		end
 		self.activePopups = {}
-		-- Fade out only — no scale
 		self._fadeOverlay.BackgroundTransparency = 1
-		local fadeTween = TweenService:Create(self._fadeOverlay,
-			TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+		local t = TweenService:Create(self._fadeOverlay,
+			TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
 			{BackgroundTransparency = 0}
 		)
-		fadeTween:Play()
-		fadeTween.Completed:Connect(function()
+		t:Play()
+		t.Completed:Connect(function()
 			if self._visibleTarget then
 				self._fadeOverlay.BackgroundTransparency = 1
 				return
 			end
 			self.window.Visible = false
+			self.sg.Enabled = false
 			self._fadeOverlay.BackgroundTransparency = 1
 		end)
 	end
@@ -1630,12 +1623,12 @@ function UILib:addTab(name, options)
 			if existingTab.tabLbl then
 				-- No icon on existing tabs: re-center text in taller button
 				if not existingTab.tabIconId then
-					-- Text-only: keep full height, vertically centered text
+					-- Text-only: fill full height with centered text
 					existingTab.tabLbl.Size = UDim2.new(1, 0, 1, 0)
 					existingTab.tabLbl.Position = UDim2.new(0.5, 0, 0, 0)
 					existingTab.tabLbl.AnchorPoint = Vector2.new(0.5, 0)
 				else
-					existingTab.tabLbl.Position = UDim2.new(0.5, 0, 0.5, 9)
+					existingTab.tabLbl.Position = UDim2.new(0.5, 0, 0.5, 8)
 				end
 			end
 		end
@@ -1680,28 +1673,27 @@ function UILib:addTab(name, options)
 
 	-- Tab name label
 	local tabLbl = Instance.new("TextLabel")
-	tabLbl.Size = UDim2.new(1, 0, 1, 0)
-	tabLbl.AnchorPoint = Vector2.new(0.5, 0.5)
-	if showIcon and showText then
-		-- Below icon: center of full-height label shifted down
-		tabLbl.Position = UDim2.new(0.5, 0, 0.5, 9)
-		tabLbl.AnchorPoint = Vector2.new(0.5, 0)
-		tabLbl.Size = UDim2.new(1, 0, 0, 13)
-	else
-		-- Text only or icon only: fill height and center text
-		tabLbl.Position = UDim2.new(0.5, 0, 0, 0)
-		tabLbl.AnchorPoint = Vector2.new(0.5, 0)
-		tabLbl.Size = UDim2.new(1, 0, 1, 0)
-	end
+	tabLbl.AnchorPoint = Vector2.new(0.5, 0)
 	tabLbl.BackgroundTransparency = 1
 	tabLbl.Text = name:upper()
 	tabLbl.TextColor3 = self.theme.Gray
 	tabLbl.Font = Enum.Font.GothamBold
 	tabLbl.TextSize = 10
 	tabLbl.TextXAlignment = Enum.TextXAlignment.Center
+	tabLbl.TextYAlignment = Enum.TextYAlignment.Center
 	tabLbl.Visible = showText
 	tabLbl.ZIndex = 3
 	tabLbl.Parent = btn
+
+	if showIcon and showText then
+		-- Icon + text stacked: icon centered slightly above, text label below
+		tabLbl.Size = UDim2.new(1, 0, 0, 14)
+		tabLbl.Position = UDim2.new(0.5, 0, 0.5, 8)
+	else
+		-- Text only OR icon only: full height label, text centered
+		tabLbl.Size = UDim2.new(1, 0, 1, 0)
+		tabLbl.Position = UDim2.new(0.5, 0, 0, 0)
+	end
 
 	task.defer(refreshTabWidths)
 	local underline = Instance.new("Frame")
@@ -2958,8 +2950,11 @@ function UILib.Column:addGroup(title)
 		UIS.InputEnded:Connect(function(i)
 			if i.UserInputType ~= Enum.UserInputType.MouseButton1 or not draggingGrp then return end
 			draggingGrp = false
-			-- Keep floating in sg — group stays where the user dropped it
-			-- (still interactive, just free-floating above the UI)
+			-- Snap back into the column layout
+			grp.Parent = origParent
+			grp.Size = UDim2.new(1, 0, 0, grp.AbsoluteSize.Y)
+			grp.Position = UDim2.new(0, 0, 0, 0)
+			grp.ZIndex = 1
 		end)
 	end
 
