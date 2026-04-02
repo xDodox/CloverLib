@@ -17,7 +17,8 @@ local LP = Players.LocalPlayer
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
-local activeWindow = nil
+-- Registry of all live windows (multi-window support)
+local allWindows = {}
 local DEFAULT_THEME = {
 	BG = Color3.fromRGB(10, 10, 12),       -- near-black window bg
 	Panel = Color3.fromRGB(16, 16, 20),    -- sidebar / navbar
@@ -39,66 +40,92 @@ local NOTIF_COLORS = {
 	warning = Color3.fromRGB(255, 180, 50),
 }
 
-local contextMenuFrame = nil
+-- Tooltip and context-menu state is now per-window (see newWindow).
+-- These module-level stubs are kept so the pre-window attachTooltip local
+-- function (defined below) has something to close over until newWindow
+-- creates real per-window versions.
 local contextMenuConnections = {}
 
-local tooltipFrame = nil
-local tooltipText = nil
-local tooltipTimer = nil
-local tooltipActiveElement = nil
+-- Per-window tooltip helpers are created inside newWindow and stored on self.
+-- The module-level attachTooltip (defined once below) uses self._tooltipFns
+-- which is set by newWindow.
+local function _makeTooltipSystem(sg, theme, connections)
+	local tooltipFrame = Instance.new("Frame")
+	tooltipFrame.BackgroundColor3 = theme.Panel
+	tooltipFrame.BorderSizePixel = 0
+	tooltipFrame.Visible = false
+	tooltipFrame.ZIndex = 1000
+	tooltipFrame.Parent = sg
+	Instance.new("UICorner", tooltipFrame).CornerRadius = UDim.new(0, 4)
+	local tipPadding = Instance.new("UIPadding", tooltipFrame)
+	tipPadding.PaddingLeft  = UDim.new(0, 6)
+	tipPadding.PaddingRight = UDim.new(0, 6)
+	tipPadding.PaddingTop    = UDim.new(0, 4)
+	tipPadding.PaddingBottom = UDim.new(0, 4)
+	local tooltipText = Instance.new("TextLabel")
+	tooltipText.Size = UDim2.new(1, 0, 1, 0)
+	tooltipText.BackgroundTransparency = 1
+	tooltipText.TextColor3 = theme.White
+	tooltipText.Font = Enum.Font.Roboto
+	tooltipText.TextSize = 12
+	tooltipText.TextWrapped = true
+	tooltipText.ZIndex = 1001
+	tooltipText.Parent = tooltipFrame
 
-local function showTooltip(text, element)
-	if not tooltipFrame or not element then return end
-	local mp = UIS:GetMouseLocation()
-	if element and element.AbsolutePosition and element.AbsoluteSize then
-		local ap, as = element.AbsolutePosition, element.AbsoluteSize
-		if mp.X < ap.X or mp.X > ap.X + as.X or mp.Y < ap.Y or mp.Y > ap.Y + as.Y then
-			return
+	local tooltipTimer = nil
+	local tooltipActiveElement = nil
+
+	local function showTooltip(text, element)
+		if not element then return end
+		local mp = UIS:GetMouseLocation()
+		if element.AbsolutePosition and element.AbsoluteSize then
+			local ap, as = element.AbsolutePosition, element.AbsoluteSize
+			if mp.X < ap.X or mp.X > ap.X + as.X or mp.Y < ap.Y or mp.Y > ap.Y + as.Y then return end
 		end
+		tooltipText.Text = text
+		tooltipActiveElement = element
+		local screenWidth  = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
+		local screenHeight = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
+		local textWidth = 160
+		local textSize  = game:GetService("TextService"):GetTextSize(text, 12, Enum.Font.Roboto, Vector2.new(textWidth, 500))
+		local tipW = textWidth + 24
+		local tipH = textSize.Y + 16
+		tooltipFrame.Size = UDim2.new(0, tipW, 0, tipH)
+		local mousePos = UIS:GetMouseLocation()
+		local targetX  = mousePos.X - tipW / 2
+		local targetY  = mousePos.Y - tipH - 10
+		if targetY < 8 then targetY = mousePos.Y + 18 end
+		targetX = math.clamp(targetX, 8, screenWidth  - tipW - 8)
+		targetY = math.clamp(targetY, 8, screenHeight - tipH - 8)
+		tooltipFrame.Position = UDim2.new(0, targetX, 0, targetY)
+		tooltipFrame.Visible = true
 	end
-	tooltipText.Text = text
-	tooltipActiveElement = element
-	local screenWidth = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
-	local screenHeight = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
-	local hPad = 12
-	local textWidth = 160
-	local textSize = game:GetService("TextService"):GetTextSize(text, 12, Enum.Font.Roboto, Vector2.new(textWidth, 500))
-	local tipW = textWidth + hPad * 2
-	local tipH = textSize.Y + 16
-	tooltipFrame.Size = UDim2.new(0, tipW, 0, tipH)
-	local mousePos = UIS:GetMouseLocation()
-	local targetX = mousePos.X - tipW / 2
-	local targetY = mousePos.Y - tipH - 10
-	if targetY < 8 then targetY = mousePos.Y + 18 end
-	targetX = math.clamp(targetX, 8, screenWidth - tipW - 8)
-	targetY = math.clamp(targetY, 8, screenHeight - tipH - 8)
-	tooltipFrame.Position = UDim2.new(0, targetX, 0, targetY)
-	tooltipFrame.Visible = true
-end
 
-local function hideTooltip()
-	if tooltipTimer then task.cancel(tooltipTimer) tooltipTimer = nil end
-	if tooltipFrame then tooltipFrame.Visible = false end
-	tooltipActiveElement = nil
-end
+	local function hideTooltip()
+		if tooltipTimer then task.cancel(tooltipTimer); tooltipTimer = nil end
+		tooltipFrame.Visible = false
+		tooltipActiveElement = nil
+	end
 
-local function startTooltipDelay(text, element)
-	hideTooltip()
-	tooltipTimer = task.delay(0.5, function() showTooltip(text, element) end)
-end
+	local function startTooltipDelay(text, element)
+		hideTooltip()
+		tooltipTimer = task.delay(0.5, function() showTooltip(text, element) end)
+	end
 
-local function initTooltipMouseTracker(sg)
-	game:GetService("UserInputService").InputChanged:Connect(function(input)
+	-- Mouse-move tracker: hide tooltip when cursor leaves element
+	table.insert(connections, UIS.InputChanged:Connect(function(input)
 		if input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
-		if not tooltipActiveElement or not tooltipFrame or not tooltipFrame.Visible then return end
-		local ok, ap = pcall(function() return tooltipActiveElement.AbsolutePosition end)
+		if not tooltipActiveElement or not tooltipFrame.Visible then return end
+		local ok, ap  = pcall(function() return tooltipActiveElement.AbsolutePosition end)
 		local ok2, as = pcall(function() return tooltipActiveElement.AbsoluteSize end)
-		if not ok or not ok2 then hideTooltip() return end
+		if not ok or not ok2 then hideTooltip(); return end
 		local mp = UIS:GetMouseLocation()
 		if mp.X < ap.X or mp.X > ap.X + as.X or mp.Y < ap.Y or mp.Y > ap.Y + as.Y then
 			hideTooltip()
 		end
-	end)
+	end))
+
+	return { show = showTooltip, hide = hideTooltip, start = startTooltipDelay }
 end
 
 function UILib:notify(message, notifType, duration)
@@ -246,7 +273,7 @@ local MIN_KEYBIND_WIDTH = 52
 local MAX_KEYBIND_WIDTH = 76
 
 function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
-	if activeWindow then activeWindow:Destroy() end
+	-- Multi-window: no longer destroys an existing window
 	local self = setmetatable({}, UILib)
 	self.theme = theme or {}
 	for k, v in pairs(DEFAULT_THEME) do if self.theme[k] == nil then self.theme[k] = v end end
@@ -325,28 +352,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	self.sg.Parent = self.parent
 	self.sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-	tooltipFrame = Instance.new("Frame")
-	tooltipFrame.BackgroundColor3 = self.theme.Panel
-	tooltipFrame.BorderSizePixel = 0
-	tooltipFrame.Visible = false
-	tooltipFrame.ZIndex = 1000
-	tooltipFrame.Parent = self.sg
-	Instance.new("UICorner", tooltipFrame).CornerRadius = UDim.new(0, 4)
-	local tipPadding = Instance.new("UIPadding", tooltipFrame)
-	tipPadding.PaddingLeft = UDim.new(0, 6)
-	tipPadding.PaddingRight = UDim.new(0, 6)
-	tipPadding.PaddingTop = UDim.new(0, 4)
-	tipPadding.PaddingBottom = UDim.new(0, 4)
-	tooltipText = Instance.new("TextLabel")
-	tooltipText.Size = UDim2.new(1, 0, 1, 0)
-	tooltipText.BackgroundTransparency = 1
-	tooltipText.TextColor3 = self.theme.White
-	tooltipText.Font = Enum.Font.Roboto
-	tooltipText.TextSize = 12
-	tooltipText.TextWrapped = true
-	tooltipText.ZIndex = 1001
-	tooltipText.Parent = tooltipFrame
-	initTooltipMouseTracker(self.sg)
+	-- Per-window tooltip system (mouse tracker is set up inside _makeTooltipSystem)
+	self._tt = _makeTooltipSystem(self.sg, self.theme, self.connections)
 
 	local win = Instance.new("Frame")
 	win.Size = UDim2.new(0, size.X, 0, size.Y)
@@ -1002,7 +1009,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	end))
 
 	self:notify("CloverLib Loaded", "success", 2)
-	activeWindow = self
+	table.insert(allWindows, self)
 	return self
 end
 
@@ -1153,50 +1160,90 @@ function UILib:_createUITab()
 	end, "Show version pill")
 
 	grp:toggle("Show Watermark", false, function(v)
-		if v then self:addWatermark(self.title) else if self.watermark then self.watermark:Destroy(); self.watermark = nil end end
+		if v then self:addWatermark(self.title)
+		else if self.watermark then self.watermark:Destroy(); self.watermark = nil end end
 	end, "Display FPS and ping")
 
-	grp:button("Unload", function() self:Destroy() end, "Cleanly remove the UI", Enum.TextXAlignment.Center, Color3.fromRGB(255, 80, 80))
+	grp:button("Unload", function() self:Destroy() end, "Cleanly remove the UI",
+		Enum.TextXAlignment.Center, Color3.fromRGB(255, 80, 80))
 
+	-- ── Config panel ──────────────────────────────────────────────────────────
 	local cfg = uiR:addGroup("Configs")
 	local currentConfig = "default"
 
-	cfg:textbox("Config Name", "default", "", function(val)
+	-- Helper: return sorted config list, never empty
+	local function getConfigList()
+		local list = self:listConfigs()
+		if #list == 0 then list = {"(no configs)"} end
+		table.sort(list)
+		return list
+	end
+
+	-- Name textbox
+	local nameElem = cfg:textbox("Config Name", "default", "", function(val)
 		currentConfig = (val ~= "" and val or "default")
 	end, "Name for save/load/delete")
 
-	cfg:button("Create Config", function()
-		if currentConfig and currentConfig ~= "" then
-			self:saveConfig(currentConfig)
-		else
-			self:notify("Enter a config name first", "warning")
-		end
-	end, "Create and save a new config with the entered name")
-
-	local _initialConfigs = self:listConfigs()
-	if #_initialConfigs == 0 then _initialConfigs = {"(no configs)"} end
-	cfg:dropdown("Load Config", _initialConfigs, "", function(val)
+	-- Load dropdown — kept as upvalue so we can refresh it later
+	local loadElem = cfg:dropdown("Load Config", getConfigList(), "", function(val)
 		if val == "" or val == "(no configs)" then return end
 		currentConfig = val
+		-- Mirror selected name back into the textbox
+		nameElem.SetValue(val)
 		self:loadConfig(val)
 	end, "Select a saved config to load", function()
-		local list = self:listConfigs()
-		if #list == 0 then list = {"(no configs)"} end
-		return list
+		return getConfigList()
 	end)
+
+	-- Refresh the load dropdown and optionally update the selection label
+	local function refreshConfigDropdown(selectName)
+		local list = getConfigList()
+		loadElem:SetValues(list)
+		-- Try to keep selection on the config we just acted on
+		local keep = selectName or currentConfig
+		local exists = false
+		for _, v in ipairs(list) do if v == keep then exists = true; break end end
+		if exists then
+			loadElem.Value = keep
+			-- Update the button label directly
+			local selLbl = loadElem.frame and loadElem.frame:FindFirstChild("arrow", true)
+			-- SetValue handles the visual update
+			loadElem.SetValue(keep)
+		else
+			loadElem.SetValue(list[1] or "")
+		end
+	end
 
 	cfg:button("Save Config", function()
 		if currentConfig and currentConfig ~= "" then
 			self:saveConfig(currentConfig)
+			refreshConfigDropdown(currentConfig)
 		else
 			self:notify("Enter a config name first", "warning")
 		end
-	end, "Save current settings")
+	end, "Save current settings to file")
+
+	cfg:button("Load Selected", function()
+		local val = loadElem.Value
+		if val and val ~= "" and val ~= "(no configs)" then
+			currentConfig = val
+			nameElem.SetValue(val)
+			self:loadConfig(val)
+		else
+			self:notify("Select a config first", "warning")
+		end
+	end, "Load the currently selected config")
 
 	cfg:button("Delete Config", function()
-		if currentConfig and currentConfig ~= "" then
-			self:confirm('Delete config "' .. currentConfig .. '"?', function()
-				self:deleteConfig(currentConfig)
+		local val = loadElem.Value
+		if val and val ~= "" and val ~= "(no configs)" then
+			self:confirm('Delete config "' .. val .. '"?', function()
+				self:deleteConfig(val)
+				-- After delete, refresh and land on first remaining entry
+				local list = self:listConfigs()
+				currentConfig = list[1] or "default"
+				nameElem.SetValue(currentConfig)
+				refreshConfigDropdown(currentConfig)
 			end)
 		else
 			self:notify("No config selected", "warning")
@@ -1212,7 +1259,9 @@ function UILib:Destroy()
 	for _, conn in ipairs(self.connections) do conn:Disconnect() end
 	if self.wmConn then self.wmConn:Disconnect(); self.wmConn = nil end
 	if self.sg then self.sg:Destroy() end
-	if activeWindow == self then activeWindow = nil end
+	for i, w in ipairs(allWindows) do
+		if w == self then table.remove(allWindows, i); break end
+	end
 end
 
 function UILib:setVisible(visible)
@@ -1930,12 +1979,14 @@ end
 
 local function generateID() return "elem_" .. HS:GenerateGUID(false) end
 
-local function attachTooltip(element, text)
-	if not text then return end
-	element.MouseEnter:Connect(function() startTooltipDelay(text, element) end)
-	element.MouseLeave:Connect(hideTooltip)
+-- Single, canonical attachTooltip — uses per-window tooltip system stored in window._tt
+local function attachTooltip(element, text, window)
+	if not text or not window or not window._tt then return end
+	local tt = window._tt
+	element.MouseEnter:Connect(function() tt.start(text, element) end)
+	element.MouseLeave:Connect(function() tt.hide() end)
 	element.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then hideTooltip() end
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then tt.hide() end
 	end)
 end
 
@@ -2038,7 +2089,7 @@ function UILib.SubTab:addInput(labelText, default, placeholder, callback, toolti
 	box.FocusLost:Connect(function(enter)
 		if enter then current = box.Text if callback then callback(current) end end
 	end)
-	if tooltip then attachTooltip(r, tooltip) end
+	if tooltip then attachTooltip(r, tooltip, window) end
 	local elem = {ID = id, Value = current, DefaultValue = default or "",
 		SetValue = function(val) current = val box.Text = val end}
 	function elem:SetDesc(d) lbl.Text = d end
@@ -2080,17 +2131,8 @@ function UILib.SubTab:addButton(text, callback, tooltip, color)
 	lbl.ZIndex = 4
 	lbl.Parent = btn
 	btn.MouseButton1Click:Connect(callback)
-	if tooltip then attachTooltip(btn, tooltip) end
+	if tooltip then attachTooltip(btn, tooltip, window) end
 	return btn
-end
-
-local function attachTooltip(element, text)
-	if not text then return end
-	element.MouseEnter:Connect(function() startTooltipDelay(text, element) end)
-	element.MouseLeave:Connect(hideTooltip)
-	element.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then hideTooltip() end
-	end)
 end
 
 local function createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step)
@@ -3012,7 +3054,7 @@ function UILib.Column:addGroup(title)
 		body.AutomaticSize = Enum.AutomaticSize.Y
 		body.Parent = r
 		Instance.new("UIPadding", r).PaddingBottom = UDim.new(0, 6)
-		if tooltip then attachTooltip(r, tooltip) end
+		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		local ref = {}
 		function ref:setTitle(t) lbl.Text = t end
@@ -3087,7 +3129,7 @@ function UILib.Column:addGroup(title)
 		cbOuter.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton2 then openCtx() end
 		end)
-		if tooltip then attachTooltip(r, tooltip) end
+		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		elem.frame = r
 		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
@@ -3096,7 +3138,7 @@ function UILib.Column:addGroup(title)
 
 	function group:slider(text, minVal, maxVal, defaultVal, callback, step, tooltip, icon)
 		local r, elem = createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step)
-		if tooltip then attachTooltip(r, tooltip) end
+		if tooltip then attachTooltip(r, tooltip, window) end
 		if icon then
 			local iLabel = r:FindFirstChildOfClass("TextLabel")
 			if iLabel then applyRowIcon(r, iLabel, icon, 4) end
@@ -3202,15 +3244,71 @@ function UILib.Column:addGroup(title)
 		dpad.PaddingLeft = UDim.new(0, 4)
 		dpad.PaddingRight = UDim.new(0, 4)
 
+		-- Search box (shown when dropdown opens, 5+ options)
+		local SEARCH_H = 28
+		local searchRow = Instance.new("Frame")
+		searchRow.Size = UDim2.new(1, 0, 0, SEARCH_H)
+		searchRow.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
+		searchRow.BorderSizePixel = 0
+		searchRow.ZIndex = 52
+		searchRow.LayoutOrder = -1   -- always first in the list
+		searchRow.Visible = false
+		searchRow.Parent = r
+		local searchBox = Instance.new("TextBox")
+		searchBox.Size = UDim2.new(1, -16, 0, 20)
+		searchBox.Position = UDim2.new(0, 8, 0.5, -10)
+		searchBox.BackgroundColor3 = window.theme.Track
+		searchBox.BorderSizePixel = 0
+		searchBox.PlaceholderText = "Search..."
+		searchBox.PlaceholderColor3 = window.theme.Gray
+		searchBox.Text = ""
+		searchBox.TextColor3 = window.theme.White
+		searchBox.Font = Enum.Font.Roboto
+		searchBox.TextSize = 12
+		searchBox.ClearTextOnFocus = false
+		searchBox.ZIndex = 53
+		searchBox.Parent = searchRow
+		Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0, 4)
+
 		local checks = {}
 		local backgrounds = {}
 		local currentOptions = options
 		local currentSelection = default or ""
 		local open = false
 
+		-- Filter visible items based on search query
+		local function applyFilter(query)
+			query = query:lower()
+			local filteredCount = 0
+			for _, child in ipairs(dlist:GetChildren()) do
+				if child:IsA("TextButton") then
+					local lbl2 = child:FindFirstChildOfClass("TextLabel")
+					if lbl2 then
+						local match = query == "" or lbl2.Text:lower():find(query, 1, true)
+						child.Visible = match ~= nil and match ~= false
+						if child.Visible then filteredCount = filteredCount + 1 end
+					end
+				end
+			end
+			-- Resize list to filtered content
+			local visH = filteredCount * 28 + 8
+			dlist.CanvasSize = UDim2.new(0, 0, 0, visH)
+			local targetH = SEARCH_H + math.min(visH, 132)  -- 132 = 160 - 28 search row
+			if open then
+				dlist.Size = UDim2.new(1, 0, 0, math.min(visH, 132))
+				r.Size = UDim2.new(1, 0, 0, 56 + SEARCH_H + math.min(visH, 132))
+				updateSize()
+			end
+		end
+		searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+			applyFilter(searchBox.Text)
+		end)
+
 		local function closeDropdown()
 			open = false
 			dlist.Visible = false
+			searchRow.Visible = false
+			searchBox.Text = ""
 			arrow.Rotation = 0
 			r.Size = UDim2.new(1, 0, 0, 56)
 			updateSize()
@@ -3221,6 +3319,7 @@ function UILib.Column:addGroup(title)
 			checks = {}
 			backgrounds = {}
 			currentOptions = opts
+			searchBox.Text = ""  -- clear filter when options rebuilt
 			listH = #opts * 28 + 8
 			dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
 			for _, opt in ipairs(opts) do
@@ -3317,25 +3416,48 @@ function UILib.Column:addGroup(title)
 				Rotation = open and 180 or 0
 			}):Play()
 			if open then
+				-- Show search row only when there are enough options to warrant it
+				local showSearch = #currentOptions >= 5
+				searchRow.Visible = showSearch
+				searchBox.Text = ""
+				local extraH = showSearch and SEARCH_H or 0
 				-- Flatten button bottom corners to connect with list
 				dbtnCorner.CornerRadius = UDim.new(0, 0)
 				bridge.Visible = true
+				bridge.Size = UDim2.new(1, 0, 0, 6)
+				bridge.Position = UDim2.new(0, 0, 0, 49)
+				if showSearch then
+					searchRow.Position = UDim2.new(0, 0, 0, 54)
+					dlist.Position = UDim2.new(0, 0, 0, 54 + SEARCH_H)
+				else
+					dlist.Position = UDim2.new(0, 0, 0, 54)
+				end
 				dlist.Visible = true
 				dlist.Size = UDim2.new(1, 0, 0, 0)
 				TweenService:Create(dlist, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 					Size = UDim2.new(1, 0, 0, math.min(listH, 160))
 				}):Play()
+				r.Size = UDim2.new(1, 0, 0, 56 + extraH + math.min(listH, 160))
+				if showSearch then
+					task.defer(function() searchBox:CaptureFocus() end)
+				end
 			else
 				-- Restore button corners
 				dbtnCorner.CornerRadius = UDim.new(0, 4)
 				bridge.Visible = false
+				searchRow.Visible = false
+				searchBox.Text = ""
+				-- Reset all items visible in case filter was active
+				for _, child in ipairs(dlist:GetChildren()) do
+					if child:IsA("TextButton") then child.Visible = true end
+				end
 				local tw = TweenService:Create(dlist, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 					Size = UDim2.new(1, 0, 0, 0)
 				})
 				tw.Completed:Connect(function() dlist.Visible = false end)
 				tw:Play()
+				r.Size = UDim2.new(1, 0, 0, 56)
 			end
-			r.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 160) or 0))
 			updateSize()
 		end)
 
@@ -3367,7 +3489,7 @@ function UILib.Column:addGroup(title)
 		r.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton2 then window:showContextMenu(UIS:GetMouseLocation(), elem) end
 		end)
-		if tooltip then attachTooltip(r, tooltip) end
+		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		elem.frame = r
 		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
@@ -3456,7 +3578,7 @@ function UILib.Column:addGroup(title)
 		end)
 		local elem = {ID = id, Value = currentName, SetValue = function(val) kbtn.Text = val end}
 		window.configs[id] = elem
-		if tooltip then attachTooltip(r, tooltip) end
+		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		elem.frame = r
 		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
@@ -3479,7 +3601,7 @@ function UILib.Column:addGroup(title)
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 3
 		lbl.Parent = f
-		if tooltip then attachTooltip(f, tooltip) end
+		if tooltip then attachTooltip(f, tooltip, window) end
 		updateSize()
 		local ref = {frame = f}
 		function ref:setText(t) lbl.Text = t end
@@ -3615,7 +3737,7 @@ function UILib.Column:addGroup(title)
 		end
 
 		btn.MouseButton1Click:Connect(callback)
-		if tooltip then attachTooltip(btn, tooltip) end
+		if tooltip then attachTooltip(btn, tooltip, window) end
 		updateSize()
 		return btn
 	end
@@ -3673,7 +3795,7 @@ function UILib.Column:addGroup(title)
 				Size = UDim2.new(math.clamp(newVal / newMax, 0, 1), 0, 1, 0)
 			}):Play()
 		end
-		if tooltip then attachTooltip(r, tooltip) end
+		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		return ref
 	end
@@ -3701,7 +3823,7 @@ function UILib.Column:addGroup(title)
 			img.Size = UDim2.new(1, -8, 0, h)
 			updateSize()
 		end
-		if tooltip then attachTooltip(r, tooltip) end
+		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		return ref
 	end
@@ -3746,7 +3868,7 @@ function UILib.Column:addGroup(title)
 				lbl.Text = newText:upper()
 				if newColor then pill.BackgroundColor3 = newColor pillStroke.Color = newColor lbl.TextColor3 = newColor end
 			end
-			if tooltip then attachTooltip(r, tooltip) end
+			if tooltip then attachTooltip(r, tooltip, window) end
 			updateSize()
 			return ref
 		else
@@ -3783,38 +3905,110 @@ function UILib.Column:addGroup(title)
 				lbl.Text = newText:upper()
 				if newColor then pill.BackgroundColor3 = newColor pillStroke.Color = newColor lbl.TextColor3 = newColor end
 			end
-			if tooltip then attachTooltip(r, tooltip) end
+			if tooltip then attachTooltip(r, tooltip, window) end
 			updateSize()
 			return ref
 		end
 	end
 
+	-- ── Shared helper: builds a nestedGroup proxy that reparents controls into
+	-- contentFrame and calls updateContentSize after each insertion.
+	-- Also handles the split() method inside nested contexts.
+	local function _buildNestedGroup(contentFrame, updateContentSize)
+		local ng = {}
+		local function reparent(r, useFrame)
+			local target = useFrame or contentFrame
+			;(r.frame or r).Parent = target
+			updateContentSize()
+			return r
+		end
+		function ng:toggle(t,d,cb,tt2)       return reparent(group:toggle(t,d,cb,tt2)) end
+		function ng:slider(t,mn,mx,d,cb,s,tt2) return reparent(group:slider(t,mn,mx,d,cb,s,tt2)) end
+		function ng:dropdown(t,o,d,cb,tt2)   return reparent(group:dropdown(t,o,d,cb,tt2)) end
+		function ng:keybind(t,cur,cb,tt2)    return reparent(group:keybind(t,cur,cb,tt2)) end
+		function ng:label(t,col,tt2)         return reparent(group:label(t,col,tt2)) end
+		function ng:separator(t)             return reparent(group:separator(t)) end
+		function ng:button(t,cb,tt2,al,col,sty) return reparent(group:button(t,cb,tt2,al,col,sty)) end
+		function ng:colorpicker(t,d,cb,tt2)  return reparent(group:colorpicker(t,d,cb,tt2)) end
+		function ng:multidropdown(t,o,d,cb,tt2) return reparent(group:multidropdown(t,o,d,cb,tt2)) end
+		function ng:textbox(t,d,ph,cb,tt2)   return reparent(group:textbox(t,d,ph or "",cb,tt2)) end
+		function ng:numberbox(t,d,mn,mx,cb,tt2) return reparent(group:numberbox(t,d,mn,mx,cb,tt2)) end
+		function ng:rangeslider(t,mn,mx,dMn,dMx,cb,tt2) return reparent(group:rangeslider(t,mn,mx,dMn,dMx,cb,tt2)) end
+		function ng:badge(t,col,tt2,pos)     return reparent(group:badge(t,col,tt2,pos)) end
+		function ng:paragraph(tit,txt,tt2)   group:paragraph(tit,txt,tt2); updateContentSize() end
+		function ng:progress(t,v,mx,col,tt2) return reparent(group:progress(t,v,mx,col,tt2)) end
+		function ng:image(url,h,tt2)         return reparent(group:image(url,h,tt2)) end
+		function ng:split()
+			local splitRow = Instance.new("Frame")
+			splitRow.Size = UDim2.new(1,0,0,0)
+			splitRow.BackgroundTransparency = 1
+			splitRow.AutomaticSize = Enum.AutomaticSize.Y
+			splitRow.Parent = contentFrame
+			local lFrame = Instance.new("Frame")
+			lFrame.Size = UDim2.new(0.5,-4,0,0)
+			lFrame.BackgroundTransparency = 1
+			lFrame.AutomaticSize = Enum.AutomaticSize.Y
+			lFrame.Parent = splitRow
+			Instance.new("UIListLayout", lFrame).Padding = UDim.new(0,2)
+			local rFrame = Instance.new("Frame")
+			rFrame.Size = UDim2.new(0.5,-4,0,0)
+			rFrame.Position = UDim2.new(0.5,4,0,0)
+			rFrame.BackgroundTransparency = 1
+			rFrame.AutomaticSize = Enum.AutomaticSize.Y
+			rFrame.Parent = splitRow
+			Instance.new("UIListLayout", rFrame).Padding = UDim.new(0,2)
+			local function updateSplit()
+				local lh = lFrame.UIListLayout.AbsoluteContentSize.Y
+				local rh = rFrame.UIListLayout.AbsoluteContentSize.Y
+				splitRow.Size = UDim2.new(1,0,0,math.max(lh,rh))
+				updateContentSize()
+			end
+			lFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplit)
+			rFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplit)
+			local function wrapSide(frame)
+				local g = {window=window, items=frame, updateSize=updateSplit}
+				for k,v in pairs(ng) do
+					if type(v)=="function" and k~="split" then
+						local fn=v
+						g[k]=function(self2,...) return fn(self2,...) end
+					end
+				end
+				return g
+			end
+			return wrapSide(lFrame), wrapSide(rFrame)
+		end
+		return ng
+	end
+
+	-- expandableToggle: checkbox on the right reveals nested controls
 	function group:expandableToggle(text, default, contentFunc, tooltip)
 		local container = Instance.new("Frame")
-		container.Size = UDim2.new(1, 0, 0, 34)
+		container.Size = UDim2.new(1,0,0,34)
 		container.BackgroundTransparency = 1
 		container.ClipsDescendants = true
 		container.Parent = items
+		-- Header row (plain Frame — clicking the checkbox is what toggles)
 		local toggleRow = Instance.new("Frame")
-		toggleRow.Size = UDim2.new(1, 0, 0, 34)
+		toggleRow.Size = UDim2.new(1,0,0,34)
 		toggleRow.BackgroundTransparency = 1
 		toggleRow.ZIndex = 3
 		toggleRow.Parent = container
+		-- Checkbox
 		local cbOuter = Instance.new("TextButton")
-		cbOuter.Size = UDim2.new(0, 18, 0, 18)
-		cbOuter.Position = UDim2.new(1, -22, 0.5, -9)
+		cbOuter.Size = UDim2.new(0,18,0,18)
+		cbOuter.Position = UDim2.new(1,-22,0.5,-9)
 		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.Track
 		cbOuter.BorderSizePixel = 0
 		cbOuter.AutoButtonColor = false
 		cbOuter.ZIndex = 4
 		cbOuter.Text = ""
 		cbOuter.Parent = toggleRow
-		Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
+		Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0,4)
 		local cbStroke = Instance.new("UIStroke", cbOuter)
-		cbStroke.Color = default and window.theme.AccentD or Color3.fromRGB(60, 80, 72)
+		cbStroke.Color = default and window.theme.AccentD or Color3.fromRGB(60,80,72)
 		cbStroke.Thickness = 1
 		local cbMark = Instance.new("TextLabel")
-		cbMark.Size = UDim2.new(1, 0, 1, 0)
+		cbMark.Size = UDim2.new(1,0,1,0)
 		cbMark.BackgroundTransparency = 1
 		cbMark.Text = default and "x" or ""
 		cbMark.TextColor3 = Color3.new(1,1,1)
@@ -3822,9 +4016,10 @@ function UILib.Column:addGroup(title)
 		cbMark.TextSize = 16
 		cbMark.ZIndex = 5
 		cbMark.Parent = cbOuter
+		-- Label
 		local lbl = Instance.new("TextLabel")
-		lbl.Size = UDim2.new(1, -32, 1, 0)
-		lbl.Position = UDim2.new(0, 4, 0, 0)
+		lbl.Size = UDim2.new(1,-32,1,0)
+		lbl.Position = UDim2.new(0,4,0,0)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
@@ -3833,112 +4028,61 @@ function UILib.Column:addGroup(title)
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 4
 		lbl.Parent = toggleRow
+		-- Content area
 		local contentFrame = Instance.new("Frame")
-		contentFrame.Size = UDim2.new(1, 0, 0, 0)
-		contentFrame.Position = UDim2.new(0, 0, 0, 34)
+		contentFrame.Size = UDim2.new(1,0,0,0)
+		contentFrame.Position = UDim2.new(0,0,0,34)
 		contentFrame.BackgroundTransparency = 1
 		contentFrame.Parent = container
 		local contentLayout = Instance.new("UIListLayout", contentFrame)
-		contentLayout.Padding = UDim.new(0, 2)
+		contentLayout.Padding = UDim.new(0,2)
 		contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		local state = default
 		local function updateContentSize()
 			local h = contentLayout.AbsoluteContentSize.Y
-			contentFrame.Size = UDim2.new(1, 0, 0, h)
-			container.Size = UDim2.new(1, 0, 0, 34 + (state and h or 0))
+			contentFrame.Size = UDim2.new(1,0,0,h)
+			container.Size = UDim2.new(1,0,0, 34 + (state and h or 0))
 			updateSize()
 		end
 		contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
-		local nestedGroup = {}
-		function nestedGroup:toggle(subText, subDefault, subCallback, subTooltip) local r = group:toggle(subText, subDefault, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:slider(subText, min, max, def, subCallback, step, subTooltip) local r = group:slider(subText, min, max, def, subCallback, step, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:dropdown(subText, opts, def, subCallback, subTooltip) local r = group:dropdown(subText, opts, def, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:keybind(subText, cur, subCallback, subTooltip) local r = group:keybind(subText, cur, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:label(subText, col, subTooltip) local r = group:label(subText, col, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:separator(subText) local r = group:separator(subText) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:button(subText, subCallback, subTooltip, al, col, sty) local r = group:button(subText, subCallback, subTooltip, al, col, sty) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:colorpicker(subText, def, subCallback, subTooltip) local r = group:colorpicker(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:multidropdown(subText, opts, def, subCallback, subTooltip) local r = group:multidropdown(subText, opts, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:textbox(subText, def, placeholder, subCallback, subTooltip) local r = group:textbox(subText, def, placeholder or "", subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:numberbox(subText, def, mn, mx, subCallback, subTooltip) local r = group:numberbox(subText, def, mn, mx, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) local r = group:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:badge(subText, col, subTooltip, pos) local r = group:badge(subText, col, subTooltip, pos) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:paragraph(subTitle, subText, subTooltip) local r = group:paragraph(subTitle, subText, subTooltip) updateContentSize() return r end
-		function nestedGroup:progress(subText, val, maxV, col, subTooltip) local r = group:progress(subText, val, maxV, col, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:image(url, h, subTooltip) local r = group:image(url, h, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:split()
-			local splitRow = Instance.new("Frame")
-			splitRow.Size = UDim2.new(1, 0, 0, 0)
-			splitRow.BackgroundTransparency = 1
-			splitRow.AutomaticSize = Enum.AutomaticSize.Y
-			splitRow.Parent = contentFrame
-			local lFrame = Instance.new("Frame")
-			lFrame.Size = UDim2.new(0.5, -4, 0, 0)
-			lFrame.BackgroundTransparency = 1
-			lFrame.AutomaticSize = Enum.AutomaticSize.Y
-			lFrame.Parent = splitRow
-			Instance.new("UIListLayout", lFrame).Padding = UDim.new(0, 2)
-			local rFrame = Instance.new("Frame")
-			rFrame.Size = UDim2.new(0.5, -4, 0, 0)
-			rFrame.Position = UDim2.new(0.5, 4, 0, 0)
-			rFrame.BackgroundTransparency = 1
-			rFrame.AutomaticSize = Enum.AutomaticSize.Y
-			rFrame.Parent = splitRow
-			Instance.new("UIListLayout", rFrame).Padding = UDim.new(0, 2)
-			local function updateSplit()
-				local lh = lFrame.UIListLayout.AbsoluteContentSize.Y
-				local rh = rFrame.UIListLayout.AbsoluteContentSize.Y
-				splitRow.Size = UDim2.new(1, 0, 0, math.max(lh, rh))
-				updateContentSize()
-			end
-			lFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplit)
-			rFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplit)
-			local function wrapGroup(frame)
-				local g = {window = window, items = frame, updateSize = updateSplit}
-				for k, v in pairs(nestedGroup) do
-					if type(v) == "function" and k ~= "split" then
-						local fn = v
-						g[k] = function(self2, ...) return fn(self2, ...) end
-					end
-				end
-				return g
-			end
-			return wrapGroup(lFrame), wrapGroup(rFrame)
-		end
+		local nestedGroup = _buildNestedGroup(contentFrame, updateContentSize)
 		if contentFunc then contentFunc(nestedGroup) end
 		cbOuter.MouseButton1Click:Connect(function()
 			state = not state
 			TweenService:Create(cbOuter, TweenInfo.new(0.12, Enum.EasingStyle.Quad), {
 				BackgroundColor3 = state and window.theme.Accent or window.theme.Track
 			}):Play()
-			cbStroke.Color = state and window.theme.AccentD or Color3.fromRGB(60, 80, 72)
+			cbStroke.Color = state and window.theme.AccentD or Color3.fromRGB(60,80,72)
 			cbMark.Text = state and "x" or ""
 			local targetH = 34 + (state and contentLayout.AbsoluteContentSize.Y or 0)
 			TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Size = UDim2.new(1, 0, 0, targetH)
+				Size = UDim2.new(1,0,0,targetH)
 			}):Play()
 			task.delay(0.2, updateSize)
 		end)
-		if tooltip then attachTooltip(toggleRow, tooltip) end
+		if tooltip then attachTooltip(toggleRow, tooltip, window) end
 		updateContentSize()
 		return container
 	end
 
+	-- collapsible: arrow-chevron on the right reveals nested controls (whole row is clickable)
 	function group:collapsible(text, default, contentFunc, tooltip)
 		local container = Instance.new("Frame")
-		container.Size = UDim2.new(1, 0, 0, 34)
+		container.Size = UDim2.new(1,0,0,34)
 		container.BackgroundTransparency = 1
 		container.ClipsDescendants = true
 		container.Parent = items
+		-- Header row (TextButton — entire row is the click target)
 		local toggleRow = Instance.new("TextButton")
-		toggleRow.Size = UDim2.new(1, 0, 0, 34)
+		toggleRow.Size = UDim2.new(1,0,0,34)
 		toggleRow.BackgroundTransparency = 1
 		toggleRow.Text = ""
 		toggleRow.ZIndex = 3
 		toggleRow.Parent = container
+		-- Arrow indicator
 		local arrow = Instance.new("TextLabel")
-		arrow.Size = UDim2.new(0, 20, 1, 0)
-		arrow.Position = UDim2.new(1, -22, 0, 0)
+		arrow.Size = UDim2.new(0,20,1,0)
+		arrow.Position = UDim2.new(1,-22,0,0)
 		arrow.BackgroundTransparency = 1
 		arrow.Text = default and "▼" or "▶"
 		arrow.TextColor3 = window.theme.Accent
@@ -3946,9 +4090,10 @@ function UILib.Column:addGroup(title)
 		arrow.TextSize = 14
 		arrow.ZIndex = 4
 		arrow.Parent = toggleRow
+		-- Label
 		local lbl = Instance.new("TextLabel")
-		lbl.Size = UDim2.new(1, -28, 1, 0)
-		lbl.Position = UDim2.new(0, 4, 0, 0)
+		lbl.Size = UDim2.new(1,-28,1,0)
+		lbl.Position = UDim2.new(0,4,0,0)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
@@ -3957,93 +4102,39 @@ function UILib.Column:addGroup(title)
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 4
 		lbl.Parent = toggleRow
+		-- Content area
 		local contentFrame = Instance.new("Frame")
-		contentFrame.Size = UDim2.new(1, 0, 0, 0)
-		contentFrame.Position = UDim2.new(0, 0, 0, 34)
+		contentFrame.Size = UDim2.new(1,0,0,0)
+		contentFrame.Position = UDim2.new(0,0,0,34)
 		contentFrame.BackgroundTransparency = 1
 		contentFrame.Parent = container
 		local contentLayout = Instance.new("UIListLayout", contentFrame)
-		contentLayout.Padding = UDim.new(0, 2)
+		contentLayout.Padding = UDim.new(0,2)
 		contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		local state = default
 		local function updateContentSize()
 			local h = contentLayout.AbsoluteContentSize.Y
-			contentFrame.Size = UDim2.new(1, 0, 0, h)
-			container.Size = UDim2.new(1, 0, 0, 34 + (state and h or 0))
+			contentFrame.Size = UDim2.new(1,0,0,h)
+			container.Size = UDim2.new(1,0,0, 34 + (state and h or 0))
 			updateSize()
 		end
 		contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
-		local nestedGroup = {}
-		function nestedGroup:toggle(subText, subDefault, subCallback, subTooltip) local r = group:toggle(subText, subDefault, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:slider(subText, min, max, def, subCallback, step, subTooltip) local r = group:slider(subText, min, max, def, subCallback, step, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:dropdown(subText, opts, def, subCallback, subTooltip) local r = group:dropdown(subText, opts, def, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:keybind(subText, cur, subCallback, subTooltip) local r = group:keybind(subText, cur, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:label(subText, col, subTooltip) local r = group:label(subText, col, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:separator(subText) local r = group:separator(subText) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:button(subText, subCallback, subTooltip, al, col, sty) local r = group:button(subText, subCallback, subTooltip, al, col, sty) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:colorpicker(subText, def, subCallback, subTooltip) local r = group:colorpicker(subText, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:multidropdown(subText, opts, def, subCallback, subTooltip) local r = group:multidropdown(subText, opts, def, subCallback, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:textbox(subText, def, placeholder, subCallback, subTooltip) local r = group:textbox(subText, def, placeholder or "", subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:numberbox(subText, def, mn, mx, subCallback, subTooltip) local r = group:numberbox(subText, def, mn, mx, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) local r = group:rangeslider(subText, mn, mx, dMin, dMax, subCallback, subTooltip) r.frame.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:badge(subText, col, subTooltip, pos) local r = group:badge(subText, col, subTooltip, pos) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:paragraph(subTitle, subText, subTooltip) local r = group:paragraph(subTitle, subText, subTooltip) updateContentSize() return r end
-		function nestedGroup:progress(subText, val, maxV, col, subTooltip) local r = group:progress(subText, val, maxV, col, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:image(url, h, subTooltip) local r = group:image(url, h, subTooltip) r.Parent = contentFrame updateContentSize() return r end
-		function nestedGroup:split()
-			local splitRow = Instance.new("Frame")
-			splitRow.Size = UDim2.new(1, 0, 0, 0)
-			splitRow.BackgroundTransparency = 1
-			splitRow.AutomaticSize = Enum.AutomaticSize.Y
-			splitRow.Parent = contentFrame
-			local lFrame = Instance.new("Frame")
-			lFrame.Size = UDim2.new(0.5, -4, 0, 0)
-			lFrame.BackgroundTransparency = 1
-			lFrame.AutomaticSize = Enum.AutomaticSize.Y
-			lFrame.Parent = splitRow
-			Instance.new("UIListLayout", lFrame).Padding = UDim.new(0, 2)
-			local rFrame = Instance.new("Frame")
-			rFrame.Size = UDim2.new(0.5, -4, 0, 0)
-			rFrame.Position = UDim2.new(0.5, 4, 0, 0)
-			rFrame.BackgroundTransparency = 1
-			rFrame.AutomaticSize = Enum.AutomaticSize.Y
-			rFrame.Parent = splitRow
-			Instance.new("UIListLayout", rFrame).Padding = UDim.new(0, 2)
-			local function updateSplit()
-				local lh = lFrame.UIListLayout.AbsoluteContentSize.Y
-				local rh = rFrame.UIListLayout.AbsoluteContentSize.Y
-				splitRow.Size = UDim2.new(1, 0, 0, math.max(lh, rh))
-				updateContentSize()
-			end
-			lFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplit)
-			rFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplit)
-			local function wrapGroup(frame)
-				local g = {window = window, items = frame, updateSize = updateSplit}
-				for k, v in pairs(nestedGroup) do
-					if type(v) == "function" and k ~= "split" then
-						local fn = v
-						g[k] = function(self2, ...) return fn(self2, ...) end
-					end
-				end
-				return g
-			end
-			return wrapGroup(lFrame), wrapGroup(rFrame)
-		end
+		local nestedGroup = _buildNestedGroup(contentFrame, updateContentSize)
 		if contentFunc then contentFunc(nestedGroup) end
 		toggleRow.MouseButton1Click:Connect(function()
 			state = not state
 			arrow.Text = state and "▼" or "▶"
-			container.Size = UDim2.new(1, 0, 0, 34 + (state and contentLayout.AbsoluteContentSize.Y or 0))
+			container.Size = UDim2.new(1,0,0, 34 + (state and contentLayout.AbsoluteContentSize.Y or 0))
 			updateSize()
 		end)
-		if tooltip then attachTooltip(toggleRow, tooltip) end
+		if tooltip then attachTooltip(toggleRow, tooltip, window) end
 		updateContentSize()
 		return container
 	end
 
 	function group:colorpicker(text, default, callback, tooltip, icon)
 		local r, elem = createColorPicker(group, items, window, text, default, callback)
-		if tooltip then attachTooltip(r, tooltip) end
+		if tooltip then attachTooltip(r, tooltip, window) end
 		if icon then
 			local iLabel = r:FindFirstChildOfClass("TextLabel")
 			if iLabel then applyRowIcon(r, iLabel, icon, 4) end
@@ -4054,7 +4145,7 @@ function UILib.Column:addGroup(title)
 
 	function group:multidropdown(text, options, default, callback, tooltip)
 		local r, elem = createMultiDropdown(group, items, window, text, options, default, callback)
-		if tooltip then attachTooltip(r, tooltip) end
+		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		return elem
 	end
@@ -4100,7 +4191,7 @@ function UILib.Column:addGroup(title)
 		r.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton2 then window:showContextMenu(UIS:GetMouseLocation(), elem) end
 		end)
-		if tooltip then attachTooltip(r, tooltip) end
+		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		elem.frame = r
 		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
@@ -4151,7 +4242,7 @@ function UILib.Column:addGroup(title)
 		r.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton2 then window:showContextMenu(UIS:GetMouseLocation(), elem) end
 		end)
-		if tooltip then attachTooltip(r, tooltip) end
+		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		elem.frame = r
 		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
@@ -4284,7 +4375,7 @@ function UILib.Column:addGroup(title)
 		r.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton2 then window:showContextMenu(UIS:GetMouseLocation(), elem) end
 		end)
-		if tooltip then attachTooltip(r, tooltip) end
+		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		elem.frame = r
 		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
