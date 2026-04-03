@@ -33,10 +33,10 @@ local DEFAULT_THEME = {
 	-- ── derived aliases (keep API compatible) ──────────────────────────────
 	BG      = Color3.fromRGB(10, 10, 10),    -- = Base
 	Panel   = Color3.fromRGB(24, 24, 24),    -- = Surface
-	Item    = Color3.fromRGB(24, 24, 24),    -- = Surface  (group cards)
-	ItemHov = Color3.fromRGB(34, 34, 34),    -- Surface + slight lift for hover
-	Track   = Color3.fromRGB(24, 24, 24),    -- = Surface  (slider/input bg)
-	Border  = Color3.fromRGB(36, 36, 36),    -- barely-visible border between Surface and Base
+	Item    = Color3.fromRGB(10, 10, 10),    -- = Base (group cards sit ON Surface, so they need Base)
+	ItemHov = Color3.fromRGB(20, 20, 20),    -- Base + slight lift for hover
+	Track   = Color3.fromRGB(10, 10, 10),    -- = Base  (slider/input bg - contrasts against Surface containers)
+	Border  = Color3.fromRGB(42, 42, 42),    -- visible border between elements
 
 	-- ── text ────────────────────────────────────────────────────────────────
 	White   = Color3.new(1, 1, 1),
@@ -462,7 +462,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 
 	local header = Instance.new("Frame")
 	header.Size = UDim2.new(1, 0, 0, 46)
-	header.BackgroundColor3 = self.theme.BG
+	header.BackgroundColor3 = self.theme.Panel
 	header.BorderSizePixel = 0
 	header.ZIndex = 5
 	header.Parent = win
@@ -1587,7 +1587,7 @@ function UILib:newMiniWindow(title, width, posX, posY)
 		local track = Instance.new("Frame")
 		track.Size = UDim2.new(1, 0, 0, 4)
 		track.Position = UDim2.new(0, 0, 0, 22)
-		track.BackgroundColor3 = self.window.theme.Track
+		track.BackgroundColor3 = self.window.theme.Border
 		track.BorderSizePixel = 0
 		track.ZIndex = 303
 		track.Parent = row
@@ -2096,6 +2096,9 @@ function UILib.SubTab:addInput(labelText, default, placeholder, callback, toolti
 	box.PlaceholderColor3 = window.theme.Gray
 	box.Parent = r
 	Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
+	local boxStroke_ = Instance.new("UIStroke", box)
+	boxStroke_.Color = window.theme.Border
+	boxStroke_.Thickness = 1
 	local current = default or ""
 	box.FocusLost:Connect(function(enter)
 		if enter then current = box.Text if callback then callback(current) end end
@@ -2178,6 +2181,9 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	local _vbPad = Instance.new("UIPadding", valueBox)
 	_vbPad.PaddingLeft = UDim.new(0, 6)
 	_vbPad.PaddingRight = UDim.new(0, 6)
+	local _vbStroke = Instance.new("UIStroke", valueBox)
+	_vbStroke.Color = window.theme.Border
+	_vbStroke.Thickness = 1
 	local valueLabel = Instance.new("TextLabel")
 	valueLabel.AutomaticSize = Enum.AutomaticSize.X
 	valueLabel.Size = UDim2.new(0, 0, 1, 0)
@@ -2204,7 +2210,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	local track = Instance.new("Frame")
 	track.Size = UDim2.new(1, 0, 0, 4)
 	track.Position = UDim2.new(0, 0, 0, 28)
-	track.BackgroundColor3 = window.theme.Track
+	track.BackgroundColor3 = window.theme.Border
 	track.BorderSizePixel = 0
 	track.ZIndex = 3
 	track.Parent = row
@@ -2762,6 +2768,10 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	dlist.Visible = false
 	dlist.ZIndex = 50
 	dlist.Parent = row
+	local multiDlistStroke = Instance.new("UIStroke", dlist)
+	multiDlistStroke.Color = window.theme.Accent
+	multiDlistStroke.Transparency = 0.6
+	multiDlistStroke.Thickness = 1
 	-- No UICorner - flat top connects to button
 	local multiBridge = Instance.new("Frame")
 	multiBridge.Size = UDim2.new(1, 0, 0, 6)
@@ -2773,6 +2783,9 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	multiBridge.Parent = row
 	local multiDbtnCorner = Instance.new("UICorner", dbtn)
 	multiDbtnCorner.CornerRadius = UDim.new(0, 4)
+	local multiDbtnStroke = Instance.new("UIStroke", dbtn)
+	multiDbtnStroke.Color = window.theme.Border
+	multiDbtnStroke.Thickness = 1
 	local dlayout = Instance.new("UIListLayout", dlist)
 	dlayout.SortOrder = Enum.SortOrder.LayoutOrder
 	dlayout.Padding = UDim.new(0, 0)
@@ -3083,7 +3096,7 @@ function UILib.Column:addGroup(title)
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0, 22, 0, 22)
 		cbOuter.Position = UDim2.new(1, -26, 0.5, -11)
-		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.Track
+		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.Base
 		cbOuter.BorderSizePixel = 0
 		cbOuter.AutoButtonColor = false
 		cbOuter.ZIndex = 4
@@ -3120,7 +3133,7 @@ function UILib.Column:addGroup(title)
 			state = val
 			elem.Value = state
 			TweenService:Create(cbOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
-				BackgroundColor3 = state and window.theme.Accent or window.theme.Track
+				BackgroundColor3 = state and window.theme.Accent or window.theme.Base
 			}):Play()
 			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
 			cbMark.Text = state and "x" or ""
@@ -3194,7 +3207,9 @@ function UILib.Column:addGroup(title)
 		dbtn.Parent = r
 		local dbtnCornerOrig = Instance.new("UICorner", dbtn)
 		dbtnCornerOrig.CornerRadius = UDim.new(0, 4)
-		-- No border on closed dropdown button
+		local dbtnStroke = Instance.new("UIStroke", dbtn)
+		dbtnStroke.Color = window.theme.Border
+		dbtnStroke.Thickness = 1
 		local selLbl = Instance.new("TextLabel")
 		selLbl.Size = UDim2.new(1, -34, 1, 0)
 		selLbl.Position = UDim2.new(0, 10, 0, 0)
@@ -3244,16 +3259,16 @@ function UILib.Column:addGroup(title)
 		bridge.Parent = r
 		local dlistCorner = Instance.new("UICorner", dlist)
 		dlistCorner.CornerRadius = UDim.new(0, 0)
+		local dlistStroke = Instance.new("UIStroke", dlist)
+		dlistStroke.Color = window.theme.Accent
+		dlistStroke.Transparency = 0.6
+		dlistStroke.Thickness = 1
 		local dbtnCorner = dbtnCornerOrig  -- reuse the corner created earlier
 		-- No border on dropdown list either
 		local dlayout = Instance.new("UIListLayout", dlist)
 		dlayout.SortOrder = Enum.SortOrder.LayoutOrder
 		dlayout.Padding = UDim.new(0, 0)
-		local dpad = Instance.new("UIPadding", dlist)
-		dpad.PaddingTop = UDim.new(0, 4)
-		dpad.PaddingBottom = UDim.new(0, 4)
-		dpad.PaddingLeft = UDim.new(0, 4)
-		dpad.PaddingRight = UDim.new(0, 4)
+		-- no padding: items flush to edges, no gap lines
 
 		-- Search box (shown when dropdown opens, 5+ options)
 		local SEARCH_H = 28
@@ -3530,7 +3545,7 @@ function UILib.Column:addGroup(title)
 		kbtn.Size = UDim2.new(0, 0, 0, 20)
 		kbtn.AnchorPoint = Vector2.new(1, 0.5)
 		kbtn.Position = UDim2.new(1, -2, 0.5, 0)
-		kbtn.BackgroundColor3 = window.theme.Surface
+		kbtn.BackgroundColor3 = window.theme.Base
 		kbtn.BackgroundTransparency = 0.6
 		kbtn.BorderSizePixel = 0
 		kbtn.Text = currentName
@@ -3564,7 +3579,7 @@ function UILib.Column:addGroup(title)
 				if skipNext and i.UserInputType == Enum.UserInputType.MouseButton1 then skipNext = false return end
 				listening = false
 				con:Disconnect()
-				kbtn.BackgroundColor3 = window.theme.Surface
+				kbtn.BackgroundColor3 = window.theme.Base
 				kbtn.BackgroundTransparency = 0.6
 				kbtn.TextColor3 = window.theme.GrayLt
 				kstroke.Color = window.theme.Border
@@ -3783,7 +3798,7 @@ function UILib.Column:addGroup(title)
 		local track = Instance.new("Frame")
 		track.Size = UDim2.new(1, -8, 0, 5)
 		track.Position = UDim2.new(0, 4, 0, 24)
-		track.BackgroundColor3 = window.theme.Track
+		track.BackgroundColor3 = window.theme.Border
 		track.BorderSizePixel = 0
 		track.ZIndex = 3
 		track.Parent = r
@@ -4008,7 +4023,7 @@ function UILib.Column:addGroup(title)
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0,18,0,18)
 		cbOuter.Position = UDim2.new(1,-22,0.5,-9)
-		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.Track
+		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.Base
 		cbOuter.BorderSizePixel = 0
 		cbOuter.AutoButtonColor = false
 		cbOuter.ZIndex = 4
@@ -4061,7 +4076,7 @@ function UILib.Column:addGroup(title)
 		cbOuter.MouseButton1Click:Connect(function()
 			state = not state
 			TweenService:Create(cbOuter, TweenInfo.new(0.12, Enum.EasingStyle.Quad), {
-				BackgroundColor3 = state and window.theme.Accent or window.theme.Track
+				BackgroundColor3 = state and window.theme.Accent or window.theme.Base
 			}):Play()
 			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
 			cbMark.Text = state and "x" or ""
@@ -4194,6 +4209,9 @@ function UILib.Column:addGroup(title)
 		box.PlaceholderText = placeholder or ""
 		box.PlaceholderColor3 = window.theme.Gray
 		Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
+		local tbStroke = Instance.new("UIStroke", box)
+		tbStroke.Color = window.theme.Border
+		tbStroke.Thickness = 1
 		table.insert(window.accentObjects, box)
 		local current = default or ""
 		box.FocusLost:Connect(function(enter) if enter then current = box.Text if callback then callback(current) end window.configs[id].Value = current end end)
@@ -4242,6 +4260,9 @@ function UILib.Column:addGroup(title)
 		box.TextSize = 13
 		box.ClearTextOnFocus = false
 		Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
+		local nbStroke = Instance.new("UIStroke", box)
+		nbStroke.Color = window.theme.Border
+		nbStroke.Thickness = 1
 		local current = default or 0
 		local function validate()
 			local num = tonumber(box.Text)
@@ -4285,6 +4306,9 @@ function UILib.Column:addGroup(title)
 		valueBox.ZIndex = 3
 		valueBox.Parent = r
 		Instance.new("UICorner", valueBox).CornerRadius = UDim.new(0, 4)
+		local rsVbStroke = Instance.new("UIStroke", valueBox)
+		rsVbStroke.Color = window.theme.Border
+		rsVbStroke.Thickness = 1
 		local valueLabel = Instance.new("TextLabel")
 		valueLabel.Size = UDim2.new(1, 0, 1, 0)
 		valueLabel.BackgroundTransparency = 1
@@ -4298,7 +4322,7 @@ function UILib.Column:addGroup(title)
 		local track = Instance.new("Frame")
 		track.Size = UDim2.new(1, 0, 0, 4)
 		track.Position = UDim2.new(0, 0, 0, 28)
-		track.BackgroundColor3 = window.theme.Track
+		track.BackgroundColor3 = window.theme.Border
 		track.BorderSizePixel = 0
 		track.ZIndex = 3
 		track.Parent = r
