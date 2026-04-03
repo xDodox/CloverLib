@@ -33,9 +33,9 @@ local DEFAULT_THEME = {
 	-- ── derived aliases (keep API compatible) ──────────────────────────────
 	BG      = Color3.fromRGB(10, 10, 10),    -- = Base
 	Panel   = Color3.fromRGB(24, 24, 24),    -- = Surface
-	Item    = Color3.fromRGB(10, 10, 10),    -- = Base (group cards sit ON Surface, so they need Base)
-	ItemHov = Color3.fromRGB(20, 20, 20),    -- Base + slight lift for hover
-	Track   = Color3.fromRGB(10, 10, 10),    -- = Base  (slider/input bg - contrasts against Surface containers)
+	Item    = Color3.fromRGB(24, 24, 24),    -- = Surface (C2): group cards match header/sidebar/navbar
+	ItemHov = Color3.fromRGB(32, 32, 32),    -- Surface + slight lift for hover
+	Track   = Color3.fromRGB(10, 10, 10),    -- = Base (C3): slider/input bg contrasts against Surface containers
 	Border  = Color3.fromRGB(42, 42, 42),    -- visible border between elements
 
 	-- ── text ────────────────────────────────────────────────────────────────
@@ -1587,7 +1587,7 @@ function UILib:newMiniWindow(title, width, posX, posY)
 		local track = Instance.new("Frame")
 		track.Size = UDim2.new(1, 0, 0, 4)
 		track.Position = UDim2.new(0, 0, 0, 22)
-		track.BackgroundColor3 = self.window.theme.Border
+		track.BackgroundColor3 = self.window.theme.Track
 		track.BorderSizePixel = 0
 		track.ZIndex = 303
 		track.Parent = row
@@ -2210,7 +2210,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	local track = Instance.new("Frame")
 	track.Size = UDim2.new(1, 0, 0, 4)
 	track.Position = UDim2.new(0, 0, 0, 28)
-	track.BackgroundColor3 = window.theme.Border
+	track.BackgroundColor3 = window.theme.Track
 	track.BorderSizePixel = 0
 	track.ZIndex = 3
 	track.Parent = row
@@ -3798,7 +3798,7 @@ function UILib.Column:addGroup(title)
 		local track = Instance.new("Frame")
 		track.Size = UDim2.new(1, -8, 0, 5)
 		track.Position = UDim2.new(0, 4, 0, 24)
-		track.BackgroundColor3 = window.theme.Border
+		track.BackgroundColor3 = window.theme.Track
 		track.BorderSizePixel = 0
 		track.ZIndex = 3
 		track.Parent = r
@@ -4322,7 +4322,7 @@ function UILib.Column:addGroup(title)
 		local track = Instance.new("Frame")
 		track.Size = UDim2.new(1, 0, 0, 4)
 		track.Position = UDim2.new(0, 0, 0, 28)
-		track.BackgroundColor3 = window.theme.Border
+		track.BackgroundColor3 = window.theme.Track
 		track.BorderSizePixel = 0
 		track.ZIndex = 3
 		track.Parent = r
