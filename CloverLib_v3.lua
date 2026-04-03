@@ -705,6 +705,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		btn.BackgroundTransparency = 1
 		btn.Text = ""
 		btn.ZIndex = 901
+		btn.AutoButtonColor = false
 		btn.Parent = ctxMenu
 		local hov = Instance.new("Frame")
 		hov.Size = UDim2.new(1, 0, 1, 0)
@@ -861,6 +862,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 				opt.BackgroundTransparency = 1
 				opt.Text = ""
 				opt.ZIndex = 921
+				opt.AutoButtonColor = false
 				opt.Parent = modeList
 				local optHov = Instance.new("Frame", opt)
 				optHov.Size = UDim2.new(1, -6, 1, -2)
@@ -907,6 +909,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			modeBtn.BackgroundTransparency = 1
 			modeBtn.Text = ""
 			modeBtn.ZIndex = 910
+			modeBtn.AutoButtonColor = false
 			modeBtn.Parent = modeRow
 			local modeOpen = false
 			modeBtn.MouseButton1Click:Connect(function()
@@ -948,6 +951,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			hkBox.Font = Enum.Font.GothamBold
 			hkBox.TextSize = 10
 			hkBox.ZIndex = 902
+			hkBox.AutoButtonColor = false
 			Instance.new("UICorner", hkBox).CornerRadius = UDim.new(0, 4)
 			local hkStroke = Instance.new("UIStroke", hkBox)
 			hkStroke.Color = self.theme.Border
@@ -1073,6 +1077,7 @@ function UILib:addWatermark(name)
 	dragBtn.BackgroundTransparency = 1
 	dragBtn.Text = ""
 	dragBtn.ZIndex = 205
+	dragBtn.AutoButtonColor = false
 	dragBtn.Parent = wm
 	do
 		local drag, dragStart, dragPos = false, nil, nil
@@ -1232,7 +1237,7 @@ function UILib:_createUITab()
 		else
 			self:notify("Enter a config name first", "warning")
 		end
-	end, "Save current settings to file")
+	end, "Save current settings to file", Enum.TextXAlignment.Center)
 
 	cfg:button("Load Selected", function()
 		local val = loadElem.Value
@@ -1243,7 +1248,7 @@ function UILib:_createUITab()
 		else
 			self:notify("Select a config first", "warning")
 		end
-	end, "Load the currently selected config")
+	end, "Load the currently selected config", Enum.TextXAlignment.Center)
 
 	cfg:button("Delete Config", function()
 		local val = loadElem.Value
@@ -1259,7 +1264,7 @@ function UILib:_createUITab()
 		else
 			self:notify("No config selected", "warning")
 		end
-	end, "Delete selected config (asks for confirmation)")
+	end, "Delete selected config (asks for confirmation)", Enum.TextXAlignment.Center)
 end
 
 function UILib:setTitle(text)
@@ -1390,6 +1395,7 @@ function UILib:confirm(message, onYes, onNo)
 		btn.Font = Enum.Font.GothamBold
 		btn.TextSize = 13
 		btn.ZIndex = 803
+		btn.AutoButtonColor = false
 		btn.Parent = btnRow
 		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 		btn.MouseButton1Click:Connect(function()
@@ -1463,6 +1469,7 @@ function UILib:newMiniWindow(title, width, posX, posY)
 	collapseBtn.Font = Enum.Font.GothamBold
 	collapseBtn.TextSize = 16
 	collapseBtn.ZIndex = 303
+	collapseBtn.AutoButtonColor = false
 	collapseBtn.Parent = header
 
 	local body = Instance.new("Frame")
@@ -1871,6 +1878,7 @@ function UILib.Tab:addSubTab(name)
 	btn.BackgroundTransparency = 1
 	btn.Text = ""
 	btn.ZIndex = 5
+	btn.AutoButtonColor = false
 	btn.Parent = self.window.sidebar
 
 	local hov = Instance.new("Frame")
@@ -2120,21 +2128,12 @@ function UILib.SubTab:addButton(text, callback, tooltip, color)
 	btn.BorderSizePixel = 0
 	btn.Text = ""
 	btn.ZIndex = 3
+	btn.AutoButtonColor = false
 	btn.Parent = self.page
 	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 	local stroke = Instance.new("UIStroke", btn)
 	stroke.Color = window.theme.Border
 	stroke.Thickness = 1
-	local rh = Instance.new("Frame")
-	rh.Size = UDim2.new(1, 0, 1, 0)
-	rh.BackgroundColor3 = window.theme.ItemHov
-	rh.BorderSizePixel = 0
-	rh.Visible = false
-	rh.ZIndex = 2
-	rh.Parent = btn
-	Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 6)
-	btn.MouseEnter:Connect(function() rh.Visible = true end)
-	btn.MouseLeave:Connect(function() rh.Visible = false end)
 	local lbl = Instance.new("TextLabel")
 	lbl.Size = UDim2.new(1, -16, 1, 0)
 	lbl.Position = UDim2.new(0, 8, 0, 0)
@@ -2245,6 +2244,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	hit.BackgroundTransparency = 1
 	hit.Text = ""
 	hit.ZIndex = 6
+	hit.AutoButtonColor = false
 	hit.Parent = track
 	local sliding = false
 	local currentVal = defaultVal
@@ -2355,12 +2355,6 @@ local function createColorPicker(group, items, window, text, default, callback)
 		bs.Thickness = 1
 		bs.Color = isAccent and window.theme.Accent or window.theme.Border
 		if isAccent then table.insert(window.accentObjects, bs) end
-		btn.MouseEnter:Connect(function()
-			btn.TextColor3 = window.theme.White
-		end)
-		btn.MouseLeave:Connect(function()
-			btn.TextColor3 = isAccent and window.theme.Accent or window.theme.GrayLt
-		end)
 		return btn
 	end
 
@@ -2915,17 +2909,12 @@ local function buildDropdownRefreshBtn(row, window, refreshCallback)
 	refreshBtn.Font = Enum.Font.Roboto
 	refreshBtn.TextSize = 10
 	refreshBtn.ZIndex = 12
+	refreshBtn.AutoButtonColor = false
 	refreshBtn.Parent = row
 	Instance.new("UICorner", refreshBtn).CornerRadius = UDim.new(0, 4)
 	local rStroke = Instance.new("UIStroke", refreshBtn)
 	rStroke.Color = window.theme.Border
 	rStroke.Thickness = 1
-	refreshBtn.MouseEnter:Connect(function()
-		refreshBtn.TextColor3 = window.theme.White
-	end)
-	refreshBtn.MouseLeave:Connect(function()
-		refreshBtn.TextColor3 = window.theme.GrayLt
-	end)
 	return refreshBtn
 end
 
@@ -3569,12 +3558,12 @@ function UILib.Column:addGroup(title)
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 3
 		lbl.Parent = r
-		-- Keybind button: auto-width, C3 bg, centered text, proper border
+		-- Keybind button: fixed width, absolute vertical center (6px = (34-22)/2)
 		local kbtn = Instance.new("TextButton")
 		kbtn.AutomaticSize = Enum.AutomaticSize.X
 		kbtn.Size = UDim2.new(0, 0, 0, 22)
-		kbtn.AnchorPoint = Vector2.new(1, 0.5)
-		kbtn.Position = UDim2.new(1, -4, 0.5, 0)
+		kbtn.AnchorPoint = Vector2.new(1, 0)
+		kbtn.Position = UDim2.new(1, -4, 0, 6)
 		kbtn.BackgroundColor3 = window.theme.Track
 		kbtn.BackgroundTransparency = 0
 		kbtn.BorderSizePixel = 0
@@ -3602,10 +3591,10 @@ function UILib.Column:addGroup(title)
 			listening = true
 			skipNext = true
 			kbtn.Text = "..."
-			kbtn.TextColor3 = window.theme.White
-			kbtn.BackgroundColor3 = window.theme.Accent
+			kbtn.TextColor3 = window.theme.Accent
+			kbtn.BackgroundColor3 = window.theme.Track
 			kbtn.BackgroundTransparency = 0
-			kstroke.Color = window.theme.AccentD
+			kstroke.Color = window.theme.Accent
 			local con
 			con = UIS.InputBegan:Connect(function(i)
 				if skipNext and i.UserInputType == Enum.UserInputType.MouseButton1 then skipNext = false return end
@@ -3718,6 +3707,7 @@ function UILib.Column:addGroup(title)
 		btn.BorderSizePixel = 0
 		btn.Text = ""
 		btn.ZIndex = 3
+		btn.AutoButtonColor = false
 		btn.Parent = items
 
 		if style == "split" then
@@ -3727,16 +3717,6 @@ function UILib.Column:addGroup(title)
 			local bstroke = Instance.new("UIStroke", btn)
 			bstroke.Color = window.theme.Border
 			bstroke.Thickness = 1
-			local rh = Instance.new("Frame")
-			rh.Size = UDim2.new(1, 0, 1, 0)
-			rh.BackgroundColor3 = window.theme.ItemHov
-			rh.BorderSizePixel = 0
-			rh.Visible = false
-			rh.ZIndex = 2
-			rh.Parent = btn
-			Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 4)
-			btn.MouseEnter:Connect(function() rh.Visible = true end)
-			btn.MouseLeave:Connect(function() rh.Visible = false end)
 			local lbl = Instance.new("TextLabel")
 			lbl.Size = UDim2.new(1, 0, 1, 0)
 			lbl.BackgroundTransparency = 1
@@ -3760,8 +3740,6 @@ function UILib.Column:addGroup(title)
 			lbl.TextXAlignment = align or Enum.TextXAlignment.Left
 			lbl.ZIndex = 4
 			lbl.Parent = btn
-			btn.MouseEnter:Connect(function() lbl.TextColor3 = window.theme.White end)
-			btn.MouseLeave:Connect(function() lbl.TextColor3 = color or window.theme.Accent end)
 		else
 			-- C3 background so buttons are distinct but not as heavy as Surface
 			local btnBg = bgColor or window.theme.Track
@@ -3771,15 +3749,6 @@ function UILib.Column:addGroup(title)
 			local bstroke = Instance.new("UIStroke", btn)
 			bstroke.Color = bgColor and Color3.new(bgColor.r*0.7, bgColor.g*0.7, bgColor.b*0.7) or window.theme.Border
 			bstroke.Thickness = 1
-			local rh = Instance.new("Frame")
-			rh.Size = UDim2.new(1, 0, 1, 0)
-			rh.BackgroundColor3 = bgColor and Color3.new(bgColor.r*0.85, bgColor.g*0.85, bgColor.b*0.85) or Color3.fromRGB(22,22,22)
-			rh.Visible = false
-			rh.ZIndex = 2
-			rh.Parent = btn
-			Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 4)
-			btn.MouseEnter:Connect(function() rh.Visible = true end)
-			btn.MouseLeave:Connect(function() rh.Visible = false end)
 			local lbl = Instance.new("TextLabel")
 			lbl.Size = UDim2.new(1, 0, 1, 0)
 			lbl.Position = UDim2.new(0, 4, 0, 0)
@@ -4136,6 +4105,7 @@ function UILib.Column:addGroup(title)
 		toggleRow.BackgroundTransparency = 1
 		toggleRow.Text = ""
 		toggleRow.ZIndex = 3
+		toggleRow.AutoButtonColor = false
 		toggleRow.Parent = container
 		-- Arrow indicator
 		local arrow = Instance.new("TextLabel")
@@ -4399,6 +4369,7 @@ function UILib.Column:addGroup(title)
 		hitLeft.BackgroundTransparency = 1
 		hitLeft.Text = ""
 		hitLeft.ZIndex = 6
+		hitLeft.AutoButtonColor = false
 		hitLeft.Parent = track
 		local hitRight = Instance.new("TextButton")
 		hitRight.Size = UDim2.new(0, 16, 0, 22)
@@ -4406,6 +4377,7 @@ function UILib.Column:addGroup(title)
 		hitRight.BackgroundTransparency = 1
 		hitRight.Text = ""
 		hitRight.ZIndex = 6
+		hitRight.AutoButtonColor = false
 		hitRight.Parent = track
 		local dragging = false
 		local dragType = nil
