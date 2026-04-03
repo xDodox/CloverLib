@@ -1271,7 +1271,6 @@ function UILib:setVisible(visible)
 		self.window.Size = startSize
 		self.window.Position = UDim2.new(targetPos.X.Scale, targetPos.X.Offset, targetPos.Y.Scale, targetPos.Y.Offset + 8)
 		self.window.BackgroundTransparency = 1
-		self.sg.Enabled = true
 		self.window.Visible = true
 		TweenService:Create(self.window,
 			TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
@@ -1309,7 +1308,6 @@ function UILib:setVisible(visible)
 				return
 			end
 			self.window.Visible = false
-			self.sg.Enabled = false
 			self.window.BackgroundTransparency = 0
 		end)
 	end
@@ -2126,14 +2124,9 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	local id = generateID()
 	local row = Instance.new("Frame")
 	row.Size = UDim2.new(1, 0, 0, 42)
-	row.BackgroundColor3 = window.theme.Track
-	row.BackgroundTransparency = 0
+	row.BackgroundTransparency = 1
 	row.BorderSizePixel = 0
 	row.Parent = items
-	Instance.new("UICorner", row).CornerRadius = UDim.new(0, 4)
-	local rowStroke = Instance.new("UIStroke", row)
-	rowStroke.Color = window.theme.Border
-	rowStroke.Thickness = 1
 	local rowPad = Instance.new("UIPadding", row)
 	rowPad.PaddingLeft = UDim.new(0, 6)
 	rowPad.PaddingRight = UDim.new(0, 6)
@@ -2274,14 +2267,9 @@ local function createColorPicker(group, items, window, text, default, callback)
 	local id = generateID()
 	local row = Instance.new("Frame")
 	row.Size = UDim2.new(1, 0, 0, 32)
-	row.BackgroundColor3 = window.theme.Track
-	row.BackgroundTransparency = 0
+	row.BackgroundTransparency = 1
 	row.BorderSizePixel = 0
 	row.Parent = items
-	Instance.new("UICorner", row).CornerRadius = UDim.new(0, 4)
-	local rowStroke = Instance.new("UIStroke", row)
-	rowStroke.Color = window.theme.Border
-	rowStroke.Thickness = 1
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, -62, 1, 0)
 	label.Position = UDim2.new(0, 4, 0, 0)
@@ -3060,15 +3048,10 @@ function UILib.Column:addGroup(title)
 		local id = generateID()
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, 36)
-		r.BackgroundColor3 = window.theme.Track
-		r.BackgroundTransparency = 0
+		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.ZIndex = 3
 		r.Parent = items
-		Instance.new("UICorner", r).CornerRadius = UDim.new(0, 4)
-		local rowStroke = Instance.new("UIStroke", r)
-		rowStroke.Color = window.theme.Border
-		rowStroke.Thickness = 1
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0, 22, 0, 22)
 		cbOuter.Position = UDim2.new(1, -26, 0.5, -11)
@@ -3531,14 +3514,9 @@ function UILib.Column:addGroup(title)
 		local id = generateID()
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, 34)
-		r.BackgroundColor3 = window.theme.Track
-		r.BackgroundTransparency = 0
+		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
-		Instance.new("UICorner", r).CornerRadius = UDim.new(0, 4)
-		local rowStroke = Instance.new("UIStroke", r)
-		rowStroke.Color = window.theme.Border
-		rowStroke.Thickness = 1
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -82, 1, 0)
 		lbl.Position = UDim2.new(0, 4, 0, 0)
@@ -4188,14 +4166,9 @@ function UILib.Column:addGroup(title)
 		local id = generateID()
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, 46)
-		r.BackgroundColor3 = window.theme.Track
-		r.BackgroundTransparency = 0
+		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
-		Instance.new("UICorner", r).CornerRadius = UDim.new(0, 4)
-		local rowStroke = Instance.new("UIStroke", r)
-		rowStroke.Color = window.theme.Border
-		rowStroke.Thickness = 1
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -48, 0, 18)
 		lbl.Position = UDim2.new(0, 4, 0, 3)
@@ -4247,14 +4220,9 @@ function UILib.Column:addGroup(title)
 		local id = generateID()
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, 46)
-		r.BackgroundColor3 = window.theme.Track
-		r.BackgroundTransparency = 0
+		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
-		Instance.new("UICorner", r).CornerRadius = UDim.new(0, 4)
-		local rowStroke = Instance.new("UIStroke", r)
-		rowStroke.Color = window.theme.Border
-		rowStroke.Thickness = 1
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(0.45, -8, 0, 18)
 		lbl.Position = UDim2.new(0, 4, 0, 3)
@@ -4305,14 +4273,9 @@ function UILib.Column:addGroup(title)
 		local id = generateID()
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, 46)
-		r.BackgroundColor3 = window.theme.Track
-		r.BackgroundTransparency = 0
+		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
-		Instance.new("UICorner", r).CornerRadius = UDim.new(0, 4)
-		local rowStroke = Instance.new("UIStroke", r)
-		rowStroke.Color = window.theme.Border
-		rowStroke.Thickness = 1
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -48, 0, 18)
 		lbl.Position = UDim2.new(0, 4, 0, 3)
