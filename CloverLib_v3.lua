@@ -77,7 +77,7 @@ local function _makeTooltipSystem(sg, theme, connections)
 	tooltipText.Size = UDim2.new(1, 0, 1, 0)
 	tooltipText.BackgroundTransparency = 1
 	tooltipText.TextColor3 = theme.White
-	tooltipText.Font = Enum.Font.Roboto
+	tooltipText.Font = Enum.Font.Gotham
 	tooltipText.TextSize = 12
 	tooltipText.TextWrapped = true
 	tooltipText.ZIndex = 1001
@@ -98,7 +98,7 @@ local function _makeTooltipSystem(sg, theme, connections)
 		local screenWidth  = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 		local screenHeight = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
 		local textWidth = 160
-		local textSize  = game:GetService("TextService"):GetTextSize(text, 12, Enum.Font.Roboto, Vector2.new(textWidth, 500))
+		local textSize  = game:GetService("TextService"):GetTextSize(text, 12, Enum.Font.Gotham, Vector2.new(textWidth, 500))
 		local tipW = textWidth + 24
 		local tipH = textSize.Y + 16
 		tooltipFrame.Size = UDim2.new(0, tipW, 0, tipH)
@@ -184,7 +184,7 @@ function UILib:notify(message, notifType, duration)
 	label.BackgroundTransparency = 1
 	label.Text = message
 	label.TextColor3 = self.theme.White
-	label.Font = Enum.Font.Roboto
+	label.Font = Enum.Font.Gotham
 	label.TextSize = 13
 	label.TextWrapped = true
 	label.TextXAlignment = Enum.TextXAlignment.Left
@@ -536,7 +536,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	hintLabel.BackgroundTransparency = 1
 	hintLabel.Text = "[ " .. (self.toggleKey and self.toggleKey.Name or "RSHIFT") .. " ]  TOGGLE"
 	hintLabel.TextColor3 = self.theme.Gray
-	hintLabel.Font = Enum.Font.RobotoMono
+	hintLabel.Font = Enum.Font.Gotham
 	hintLabel.TextSize = 9
 	hintLabel.TextXAlignment = Enum.TextXAlignment.Right
 	hintLabel.Parent = header
@@ -705,7 +705,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		btn.BackgroundTransparency = 1
 		btn.Text = ""
 		btn.ZIndex = 901
-		btn.AutoButtonColor = false
 		btn.Parent = ctxMenu
 		local hov = Instance.new("Frame")
 		hov.Size = UDim2.new(1, 0, 1, 0)
@@ -727,7 +726,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = accent and self.theme.Accent or self.theme.White
-		lbl.Font = Enum.Font.Roboto
+		lbl.Font = Enum.Font.Gotham
 		lbl.TextSize = 12
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 902
@@ -862,7 +861,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 				opt.BackgroundTransparency = 1
 				opt.Text = ""
 				opt.ZIndex = 921
-				opt.AutoButtonColor = false
 				opt.Parent = modeList
 				local optHov = Instance.new("Frame", opt)
 				optHov.Size = UDim2.new(1, -6, 1, -2)
@@ -880,7 +878,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 				optLbl.BackgroundTransparency = 1
 				optLbl.Text = modeNames[mode]
 				optLbl.TextColor3 = isActive and self.theme.Accent or self.theme.GrayLt
-				optLbl.Font = Enum.Font.Roboto
+				optLbl.Font = Enum.Font.Gotham
 				optLbl.TextSize = 11
 				optLbl.TextXAlignment = Enum.TextXAlignment.Left
 				optLbl.ZIndex = 922
@@ -909,7 +907,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			modeBtn.BackgroundTransparency = 1
 			modeBtn.Text = ""
 			modeBtn.ZIndex = 910
-			modeBtn.AutoButtonColor = false
 			modeBtn.Parent = modeRow
 			local modeOpen = false
 			modeBtn.MouseButton1Click:Connect(function()
@@ -936,7 +933,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			hkTextLbl.BackgroundTransparency = 1
 			hkTextLbl.Text = "Bind Key"
 			hkTextLbl.TextColor3 = self.theme.White
-			hkTextLbl.Font = Enum.Font.Roboto
+			hkTextLbl.Font = Enum.Font.Gotham
 			hkTextLbl.TextSize = 12
 			hkTextLbl.TextXAlignment = Enum.TextXAlignment.Left
 			hkTextLbl.ZIndex = 902
@@ -951,7 +948,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			hkBox.Font = Enum.Font.GothamBold
 			hkBox.TextSize = 10
 			hkBox.ZIndex = 902
-			hkBox.AutoButtonColor = false
 			Instance.new("UICorner", hkBox).CornerRadius = UDim.new(0, 4)
 			local hkStroke = Instance.new("UIStroke", hkBox)
 			hkStroke.Color = self.theme.Border
@@ -1077,7 +1073,6 @@ function UILib:addWatermark(name)
 	dragBtn.BackgroundTransparency = 1
 	dragBtn.Text = ""
 	dragBtn.ZIndex = 205
-	dragBtn.AutoButtonColor = false
 	dragBtn.Parent = wm
 	do
 		local drag, dragStart, dragPos = false, nil, nil
@@ -1110,7 +1105,7 @@ function UILib:addWatermark(name)
 	fpsLabel.BackgroundTransparency = 1
 	fpsLabel.Text = "FPS: 0"
 	fpsLabel.TextColor3 = self.theme.Accent
-	fpsLabel.Font = Enum.Font.RobotoMono
+	fpsLabel.Font = Enum.Font.Gotham
 	fpsLabel.TextSize = 10
 	fpsLabel.ZIndex = 201
 	fpsLabel.LayoutOrder = 3
@@ -1128,7 +1123,7 @@ function UILib:addWatermark(name)
 	pingLabel.BackgroundTransparency = 1
 	pingLabel.Text = "Ping: 0ms"
 	pingLabel.TextColor3 = self.theme.Accent
-	pingLabel.Font = Enum.Font.RobotoMono
+	pingLabel.Font = Enum.Font.Gotham
 	pingLabel.TextSize = 10
 	pingLabel.ZIndex = 201
 	pingLabel.LayoutOrder = 5
@@ -1237,7 +1232,7 @@ function UILib:_createUITab()
 		else
 			self:notify("Enter a config name first", "warning")
 		end
-	end, "Save current settings to file", Enum.TextXAlignment.Center)
+	end, "Save current settings to file")
 
 	cfg:button("Load Selected", function()
 		local val = loadElem.Value
@@ -1248,7 +1243,7 @@ function UILib:_createUITab()
 		else
 			self:notify("Select a config first", "warning")
 		end
-	end, "Load the currently selected config", Enum.TextXAlignment.Center)
+	end, "Load the currently selected config")
 
 	cfg:button("Delete Config", function()
 		local val = loadElem.Value
@@ -1264,7 +1259,7 @@ function UILib:_createUITab()
 		else
 			self:notify("No config selected", "warning")
 		end
-	end, "Delete selected config (asks for confirmation)", Enum.TextXAlignment.Center)
+	end, "Delete selected config (asks for confirmation)")
 end
 
 function UILib:setTitle(text)
@@ -1369,7 +1364,7 @@ function UILib:confirm(message, onYes, onNo)
 	msgLabel.BackgroundTransparency = 1
 	msgLabel.Text = message
 	msgLabel.TextColor3 = Color3.new(1, 1, 1)
-	msgLabel.Font = Enum.Font.Roboto
+	msgLabel.Font = Enum.Font.Gotham
 	msgLabel.TextSize = 14
 	msgLabel.TextWrapped = true
 	msgLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -1395,7 +1390,6 @@ function UILib:confirm(message, onYes, onNo)
 		btn.Font = Enum.Font.GothamBold
 		btn.TextSize = 13
 		btn.ZIndex = 803
-		btn.AutoButtonColor = false
 		btn.Parent = btnRow
 		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 		btn.MouseButton1Click:Connect(function()
@@ -1469,7 +1463,6 @@ function UILib:newMiniWindow(title, width, posX, posY)
 	collapseBtn.Font = Enum.Font.GothamBold
 	collapseBtn.TextSize = 16
 	collapseBtn.ZIndex = 303
-	collapseBtn.AutoButtonColor = false
 	collapseBtn.Parent = header
 
 	local body = Instance.new("Frame")
@@ -1531,7 +1524,7 @@ function UILib:newMiniWindow(title, width, posX, posY)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = labelText
 		lbl.TextColor3 = self.window.theme.Gray
-		lbl.Font = Enum.Font.Roboto
+		lbl.Font = Enum.Font.Gotham
 		lbl.TextSize = 12
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 303
@@ -1542,7 +1535,7 @@ function UILib:newMiniWindow(title, width, posX, posY)
 		val.BackgroundTransparency = 1
 		val.Text = tostring(defaultValue or "—")
 		val.TextColor3 = color or self.window.theme.Accent
-		val.Font = Enum.Font.RobotoMono
+		val.Font = Enum.Font.Gotham
 		val.TextSize = 12
 		val.TextXAlignment = Enum.TextXAlignment.Right
 		val.ZIndex = 303
@@ -1577,7 +1570,7 @@ function UILib:newMiniWindow(title, width, posX, posY)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = labelText
 		lbl.TextColor3 = self.window.theme.Gray
-		lbl.Font = Enum.Font.Roboto
+		lbl.Font = Enum.Font.Gotham
 		lbl.TextSize = 11
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 303
@@ -1588,7 +1581,7 @@ function UILib:newMiniWindow(title, width, posX, posY)
 		valLbl.BackgroundTransparency = 1
 		valLbl.Text = tostring(value) .. " / " .. tostring(maxVal)
 		valLbl.TextColor3 = color or self.window.theme.Accent
-		valLbl.Font = Enum.Font.RobotoMono
+		valLbl.Font = Enum.Font.Gotham
 		valLbl.TextSize = 11
 		valLbl.TextXAlignment = Enum.TextXAlignment.Right
 		valLbl.ZIndex = 303
@@ -1878,7 +1871,6 @@ function UILib.Tab:addSubTab(name)
 	btn.BackgroundTransparency = 1
 	btn.Text = ""
 	btn.ZIndex = 5
-	btn.AutoButtonColor = false
 	btn.Parent = self.window.sidebar
 
 	local hov = Instance.new("Frame")
@@ -1905,7 +1897,7 @@ function UILib.Tab:addSubTab(name)
 	label.BackgroundTransparency = 1
 	label.Text = name
 	label.TextColor3 = self.window.theme.Gray
-	label.Font = Enum.Font.Roboto
+	label.Font = Enum.Font.Gotham
 	label.TextSize = 12
 	label.TextXAlignment = Enum.TextXAlignment.Center
 	label.ZIndex = 6
@@ -2048,7 +2040,7 @@ function UILib.SubTab:addParagraph(ptitle, text)
 	body.BackgroundTransparency = 1
 	body.Text = text
 	body.TextColor3 = window.theme.Gray
-	body.Font = Enum.Font.Roboto
+	body.Font = Enum.Font.Gotham
 	body.TextSize = 12
 	body.TextXAlignment = Enum.TextXAlignment.Left
 	body.TextWrapped = true
@@ -2085,7 +2077,7 @@ function UILib.SubTab:addInput(labelText, default, placeholder, callback, toolti
 	lbl.BackgroundTransparency = 1
 	lbl.Text = labelText
 	lbl.TextColor3 = window.theme.GrayLt
-	lbl.Font = Enum.Font.Roboto
+	lbl.Font = Enum.Font.Gotham
 	lbl.TextSize = 12
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
 	lbl.ZIndex = 3
@@ -2099,7 +2091,7 @@ function UILib.SubTab:addInput(labelText, default, placeholder, callback, toolti
 	box.ZIndex = 3
 	box.Text = default or ""
 	box.TextColor3 = window.theme.Accent
-	box.Font = Enum.Font.RobotoMono
+	box.Font = Enum.Font.Gotham
 	box.TextSize = 13
 	box.ClearTextOnFocus = false
 	box.PlaceholderText = placeholder or ""
@@ -2128,19 +2120,28 @@ function UILib.SubTab:addButton(text, callback, tooltip, color)
 	btn.BorderSizePixel = 0
 	btn.Text = ""
 	btn.ZIndex = 3
-	btn.AutoButtonColor = false
 	btn.Parent = self.page
 	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 	local stroke = Instance.new("UIStroke", btn)
 	stroke.Color = window.theme.Border
 	stroke.Thickness = 1
+	local rh = Instance.new("Frame")
+	rh.Size = UDim2.new(1, 0, 1, 0)
+	rh.BackgroundColor3 = window.theme.ItemHov
+	rh.BorderSizePixel = 0
+	rh.Visible = false
+	rh.ZIndex = 2
+	rh.Parent = btn
+	Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 6)
+	btn.MouseEnter:Connect(function() rh.Visible = true end)
+	btn.MouseLeave:Connect(function() rh.Visible = false end)
 	local lbl = Instance.new("TextLabel")
 	lbl.Size = UDim2.new(1, -16, 1, 0)
 	lbl.Position = UDim2.new(0, 8, 0, 0)
 	lbl.BackgroundTransparency = 1
 	lbl.Text = text
 	lbl.TextColor3 = color or window.theme.White
-	lbl.Font = Enum.Font.Roboto
+	lbl.Font = Enum.Font.Gotham
 	lbl.TextSize = 13
 	lbl.TextXAlignment = Enum.TextXAlignment.Center
 	lbl.ZIndex = 4
@@ -2163,7 +2164,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	label.BackgroundTransparency = 1
 	label.Text = text
 	label.TextColor3 = window.theme.GrayLt
-	label.Font = Enum.Font.Roboto
+	label.Font = Enum.Font.Gotham
 	label.TextSize = 12
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.ZIndex = 3
@@ -2191,7 +2192,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	valueLabel.BackgroundTransparency = 1
 	valueLabel.Text = tostring(defaultVal)
 	valueLabel.TextColor3 = window.theme.Accent
-	valueLabel.Font = Enum.Font.RobotoMono
+	valueLabel.Font = Enum.Font.Gotham
 	valueLabel.TextSize = 13
 	valueLabel.ZIndex = 4
 	valueLabel.Parent = valueBox
@@ -2202,7 +2203,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	valueBoxInput.BackgroundTransparency = 1
 	valueBoxInput.Text = tostring(defaultVal)
 	valueBoxInput.TextColor3 = window.theme.Accent
-	valueBoxInput.Font = Enum.Font.RobotoMono
+	valueBoxInput.Font = Enum.Font.Gotham
 	valueBoxInput.TextSize = 12
 	valueBoxInput.Visible = false
 	valueBoxInput.ZIndex = 5
@@ -2244,7 +2245,6 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	hit.BackgroundTransparency = 1
 	hit.Text = ""
 	hit.ZIndex = 6
-	hit.AutoButtonColor = false
 	hit.Parent = track
 	local sliding = false
 	local currentVal = defaultVal
@@ -2301,7 +2301,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 	label.BackgroundTransparency = 1
 	label.Text = text
 	label.TextColor3 = window.theme.White
-	label.Font = Enum.Font.Roboto
+	label.Font = Enum.Font.Gotham
 	label.TextSize = 13
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.ZIndex = 3
@@ -2355,6 +2355,12 @@ local function createColorPicker(group, items, window, text, default, callback)
 		bs.Thickness = 1
 		bs.Color = isAccent and window.theme.Accent or window.theme.Border
 		if isAccent then table.insert(window.accentObjects, bs) end
+		btn.MouseEnter:Connect(function()
+			btn.TextColor3 = window.theme.White
+		end)
+		btn.MouseLeave:Connect(function()
+			btn.TextColor3 = isAccent and window.theme.Accent or window.theme.GrayLt
+		end)
 		return btn
 	end
 
@@ -2380,9 +2386,9 @@ local function createColorPicker(group, items, window, text, default, callback)
 		table.insert(window.activePopups, pickerFrame)
 		Instance.new("UICorner", pickerFrame).CornerRadius = UDim.new(0, 8)
 		local pickerStroke = Instance.new("UIStroke", pickerFrame)
-		pickerStroke.Color = window.theme.Accent
-		pickerStroke.Transparency = 0.5
-		table.insert(window.accentObjects, pickerStroke)
+		pickerStroke.Color = window.theme.Border
+		pickerStroke.Transparency = 0
+		-- pickerStroke not added to accentObjects (stays grey)
 
 		-- Position: align top of picker to top of colorBox, slide down if needed
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
@@ -2554,7 +2560,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		alphaLbl2.BackgroundTransparency = 1
 		alphaLbl2.Text = "Transparency"
 		alphaLbl2.TextColor3 = window.theme.Gray
-		alphaLbl2.Font = Enum.Font.Roboto
+		alphaLbl2.Font = Enum.Font.Gotham
 		alphaLbl2.TextSize = 10
 		alphaLbl2.TextXAlignment = Enum.TextXAlignment.Left
 		alphaLbl2.ZIndex = 2001
@@ -2566,7 +2572,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		alphaValLbl.BackgroundTransparency = 1
 		alphaValLbl.Text = math.floor((1 - elem.Alpha) * 100 + 0.5) .. "%"
 		alphaValLbl.TextColor3 = window.theme.Accent
-		alphaValLbl.Font = Enum.Font.RobotoMono
+		alphaValLbl.Font = Enum.Font.Gotham
 		alphaValLbl.TextSize = 10
 		alphaValLbl.TextXAlignment = Enum.TextXAlignment.Right
 		alphaValLbl.ZIndex = 2001
@@ -2639,7 +2645,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		hexBox.BorderSizePixel = 0
 		hexBox.Text = "#" .. current:ToHex()
 		hexBox.TextColor3 = window.theme.Accent
-		hexBox.Font = Enum.Font.RobotoMono
+		hexBox.Font = Enum.Font.Gotham
 		hexBox.TextSize = 12
 		hexBox.ClearTextOnFocus = false
 		hexBox.ZIndex = 2001
@@ -2714,7 +2720,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	label.BackgroundTransparency = 1
 	label.Text = text
 	label.TextColor3 = window.theme.GrayLt
-	label.Font = Enum.Font.Roboto
+	label.Font = Enum.Font.Gotham
 	label.TextSize = 12
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.ZIndex = 11
@@ -2765,8 +2771,8 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	dlist.ZIndex = 50
 	dlist.Parent = row
 	local multiDlistStroke = Instance.new("UIStroke", dlist)
-	multiDlistStroke.Color = window.theme.Accent
-	multiDlistStroke.Transparency = 0.6
+	multiDlistStroke.Color = window.theme.Border
+	multiDlistStroke.Transparency = 0
 	multiDlistStroke.Thickness = 1
 	-- No UICorner - flat top connects to button
 	local multiBridge = Instance.new("Frame")
@@ -2816,7 +2822,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 		ol.BackgroundTransparency = 1
 		ol.Text = opt
 		ol.TextColor3 = isSel and window.theme.White or window.theme.Gray
-		ol.Font = isSel and Enum.Font.GothamBold or Enum.Font.Roboto
+		ol.Font = isSel and Enum.Font.GothamBold or Enum.Font.Gotham
 		ol.TextSize = 12
 		ol.TextXAlignment = Enum.TextXAlignment.Left
 		ol.ZIndex = 52
@@ -2839,7 +2845,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 				selected[opt] = nil
 				bar.Visible = false
 				ol.TextColor3 = window.theme.Gray
-				ol.Font = Enum.Font.Roboto
+				ol.Font = Enum.Font.Gotham
 				TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = window.theme.Base}):Play()
 			else
 				selected[opt] = true
@@ -2906,15 +2912,20 @@ local function buildDropdownRefreshBtn(row, window, refreshCallback)
 	refreshBtn.BackgroundColor3 = window.theme.Track
 	refreshBtn.Text = "Refresh"
 	refreshBtn.TextColor3 = window.theme.GrayLt
-	refreshBtn.Font = Enum.Font.Roboto
+	refreshBtn.Font = Enum.Font.Gotham
 	refreshBtn.TextSize = 10
 	refreshBtn.ZIndex = 12
-	refreshBtn.AutoButtonColor = false
 	refreshBtn.Parent = row
 	Instance.new("UICorner", refreshBtn).CornerRadius = UDim.new(0, 4)
 	local rStroke = Instance.new("UIStroke", refreshBtn)
 	rStroke.Color = window.theme.Border
 	rStroke.Thickness = 1
+	refreshBtn.MouseEnter:Connect(function()
+		refreshBtn.TextColor3 = window.theme.White
+	end)
+	refreshBtn.MouseLeave:Connect(function()
+		refreshBtn.TextColor3 = window.theme.GrayLt
+	end)
 	return refreshBtn
 end
 
@@ -3062,7 +3073,7 @@ function UILib.Column:addGroup(title)
 		body.BackgroundTransparency = 1
 		body.Text = text
 		body.TextColor3 = window.theme.Gray
-		body.Font = Enum.Font.Roboto
+		body.Font = Enum.Font.Gotham
 		body.TextSize = 12
 		body.TextXAlignment = Enum.TextXAlignment.Left
 		body.TextWrapped = true
@@ -3100,7 +3111,7 @@ function UILib.Column:addGroup(title)
 		local cbMark = Instance.new("TextLabel")
 		cbMark.Size = UDim2.new(1, 0, 1, 0)
 		cbMark.BackgroundTransparency = 1
-		cbMark.Text = default and "x" or ""
+		cbMark.Text = default and "✓" or ""
 		cbMark.TextColor3 = Color3.new(1,1,1)
 		cbMark.Font = Enum.Font.GothamBold
 		cbMark.TextSize = 16
@@ -3112,7 +3123,7 @@ function UILib.Column:addGroup(title)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
-		lbl.Font = Enum.Font.Roboto
+		lbl.Font = Enum.Font.Gotham
 		lbl.TextSize = 13
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 4
@@ -3127,7 +3138,7 @@ function UILib.Column:addGroup(title)
 				BackgroundColor3 = state and window.theme.Accent or window.theme.Base
 			}):Play()
 			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
-			cbMark.Text = state and "x" or ""
+			cbMark.Text = state and "✓" or ""
 			if callback then callback(state) end
 			if window.configs[id] then window.configs[id].Value = state end
 		end
@@ -3178,7 +3189,7 @@ function UILib.Column:addGroup(title)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.GrayLt
-		lbl.Font = Enum.Font.Roboto
+		lbl.Font = Enum.Font.Gotham
 		lbl.TextSize = 12
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 11
@@ -3266,7 +3277,7 @@ function UILib.Column:addGroup(title)
 		searchBox.PlaceholderColor3 = window.theme.Gray
 		searchBox.Text = ""
 		searchBox.TextColor3 = window.theme.White
-		searchBox.Font = Enum.Font.Roboto
+		searchBox.Font = Enum.Font.Gotham
 		searchBox.TextSize = 12
 		searchBox.ClearTextOnFocus = false
 		searchBox.ZIndex = 53
@@ -3396,7 +3407,7 @@ function UILib.Column:addGroup(title)
 				ol.BackgroundTransparency = 1
 				ol.Text = opt
 				ol.TextColor3 = isSelected and window.theme.White or window.theme.Gray
-				ol.Font = isSelected and Enum.Font.GothamBold or Enum.Font.Roboto
+				ol.Font = isSelected and Enum.Font.GothamBold or Enum.Font.Gotham
 				ol.TextSize = 12
 				ol.TextXAlignment = Enum.TextXAlignment.Left
 				ol.ZIndex = 52
@@ -3420,7 +3431,7 @@ function UILib.Column:addGroup(title)
 					for o, lbl2 in pairs(checks) do
 						local sel = (o == opt)
 						lbl2.TextColor3 = sel and window.theme.White or window.theme.Gray
-						lbl2.Font = sel and Enum.Font.GothamBold or Enum.Font.Roboto
+						lbl2.Font = sel and Enum.Font.GothamBold or Enum.Font.Gotham
 					end
 					for o, b in pairs(backgrounds) do b.Visible = (o == opt) end
 					for _, child in ipairs(dlist:GetChildren()) do
@@ -3514,7 +3525,7 @@ function UILib.Column:addGroup(title)
 				for o, lbl2 in pairs(checks) do
 					local sel = (o == val)
 					lbl2.TextColor3 = sel and window.theme.White or window.theme.Gray
-					lbl2.Font = sel and Enum.Font.GothamBold or Enum.Font.Roboto
+					lbl2.Font = sel and Enum.Font.GothamBold or Enum.Font.Gotham
 				end
 				for o, b in pairs(backgrounds) do b.Visible = (o == val) end
 				if callback then callback(val) end
@@ -3553,24 +3564,24 @@ function UILib.Column:addGroup(title)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
-		lbl.Font = Enum.Font.Roboto
+		lbl.Font = Enum.Font.Gotham
 		lbl.TextSize = 13
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 3
 		lbl.Parent = r
-		-- Keybind button: fixed width, absolute vertical center (6px = (34-22)/2)
+		-- Keybind button: auto-width, C3 bg, centered text, proper border
 		local kbtn = Instance.new("TextButton")
 		kbtn.AutomaticSize = Enum.AutomaticSize.X
 		kbtn.Size = UDim2.new(0, 0, 0, 22)
-		kbtn.AnchorPoint = Vector2.new(1, 0)
-		kbtn.Position = UDim2.new(1, -4, 0, 6)
+		kbtn.AnchorPoint = Vector2.new(1, 0.5)
+		kbtn.Position = UDim2.new(1, -4, 0.5, 0)
 		kbtn.BackgroundColor3 = window.theme.Track
 		kbtn.BackgroundTransparency = 0
 		kbtn.BorderSizePixel = 0
 		kbtn.Text = currentName
 		kbtn.TextColor3 = window.theme.Accent
-		kbtn.Font = Enum.Font.RobotoMono
-		kbtn.TextSize = 11
+		kbtn.Font = Enum.Font.Gotham
+		kbtn.TextSize = 12
 		kbtn.TextXAlignment = Enum.TextXAlignment.Center
 		kbtn.TextYAlignment = Enum.TextYAlignment.Center
 		kbtn.AutoButtonColor = false
@@ -3591,10 +3602,10 @@ function UILib.Column:addGroup(title)
 			listening = true
 			skipNext = true
 			kbtn.Text = "..."
-			kbtn.TextColor3 = window.theme.Accent
-			kbtn.BackgroundColor3 = window.theme.Track
+			kbtn.TextColor3 = window.theme.White
+			kbtn.BackgroundColor3 = window.theme.Accent
 			kbtn.BackgroundTransparency = 0
-			kstroke.Color = window.theme.Accent
+			kstroke.Color = window.theme.AccentD
 			local con
 			con = UIS.InputBegan:Connect(function(i)
 				if skipNext and i.UserInputType == Enum.UserInputType.MouseButton1 then skipNext = false return end
@@ -3643,7 +3654,7 @@ function UILib.Column:addGroup(title)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = color or window.theme.Gray
-		lbl.Font = Enum.Font.Roboto
+		lbl.Font = Enum.Font.Gotham
 		lbl.TextSize = 11
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 3
@@ -3707,7 +3718,6 @@ function UILib.Column:addGroup(title)
 		btn.BorderSizePixel = 0
 		btn.Text = ""
 		btn.ZIndex = 3
-		btn.AutoButtonColor = false
 		btn.Parent = items
 
 		if style == "split" then
@@ -3717,6 +3727,16 @@ function UILib.Column:addGroup(title)
 			local bstroke = Instance.new("UIStroke", btn)
 			bstroke.Color = window.theme.Border
 			bstroke.Thickness = 1
+			local rh = Instance.new("Frame")
+			rh.Size = UDim2.new(1, 0, 1, 0)
+			rh.BackgroundColor3 = window.theme.ItemHov
+			rh.BorderSizePixel = 0
+			rh.Visible = false
+			rh.ZIndex = 2
+			rh.Parent = btn
+			Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 4)
+			btn.MouseEnter:Connect(function() rh.Visible = true end)
+			btn.MouseLeave:Connect(function() rh.Visible = false end)
 			local lbl = Instance.new("TextLabel")
 			lbl.Size = UDim2.new(1, 0, 1, 0)
 			lbl.BackgroundTransparency = 1
@@ -3735,11 +3755,13 @@ function UILib.Column:addGroup(title)
 			lbl.BackgroundTransparency = 1
 			lbl.Text = text
 			lbl.TextColor3 = color or window.theme.Accent
-			lbl.Font = Enum.Font.Roboto
+			lbl.Font = Enum.Font.Gotham
 			lbl.TextSize = 13
 			lbl.TextXAlignment = align or Enum.TextXAlignment.Left
 			lbl.ZIndex = 4
 			lbl.Parent = btn
+			btn.MouseEnter:Connect(function() lbl.TextColor3 = window.theme.White end)
+			btn.MouseLeave:Connect(function() lbl.TextColor3 = color or window.theme.Accent end)
 		else
 			-- C3 background so buttons are distinct but not as heavy as Surface
 			local btnBg = bgColor or window.theme.Track
@@ -3749,13 +3771,22 @@ function UILib.Column:addGroup(title)
 			local bstroke = Instance.new("UIStroke", btn)
 			bstroke.Color = bgColor and Color3.new(bgColor.r*0.7, bgColor.g*0.7, bgColor.b*0.7) or window.theme.Border
 			bstroke.Thickness = 1
+			local rh = Instance.new("Frame")
+			rh.Size = UDim2.new(1, 0, 1, 0)
+			rh.BackgroundColor3 = bgColor and Color3.new(bgColor.r*0.85, bgColor.g*0.85, bgColor.b*0.85) or Color3.fromRGB(22,22,22)
+			rh.Visible = false
+			rh.ZIndex = 2
+			rh.Parent = btn
+			Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 4)
+			btn.MouseEnter:Connect(function() rh.Visible = true end)
+			btn.MouseLeave:Connect(function() rh.Visible = false end)
 			local lbl = Instance.new("TextLabel")
 			lbl.Size = UDim2.new(1, 0, 1, 0)
 			lbl.Position = UDim2.new(0, 4, 0, 0)
 			lbl.BackgroundTransparency = 1
 			lbl.Text = text
 			lbl.TextColor3 = color or window.theme.White
-			lbl.Font = Enum.Font.Roboto
+			lbl.Font = Enum.Font.Gotham
 			lbl.TextSize = 13
 			lbl.TextXAlignment = align or Enum.TextXAlignment.Left
 			lbl.ZIndex = 4
@@ -3780,7 +3811,7 @@ function UILib.Column:addGroup(title)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.GrayLt
-		lbl.Font = Enum.Font.Roboto
+		lbl.Font = Enum.Font.Gotham
 		lbl.TextSize = 12
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 3
@@ -3791,7 +3822,7 @@ function UILib.Column:addGroup(title)
 		valLbl.BackgroundTransparency = 1
 		valLbl.Text = tostring(value) .. " / " .. tostring(maxVal)
 		valLbl.TextColor3 = color or window.theme.Accent
-		valLbl.Font = Enum.Font.RobotoMono
+		valLbl.Font = Enum.Font.Gotham
 		valLbl.TextSize = 11
 		valLbl.TextXAlignment = Enum.TextXAlignment.Right
 		valLbl.ZIndex = 3
@@ -4037,7 +4068,7 @@ function UILib.Column:addGroup(title)
 		local cbMark = Instance.new("TextLabel")
 		cbMark.Size = UDim2.new(1,0,1,0)
 		cbMark.BackgroundTransparency = 1
-		cbMark.Text = default and "x" or ""
+		cbMark.Text = default and "✓" or ""
 		cbMark.TextColor3 = Color3.new(1,1,1)
 		cbMark.Font = Enum.Font.GothamBold
 		cbMark.TextSize = 16
@@ -4050,7 +4081,7 @@ function UILib.Column:addGroup(title)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
-		lbl.Font = Enum.Font.Roboto
+		lbl.Font = Enum.Font.Gotham
 		lbl.TextSize = 13
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 4
@@ -4080,7 +4111,7 @@ function UILib.Column:addGroup(title)
 				BackgroundColor3 = state and window.theme.Accent or window.theme.Base
 			}):Play()
 			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
-			cbMark.Text = state and "x" or ""
+			cbMark.Text = state and "✓" or ""
 			local targetH = 34 + (state and contentLayout.AbsoluteContentSize.Y or 0)
 			TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 				Size = UDim2.new(1,0,0,targetH)
@@ -4105,7 +4136,6 @@ function UILib.Column:addGroup(title)
 		toggleRow.BackgroundTransparency = 1
 		toggleRow.Text = ""
 		toggleRow.ZIndex = 3
-		toggleRow.AutoButtonColor = false
 		toggleRow.Parent = container
 		-- Arrow indicator
 		local arrow = Instance.new("TextLabel")
@@ -4125,7 +4155,7 @@ function UILib.Column:addGroup(title)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
-		lbl.Font = Enum.Font.Roboto
+		lbl.Font = Enum.Font.Gotham
 		lbl.TextSize = 13
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 4
@@ -4190,7 +4220,7 @@ function UILib.Column:addGroup(title)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.GrayLt
-		lbl.Font = Enum.Font.Roboto
+		lbl.Font = Enum.Font.Gotham
 		lbl.TextSize = 12
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 3
@@ -4205,7 +4235,7 @@ function UILib.Column:addGroup(title)
 		box.Parent = r
 		box.Text = default or ""
 		box.TextColor3 = window.theme.Accent
-		box.Font = Enum.Font.RobotoMono
+		box.Font = Enum.Font.Gotham
 		box.TextSize = 13
 		box.ClearTextOnFocus = false
 		box.PlaceholderText = placeholder or ""
@@ -4243,7 +4273,7 @@ function UILib.Column:addGroup(title)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.GrayLt
-		lbl.Font = Enum.Font.Roboto
+		lbl.Font = Enum.Font.Gotham
 		lbl.TextSize = 12
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 3
@@ -4258,7 +4288,7 @@ function UILib.Column:addGroup(title)
 		box.Parent = r
 		box.Text = tostring(default or 0)
 		box.TextColor3 = window.theme.Accent
-		box.Font = Enum.Font.RobotoMono
+		box.Font = Enum.Font.Gotham
 		box.TextSize = 13
 		box.ClearTextOnFocus = false
 		Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
@@ -4295,7 +4325,7 @@ function UILib.Column:addGroup(title)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.GrayLt
-		lbl.Font = Enum.Font.Roboto
+		lbl.Font = Enum.Font.Gotham
 		lbl.TextSize = 12
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 3
@@ -4316,7 +4346,7 @@ function UILib.Column:addGroup(title)
 		valueLabel.BackgroundTransparency = 1
 		valueLabel.Text = tostring(defaultMin) .. " - " .. tostring(defaultMax)
 		valueLabel.TextColor3 = window.theme.Accent
-		valueLabel.Font = Enum.Font.RobotoMono
+		valueLabel.Font = Enum.Font.Gotham
 		valueLabel.TextSize = 11
 		valueLabel.ZIndex = 4
 		valueLabel.Parent = valueBox
@@ -4369,7 +4399,6 @@ function UILib.Column:addGroup(title)
 		hitLeft.BackgroundTransparency = 1
 		hitLeft.Text = ""
 		hitLeft.ZIndex = 6
-		hitLeft.AutoButtonColor = false
 		hitLeft.Parent = track
 		local hitRight = Instance.new("TextButton")
 		hitRight.Size = UDim2.new(0, 16, 0, 22)
@@ -4377,7 +4406,6 @@ function UILib.Column:addGroup(title)
 		hitRight.BackgroundTransparency = 1
 		hitRight.Text = ""
 		hitRight.ZIndex = 6
-		hitRight.AutoButtonColor = false
 		hitRight.Parent = track
 		local dragging = false
 		local dragType = nil
