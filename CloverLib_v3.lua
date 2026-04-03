@@ -19,18 +19,29 @@ local RunService = game:GetService("RunService")
 
 -- Registry of all live windows (multi-window support)
 local allWindows = {}
+-- 3-color system:
+--   C1 (Accent)  = main brand color  e.g. (0, 210, 135)
+--   C2 (Surface) = mid surface       e.g. (24, 24, 24)  – header/sidebar/navbar/footer/containers/button bg
+--   C3 (Base)    = deepest bg        e.g. (10, 10, 10)  – content area behind splits/columns
 local DEFAULT_THEME = {
-	BG = Color3.fromRGB(10, 10, 12),       -- near-black window bg
-	Panel = Color3.fromRGB(16, 16, 20),    -- sidebar / navbar
-	Item = Color3.fromRGB(22, 22, 28),     -- group card bg
-	ItemHov = Color3.fromRGB(32, 32, 40),  -- hover state
-	Accent = Color3.fromRGB(0, 210, 135),  -- green (slightly dimmed)
-	AccentD = Color3.fromRGB(0, 155,  95), -- darker green
-	White = Color3.new(1, 1, 1),
-	Gray = Color3.fromRGB(120, 120, 135),
-	GrayLt = Color3.fromRGB(175, 175, 190),
-	Border = Color3.fromRGB(38, 38, 50),   -- subtle borders
-	Track = Color3.fromRGB(30, 30, 38)     -- slider/input bg
+	-- ── 3 core colors ──────────────────────────────────────────────────────
+	Accent  = Color3.fromRGB(0, 210, 135),   -- C1: main accent / ON state
+	AccentD = Color3.fromRGB(0, 150, 95),    -- C1 dark: toggle stroke, slider gradient end
+	Surface = Color3.fromRGB(24, 24, 24),    -- C2: header, sidebar, navbar, footer, buttons, dropdowns, inputs
+	Base    = Color3.fromRGB(10, 10, 10),    -- C3: window bg, content area, splits background
+
+	-- ── derived aliases (keep API compatible) ──────────────────────────────
+	BG      = Color3.fromRGB(10, 10, 10),    -- = Base
+	Panel   = Color3.fromRGB(24, 24, 24),    -- = Surface
+	Item    = Color3.fromRGB(24, 24, 24),    -- = Surface  (group cards)
+	ItemHov = Color3.fromRGB(34, 34, 34),    -- Surface + slight lift for hover
+	Track   = Color3.fromRGB(24, 24, 24),    -- = Surface  (slider/input bg)
+	Border  = Color3.fromRGB(36, 36, 36),    -- barely-visible border between Surface and Base
+
+	-- ── text ────────────────────────────────────────────────────────────────
+	White   = Color3.new(1, 1, 1),
+	Gray    = Color3.fromRGB(110, 110, 110),
+	GrayLt  = Color3.fromRGB(165, 165, 165),
 }
 
 local NOTIF_COLORS = {
@@ -320,7 +331,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 
 	function self:updateAccent(color)
 		self.theme.Accent = color
-		self.theme.AccentD = Color3.new(color.r*0.75, color.g*0.75, color.b*0.75)
+		self.theme.AccentD = Color3.new(color.r*0.70, color.g*0.70, color.b*0.70)
 		for _, obj in ipairs(self.accentObjects) do
 			pcall(function()
 				if obj:IsA("ScrollingFrame") then
@@ -510,7 +521,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		versionLabel.Size = UDim2.new(1, 0, 1, 0)
 		versionLabel.BackgroundTransparency = 1
 		versionLabel.Text = "v1.0"
-		versionLabel.TextColor3 = Color3.fromRGB(20, 20, 20)
+		versionLabel.TextColor3 = Color3.fromRGB(10,10,10)
 		versionLabel.Font = Enum.Font.GothamBold
 		versionLabel.TextSize = 10
 		versionLabel.ZIndex = 7
@@ -653,7 +664,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 
 	local ctxMenu = Instance.new("TextButton")
 	ctxMenu.Size = UDim2.new(0, 180, 0, 0)
-	ctxMenu.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
+	ctxMenu.BackgroundColor3 = self.theme.Surface
 	ctxMenu.BorderSizePixel = 0
 	ctxMenu.Text = ""
 	ctxMenu.AutoButtonColor = false
@@ -662,7 +673,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	ctxMenu.Parent = self.sg
 	Instance.new("UICorner", ctxMenu).CornerRadius = UDim.new(0, 7)
 	local ctxStroke = Instance.new("UIStroke", ctxMenu)
-	ctxStroke.Color = Color3.fromRGB(85, 85, 100)
+	ctxStroke.Color = self.theme.Border
 	ctxStroke.Thickness = 1
 	local ctxLayout = Instance.new("UIListLayout", ctxMenu)
 	ctxLayout.Padding = UDim.new(0, 2)
@@ -697,7 +708,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		btn.Parent = ctxMenu
 		local hov = Instance.new("Frame")
 		hov.Size = UDim2.new(1, 0, 1, 0)
-		hov.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+		hov.BackgroundColor3 = Color3.fromRGB(38,38,38)
 		hov.BorderSizePixel = 0
 		hov.BackgroundTransparency = 1
 		hov.ZIndex = 901
@@ -714,7 +725,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		lbl.Position = UDim2.new(0, 10, 0, 0)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
-		lbl.TextColor3 = accent and self.theme.Accent or Color3.fromRGB(210, 210, 220)
+		lbl.TextColor3 = accent and self.theme.Accent or self.theme.White
 		lbl.Font = Enum.Font.Roboto
 		lbl.TextSize = 12
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
@@ -729,7 +740,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	local function addCtxSeparator()
 		local sep = Instance.new("Frame")
 		sep.Size = UDim2.new(1, 0, 0, 1)
-		sep.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+		sep.BackgroundColor3 = self.theme.Border
 		sep.BorderSizePixel = 0
 		sep.ZIndex = 901
 		sep.Parent = ctxMenu
@@ -756,7 +767,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			l.Position = UDim2.new(0, 8, 0, 0)
 			l.BackgroundTransparency = 1
 			l.Text = txt:upper()
-			l.TextColor3 = Color3.fromRGB(90, 90, 105)
+			l.TextColor3 = self.theme.Gray
 			l.Font = Enum.Font.GothamBold
 			l.TextSize = 9
 			l.TextXAlignment = Enum.TextXAlignment.Left
@@ -795,13 +806,13 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 
 			local modeRow = Instance.new("Frame")
 			modeRow.Size = UDim2.new(1, 0, 0, 28)
-			modeRow.BackgroundColor3 = Color3.fromRGB(32, 32, 40)
+			modeRow.BackgroundColor3 = self.theme.Surface
 			modeRow.BorderSizePixel = 0
 			modeRow.ZIndex = 901
 			modeRow.Parent = ctxMenu
 			Instance.new("UICorner", modeRow).CornerRadius = UDim.new(0, 5)
 			local modeStroke = Instance.new("UIStroke", modeRow)
-			modeStroke.Color = Color3.fromRGB(70, 70, 85)
+			modeStroke.Color = self.theme.Border
 			modeStroke.Thickness = 1
 
 			local modeLbl = Instance.new("TextLabel")
@@ -821,7 +832,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			modeArrow.Position = UDim2.new(1, -20, 0, 0)
 			modeArrow.BackgroundTransparency = 1
 			modeArrow.Text = "▼"
-			modeArrow.TextColor3 = Color3.fromRGB(120, 120, 140)
+			modeArrow.TextColor3 = self.theme.Gray
 			modeArrow.Font = Enum.Font.GothamBold
 			modeArrow.TextSize = 9
 			modeArrow.ZIndex = 902
@@ -830,14 +841,14 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			local modeList = Instance.new("Frame")
 			modeList.Size = UDim2.new(1, 0, 0, #modeOrder * 26 + 6)
 			modeList.Position = UDim2.new(0, 0, 1, 3)
-			modeList.BackgroundColor3 = Color3.fromRGB(26, 26, 34)
+			modeList.BackgroundColor3 = self.theme.Base
 			modeList.BorderSizePixel = 0
 			modeList.Visible = false
 			modeList.ZIndex = 920
 			modeList.Parent = modeRow
 			Instance.new("UICorner", modeList).CornerRadius = UDim.new(0, 5)
 			local mlStroke = Instance.new("UIStroke", modeList)
-			mlStroke.Color = Color3.fromRGB(70, 70, 85)
+			mlStroke.Color = self.theme.Border
 			mlStroke.Thickness = 1
 			local mlLayout = Instance.new("UIListLayout", modeList)
 			mlLayout.Padding = UDim.new(0, 1)
@@ -854,7 +865,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 				local optHov = Instance.new("Frame", opt)
 				optHov.Size = UDim2.new(1, -6, 1, -2)
 				optHov.Position = UDim2.new(0, 3, 0, 1)
-				optHov.BackgroundColor3 = Color3.fromRGB(45, 45, 58)
+				optHov.BackgroundColor3 = Color3.fromRGB(38,38,38)
 				optHov.BackgroundTransparency = 1
 				optHov.BorderSizePixel = 0
 				optHov.ZIndex = 921
@@ -866,7 +877,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 				optLbl.Position = UDim2.new(0, 10, 0, 0)
 				optLbl.BackgroundTransparency = 1
 				optLbl.Text = modeNames[mode]
-				optLbl.TextColor3 = isActive and self.theme.Accent or Color3.fromRGB(190, 190, 200)
+				optLbl.TextColor3 = isActive and self.theme.Accent or self.theme.GrayLt
 				optLbl.Font = Enum.Font.Roboto
 				optLbl.TextSize = 11
 				optLbl.TextXAlignment = Enum.TextXAlignment.Left
@@ -921,7 +932,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			hkTextLbl.Position = UDim2.new(0, 10, 0, 0)
 			hkTextLbl.BackgroundTransparency = 1
 			hkTextLbl.Text = "Bind Key"
-			hkTextLbl.TextColor3 = Color3.fromRGB(210, 210, 220)
+			hkTextLbl.TextColor3 = self.theme.White
 			hkTextLbl.Font = Enum.Font.Roboto
 			hkTextLbl.TextSize = 12
 			hkTextLbl.TextXAlignment = Enum.TextXAlignment.Left
@@ -930,7 +941,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			local hkBox = Instance.new("TextButton")
 			hkBox.Size = UDim2.new(0, 52, 0, 20)
 			hkBox.Position = UDim2.new(1, -56, 0.5, -10)
-			hkBox.BackgroundColor3 = Color3.fromRGB(32, 32, 40)
+			hkBox.BackgroundColor3 = self.theme.Surface
 			hkBox.BorderSizePixel = 0
 			hkBox.Text = elemConfig.Hotkey and elemConfig.Hotkey.Name or "None"
 			hkBox.TextColor3 = self.theme.Accent
@@ -939,7 +950,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			hkBox.ZIndex = 902
 			Instance.new("UICorner", hkBox).CornerRadius = UDim.new(0, 4)
 			local hkStroke = Instance.new("UIStroke", hkBox)
-			hkStroke.Color = Color3.fromRGB(70, 70, 85)
+			hkStroke.Color = self.theme.Border
 			hkStroke.Thickness = 1
 			hkTextLbl.Parent = hkRow
 			hkBox.Parent = hkRow
@@ -1273,7 +1284,7 @@ function UILib:setVisible(visible)
 		overlay.Name = "_FadeOverlay"
 		overlay.Size = UDim2.new(1, 0, 1, 0)
 		overlay.Position = UDim2.new(0, 0, 0, 0)
-		overlay.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
+		overlay.BackgroundColor3 = self.theme.Base
 		overlay.BackgroundTransparency = 1
 		overlay.BorderSizePixel = 0
 		overlay.ZIndex = 9999
@@ -2358,7 +2369,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 
 		pickerFrame = Instance.new("TextButton")
 		pickerFrame.Size = UDim2.new(0, pickerW, 0, pickerH)
-		pickerFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+		pickerFrame.BackgroundColor3 = window.theme.Surface
 		pickerFrame.BorderSizePixel = 0
 		pickerFrame.ZIndex = 2000
 		pickerFrame.Text = ""
@@ -2436,9 +2447,9 @@ local function createColorPicker(group, items, window, text, default, callback)
 			currentMode = name
 			for _, tb in pairs(tabButtons) do
 				local isActive = tb.Text == name
-				tb.BackgroundColor3 = isActive and window.theme.Accent or Color3.fromRGB(0,0,0)
-				tb.BackgroundTransparency = isActive and 0 or 1
-				tb.TextColor3 = isActive and Color3.fromRGB(18,18,22) or window.theme.Gray
+				tb.BackgroundColor3 = isActive and window.theme.Accent or window.theme.Surface
+				tb.BackgroundTransparency = isActive and 0 or 0
+				tb.TextColor3 = isActive and Color3.fromRGB(10,10,10) or window.theme.Gray
 			end
 		end
 
@@ -2569,7 +2580,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		alphaTrack.Parent = pickerFrame
 		Instance.new("UICorner", alphaTrack).CornerRadius = UDim.new(0, 6)
 		-- checker bg to represent opacity visually
-		alphaTrack.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+		alphaTrack.BackgroundColor3 = Color3.fromRGB(50,50,50)
 		local alphaColorBar = Instance.new("Frame")
 		alphaColorBar.Size = UDim2.new(1, 0, 1, 0)
 		alphaColorBar.BorderSizePixel = 0
@@ -2743,7 +2754,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	local dlist = Instance.new("ScrollingFrame")
 	dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 160))
 	dlist.Position = UDim2.new(0, 0, 0, 54)
-	dlist.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
+	dlist.BackgroundColor3 = window.theme.Base
 	dlist.BorderSizePixel = 0
 	dlist.ScrollBarThickness = listH > 160 and 2 or 0
 	dlist.ScrollBarImageColor3 = window.theme.Accent
@@ -2755,7 +2766,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	local multiBridge = Instance.new("Frame")
 	multiBridge.Size = UDim2.new(1, 0, 0, 6)
 	multiBridge.Position = UDim2.new(0, 0, 0, 48)
-	multiBridge.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
+	multiBridge.BackgroundColor3 = window.theme.Base
 	multiBridge.BorderSizePixel = 0
 	multiBridge.ZIndex = 49
 	multiBridge.Visible = false
@@ -2772,7 +2783,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 		local isSel = selected[opt] and true or false
 		local ob = Instance.new("TextButton")
 		ob.Size = UDim2.new(1, 0, 0, 28)
-		ob.BackgroundColor3 = isSel and Color3.fromRGB(18, 28, 24) or Color3.fromRGB(10, 10, 14)
+		ob.BackgroundColor3 = isSel and Color3.fromRGB(20,34,26) or window.theme.Base
 		ob.BackgroundTransparency = 0
 		ob.AutoButtonColor = false
 		ob.Text = ""
@@ -2804,13 +2815,13 @@ local function createMultiDropdown(group, items, window, text, options, default,
 		checks[opt] = ol
 		ob.MouseEnter:Connect(function()
 			if not selected[opt] then
-				TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = Color3.fromRGB(22, 22, 30)}):Play()
+				TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = Color3.fromRGB(32,32,32)}):Play()
 				ol.TextColor3 = window.theme.GrayLt
 			end
 		end)
 		ob.MouseLeave:Connect(function()
 			if not selected[opt] then
-				TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = Color3.fromRGB(10, 10, 14)}):Play()
+				TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = window.theme.Base}):Play()
 				ol.TextColor3 = window.theme.Gray
 			end
 		end)
@@ -2820,13 +2831,13 @@ local function createMultiDropdown(group, items, window, text, options, default,
 				bar.Visible = false
 				ol.TextColor3 = window.theme.Gray
 				ol.Font = Enum.Font.Roboto
-				TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = Color3.fromRGB(10, 10, 14)}):Play()
+				TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = window.theme.Base}):Play()
 			else
 				selected[opt] = true
 				bar.Visible = true
 				ol.TextColor3 = window.theme.White
 				ol.Font = Enum.Font.GothamBold
-				TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = Color3.fromRGB(18, 28, 24)}):Play()
+				TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = Color3.fromRGB(20,34,26)}):Play()
 			end
 			local keys = {}
 			for k, _ in pairs(selected) do table.insert(keys, k) end
@@ -3080,7 +3091,7 @@ function UILib.Column:addGroup(title)
 		cbOuter.Parent = r
 		Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
 		local cbStroke = Instance.new("UIStroke", cbOuter)
-		cbStroke.Color = default and window.theme.AccentD or Color3.fromRGB(60, 80, 72)
+		cbStroke.Color = default and window.theme.AccentD or window.theme.Border
 		cbStroke.Thickness = 1
 		local cbMark = Instance.new("TextLabel")
 		cbMark.Size = UDim2.new(1, 0, 1, 0)
@@ -3111,7 +3122,7 @@ function UILib.Column:addGroup(title)
 			TweenService:Create(cbOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
 				BackgroundColor3 = state and window.theme.Accent or window.theme.Track
 			}):Play()
-			cbStroke.Color = state and window.theme.AccentD or Color3.fromRGB(60, 80, 72)
+			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
 			cbMark.Text = state and "x" or ""
 			if callback then callback(state) end
 			if window.configs[id] then window.configs[id].Value = state end
@@ -3213,7 +3224,7 @@ function UILib.Column:addGroup(title)
 		local dlist = Instance.new("ScrollingFrame")
 		dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 160))
 		dlist.Position = UDim2.new(0, 0, 0, 54)
-		dlist.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
+		dlist.BackgroundColor3 = window.theme.Base
 		dlist.BorderSizePixel = 0
 		dlist.ScrollBarThickness = listH > 160 and 2 or 0
 		dlist.ScrollBarImageColor3 = window.theme.Accent
@@ -3226,7 +3237,7 @@ function UILib.Column:addGroup(title)
 		local bridge = Instance.new("Frame")
 		bridge.Size = UDim2.new(1, 0, 0, 6)
 		bridge.Position = UDim2.new(0, 0, 0, 49)
-		bridge.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
+		bridge.BackgroundColor3 = window.theme.Base
 		bridge.BorderSizePixel = 0
 		bridge.ZIndex = 49
 		bridge.Visible = false
@@ -3248,7 +3259,7 @@ function UILib.Column:addGroup(title)
 		local SEARCH_H = 28
 		local searchRow = Instance.new("Frame")
 		searchRow.Size = UDim2.new(1, 0, 0, SEARCH_H)
-		searchRow.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
+		searchRow.BackgroundColor3 = window.theme.Base
 		searchRow.BorderSizePixel = 0
 		searchRow.ZIndex = 52
 		searchRow.LayoutOrder = -1   -- always first in the list
@@ -3326,7 +3337,7 @@ function UILib.Column:addGroup(title)
 				local isSelected = (opt == currentSelection)
 				local ob = Instance.new("TextButton")
 				ob.Size = UDim2.new(1, 0, 0, 28)
-				ob.BackgroundColor3 = isSelected and Color3.fromRGB(18, 28, 24) or Color3.fromRGB(10, 10, 14)
+				ob.BackgroundColor3 = isSelected and Color3.fromRGB(20,34,26) or window.theme.Base
 				ob.BackgroundTransparency = 0
 				ob.AutoButtonColor = false
 				ob.Text = ""
@@ -3359,13 +3370,13 @@ function UILib.Column:addGroup(title)
 				checks[opt] = ol
 				ob.MouseEnter:Connect(function()
 					if opt ~= currentSelection then
-						TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = Color3.fromRGB(22, 22, 30)}):Play()
+						TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = Color3.fromRGB(32,32,32)}):Play()
 						ol.TextColor3 = window.theme.GrayLt
 					end
 				end)
 				ob.MouseLeave:Connect(function()
 					if opt ~= currentSelection then
-						TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = Color3.fromRGB(10, 10, 14)}):Play()
+						TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = window.theme.Base}):Play()
 						ol.TextColor3 = window.theme.Gray
 					end
 				end)
@@ -3382,7 +3393,7 @@ function UILib.Column:addGroup(title)
 						if child:IsA("TextButton") then
 							local isSel = child:FindFirstChildOfClass("TextLabel") and
 								child:FindFirstChildOfClass("TextLabel").Text == opt
-							child.BackgroundColor3 = isSel and Color3.fromRGB(18, 28, 24) or Color3.fromRGB(10, 10, 14)
+							child.BackgroundColor3 = isSel and Color3.fromRGB(20,34,26) or window.theme.Base
 						end
 					end
 					if callback then callback(opt) end
@@ -3519,7 +3530,7 @@ function UILib.Column:addGroup(title)
 		kbtn.Size = UDim2.new(0, 0, 0, 20)
 		kbtn.AnchorPoint = Vector2.new(1, 0.5)
 		kbtn.Position = UDim2.new(1, -2, 0.5, 0)
-		kbtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+		kbtn.BackgroundColor3 = window.theme.Surface
 		kbtn.BackgroundTransparency = 0.6
 		kbtn.BorderSizePixel = 0
 		kbtn.Text = currentName
@@ -3553,7 +3564,7 @@ function UILib.Column:addGroup(title)
 				if skipNext and i.UserInputType == Enum.UserInputType.MouseButton1 then skipNext = false return end
 				listening = false
 				con:Disconnect()
-				kbtn.BackgroundColor3 = Color3.fromRGB(0,0,0)
+				kbtn.BackgroundColor3 = window.theme.Surface
 				kbtn.BackgroundTransparency = 0.6
 				kbtn.TextColor3 = window.theme.GrayLt
 				kstroke.Color = window.theme.Border
@@ -3667,7 +3678,7 @@ function UILib.Column:addGroup(title)
 			btn.BackgroundTransparency = 0
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
 			local bstroke = Instance.new("UIStroke", btn)
-			bstroke.Color = Color3.fromRGB(50, 50, 60)
+			bstroke.Color = window.theme.Border
 			bstroke.Thickness = 1
 			local rh = Instance.new("Frame")
 			rh.Size = UDim2.new(1, 0, 1, 0)
@@ -3706,7 +3717,7 @@ function UILib.Column:addGroup(title)
 			btn.MouseLeave:Connect(function() lbl.TextColor3 = color or window.theme.Accent end)
 		else
 			-- Use a slightly elevated background so the button is always distinct
-			local btnBg = bgColor or Color3.fromRGB(32, 32, 40)
+			local btnBg = bgColor or window.theme.Surface
 			btn.BackgroundColor3 = btnBg
 			btn.BackgroundTransparency = 0
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
@@ -3715,7 +3726,7 @@ function UILib.Column:addGroup(title)
 			bstroke.Thickness = 1
 			local rh = Instance.new("Frame")
 			rh.Size = UDim2.new(1, 0, 1, 0)
-			rh.BackgroundColor3 = bgColor and Color3.new(bgColor.r*0.85, bgColor.g*0.85, bgColor.b*0.85) or Color3.fromRGB(44, 44, 54)
+			rh.BackgroundColor3 = bgColor and Color3.new(bgColor.r*0.85, bgColor.g*0.85, bgColor.b*0.85) or Color3.fromRGB(34,34,34)
 			rh.Visible = false
 			rh.ZIndex = 2
 			rh.Parent = btn
@@ -4005,7 +4016,7 @@ function UILib.Column:addGroup(title)
 		cbOuter.Parent = toggleRow
 		Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0,4)
 		local cbStroke = Instance.new("UIStroke", cbOuter)
-		cbStroke.Color = default and window.theme.AccentD or Color3.fromRGB(60,80,72)
+		cbStroke.Color = default and window.theme.AccentD or window.theme.Border
 		cbStroke.Thickness = 1
 		local cbMark = Instance.new("TextLabel")
 		cbMark.Size = UDim2.new(1,0,1,0)
@@ -4052,7 +4063,7 @@ function UILib.Column:addGroup(title)
 			TweenService:Create(cbOuter, TweenInfo.new(0.12, Enum.EasingStyle.Quad), {
 				BackgroundColor3 = state and window.theme.Accent or window.theme.Track
 			}):Play()
-			cbStroke.Color = state and window.theme.AccentD or Color3.fromRGB(60,80,72)
+			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
 			cbMark.Text = state and "x" or ""
 			local targetH = 34 + (state and contentLayout.AbsoluteContentSize.Y or 0)
 			TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
