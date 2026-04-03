@@ -424,7 +424,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		for _, kbtn in ipairs(self.keybindButtons) do
 			pcall(function()
 				kbtn.Size = UDim2.new(0, kw, 0, 22)
-				kbtn.Position = UDim2.new(1, -(kw + 2), 0.5, -11)
+				kbtn.Position = UDim2.new(1, -(kw + 4), 0.5, -11)
 			end)
 		end
 		if self._refreshTabWidths then self._refreshTabWidths() end
@@ -1278,33 +1278,28 @@ end
 function UILib:setVisible(visible)
 	if not self.window then return end
 
-	-- Blackout overlay lives in the ScreenGui so it covers everything (navbar, header, content)
-	if not self._fadeOverlay then
-		local overlay = Instance.new("Frame")
-		overlay.Name = "_FadeOverlay"
-		overlay.Size = UDim2.new(1, 0, 1, 0)
-		overlay.Position = UDim2.new(0, 0, 0, 0)
-		overlay.BackgroundColor3 = self.theme.Base
-		overlay.BackgroundTransparency = 1
-		overlay.BorderSizePixel = 0
-		overlay.ZIndex = 9999
-		overlay.Parent = self.sg
-		self._fadeOverlay = overlay
-	end
-
 	if visible then
 		if self._visibleTarget then return end
 		self._visibleTarget = true
 		local targetPos = self._truePos or self.originalPosition
 		local targetSize = self._trueSize or self.originalSize
-		self.window.Position = targetPos
-		self.window.Size = targetSize
-		self._fadeOverlay.BackgroundTransparency = 0
+		-- Start slightly scaled down and transparent, animate to full
+		local startSize = UDim2.new(
+			targetSize.X.Scale, targetSize.X.Offset,
+			targetSize.Y.Scale, math.floor(targetSize.Y.Offset * 0.96)
+		)
+		self.window.Size = startSize
+		self.window.Position = UDim2.new(targetPos.X.Scale, targetPos.X.Offset, targetPos.Y.Scale, targetPos.Y.Offset + 8)
+		self.window.BackgroundTransparency = 1
 		self.sg.Enabled = true
 		self.window.Visible = true
-		TweenService:Create(self._fadeOverlay,
-			TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-			{BackgroundTransparency = 1}
+		TweenService:Create(self.window,
+			TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+			{
+				Size = targetSize,
+				Position = targetPos,
+				BackgroundTransparency = 0
+			}
 		):Play()
 	else
 		if not self._visibleTarget then return end
@@ -1315,20 +1310,27 @@ function UILib:setVisible(visible)
 			pcall(function() if popup then popup:Destroy() end end)
 		end
 		self.activePopups = {}
-		self._fadeOverlay.BackgroundTransparency = 1
-		local t = TweenService:Create(self._fadeOverlay,
+		local hidePos = UDim2.new(
+			self._truePos.X.Scale, self._truePos.X.Offset,
+			self._truePos.Y.Scale, self._truePos.Y.Offset + 10
+		)
+		local t = TweenService:Create(self.window,
 			TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-			{BackgroundTransparency = 0}
+			{
+				BackgroundTransparency = 1,
+				Position = hidePos
+			}
 		)
 		t:Play()
 		t.Completed:Connect(function()
 			if self._visibleTarget then
-				self._fadeOverlay.BackgroundTransparency = 1
+				self.window.BackgroundTransparency = 0
+				self.window.Position = self._truePos
 				return
 			end
 			self.window.Visible = false
 			self.sg.Enabled = false
-			self._fadeOverlay.BackgroundTransparency = 1
+			self.window.BackgroundTransparency = 0
 		end)
 	end
 end
@@ -3196,19 +3198,20 @@ function UILib.Column:addGroup(title)
 		if icon then applyRowIcon(r, lbl, icon, 4) end
 		local refreshBtn = buildDropdownRefreshBtn(r, window, refreshCallback)
 
+		-- The main dropdown button (closed state)
 		local dbtn = Instance.new("TextButton")
 		dbtn.Size = UDim2.new(1, 0, 0, 32)
 		dbtn.Position = UDim2.new(0, 0, 0, 22)
-		dbtn.BackgroundColor3 = window.theme.BG
+		dbtn.BackgroundColor3 = window.theme.Track  -- C3
 		dbtn.BorderSizePixel = 0
 		dbtn.AutoButtonColor = false
 		dbtn.Text = ""
 		dbtn.ZIndex = 11
 		dbtn.Parent = r
-		local dbtnCornerOrig = Instance.new("UICorner", dbtn)
-		dbtnCornerOrig.CornerRadius = UDim.new(0, 4)
+		local dbtnCorner = Instance.new("UICorner", dbtn)
+		dbtnCorner.CornerRadius = UDim.new(0, 4)
 		local dbtnStroke = Instance.new("UIStroke", dbtn)
-		dbtnStroke.Color = window.theme.Border
+		dbtnStroke.Color = window.theme.Border  -- same as text inputs
 		dbtnStroke.Thickness = 1
 		local selLbl = Instance.new("TextLabel")
 		selLbl.Size = UDim2.new(1, -34, 1, 0)
@@ -3221,69 +3224,54 @@ function UILib.Column:addGroup(title)
 		selLbl.TextXAlignment = Enum.TextXAlignment.Left
 		selLbl.ZIndex = 12
 		selLbl.Parent = dbtn
-		-- Chevron arrow: ImageLabel so it renders cleanly at any size
+		-- Chevron arrow
 		local arrow = Instance.new("ImageLabel")
 		arrow.Size = UDim2.new(0, 10, 0, 10)
 		arrow.AnchorPoint = Vector2.new(1, 0.5)
 		arrow.Position = UDim2.new(1, -10, 0.5, 0)
 		arrow.BackgroundTransparency = 1
-		arrow.Image = "rbxassetid://6034818379"  -- chevron-down icon
+		arrow.Image = "rbxassetid://6034818379"
 		arrow.ImageColor3 = window.theme.Accent
 		arrow.ScaleType = Enum.ScaleType.Fit
 		arrow.ZIndex = 12
 		arrow.Name = "arrow"
 		table.insert(window.accentObjects, arrow)
 		arrow.Parent = dbtn
+
 		local itemH = 28
 		local listH = #options * itemH + 8
-		local dlist = Instance.new("ScrollingFrame")
-		dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 160))
-		dlist.Position = UDim2.new(0, 0, 0, 54)
-		dlist.BackgroundColor3 = window.theme.Base
-		dlist.BorderSizePixel = 0
-		dlist.ScrollBarThickness = listH > 160 and 2 or 0
-		dlist.ScrollBarImageColor3 = window.theme.Accent
-		dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
-		dlist.Visible = false
-		dlist.ZIndex = 50
-		dlist.Parent = r
-		-- No UICorner on list - flat top connects to button bottom
-		-- Bridge frame fills gap between button bottom and list top
-		local bridge = Instance.new("Frame")
-		bridge.Size = UDim2.new(1, 0, 0, 6)
-		bridge.Position = UDim2.new(0, 0, 0, 49)
-		bridge.BackgroundColor3 = window.theme.Base
-		bridge.BorderSizePixel = 0
-		bridge.ZIndex = 49
-		bridge.Visible = false
-		bridge.Parent = r
-		local dlistCorner = Instance.new("UICorner", dlist)
-		dlistCorner.CornerRadius = UDim.new(0, 0)
-		local dlistStroke = Instance.new("UIStroke", dlist)
-		dlistStroke.Color = window.theme.Accent
-		dlistStroke.Transparency = 0.6
-		dlistStroke.Thickness = 1
-		local dbtnCorner = dbtnCornerOrig  -- reuse the corner created earlier
-		-- No border on dropdown list either
-		local dlayout = Instance.new("UIListLayout", dlist)
-		dlayout.SortOrder = Enum.SortOrder.LayoutOrder
-		dlayout.Padding = UDim.new(0, 0)
-		-- no padding: items flush to edges, no gap lines
 
-		-- Search box (shown when dropdown opens, 5+ options)
-		local SEARCH_H = 28
+		-- Expanded panel: contains search + list, sits right below dbtn with no gap
+		local expandPanel = Instance.new("Frame")
+		expandPanel.Size = UDim2.new(1, 0, 0, 0)
+		expandPanel.Position = UDim2.new(0, 0, 0, 54)  -- 22 label + 32 btn = 54
+		expandPanel.BackgroundColor3 = window.theme.Track  -- C3, same as button
+		expandPanel.BorderSizePixel = 0
+		expandPanel.ClipsDescendants = true
+		expandPanel.ZIndex = 50
+		expandPanel.Visible = false
+		expandPanel.Parent = r
+		local expandCorner = Instance.new("UICorner", expandPanel)
+		expandCorner.CornerRadius = UDim.new(0, 4)
+		-- Only show left/right/bottom border (no top — seamlessly connects to dbtn)
+		local expandStroke = Instance.new("UIStroke", expandPanel)
+		expandStroke.Color = window.theme.Border
+		expandStroke.Thickness = 1
+
+		-- Search box inside expandPanel
+		local SEARCH_H = 32
 		local searchRow = Instance.new("Frame")
 		searchRow.Size = UDim2.new(1, 0, 0, SEARCH_H)
-		searchRow.BackgroundColor3 = window.theme.Base
+		searchRow.Position = UDim2.new(0, 0, 0, 0)
+		searchRow.BackgroundTransparency = 1
 		searchRow.BorderSizePixel = 0
 		searchRow.ZIndex = 52
-		searchRow.LayoutOrder = -1   -- always first in the list
-		searchRow.Visible = false
-		searchRow.Parent = r
+		searchRow.Visible = false  -- toggled per open
+		searchRow.Parent = expandPanel
 		local searchBox = Instance.new("TextBox")
-		searchBox.Size = UDim2.new(1, -16, 0, 20)
-		searchBox.Position = UDim2.new(0, 8, 0.5, -10)
-		searchBox.BackgroundColor3 = window.theme.Track
+		searchBox.Size = UDim2.new(1, -16, 0, 22)
+		searchBox.Position = UDim2.new(0, 8, 0.5, -11)
+		searchBox.BackgroundColor3 = window.theme.Surface  -- slightly lighter than panel bg
 		searchBox.BorderSizePixel = 0
 		searchBox.PlaceholderText = "Search..."
 		searchBox.PlaceholderColor3 = window.theme.Gray
@@ -3295,12 +3283,41 @@ function UILib.Column:addGroup(title)
 		searchBox.ZIndex = 53
 		searchBox.Parent = searchRow
 		Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0, 4)
+		local searchStroke = Instance.new("UIStroke", searchBox)
+		searchStroke.Color = window.theme.Border
+		searchStroke.Thickness = 1
+
+		-- A thin separator line between search and list
+		local searchSep = Instance.new("Frame")
+		searchSep.Size = UDim2.new(1, 0, 0, 1)
+		searchSep.BackgroundColor3 = window.theme.Border
+		searchSep.BorderSizePixel = 0
+		searchSep.ZIndex = 52
+		searchSep.Visible = false
+		searchSep.Parent = expandPanel
+
+		-- Scrolling list inside expandPanel
+		local dlist = Instance.new("ScrollingFrame")
+		dlist.Size = UDim2.new(1, 0, 0, 0)  -- height set dynamically
+		dlist.Position = UDim2.new(0, 0, 0, 0)  -- offset set when search shown
+		dlist.BackgroundTransparency = 1
+		dlist.BorderSizePixel = 0
+		dlist.ScrollBarThickness = listH > 160 and 2 or 0
+		dlist.ScrollBarImageColor3 = window.theme.Accent
+		dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
+		dlist.ZIndex = 51
+		dlist.Parent = expandPanel
+		local dlayout = Instance.new("UIListLayout", dlist)
+		dlayout.SortOrder = Enum.SortOrder.LayoutOrder
+		dlayout.Padding = UDim.new(0, 0)
 
 		local checks = {}
 		local backgrounds = {}
 		local currentOptions = options
 		local currentSelection = default or ""
 		local open = false
+
+		local function getListMaxH() return math.min(listH, 160) end
 
 		-- Filter visible items based on search query
 		local function applyFilter(query)
@@ -3316,13 +3333,16 @@ function UILib.Column:addGroup(title)
 					end
 				end
 			end
-			-- Resize list to filtered content
-			local visH = filteredCount * 28 + 8
+			local visH = filteredCount * 28 + 4
 			dlist.CanvasSize = UDim2.new(0, 0, 0, visH)
-			local targetH = SEARCH_H + math.min(visH, 132)  -- 132 = 160 - 28 search row
+			local clampedListH = math.min(visH, 132)
+			local showSearch = #currentOptions >= 5
+			local searchExtra = showSearch and SEARCH_H or 0
+			local totalPanelH = searchExtra + clampedListH
 			if open then
-				dlist.Size = UDim2.new(1, 0, 0, math.min(visH, 132))
-				r.Size = UDim2.new(1, 0, 0, 56 + SEARCH_H + math.min(visH, 132))
+				dlist.Size = UDim2.new(1, 0, 0, clampedListH)
+				expandPanel.Size = UDim2.new(1, 0, 0, totalPanelH)
+				r.Size = UDim2.new(1, 0, 0, 56 + totalPanelH)
 				updateSize()
 			end
 		end
@@ -3332,10 +3352,21 @@ function UILib.Column:addGroup(title)
 
 		local function closeDropdown()
 			open = false
-			dlist.Visible = false
+			TweenService:Create(arrow, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {Rotation = 0}):Play()
+			-- Restore button corners
+			dbtnCorner.CornerRadius = UDim.new(0, 4)
+			dbtnStroke.Color = window.theme.Border
 			searchRow.Visible = false
+			searchSep.Visible = false
 			searchBox.Text = ""
-			arrow.Rotation = 0
+			for _, child in ipairs(dlist:GetChildren()) do
+				if child:IsA("TextButton") then child.Visible = true end
+			end
+			local tw = TweenService:Create(expandPanel, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				Size = UDim2.new(1, 0, 0, 0)
+			})
+			tw.Completed:Connect(function() expandPanel.Visible = false end)
+			tw:Play()
 			r.Size = UDim2.new(1, 0, 0, 56)
 			updateSize()
 		end
@@ -3345,20 +3376,20 @@ function UILib.Column:addGroup(title)
 			checks = {}
 			backgrounds = {}
 			currentOptions = opts
-			searchBox.Text = ""  -- clear filter when options rebuilt
-			listH = #opts * 28 + 8
+			searchBox.Text = ""
+			listH = #opts * 28 + 4
 			dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
+			dlist.ScrollBarThickness = listH > 160 and 2 or 0
 			for _, opt in ipairs(opts) do
 				local isSelected = (opt == currentSelection)
 				local ob = Instance.new("TextButton")
 				ob.Size = UDim2.new(1, 0, 0, 28)
-				ob.BackgroundColor3 = isSelected and Color3.fromRGB(20,34,26) or window.theme.Base
-				ob.BackgroundTransparency = 0
+				ob.BackgroundColor3 = isSelected and Color3.fromRGB(20,34,26) or Color3.fromRGB(0,0,0,0)
+				ob.BackgroundTransparency = isSelected and 0 or 1
 				ob.AutoButtonColor = false
 				ob.Text = ""
 				ob.ZIndex = 51
 				ob.Parent = dlist
-				-- Left accent bar shown on selected item
 				local bar = Instance.new("Frame")
 				bar.Size = UDim2.new(0, 2, 0, 14)
 				bar.Position = UDim2.new(0, 0, 0.5, -7)
@@ -3370,10 +3401,9 @@ function UILib.Column:addGroup(title)
 				Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 1)
 				backgrounds[opt] = bar
 				table.insert(window.accentObjects, bar)
-				-- Option text
 				local ol = Instance.new("TextLabel")
 				ol.Size = UDim2.new(1, -12, 1, 0)
-				ol.Position = UDim2.new(0, 10, 0, 0)
+				ol.Position = UDim2.new(0, 12, 0, 0)
 				ol.BackgroundTransparency = 1
 				ol.Text = opt
 				ol.TextColor3 = isSelected and window.theme.White or window.theme.Gray
@@ -3385,13 +3415,13 @@ function UILib.Column:addGroup(title)
 				checks[opt] = ol
 				ob.MouseEnter:Connect(function()
 					if opt ~= currentSelection then
-						TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = Color3.fromRGB(32,32,32)}):Play()
+						TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = Color3.fromRGB(32,32,32), BackgroundTransparency = 0}):Play()
 						ol.TextColor3 = window.theme.GrayLt
 					end
 				end)
 				ob.MouseLeave:Connect(function()
 					if opt ~= currentSelection then
-						TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = window.theme.Base}):Play()
+						TweenService:Create(ob, TweenInfo.new(0.08), {BackgroundColor3 = window.theme.Track, BackgroundTransparency = 1}):Play()
 						ol.TextColor3 = window.theme.Gray
 					end
 				end)
@@ -3408,7 +3438,12 @@ function UILib.Column:addGroup(title)
 						if child:IsA("TextButton") then
 							local isSel = child:FindFirstChildOfClass("TextLabel") and
 								child:FindFirstChildOfClass("TextLabel").Text == opt
-							child.BackgroundColor3 = isSel and Color3.fromRGB(20,34,26) or window.theme.Base
+							if isSel then
+								child.BackgroundColor3 = Color3.fromRGB(20,34,26)
+								child.BackgroundTransparency = 0
+							else
+								child.BackgroundTransparency = 1
+							end
 						end
 					end
 					if callback then callback(opt) end
@@ -3442,47 +3477,42 @@ function UILib.Column:addGroup(title)
 				Rotation = open and 180 or 0
 			}):Play()
 			if open then
-				-- Show search row only when there are enough options to warrant it
 				local showSearch = #currentOptions >= 5
-				searchRow.Visible = showSearch
-				searchBox.Text = ""
 				local extraH = showSearch and SEARCH_H or 0
-				-- Flatten button bottom corners to connect with list
+				local clampedListH = getListMaxH()
+				local totalPanelH = extraH + clampedListH
+
+				-- Flatten bottom corners of button to connect with panel
 				dbtnCorner.CornerRadius = UDim.new(0, 0)
-				bridge.Visible = true
-				bridge.Size = UDim2.new(1, 0, 0, 6)
-				bridge.Position = UDim2.new(0, 0, 0, 49)
+				-- Hide bottom border of button (panel's top handles visually)
+				dbtnStroke.Color = window.theme.Border
+
+				-- Position list inside panel
 				if showSearch then
-					searchRow.Position = UDim2.new(0, 0, 0, 54)
-					dlist.Position = UDim2.new(0, 0, 0, 54 + SEARCH_H)
+					searchRow.Visible = true
+					searchSep.Visible = true
+					searchSep.Position = UDim2.new(0, 0, 0, SEARCH_H)
+					dlist.Position = UDim2.new(0, 0, 0, SEARCH_H + 1)
+					dlist.Size = UDim2.new(1, 0, 0, clampedListH)
+					task.defer(function() searchBox:CaptureFocus() end)
 				else
-					dlist.Position = UDim2.new(0, 0, 0, 54)
+					searchRow.Visible = false
+					searchSep.Visible = false
+					dlist.Position = UDim2.new(0, 0, 0, 0)
+					dlist.Size = UDim2.new(1, 0, 0, clampedListH)
 				end
-				dlist.Visible = true
-				dlist.Size = UDim2.new(1, 0, 0, 0)
-				TweenService:Create(dlist, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-					Size = UDim2.new(1, 0, 0, math.min(listH, 160))
+
+				expandPanel.Size = UDim2.new(1, 0, 0, 0)
+				expandPanel.Visible = true
+				TweenService:Create(expandPanel, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					Size = UDim2.new(1, 0, 0, totalPanelH)
 				}):Play()
-				r.Size = UDim2.new(1, 0, 0, 56 + extraH + math.min(listH, 160))
+				r.Size = UDim2.new(1, 0, 0, 56 + totalPanelH)
 				if showSearch then
 					task.defer(function() searchBox:CaptureFocus() end)
 				end
 			else
-				-- Restore button corners
-				dbtnCorner.CornerRadius = UDim.new(0, 4)
-				bridge.Visible = false
-				searchRow.Visible = false
-				searchBox.Text = ""
-				-- Reset all items visible in case filter was active
-				for _, child in ipairs(dlist:GetChildren()) do
-					if child:IsA("TextButton") then child.Visible = true end
-				end
-				local tw = TweenService:Create(dlist, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-					Size = UDim2.new(1, 0, 0, 0)
-				})
-				tw.Completed:Connect(function() dlist.Visible = false end)
-				tw:Play()
-				r.Size = UDim2.new(1, 0, 0, 56)
+				closeDropdown()
 			end
 			updateSize()
 		end)
@@ -3539,26 +3569,28 @@ function UILib.Column:addGroup(title)
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 3
 		lbl.Parent = r
-		-- Keybind button: auto-width so short keys (E) are square, long keys (CapsLock) expand
+		-- Keybind button: auto-width, C3 bg, centered text, proper border
 		local kbtn = Instance.new("TextButton")
 		kbtn.AutomaticSize = Enum.AutomaticSize.X
-		kbtn.Size = UDim2.new(0, 0, 0, 20)
+		kbtn.Size = UDim2.new(0, 0, 0, 22)
 		kbtn.AnchorPoint = Vector2.new(1, 0.5)
-		kbtn.Position = UDim2.new(1, -2, 0.5, 0)
-		kbtn.BackgroundColor3 = window.theme.Base
-		kbtn.BackgroundTransparency = 0.6
+		kbtn.Position = UDim2.new(1, -4, 0.5, 0)
+		kbtn.BackgroundColor3 = window.theme.Track
+		kbtn.BackgroundTransparency = 0
 		kbtn.BorderSizePixel = 0
 		kbtn.Text = currentName
-		kbtn.TextColor3 = window.theme.GrayLt
+		kbtn.TextColor3 = window.theme.Accent
 		kbtn.Font = Enum.Font.RobotoMono
 		kbtn.TextSize = 11
+		kbtn.TextXAlignment = Enum.TextXAlignment.Center
+		kbtn.TextYAlignment = Enum.TextYAlignment.Center
 		kbtn.AutoButtonColor = false
 		kbtn.ZIndex = 4
 		kbtn.Parent = r
-		Instance.new("UICorner", kbtn).CornerRadius = UDim.new(0, 3)
+		Instance.new("UICorner", kbtn).CornerRadius = UDim.new(0, 4)
 		local kbtnPad = Instance.new("UIPadding", kbtn)
-		kbtnPad.PaddingLeft = UDim.new(0, 7)
-		kbtnPad.PaddingRight = UDim.new(0, 7)
+		kbtnPad.PaddingLeft = UDim.new(0, 8)
+		kbtnPad.PaddingRight = UDim.new(0, 8)
 		local kstroke = Instance.new("UIStroke", kbtn)
 		kstroke.Color = window.theme.Border
 		kstroke.Thickness = 1
@@ -3579,9 +3611,9 @@ function UILib.Column:addGroup(title)
 				if skipNext and i.UserInputType == Enum.UserInputType.MouseButton1 then skipNext = false return end
 				listening = false
 				con:Disconnect()
-				kbtn.BackgroundColor3 = window.theme.Base
-				kbtn.BackgroundTransparency = 0.6
-				kbtn.TextColor3 = window.theme.GrayLt
+				kbtn.BackgroundColor3 = window.theme.Track
+				kbtn.BackgroundTransparency = 0
+				kbtn.TextColor3 = window.theme.Accent
 				kstroke.Color = window.theme.Border
 				if i.KeyCode == Enum.KeyCode.Escape then kbtn.Text = currentName kbtn.TextColor3 = window.theme.Accent return end
 				local u = i.UserInputType
@@ -3731,8 +3763,8 @@ function UILib.Column:addGroup(title)
 			btn.MouseEnter:Connect(function() lbl.TextColor3 = window.theme.White end)
 			btn.MouseLeave:Connect(function() lbl.TextColor3 = color or window.theme.Accent end)
 		else
-			-- Use a slightly elevated background so the button is always distinct
-			local btnBg = bgColor or window.theme.Surface
+			-- C3 background so buttons are distinct but not as heavy as Surface
+			local btnBg = bgColor or window.theme.Track
 			btn.BackgroundColor3 = btnBg
 			btn.BackgroundTransparency = 0
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
@@ -3741,7 +3773,7 @@ function UILib.Column:addGroup(title)
 			bstroke.Thickness = 1
 			local rh = Instance.new("Frame")
 			rh.Size = UDim2.new(1, 0, 1, 0)
-			rh.BackgroundColor3 = bgColor and Color3.new(bgColor.r*0.85, bgColor.g*0.85, bgColor.b*0.85) or Color3.fromRGB(34,34,34)
+			rh.BackgroundColor3 = bgColor and Color3.new(bgColor.r*0.85, bgColor.g*0.85, bgColor.b*0.85) or Color3.fromRGB(22,22,22)
 			rh.Visible = false
 			rh.ZIndex = 2
 			rh.Parent = btn
