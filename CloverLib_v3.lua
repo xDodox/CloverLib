@@ -412,54 +412,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	end
 	self.updateLayout = updateLayout
 
-	local resizeHandle = Instance.new("TextButton")
-	resizeHandle.Size = UDim2.new(0, 24, 0, 24)
-	resizeHandle.Position = UDim2.new(1, -24, 1, -24)
-	resizeHandle.BackgroundTransparency = 1
-	resizeHandle.Text = "◢"
-	resizeHandle.TextColor3 = self.theme.GrayLt
-	resizeHandle.TextSize = 14
-	resizeHandle.ZIndex = 100
-	resizeHandle.Parent = win
 
-	resizeHandle.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			self.resizing = {
-				startPos = input.Position,
-				startSize = win.Size,
-				startPosWin = win.Position
-			}
-		end
-	end)
-	
-	resizeHandle.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			self.resizing = nil
-		end
-	end)
-
-	table.insert(self.connections, UIS.InputChanged:Connect(function(input)
-		if self.resizing and input.UserInputType == Enum.UserInputType.MouseMovement then
-			local delta = input.Position - self.resizing.startPos
-			
-			local prevW = self.resizing.startSize.X.Offset
-			local prevH = self.resizing.startSize.Y.Offset
-			
-			local newW = math.max(400, prevW + delta.X)
-			local newH = math.max(300, prevH + delta.Y)
-			
-			local actualDX = newW - prevW
-			local actualDY = newH - prevH
-			
-			win.Size = UDim2.new(0, newW, 0, newH)
-			win.Position = UDim2.new(
-				self.resizing.startPosWin.X.Scale, self.resizing.startPosWin.X.Offset + actualDX / 2,
-				self.resizing.startPosWin.Y.Scale, self.resizing.startPosWin.Y.Offset + actualDY / 2
-			)
-			self.size = Vector2.new(newW, newH)
-			updateLayout()
-		end
-	end))
 
 	local header = Instance.new("Frame")
 	header.Size = UDim2.new(1, 0, 0, 46)
@@ -1196,6 +1149,18 @@ function UILib:buildUITab()
 	grp:colorpicker("Accent Color", self.theme.Accent, function(c)
 		self:updateAccent(c)
 	end, "Update accent color")
+
+	grp:slider("Window Width", 450, 1200, self.size.X, function(val)
+		self.size = Vector2.new(val, self.size.Y)
+		self.window.Size = UDim2.new(0, val, 0, self.size.Y)
+		self.updateLayout()
+	end, 10, "Adjust the width of the menu")
+
+	grp:slider("Window Height", 350, 800, self.size.Y, function(val)
+		self.size = Vector2.new(self.size.X, val)
+		self.window.Size = UDim2.new(0, self.size.X, 0, val)
+		self.updateLayout()
+	end, 10, "Adjust the height of the menu")
 
 	grp:keybind("Toggle Key", "RightShift", function(_, name)
 		self.toggleKey = Enum.KeyCode[name] or Enum.KeyCode.RightShift
