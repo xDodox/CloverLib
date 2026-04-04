@@ -4350,8 +4350,9 @@ function UILib.SubTab:addGroup(title)
 	col.BackgroundTransparency = 1
 	col.AutomaticSize = Enum.AutomaticSize.Y
 	col.Parent = self.page
-		Instance.new("UIListLayout", col).Padding = UDim.new(0, 8)
+	Instance.new("UIListLayout", col).Padding = UDim.new(0, 8)
 	local colObj = setmetatable({frame = col, window = window, tab = self.tab, sub = self}, UILib.Column)
 	return colObj:addGroup(title)
 end
 
+return UILib
