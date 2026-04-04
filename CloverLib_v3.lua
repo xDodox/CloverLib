@@ -1238,28 +1238,28 @@ function UILib:Destroy()
 	end
 end
 
-	function self:setVisible(visible)
-		if visible == self.visibleTarget then return end
-		self.visibleTarget = visible
-		
-		if visible then
-			self.sg.Enabled = true
-			self.window.GroupTransparency = 1
-			self.uiScale.Scale = 0.95
-			TweenService:Create(self.window, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { GroupTransparency = 0 }):Play()
-			TweenService:Create(self.uiScale, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
-		else
-			TweenService:Create(self.window, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In), { GroupTransparency = 1 }):Play()
-			TweenService:Create(self.uiScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0.92 }):Play()
-			task.delay(0.25, function()
-				if not self.visibleTarget then self.sg.Enabled = false end
-			end)
-		end
-	end
+function UILib:setVisible(visible)
+	if visible == self.visibleTarget then return end
+	self.visibleTarget = visible
 	
-	function self:toggle()
-		self:setVisible(not self.visibleTarget)
+	if visible then
+		self.sg.Enabled = true
+		self.window.GroupTransparency = 1
+		self.uiScale.Scale = 0.95
+		TweenService:Create(self.window, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { GroupTransparency = 0 }):Play()
+		TweenService:Create(self.uiScale, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	else
+		TweenService:Create(self.window, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In), { GroupTransparency = 1 }):Play()
+		TweenService:Create(self.uiScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0.92 }):Play()
+		task.delay(0.25, function()
+			if not self.visibleTarget then self.sg.Enabled = false end
+		end)
 	end
+end
+
+function UILib:toggle()
+	self:setVisible(not self.visibleTarget)
+end
 
 function UILib:confirm(message, onYes, onNo)
 	local overlay = Instance.new("TextButton")
