@@ -472,12 +472,13 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	titleRowLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
 	local logo = Instance.new("ImageLabel")
-	logo.Size = UDim2.new(0, 24, 0, 24)
+	logo.Size = UDim2.new(0, 22, 0, 22)
 	logo.BackgroundTransparency = 1
 	logo.Image = "rbxassetid://75132532903654"
-	logo.ZIndex = 6
+	logo.ZIndex = 60
 	logo.LayoutOrder = 0
 	logo.Parent = titleRow
+	logo.Visible = true
 
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.AutomaticSize = Enum.AutomaticSize.X
@@ -2438,22 +2439,17 @@ local function createColorPicker(group, items, window, text, default, callback)
 		local pickerStroke = Instance.new("UIStroke", pickerFrame)
 		pickerStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		pickerStroke.Color = window.theme.Border
-		pickerStroke.Transparency = 0.5
-		pickerStroke.Thickness = 1.5
+		pickerStroke.Transparency = 0.2
+		pickerStroke.Thickness = 2.5
 
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
-		task.defer(function()
-			if not pickerFrame or not pickerFrame.Parent then return end
-			local absPos = colorBox.AbsolutePosition
-			local absSize = colorBox.AbsoluteSize
-			local posX = absPos.X + absSize.X + 8
-			local posY = absPos.Y
-			if posX + pickerW > screenW - 8 then posX = absPos.X - pickerW - 8 end
-			posX = math.clamp(posX, 8, screenW - pickerW - 8)
-			posY = math.clamp(posY, 8, screenH - pickerH - 8)
-			pickerFrame.Position = UDim2.new(0, posX, 0, posY)
-		end)
+		local mainP = window.frame.AbsolutePosition
+		local mainS = window.frame.AbsoluteSize
+		local targetX = mainP.X + mainS.X + 12
+		if targetX + pickerW > screenW - 10 then targetX = mainP.X - pickerW - 12 end
+		local targetY = math.clamp(mainP.Y, 10, screenH - pickerH - 20)
+		pickerFrame.Position = UDim2.new(0, targetX, 0, targetY)
 
 		local satValSquare, satValKnob, hueSlider, hueKnob, hexBox, alphaKnob, alphaValLbl
 		local hueDragging, svDragging = false, false
@@ -2508,7 +2504,10 @@ local function createColorPicker(group, items, window, text, default, callback)
 				tb.BackgroundTransparency = 0
 				tb.TextColor3 = isActive and window.theme.White or window.theme.Gray
 				if tb:FindFirstChildOfClass("UIStroke") then
-					tb:FindFirstChildOfClass("UIStroke").Color = isActive and window.theme.Border or window.theme.Item
+					local s = tb:FindFirstChildOfClass("UIStroke")
+					s.Color = isActive and window.theme.White or window.theme.Item
+					s.Thickness = isActive and 1.5 or 1
+					s.Transparency = isActive and 0 or 0.5
 				end
 			end
 		end
