@@ -599,7 +599,9 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	navbar.Size = UDim2.new(1, 0, 0, 46)
 	navbar.Position = UDim2.new(0, 0, 1, -46)
 	navbar.BackgroundColor3 = self.theme.Panel
+	navbar.BackgroundTransparency = 0
 	navbar.BorderSizePixel = 0
+	navbar.ZIndex = 60
 	navbar.ScrollBarThickness = 0
 	navbar.ScrollingDirection = Enum.ScrollingDirection.X
 	navbar.AutomaticCanvasSize = Enum.AutomaticSize.X
@@ -613,7 +615,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	navTopLine.Position = UDim2.new(0, 0, 1, -46)
 	navTopLine.BackgroundColor3 = self.theme.Border
 	navTopLine.BorderSizePixel = 0
-	navTopLine.ZIndex = 10
+	navTopLine.ZIndex = 61
 	navTopLine.Parent = win
 	self.navTopLine = navTopLine
 	self.navbar = navbar
@@ -2749,21 +2751,27 @@ local function createMultiDropdown(group, items, window, text, options, default,
 			multiBridge.Visible = true
 			dlist.Visible = true
 			dlist.Size = UDim2.new(1, 0, 0, 0)
-			TweenService:Create(dlist, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Size = UDim2.new(1, 0, 0, math.min(listH, 160))
+			local targetListH = math.min(listH, 160)
+			TweenService:Create(dlist, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Size = UDim2.new(1, 0, 0, targetListH)
+			}):Play()
+			TweenService:Create(row, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Size = UDim2.new(1, 0, 0, 56 + targetListH)
 			}):Play()
 		else
 			window.tooltipSuppressed = false
 			multiDbtnCorner.CornerRadius = UDim.new(0, 4)
 			multiBridge.Visible = false
-			local tw = TweenService:Create(dlist, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			local tw = TweenService:Create(dlist, TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
 				Size = UDim2.new(1, 0, 0, 0)
 			})
+			TweenService:Create(row, TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+				Size = UDim2.new(1, 0, 0, 56)
+			}):Play()
 			tw.Completed:Connect(function() dlist.Visible = false end)
 			tw:Play()
 		end
-		row.Size = UDim2.new(1, 0, 0, 56 + (open and math.min(listH, 160) or 0))
-		group.updateSize()
+		task.delay(0.21, group.updateSize)
 	end)
 	local elem = {ID = id, Value = selected, SetValue = function(t)
 		selected = {}
@@ -3234,13 +3242,15 @@ function UILib.Column:addGroup(title)
 			for _, child in ipairs(dlist:GetChildren()) do
 				if child:IsA("TextButton") then child.Visible = true end
 			end
-			local tw = TweenService:Create(expandPanel, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			local tw = TweenService:Create(expandPanel, TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
 				Size = UDim2.new(1, 0, 0, 0)
 			})
+			TweenService:Create(r, TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+				Size = UDim2.new(1, 0, 0, 56)
+			}):Play()
 			tw.Completed:Connect(function() expandPanel.Visible = false end)
 			tw:Play()
-			r.Size = UDim2.new(1, 0, 0, 56)
-			updateSize()
+			task.delay(0.16, updateSize)
 		end
 
 		local function buildOptions(opts)
@@ -3376,17 +3386,19 @@ function UILib.Column:addGroup(title)
 
 				expandPanel.Size = UDim2.new(1, 0, 0, 0)
 				expandPanel.Visible = true
-				TweenService:Create(expandPanel, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				TweenService:Create(expandPanel, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 					Size = UDim2.new(1, 0, 0, totalPanelH)
 				}):Play()
-				r.Size = UDim2.new(1, 0, 0, 56 + totalPanelH)
+				TweenService:Create(r, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+					Size = UDim2.new(1, 0, 0, 56 + totalPanelH)
+				}):Play()
+				task.delay(0.21, updateSize)
 				if showSearch then
 					task.defer(function() searchBox:CaptureFocus() end)
 				end
 			else
 				closeDropdown()
 			end
-			updateSize()
 		end)
 
 		local elem = {
@@ -3976,16 +3988,16 @@ function UILib.Column:addGroup(title)
 		if contentFunc then contentFunc(nestedGroup) end
 		cbOuter.MouseButton1Click:Connect(function()
 			state = not state
-			TweenService:Create(cbOuter, TweenInfo.new(0.12, Enum.EasingStyle.Quad), {
+			TweenService:Create(cbOuter, TweenInfo.new(0.12, Enum.EasingStyle.Quart), {
 				BackgroundColor3 = state and window.theme.Accent or window.theme.BG
 			}):Play()
 			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
 			cbMark.Text = state and "X" or ""
 			local targetH = 34 + (state and contentLayout.AbsoluteContentSize.Y or 0)
-			TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Size = UDim2.new(1,0,0,targetH)
+			TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Size = UDim2.new(1, 0, 0, targetH)
 			}):Play()
-			task.delay(0.2, updateSize)
+			task.delay(0.21, updateSize)
 		end)
 		if tooltip then attachTooltip(toggleRow, tooltip, window) end
 		updateContentSize()
@@ -4050,8 +4062,11 @@ function UILib.Column:addGroup(title)
 		toggleRow.MouseButton1Click:Connect(function()
 			state = not state
 			arrow.Text = state and "▼" or "▶"
-			container.Size = UDim2.new(1,0,0, 34 + (state and contentLayout.AbsoluteContentSize.Y or 0))
-			updateSize()
+			local targetH = 34 + (state and contentLayout.AbsoluteContentSize.Y or 0)
+			TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Size = UDim2.new(1, 0, 0, targetH)
+			}):Play()
+			task.delay(0.21, updateSize)
 		end)
 		if tooltip then attachTooltip(toggleRow, tooltip, window) end
 		updateContentSize()
