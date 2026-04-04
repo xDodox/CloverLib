@@ -107,7 +107,7 @@ local function makeTooltipSystem(sg, theme, connections)
 
 	local function startTooltipDelay(text, element)
 		hideTooltip()
-		tooltipTimer = task.delay(0.5, function() showTooltip(text, element) end)
+		showTooltip(text, element)
 	end
 
 	table.insert(connections, UIS.InputChanged:Connect(function(input)
@@ -352,7 +352,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 
 	self.tooltip = makeTooltipSystem(self.sg, self.theme, self.connections)
 
-	local win = Instance.new("CanvasGroup")
+	local win = Instance.new("Frame")
 	win.Size = UDim2.new(0, size.X, 0, size.Y)
 	win.Position = UDim2.new(0.5, 0, 0.5, 0)
 	win.BackgroundColor3 = self.theme.BG
@@ -361,7 +361,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	win.Active = true
 	win.Selectable = false
 	win.AnchorPoint = Vector2.new(0.5, 0.5)
-	win.GroupTransparency = 1
 	self.uiScale = Instance.new("UIScale", win)
 	self.uiScale.Scale = 0.8
 	Instance.new("UICorner", win).CornerRadius = UDim.new(0, 8)
@@ -1024,10 +1023,15 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	table.insert(allWindows, self)
 
 	if includeUITab ~= false then
-		self:buildUITab()
+		task.defer(function()
+			if not self.uiTabBuilt then
+				self:buildUITab()
+			end
+		end)
 	end
 
 	task.defer(function()
+		self.uiScale.Scale = 0
 		self:setVisible(true)
 	end)
 
@@ -1036,7 +1040,7 @@ end
 
 function UILib:addWatermark(name)
 	if self.watermark then self.watermark:Destroy() end
-	local wm = Instance.new("CanvasGroup")
+	local wm = Instance.new("Frame")
 	wm.AutomaticSize = Enum.AutomaticSize.X
 	wm.Size = UDim2.new(0, 0, 0, 30)
 	wm.Position = UDim2.new(1, -10, 0, 10)
@@ -1159,6 +1163,8 @@ function UILib:addWatermark(name)
 end
 
 function UILib:buildUITab()
+	if self.uiTabBuilt then return end
+	self.uiTabBuilt = true
 	local uiTab = self:addTab("UI")
 	local uiSub = uiTab:addSubTab("Settings")
 	local uiL, uiR = uiSub:split()
@@ -1253,11 +1259,10 @@ function UILib:setVisible(visible)
 	
 	if visible then
 		self.window.Visible = true
-		TweenService:Create(self.window, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { GroupTransparency = 0 }):Play()
-		TweenService:Create(self.uiScale, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		TweenService:Create(self.uiScale, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 	else
-		TweenService:Create(self.window, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.In), { GroupTransparency = 1 }):Play()
-		TweenService:Create(self.uiScale, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0.8 }):Play()
+		local t = TweenService:Create(self.uiScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 })
+		t:Play()
 		task.delay(0.35, function()
 			if not self.visibleTarget then 
 				self.window.Visible = false
@@ -2272,7 +2277,18 @@ local function createColorPicker(group, items, window, text, default, callback)
 	window.configs[id] = elem
 
 	local function closePicker()
-		if pickerFrame then pickerFrame:Destroy() pickerFrame = nil end
+		if pickerFrame then 
+			local p = pickerFrame
+			pickerFrame = nil
+			local sc = p:FindFirstChildOfClass("UIScale")
+			if sc then
+				local t = TweenService:Create(sc, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 })
+				t:Play()
+				t.Completed:Connect(function() p:Destroy() end)
+			else
+				p:Destroy()
+			end
+		end
 	end
 
 	local function openPicker()
@@ -2281,7 +2297,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		task.delay(0.1, function() pickerJustOpened = false end)
 
 		local pickerW, pickerH = 240, 260
-		pickerFrame = Instance.new("CanvasGroup")
+		pickerFrame = Instance.new("Frame")
 		pickerFrame.Size = UDim2.new(0, pickerW, 0, pickerH)
 		pickerFrame.BackgroundColor3 = window.theme.Surface
 		pickerFrame.BorderSizePixel = 0
@@ -2298,8 +2314,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		blocker.Active = true
 		
 		local pickerScale = Instance.new("UIScale", pickerFrame)
-		pickerScale.Scale = 0.9
-		pickerFrame.GroupTransparency = 1
+		pickerScale.Scale = 0
 		
 		Instance.new("UICorner", pickerFrame).CornerRadius = UDim.new(0, 10)
 		local pickerStroke = Instance.new("UIStroke", pickerFrame)
@@ -2317,7 +2332,6 @@ local function createColorPicker(group, items, window, text, default, callback)
 		local targetY = math.clamp(absPos.Y - (pickerH/2) + (absSize.Y/2), 10, screenH - pickerH - 10)
 		pickerFrame.Position = UDim2.new(0, targetX, 0, targetY)
 		
-		TweenService:Create(pickerFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { GroupTransparency = 0 }):Play()
 		TweenService:Create(pickerScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 
 		local satValSquare, satValKnob, hueSlider, hueKnob, hexBox, alphaKnob, alphaValLbl
