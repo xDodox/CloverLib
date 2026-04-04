@@ -146,6 +146,7 @@ function UILib:notify(message, notifType, duration)
 	notif.Parent = self.sg
 	Instance.new("UICorner", notif).CornerRadius = UDim.new(0, 6)
 	local stroke = Instance.new("UIStroke", notif)
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Color = self.theme.Border
 	stroke.Thickness = 1
 	local progressOuter = Instance.new("Frame")
@@ -2051,6 +2052,7 @@ function UILib.SubTab:addParagraph(ptitle, text)
 	r.Parent = self.page
 	Instance.new("UICorner", r).CornerRadius = UDim.new(0, 6)
 	local stroke = Instance.new("UIStroke", r)
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Color = window.theme.Border
 	stroke.Thickness = 1
 	local pad = Instance.new("UIPadding", r)
@@ -2106,6 +2108,7 @@ function UILib.SubTab:addInput(labelText, default, placeholder, callback, toolti
 	r.Parent = self.page
 	Instance.new("UICorner", r).CornerRadius = UDim.new(0, 6)
 	local stroke = Instance.new("UIStroke", r)
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Color = window.theme.Border
 	stroke.Thickness = 1
 	local lbl = Instance.new("TextLabel")
@@ -2136,6 +2139,7 @@ function UILib.SubTab:addInput(labelText, default, placeholder, callback, toolti
 	box.Parent = r
 	Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
 	local boxStroke_ = Instance.new("UIStroke", box)
+	boxStroke_.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	boxStroke_.Color = window.theme.Border
 	boxStroke_.Thickness = 1
 	local current = default or ""
@@ -2160,6 +2164,7 @@ function UILib.SubTab:addButton(text, callback, tooltip, color)
 	btn.Parent = self.page
 	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 	local stroke = Instance.new("UIStroke", btn)
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Color = window.theme.Border
 	stroke.Thickness = 1
 	local rh = Instance.new("Frame")
@@ -2361,6 +2366,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 	colorBox.Parent = row
 	Instance.new("UICorner", colorBox).CornerRadius = UDim.new(0, 3)
 	local stroke = Instance.new("UIStroke", colorBox)
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Color = window.theme.Border
 	stroke.Thickness = 1
 	local current = default or Color3.new(1, 0, 0)
@@ -2689,6 +2695,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		hexBox.Parent = hexRow
 		Instance.new("UICorner", hexBox).CornerRadius = UDim.new(0, 4)
 		local hbStroke = Instance.new("UIStroke", hexBox)
+		hbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		hbStroke.Color = window.theme.Border hbStroke.Thickness = 1
 		table.insert(window.accentObjects, hexBox)
 
@@ -2806,6 +2813,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	dlist.ZIndex = 50
 	dlist.Parent = row
 	local multiDlistStroke = Instance.new("UIStroke", dlist)
+	multiDlistStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	multiDlistStroke.Color = window.theme.Border
 	multiDlistStroke.Transparency = 0
 	multiDlistStroke.Thickness = 1
@@ -2821,6 +2829,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	local multiDbtnCorner = Instance.new("UICorner", dbtn)
 	multiDbtnCorner.CornerRadius = UDim.new(0, 4)
 	local multiDbtnStroke = Instance.new("UIStroke", dbtn)
+	multiDbtnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	multiDbtnStroke.Color = window.theme.Border
 	multiDbtnStroke.Thickness = 1
 	local dlayout = Instance.new("UIListLayout", dlist)
@@ -2986,6 +2995,7 @@ function UILib.Column:addGroup(title)
 	grp.Parent = self.frame
 	Instance.new("UICorner", grp).CornerRadius = UDim.new(0, 6)
 	local stroke = Instance.new("UIStroke", grp)
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Color = window.theme.Border
 	stroke.Thickness = 1
 
@@ -3137,6 +3147,7 @@ function UILib.Column:addGroup(title)
 		cbOuter.Parent = r
 		Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
 		local cbStroke = Instance.new("UIStroke", cbOuter)
+		cbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		cbStroke.Color = default and window.theme.AccentD or Color3.fromRGB(65, 65, 65)
 		cbStroke.Thickness = 1
 		local cbMark = Instance.new("TextLabel")
@@ -3241,6 +3252,7 @@ function UILib.Column:addGroup(title)
 		local dbtnCorner = Instance.new("UICorner", dbtn)
 		dbtnCorner.CornerRadius = UDim.new(0, 4)
 		local dbtnStroke = Instance.new("UIStroke", dbtn)
+		dbtnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		dbtnStroke.Color = window.theme.Border
 		dbtnStroke.Thickness = 1
 		local selLbl = Instance.new("TextLabel")
@@ -3284,6 +3296,7 @@ function UILib.Column:addGroup(title)
 		expandCorner.CornerRadius = UDim.new(0, 4)
 
 		local expandStroke = Instance.new("UIStroke", expandPanel)
+		expandStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		expandStroke.Color = window.theme.Border
 		expandStroke.Thickness = 1
 
@@ -3312,6 +3325,7 @@ function UILib.Column:addGroup(title)
 		searchBox.Parent = searchRow
 		Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0, 4)
 		local searchStroke = Instance.new("UIStroke", searchBox)
+		searchStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		searchStroke.Color = window.theme.Border
 		searchStroke.Thickness = 1
 
@@ -3628,6 +3642,7 @@ function UILib.Column:addGroup(title)
 		kbtnPad.PaddingLeft = UDim.new(0, 8)
 		kbtnPad.PaddingRight = UDim.new(0, 8)
 		local kstroke = Instance.new("UIStroke", kbtn)
+		kstroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		kstroke.Color = Color3.fromRGB(65, 65, 65)
 		kstroke.Thickness = 1
 		table.insert(window.keybindButtons, kbtn)
@@ -3639,9 +3654,7 @@ function UILib.Column:addGroup(title)
 			skipNext = true
 			kbtn.Text = "..."
 			kbtn.TextColor3 = window.theme.White
-			kbtn.BackgroundColor3 = window.theme.Accent
 			kbtn.BackgroundTransparency = 0
-			kstroke.Color = window.theme.AccentD
 			local con
 			con = UIS.InputBegan:Connect(function(i)
 				if skipNext and i.UserInputType == Enum.UserInputType.MouseButton1 then skipNext = false return end
@@ -3761,6 +3774,7 @@ function UILib.Column:addGroup(title)
 			btn.BackgroundTransparency = 0
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
 			local bstroke = Instance.new("UIStroke", btn)
+			bstroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 			bstroke.Color = window.theme.Border
 			bstroke.Thickness = 1
 			local rh = Instance.new("Frame")
@@ -3804,6 +3818,7 @@ function UILib.Column:addGroup(title)
 			btn.BackgroundTransparency = 0
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
 			local bstroke = Instance.new("UIStroke", btn)
+			bstroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 			bstroke.Color = bgColor and Color3.new(bgColor.r*0.7, bgColor.g*0.7, bgColor.b*0.7) or window.theme.Border
 			bstroke.Thickness = 1
 			local lbl = Instance.new("TextLabel")
@@ -4085,6 +4100,7 @@ function UILib.Column:addGroup(title)
 		cbOuter.Parent = toggleRow
 		Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0,4)
 		local cbStroke = Instance.new("UIStroke", cbOuter)
+		cbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		cbStroke.Color = default and window.theme.AccentD or Color3.fromRGB(65, 65, 65)
 		cbStroke.Thickness = 1
 		local cbMark = Instance.new("TextLabel")
@@ -4264,6 +4280,7 @@ function UILib.Column:addGroup(title)
 		box.PlaceholderColor3 = window.theme.Gray
 		Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
 		local tbStroke = Instance.new("UIStroke", box)
+		tbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		tbStroke.Color = window.theme.Border
 		tbStroke.Thickness = 1
 		table.insert(window.accentObjects, box)
@@ -4316,6 +4333,7 @@ function UILib.Column:addGroup(title)
 		box.ClearTextOnFocus = false
 		Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
 		local nbStroke = Instance.new("UIStroke", box)
+		nbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		nbStroke.Color = window.theme.Border
 		nbStroke.Thickness = 1
 		local current = default or 0
@@ -4363,6 +4381,7 @@ function UILib.Column:addGroup(title)
 		valueBox.Parent = r
 		Instance.new("UICorner", valueBox).CornerRadius = UDim.new(0, 4)
 		local rsVbStroke = Instance.new("UIStroke", valueBox)
+		rsVbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		rsVbStroke.Color = window.theme.Border
 		rsVbStroke.Thickness = 1
 		local valueLabel = Instance.new("TextLabel")
