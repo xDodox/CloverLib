@@ -406,13 +406,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 				self.content.Position = UDim2.new(0, 0, 0, 46)
 			end
 		end
-		local kw = getKeybindWidth()
-		for _, kbtn in ipairs(self.keybindButtons) do
-			pcall(function()
-				kbtn.Size = UDim2.new(0, kw, 0, 22)
-				kbtn.Position = UDim2.new(1, -(kw + 4), 0.5, -11)
-			end)
-		end
 		if self.refreshTabWidths then self.refreshTabWidths() end
 	end
 	self.updateLayout = updateLayout
@@ -477,6 +470,14 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	titleRowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 	titleRowLayout.Padding = UDim.new(0, 8)
 	titleRowLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+	local logo = Instance.new("ImageLabel")
+	logo.Size = UDim2.new(0, 24, 0, 24)
+	logo.BackgroundTransparency = 1
+	logo.Image = "rbxassetid://75132532903654"
+	logo.ZIndex = 6
+	logo.LayoutOrder = 0
+	logo.Parent = titleRow
 
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.AutomaticSize = Enum.AutomaticSize.X
@@ -2436,10 +2437,9 @@ local function createColorPicker(group, items, window, text, default, callback)
 		Instance.new("UICorner", pickerFrame).CornerRadius = UDim.new(0, 8)
 		local pickerStroke = Instance.new("UIStroke", pickerFrame)
 		pickerStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		pickerStroke.Color = window.theme.Accent
+		pickerStroke.Color = window.theme.Border
 		pickerStroke.Transparency = 0.5
 		pickerStroke.Thickness = 1.5
-		table.insert(window.accentObjects, pickerStroke)
 
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
@@ -2504,9 +2504,12 @@ local function createColorPicker(group, items, window, text, default, callback)
 			currentMode = name
 			for _, tb in pairs(tabButtons) do
 				local isActive = tb.Text == name
-				tb.BackgroundColor3 = isActive and window.theme.Accent or window.theme.Surface
-				tb.BackgroundTransparency = isActive and 0 or 0
-				tb.TextColor3 = isActive and Color3.fromRGB(10,10,10) or window.theme.Gray
+				tb.BackgroundColor3 = isActive and window.theme.Item or window.theme.Surface
+				tb.BackgroundTransparency = 0
+				tb.TextColor3 = isActive and window.theme.White or window.theme.Gray
+				if tb:FindFirstChildOfClass("UIStroke") then
+					tb:FindFirstChildOfClass("UIStroke").Color = isActive and window.theme.Border or window.theme.Item
+				end
 			end
 		end
 
@@ -2524,6 +2527,9 @@ local function createColorPicker(group, items, window, text, default, callback)
 			btn.LayoutOrder = order
 			btn.Parent = tabContainer
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
+			local bstr = Instance.new("UIStroke", btn)
+			bstr.Color = window.theme.Item
+			bstr.Thickness = 1
 			tabButtons[name] = btn
 			btn.MouseButton1Click:Connect(function()
 				setActiveTab(name)
@@ -2617,13 +2623,12 @@ local function createColorPicker(group, items, window, text, default, callback)
 		alphaValLbl.Position = UDim2.new(0.5, 0, 0, alphaHeaderY)
 		alphaValLbl.BackgroundTransparency = 1
 		alphaValLbl.Text = math.floor((1 - elem.Alpha) * 100 + 0.5) .. "%"
-		alphaValLbl.TextColor3 = window.theme.Accent
+		alphaValLbl.TextColor3 = window.theme.White
 		alphaValLbl.Font = Enum.Font.GothamSemibold
 		alphaValLbl.TextSize = 10
 		alphaValLbl.TextXAlignment = Enum.TextXAlignment.Right
 		alphaValLbl.ZIndex = 2001
 		alphaValLbl.Parent = pickerFrame
-		table.insert(window.accentObjects, alphaValLbl)
 
 		local alphaSliderY = alphaHeaderY + 14 + 3
 		local alphaTrack = Instance.new("Frame")
@@ -2689,7 +2694,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		hexBox.BackgroundColor3 = window.theme.Track
 		hexBox.BorderSizePixel = 0
 		hexBox.Text = "#" .. current:ToHex()
-		hexBox.TextColor3 = window.theme.Accent
+		hexBox.TextColor3 = window.theme.White
 		hexBox.Font = Enum.Font.GothamSemibold
 		hexBox.TextSize = 12
 		hexBox.ClearTextOnFocus = false
@@ -2699,7 +2704,6 @@ local function createColorPicker(group, items, window, text, default, callback)
 		local hbStroke = Instance.new("UIStroke", hexBox)
 		hbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		hbStroke.Color = window.theme.Border hbStroke.Thickness = 1
-		table.insert(window.accentObjects, hexBox)
 
 		local copyBtn = makePickerBtn(hexRow, "Copy", 1, -56/pickerW, false)
 		copyBtn.Size = UDim2.new(0, 48, 1, 0)
@@ -2740,7 +2744,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 				local bs2 = colorBox.AbsoluteSize
 				if pos.X >= bp.X and pos.X <= bp.X + bs2.X and pos.Y >= bp.Y and pos.Y <= bp.Y + bs2.Y then return end
 				if pos.X < ap.X or pos.X > ap.X + as.X or pos.Y < ap.Y or pos.Y > ap.Y + as.Y then
-					closePicker()
+					task.spawn(closePicker)
 					inputBeganConn:Disconnect()
 				end
 			end
