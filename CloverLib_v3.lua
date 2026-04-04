@@ -3129,7 +3129,7 @@ function UILib.Column:addGroup(title)
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0, 22, 0, 22)
 		cbOuter.Position = UDim2.new(1, -26, 0.5, -11)
-		cbOuter.BackgroundColor3 = default and window.theme.Accent or Color3.fromRGB(32, 32, 32)
+		cbOuter.BackgroundColor3 = default and window.theme.Accent or Color3.fromRGB(24, 24, 24)
 		cbOuter.BorderSizePixel = 0
 		cbOuter.AutoButtonColor = false
 		cbOuter.ZIndex = 4
@@ -3137,7 +3137,7 @@ function UILib.Column:addGroup(title)
 		cbOuter.Parent = r
 		Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
 		local cbStroke = Instance.new("UIStroke", cbOuter)
-		cbStroke.Color = default and window.theme.AccentD or window.theme.Border
+		cbStroke.Color = default and window.theme.AccentD or Color3.fromRGB(65, 65, 65)
 		cbStroke.Thickness = 1
 		local cbMark = Instance.new("TextLabel")
 		cbMark.Size = UDim2.new(1, 0, 1, 0)
@@ -3166,9 +3166,9 @@ function UILib.Column:addGroup(title)
 			state = val
 			elem.Value = state
 			TweenService:Create(cbOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
-				BackgroundColor3 = state and window.theme.Accent or Color3.fromRGB(32, 32, 32)
+				BackgroundColor3 = state and window.theme.Accent or Color3.fromRGB(24, 24, 24)
 			}):Play()
-			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
+			cbStroke.Color = state and window.theme.AccentD or Color3.fromRGB(65, 65, 65)
 			cbMark.Text = state and "X" or ""
 			if callback then callback(state) end
 			if window.configs[id] then window.configs[id].Value = state end
@@ -3628,7 +3628,7 @@ function UILib.Column:addGroup(title)
 		kbtnPad.PaddingLeft = UDim.new(0, 8)
 		kbtnPad.PaddingRight = UDim.new(0, 8)
 		local kstroke = Instance.new("UIStroke", kbtn)
-		kstroke.Color = window.theme.Border
+		kstroke.Color = Color3.fromRGB(65, 65, 65)
 		kstroke.Thickness = 1
 		table.insert(window.keybindButtons, kbtn)
 		local listening = false
@@ -3650,7 +3650,7 @@ function UILib.Column:addGroup(title)
 				kbtn.BackgroundColor3 = window.theme.Track
 				kbtn.BackgroundTransparency = 0
 				kbtn.TextColor3 = window.theme.Accent
-				kstroke.Color = window.theme.Border
+				kstroke.Color = Color3.fromRGB(65, 65, 65)
 				if i.KeyCode == Enum.KeyCode.Escape then kbtn.Text = currentName kbtn.TextColor3 = window.theme.Accent return end
 				local u = i.UserInputType
 				if u == Enum.UserInputType.Keyboard then
@@ -4077,7 +4077,7 @@ function UILib.Column:addGroup(title)
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0,18,0,18)
 		cbOuter.Position = UDim2.new(1,-22,0.5,-9)
-		cbOuter.BackgroundColor3 = default and window.theme.Accent or Color3.fromRGB(32, 32, 32)
+		cbOuter.BackgroundColor3 = default and window.theme.Accent or Color3.fromRGB(24, 24, 24)
 		cbOuter.BorderSizePixel = 0
 		cbOuter.AutoButtonColor = false
 		cbOuter.ZIndex = 4
@@ -4085,7 +4085,7 @@ function UILib.Column:addGroup(title)
 		cbOuter.Parent = toggleRow
 		Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0,4)
 		local cbStroke = Instance.new("UIStroke", cbOuter)
-		cbStroke.Color = default and window.theme.AccentD or window.theme.Border
+		cbStroke.Color = default and window.theme.AccentD or Color3.fromRGB(65, 65, 65)
 		cbStroke.Thickness = 1
 		local cbMark = Instance.new("TextLabel")
 		cbMark.Size = UDim2.new(1,0,1,0)
@@ -4130,9 +4130,9 @@ function UILib.Column:addGroup(title)
 		cbOuter.MouseButton1Click:Connect(function()
 			state = not state
 			TweenService:Create(cbOuter, TweenInfo.new(0.12, Enum.EasingStyle.Quad), {
-				BackgroundColor3 = state and window.theme.Accent or Color3.fromRGB(32, 32, 32)
+				BackgroundColor3 = state and window.theme.Accent or Color3.fromRGB(24, 24, 24)
 			}):Play()
-			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
+			cbStroke.Color = state and window.theme.AccentD or Color3.fromRGB(65, 65, 65)
 			cbMark.Text = state and "X" or ""
 			local targetH = 34 + (state and contentLayout.AbsoluteContentSize.Y or 0)
 			TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
