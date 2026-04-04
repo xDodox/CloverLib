@@ -3776,7 +3776,6 @@ function UILib.Column:addGroup(title)
 			btn.BackgroundTransparency = 0
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
 			local bstroke = Instance.new("UIStroke", btn)
-			bs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 			bstroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 			bstroke.Color = window.theme.Border
 			bstroke.Thickness = 1
@@ -3821,7 +3820,6 @@ function UILib.Column:addGroup(title)
 			btn.BackgroundTransparency = 0
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
 			local bstroke = Instance.new("UIStroke", btn)
-			bs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 			bstroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 			bstroke.Color = bgColor and Color3.new(bgColor.r*0.7, bgColor.g*0.7, bgColor.b*0.7) or window.theme.Border
 			bstroke.Thickness = 1
