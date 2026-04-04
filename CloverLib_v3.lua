@@ -352,7 +352,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 
 	self.tooltip = makeTooltipSystem(self.sg, self.theme, self.connections)
 
-	local win = Instance.new("Frame")
+	local win = Instance.new("CanvasGroup")
 	win.Size = UDim2.new(0, size.X, 0, size.Y)
 	win.Position = UDim2.new(0, 80, 0, 60)
 	win.BackgroundColor3 = self.theme.BG
@@ -442,7 +442,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	local header = Instance.new("Frame")
 	header.Size = UDim2.new(1, 0, 0, 46)
 	header.BackgroundColor3 = self.theme.Panel
-	header.BackgroundTransparency = 0
+	header.BackgroundTransparency = 1
 	header.BorderSizePixel = 0
 	header.ZIndex = 5
 	header.Parent = win
@@ -1026,7 +1026,7 @@ end
 
 function UILib:addWatermark(name)
 	if self.watermark then self.watermark:Destroy() end
-	local wm = Instance.new("Frame")
+	local wm = Instance.new("CanvasGroup")
 	wm.AutomaticSize = Enum.AutomaticSize.X
 	wm.Size = UDim2.new(0, 0, 0, 30)
 	wm.Position = UDim2.new(1, -10, 0, 10)
@@ -1220,41 +1220,9 @@ function UILib:buildUITab()
 		end
 	end
 
-	cfg:button("Save Config", function()
-		if currentConfig and currentConfig ~= "" then
-			self:saveConfig(currentConfig)
-			refreshConfigDropdown(currentConfig)
-		else
-			self:notify("Enter a config name first", "warning")
-		end
-	end, "Save current settings to file")
-
-	cfg:button("Load Selected", function()
-		local val = loadElem.Value
-		if val and val ~= "" and val ~= "(no configs)" then
-			currentConfig = val
-			nameElem.SetValue(val)
-			self:loadConfig(val)
-		else
-			self:notify("Select a config first", "warning")
-		end
-	end, "Load the currently selected config")
-
-	cfg:button("Delete Config", function()
-		local val = loadElem.Value
-		if val and val ~= "" and val ~= "(no configs)" then
-			self:confirm('Delete config "' .. val .. '"?', function()
-				self:deleteConfig(val)
-
-				local list = self:listConfigs()
-				currentConfig = list[1] or "default"
-				nameElem.SetValue(currentConfig)
-				refreshConfigDropdown(currentConfig)
-			end)
-		else
-			self:notify("No config selected", "warning")
-		end
-	end, "Delete selected config (asks for confirmation)")
+	cfg:button("Save Config", function() if self.saveConfig then self:saveConfig(nameElem.Value); refreshConfigDropdown(nameElem.Value) end end, nil, Enum.TextXAlignment.Center)
+	cfg:button("Load Selected", function() if self.loadConfig then self:loadConfig(loadElem.Value); nameElem.SetValue(loadElem.Value) end end, nil, Enum.TextXAlignment.Center)
+	cfg:button("Delete Config", function() if self.deleteConfig then self:deleteConfig(loadElem.Value); refreshConfigDropdown() end end, nil, Enum.TextXAlignment.Center)
 end
 
 function UILib:setTitle(text)
@@ -1270,146 +1238,28 @@ function UILib:Destroy()
 	end
 end
 
-function UILib:setVisible(visible)
-	if not self.window then return end
-
-	-- Collect all tweenable descendants with their natural transparencies
-	local function collectObjects(parent)
-		local objs = {}
-		for _, obj in ipairs(parent:GetDescendants()) do
-			pcall(function()
-				local entry = {obj = obj}
-				if obj:IsA("Frame") or obj:IsA("ScrollingFrame") then
-					entry.bgNat = obj.BackgroundTransparency
-				end
-				if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-					entry.bgNat = obj:IsA("TextButton") and obj.BackgroundTransparency or nil
-					entry.textNat = obj.TextTransparency
-				end
-				if obj:IsA("ImageLabel") or obj:IsA("ImageButton") then
-					entry.imgNat = obj.ImageTransparency
-				end
-				if obj:IsA("UIStroke") then
-					entry.strokeNat = obj.Transparency
-				end
-				if entry.bgNat ~= nil or entry.textNat ~= nil or entry.imgNat ~= nil or entry.strokeNat ~= nil then
-					table.insert(objs, entry)
-				end
-			end)
-		end
-		return objs
-	end
-
-	local function applyAlpha(objs, alpha)
-		for _, e in ipairs(objs) do
-			pcall(function()
-				if e.bgNat     ~= nil then e.obj.BackgroundTransparency = 1 - (1 - e.bgNat)     * (1 - alpha) end
-				if e.textNat   ~= nil then e.obj.TextTransparency        = 1 - (1 - e.textNat)   * (1 - alpha) end
-				if e.imgNat    ~= nil then e.obj.ImageTransparency       = 1 - (1 - e.imgNat)    * (1 - alpha) end
-				if e.strokeNat ~= nil then e.obj.Transparency            = 1 - (1 - e.strokeNat) * (1 - alpha) end
+	function self:setVisible(visible)
+		if visible == self.visibleTarget then return end
+		self.visibleTarget = visible
+		
+		if visible then
+			self.sg.Enabled = true
+			self.window.GroupTransparency = 1
+			self.uiScale.Scale = 0.95
+			TweenService:Create(self.window, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { GroupTransparency = 0 }):Play()
+			TweenService:Create(self.uiScale, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		else
+			TweenService:Create(self.window, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In), { GroupTransparency = 1 }):Play()
+			TweenService:Create(self.uiScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0.92 }):Play()
+			task.delay(0.25, function()
+				if not self.visibleTarget then self.sg.Enabled = false end
 			end)
 		end
 	end
-
-	if visible then
-		if self.visibleTarget then return end
-		self.visibleTarget = true
-		local targetPos  = self.savedPos  or self.originalPosition
-		local targetSize = self.savedSize or self.originalSize
-
-		self.window.BackgroundTransparency = 1
-		self.window.Visible = true
-		self.window.Size = UDim2.new(targetSize.X.Scale, targetSize.X.Offset, targetSize.Y.Scale, math.floor(targetSize.Y.Offset * 0.97))
-		self.window.Position = UDim2.new(targetPos.X.Scale, targetPos.X.Offset, targetPos.Y.Scale, targetPos.Y.Offset + 6)
-
-		local objs = collectObjects(self.window)
-		applyAlpha(objs, 0)
-
-		local STEPS = 12
-		local STEP_TIME = 0.018
-		local step = 0
-		local function doFadeIn()
-			if not self.visibleTarget then return end
-			step = step + 1
-			local t = step / STEPS
-			local eased = t * t * (3 - 2 * t) -- smoothstep
-			applyAlpha(objs, eased)
-			self.window.BackgroundTransparency = 1 - eased
-			if step < STEPS then
-				task.delay(STEP_TIME, doFadeIn)
-			else
-				applyAlpha(objs, 1)
-				self.window.BackgroundTransparency = 0
-			end
-		end
-
-		TweenService:Create(self.window,
-			TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-			{ Size = targetSize, Position = targetPos }
-		):Play()
-		task.delay(0, doFadeIn)
-
-	else
-		if not self.visibleTarget then return end
-		self.visibleTarget = false
-		self.savedPos  = self.window.Position
-		self.savedSize = self.window.Size
-
-		for _, popup in ipairs(self.activePopups) do
-			pcall(function() if popup then popup:Destroy() end end)
-		end
-		self.activePopups = {}
-
-		local objs = collectObjects(self.window)
-
-		local STEPS = 9
-		local STEP_TIME = 0.018
-		local step = 0
-		function self:toggle()
-		self.visibleTarget = not self.visibleTarget
-		self.sg.Enabled = true
-		local targetScale = self.visibleTarget and 1 or 0.95
-		local targetAlpha = self.visibleTarget and 0 or 1
-		
-		TweenService:Create(win, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			GroupTransparency = targetAlpha
-		}):Play()
-		TweenService:Create(uiScale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, 0.05), {
-			Scale = self.visibleTarget and uiScale.Scale or targetScale
-		}):Play()
-		
-		if not self.visibleTarget then
-			task.delay(0.25, function() if not self.visibleTarget then self.sg.Enabled = false end end)
-		end
+	
+	function self:toggle()
+		self:setVisible(not self.visibleTarget)
 	end
-		local function doFadeOut()
-			if self.visibleTarget then
-				applyAlpha(objs, 1)
-				self.window.BackgroundTransparency = 0
-				return
-			end
-			step = step + 1
-			local t = step / STEPS
-			local eased = t * t * (3 - 2 * t)
-			applyAlpha(objs, 1 - eased)
-			self.window.BackgroundTransparency = eased
-			if step < STEPS then
-				task.delay(STEP_TIME, doFadeOut)
-			else
-				self.window.Visible = false
-				self.window.BackgroundTransparency = 0
-				applyAlpha(objs, 1)
-			end
-		end
-
-		local hidePos = UDim2.new(self.savedPos.X.Scale, self.savedPos.X.Offset, self.savedPos.Y.Scale, self.savedPos.Y.Offset + 8)
-		TweenService:Create(self.window,
-			TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-			{ Position = hidePos }
-		):Play()
-		task.delay(0, doFadeOut)
-	end
-end
 
 function UILib:confirm(message, onYes, onNo)
 	local overlay = Instance.new("TextButton")
@@ -2417,71 +2267,46 @@ local function createColorPicker(group, items, window, text, default, callback)
 		if pickerFrame then pickerFrame:Destroy() pickerFrame = nil end
 	end
 
-	local function makePickerBtn(parent, text_, xPos, xSize, isAccent)
-		local btn = Instance.new("TextButton")
-		btn.Size = UDim2.new(xSize, -4, 1, 0)
-		btn.Position = UDim2.new(xPos, xPos > 0 and 4 or 0, 0, 0)
-		btn.BackgroundColor3 = window.theme.Track
-		btn.BorderSizePixel = 0
-		btn.Text = text_
-		btn.TextColor3 = isAccent and window.theme.Accent or window.theme.GrayLt
-		btn.Font = Enum.Font.GothamBold
-		btn.TextSize = 11
-		btn.AutoButtonColor = false
-		btn.ZIndex = 2001
-		btn.Parent = parent
-		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
-		local bs = Instance.new("UIStroke", btn)
-		bs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		bs.Thickness = 1
-		bs.Color = isAccent and window.theme.Accent or window.theme.Border
-		if isAccent then table.insert(window.accentObjects, bs) end
-		btn.MouseEnter:Connect(function()
-			btn.TextColor3 = window.theme.White
-		end)
-		btn.MouseLeave:Connect(function()
-			btn.TextColor3 = isAccent and window.theme.Accent or window.theme.GrayLt
-		end)
-		return btn
-	end
-
 	local function openPicker()
 		if pickerFrame then closePicker() return end
 		local pickerJustOpened = true
 		task.delay(0.1, function() pickerJustOpened = false end)
 
-		local PAD = 10
-		local pickerW = 224
-
-		local pickerH = 268
-
-		pickerFrame = Instance.new("TextButton")
+		local pickerW, pickerH = 240, 260
+		pickerFrame = Instance.new("CanvasGroup")
 		pickerFrame.Size = UDim2.new(0, pickerW, 0, pickerH)
 		pickerFrame.BackgroundColor3 = window.theme.Surface
 		pickerFrame.BorderSizePixel = 0
 		pickerFrame.ZIndex = 2000
-		pickerFrame.Text = ""
-		pickerFrame.AutoButtonColor = false
 		pickerFrame.Parent = window.sg
 		table.insert(window.activePopups, pickerFrame)
-		Instance.new("UICorner", pickerFrame).CornerRadius = UDim.new(0, 8)
+		
+		local pickerScale = Instance.new("UIScale", pickerFrame)
+		pickerScale.Scale = 0.9
+		pickerFrame.GroupTransparency = 1
+		
+		Instance.new("UICorner", pickerFrame).CornerRadius = UDim.new(0, 10)
 		local pickerStroke = Instance.new("UIStroke", pickerFrame)
 		pickerStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		pickerStroke.Color = window.theme.Border
 		pickerStroke.Transparency = 0.2
-		pickerStroke.Thickness = 2.5
-
+		pickerStroke.Thickness = 1.5
+		
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
-		local mainP = window.window.AbsolutePosition
-		local mainS = window.window.AbsoluteSize
-		local targetX = mainP.X + mainS.X + 12
-		if targetX + pickerW > screenW - 10 then targetX = mainP.X - pickerW - 12 end
-		local targetY = math.clamp(mainP.Y, 10, screenH - pickerH - 20)
+		local absPos = colorBox.AbsolutePosition
+		local absSize = colorBox.AbsoluteSize
+		local targetX = absPos.X + absSize.X + 12
+		if targetX + pickerW > screenW - 10 then targetX = absPos.X - pickerW - 12 end
+		local targetY = math.clamp(absPos.Y - (pickerH/2) + (absSize.Y/2), 10, screenH - pickerH - 10)
 		pickerFrame.Position = UDim2.new(0, targetX, 0, targetY)
+		
+		TweenService:Create(pickerFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { GroupTransparency = 0 }):Play()
+		TweenService:Create(pickerScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 
 		local satValSquare, satValKnob, hueSlider, hueKnob, hexBox, alphaKnob, alphaValLbl
 		local hueDragging, svDragging = false, false
+		local h_, s_, v_ = Color3.toHSV(current)
 
 		local function update()
 			local h = hueKnob.Position.X.Scale
@@ -2492,125 +2317,70 @@ local function createColorPicker(group, items, window, text, default, callback)
 			satValSquare.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
 			colorBox.BackgroundColor3 = current
 			hexBox.Text = "#" .. current:ToHex()
-			if alphaValLbl then alphaValLbl.Text = math.floor((1 - elem.Alpha) * 100 + 0.5) .. "%" end
-			if window.rainbowElements[elem] then window.rainbowElements[elem].s = s window.rainbowElements[elem].v = v end
-			if window.pulseElements[elem] then window.pulseElements[elem].s = s window.pulseElements[elem].v = v end
+			if alphaValLbl then alphaValLbl.Text = "Transparency: " .. math.floor((1 - elem.Alpha) * 100 + 0.5) .. "%" end
 			if callback then callback(current) end
 		end
 
 		local function updateHue(pos)
 			local rel = math.clamp((pos.X - hueSlider.AbsolutePosition.X) / hueSlider.AbsoluteSize.X, 0, 1)
-			hueKnob.Position = UDim2.new(rel, -6, 0.5, -6)
+			hueKnob.Position = UDim2.new(rel, -7, 0.5, -7)
 			update()
 		end
 
 		local function updateSV(pos)
 			local relX = math.clamp((pos.X - satValSquare.AbsolutePosition.X) / satValSquare.AbsoluteSize.X, 0, 1)
 			local relY = math.clamp((pos.Y - satValSquare.AbsolutePosition.Y) / satValSquare.AbsoluteSize.Y, 0, 1)
-			satValKnob.Position = UDim2.new(relX, -5, relY, -5)
+			satValKnob.Position = UDim2.new(relX, -6, relY, -6)
 			update()
 		end
 
-		local tabContainer = Instance.new("Frame")
-		tabContainer.Size = UDim2.new(1, -PAD*2, 0, 22)
-		tabContainer.Position = UDim2.new(0, PAD, 0, PAD)
-		tabContainer.BackgroundColor3 = window.theme.Track
-		tabContainer.BorderSizePixel = 0
-		tabContainer.ZIndex = 2001
-		tabContainer.Parent = pickerFrame
-		Instance.new("UICorner", tabContainer).CornerRadius = UDim.new(0, 5)
-		local tabLayout = Instance.new("UIListLayout", tabContainer)
-		tabLayout.FillDirection = Enum.FillDirection.Horizontal
-		tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		tabLayout.Padding = UDim.new(0, 0)
+		local PAD = 10
+		local headerHeight = 32
+		local hueSliderHeight = 12
+		local svSquareSize = pickerW - (PAD * 2)
 
-		local tabButtons = {}
-		local function setActiveTab(name)
-			currentMode = name
-			for _, tb in pairs(tabButtons) do
-				local isActive = tb.Text == name
-				tb.BackgroundColor3 = isActive and window.theme.Item or window.theme.Surface
-				tb.BackgroundTransparency = 0
-				tb.TextColor3 = isActive and window.theme.White or window.theme.Gray
-				if tb:FindFirstChildOfClass("UIStroke") then
-					local s = tb:FindFirstChildOfClass("UIStroke")
-					s.Color = isActive and window.theme.White or window.theme.Item
-					s.Thickness = isActive and 1.5 or 1
-					s.Transparency = isActive and 0 or 0.5
-				end
-			end
-		end
+		local pickerHeader = Instance.new("Frame")
+		pickerHeader.Size = UDim2.new(1, 0, 0, headerHeight)
+		pickerHeader.BackgroundTransparency = 1
+		pickerHeader.Parent = pickerFrame
+		local pickerTitle = Instance.new("TextLabel")
+		pickerTitle.Size = UDim2.new(1, -PAD*2, 1, 0)
+		pickerTitle.Position = UDim2.new(0, PAD, 0, 0)
+		pickerTitle.BackgroundTransparency = 1
+		pickerTitle.Text = text
+		pickerTitle.TextColor3 = window.theme.White
+		pickerTitle.Font = Enum.Font.GothamBold
+		pickerTitle.TextSize = 12
+		pickerTitle.TextXAlignment = Enum.TextXAlignment.Left
+		pickerTitle.Parent = pickerHeader
 
-		local function createModeTab(name, order)
-			local btn = Instance.new("TextButton")
-			btn.Size = UDim2.new(0.333, 0, 1, 0)
-			btn.BackgroundTransparency = 1
-			btn.BorderSizePixel = 0
-			btn.Text = name
-			btn.TextColor3 = window.theme.Gray
-			btn.Font = Enum.Font.GothamBold
-			btn.TextSize = 10
-			btn.AutoButtonColor = false
-			btn.ZIndex = 2002
-			btn.LayoutOrder = order
-			btn.Parent = tabContainer
-			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
-			local bstr = Instance.new("UIStroke", btn)
-			bstr.Color = window.theme.Item
-			bstr.Thickness = 1
-			tabButtons[name] = btn
-			btn.MouseButton1Click:Connect(function()
-				setActiveTab(name)
-				local _, cs, cv = Color3.toHSV(current)
-				if cs < 0.05 then cs = 1 end
-				if cv < 0.05 then cv = 1 end
-				window.rainbowElements[elem] = (name == "Rainbow") and {callback = callback, colorBox = colorBox, s = cs, v = cv} or nil
-				window.pulseElements[elem] = (name == "Pulse") and {callback = callback, colorBox = colorBox, s = cs, v = cv} or nil
-				if name == "Solid" then update() end
-			end)
-		end
-		createModeTab("Solid", 1)
-		createModeTab("Rainbow", 2)
-		createModeTab("Pulse", 3)
-		setActiveTab("Solid")
-
-		local svY = PAD + 22 + 8
 		satValSquare = Instance.new("Frame")
-		satValSquare.Size = UDim2.new(1, -PAD*2, 0, 112)
-		satValSquare.Position = UDim2.new(0, PAD, 0, svY)
-		satValSquare.BackgroundColor3 = Color3.fromHSV(select(1, Color3.toHSV(current)), 1, 1)
+		satValSquare.Size = UDim2.new(1, -PAD*2, 0, 120)
+		satValSquare.Position = UDim2.new(0, PAD, 0, headerHeight)
+		satValSquare.BackgroundColor3 = Color3.fromHSV(h_, 1, 1)
+		satValSquare.BorderSizePixel = 0
 		satValSquare.ZIndex = 2001
 		satValSquare.Parent = pickerFrame
-		Instance.new("UICorner", satValSquare).CornerRadius = UDim.new(0, 5)
-		local svWhite = Instance.new("Frame", satValSquare)
-		svWhite.Size = UDim2.new(1, 0, 1, 0) svWhite.ZIndex = 2001
-		Instance.new("UIGradient", svWhite).Color = ColorSequence.new(Color3.new(1,1,1))
-		svWhite.BackgroundTransparency = 0
-		svWhite.UIGradient.Transparency = NumberSequence.new(0, 1)
-		local svBlack = Instance.new("Frame", satValSquare)
-		svBlack.Size = UDim2.new(1, 0, 1, 0) svBlack.ZIndex = 2002
-		Instance.new("UIGradient", svBlack).Color = ColorSequence.new(Color3.new(0,0,0))
-		svBlack.UIGradient.Transparency = NumberSequence.new(1, 0)
-		svBlack.UIGradient.Rotation = 90
-		Instance.new("UICorner", svWhite).CornerRadius = UDim.new(0, 5)
-		Instance.new("UICorner", svBlack).CornerRadius = UDim.new(0, 5)
-
-		local h_, s_, v_ = Color3.toHSV(current)
+		Instance.new("UICorner", satValSquare).CornerRadius = UDim.new(0, 4)
+		local satValGrad = Instance.new("ImageLabel", satValSquare)
+		satValGrad.Size = UDim2.new(1, 0, 1, 0)
+		satValGrad.BackgroundTransparency = 1
+		satValGrad.Image = "rbxassetid://104913220551069"
+		satValGrad.ZIndex = 2002
 		satValKnob = Instance.new("Frame")
 		satValKnob.Size = UDim2.new(0, 12, 0, 12)
 		satValKnob.Position = UDim2.new(s_, -6, 1 - v_, -6)
 		satValKnob.BackgroundColor3 = Color3.new(1,1,1)
-		satValKnob.ZIndex = 2004
+		satValKnob.ZIndex = 2003
 		satValKnob.Parent = satValSquare
 		Instance.new("UICorner", satValKnob).CornerRadius = UDim.new(1, 0)
-		local svKnobStroke = Instance.new("UIStroke", satValKnob)
-		svKnobStroke.Color = Color3.new(0,0,0) svKnobStroke.Thickness = 1.5
+		Instance.new("UIStroke", satValKnob).Thickness = 1.5
 
-		local hueY = svY + 112 + 8
+		local slidersY = headerHeight + 120 + 8
 		hueSlider = Instance.new("Frame")
-		hueSlider.Size = UDim2.new(1, -PAD*2, 0, 12)
-		hueSlider.Position = UDim2.new(0, PAD, 0, hueY)
-		hueSlider.BackgroundColor3 = Color3.new(1,1,1)
+		hueSlider.Size = UDim2.new(1, -PAD*2, 0, hueSliderHeight)
+		hueSlider.Position = UDim2.new(0, PAD, 0, slidersY)
+		hueSlider.BorderSizePixel = 0
 		hueSlider.ZIndex = 2001
 		hueSlider.Parent = pickerFrame
 		Instance.new("UICorner", hueSlider).CornerRadius = UDim.new(0, 6)
@@ -2631,30 +2401,18 @@ local function createColorPicker(group, items, window, text, default, callback)
 		hueKnob.ZIndex = 2002
 		hueKnob.Parent = hueSlider
 		Instance.new("UICorner", hueKnob).CornerRadius = UDim.new(1, 0)
-		Instance.new("UIStroke", hueKnob).Color = Color3.new(0,0,0)
+		Instance.new("UIStroke", hueKnob).Thickness = 1.5
 
-		local alphaHeaderY = hueY + 12 + 8
-		local alphaLbl2 = Instance.new("TextLabel")
-		alphaLbl2.Size = UDim2.new(0.5, 0, 0, 14)
-		alphaLbl2.Position = UDim2.new(0, PAD, 0, alphaHeaderY)
-		alphaLbl2.BackgroundTransparency = 1
-		alphaLbl2.Text = "Transparency"
-		alphaLbl2.TextColor3 = window.theme.Gray
-		alphaLbl2.Font = Enum.Font.GothamSemibold
-		alphaLbl2.TextSize = 10
-		alphaLbl2.TextXAlignment = Enum.TextXAlignment.Left
-		alphaLbl2.ZIndex = 2001
-		alphaLbl2.Parent = pickerFrame
-
+		local alphaHeaderY = slidersY + 12 + 8
 		alphaValLbl = Instance.new("TextLabel")
-		alphaValLbl.Size = UDim2.new(0.5, -PAD, 0, 14)
-		alphaValLbl.Position = UDim2.new(0.5, 0, 0, alphaHeaderY)
+		alphaValLbl.Size = UDim2.new(1, -PAD*2, 0, 14)
+		alphaValLbl.Position = UDim2.new(0, PAD, 0, alphaHeaderY)
 		alphaValLbl.BackgroundTransparency = 1
-		alphaValLbl.Text = math.floor((1 - elem.Alpha) * 100 + 0.5) .. "%"
-		alphaValLbl.TextColor3 = window.theme.White
+		alphaValLbl.Text = "Transparency: " .. math.floor((1 - elem.Alpha) * 100 + 0.5) .. "%"
+		alphaValLbl.TextColor3 = window.theme.GrayLt
 		alphaValLbl.Font = Enum.Font.GothamSemibold
 		alphaValLbl.TextSize = 10
-		alphaValLbl.TextXAlignment = Enum.TextXAlignment.Right
+		alphaValLbl.TextXAlignment = Enum.TextXAlignment.Left
 		alphaValLbl.ZIndex = 2001
 		alphaValLbl.Parent = pickerFrame
 
@@ -2663,19 +2421,18 @@ local function createColorPicker(group, items, window, text, default, callback)
 		alphaTrack.Size = UDim2.new(1, -PAD*2, 0, 12)
 		alphaTrack.Position = UDim2.new(0, PAD, 0, alphaSliderY)
 		alphaTrack.BorderSizePixel = 0
+		alphaTrack.BackgroundColor3 = Color3.fromRGB(45,45,45)
 		alphaTrack.ZIndex = 2001
 		alphaTrack.Parent = pickerFrame
 		Instance.new("UICorner", alphaTrack).CornerRadius = UDim.new(0, 6)
-
-		alphaTrack.BackgroundColor3 = Color3.fromRGB(50,50,50)
 		local alphaColorBar = Instance.new("Frame")
 		alphaColorBar.Size = UDim2.new(1, 0, 1, 0)
+		alphaColorBar.BackgroundTransparency = 0
 		alphaColorBar.BorderSizePixel = 0
 		alphaColorBar.ZIndex = 2001
 		alphaColorBar.Parent = alphaTrack
 		Instance.new("UICorner", alphaColorBar).CornerRadius = UDim.new(0, 6)
 		local alphaGrad = Instance.new("UIGradient", alphaColorBar)
-		alphaGrad.Color = ColorSequence.new(Color3.new(1,1,1), Color3.new(1,1,1))
 		alphaGrad.Transparency = NumberSequence.new({
 			NumberSequenceKeypoint.new(0, 0),
 			NumberSequenceKeypoint.new(1, 1),
@@ -2688,37 +2445,20 @@ local function createColorPicker(group, items, window, text, default, callback)
 		alphaKnob.ZIndex = 2003
 		alphaKnob.Parent = alphaTrack
 		Instance.new("UICorner", alphaKnob).CornerRadius = UDim.new(1, 0)
-		Instance.new("UIStroke", alphaKnob).Color = Color3.new(0,0,0)
+		Instance.new("UIStroke", alphaKnob).Thickness = 1.5
 
-		local alphaDragging = false
 		local function applyAlpha(posX)
 			local rel = math.clamp((posX - alphaTrack.AbsolutePosition.X) / alphaTrack.AbsoluteSize.X, 0, 1)
 			alphaKnob.Position = UDim2.new(rel, -7, 0.5, -7)
 			elem.Alpha = 1 - rel
-			alphaValLbl.Text = math.floor(rel * 100 + 0.5) .. "%"
+			alphaValLbl.Text = "Transparency: " .. math.floor(rel * 100 + 0.5) .. "%"
 			if callback then callback(current) end
 		end
-		alphaTrack.InputBegan:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 then alphaDragging = true applyAlpha(i.Position.X) end
-		end)
-		local alphaConn = UIS.InputChanged:Connect(function(i)
-			if alphaDragging and i.UserInputType == Enum.UserInputType.MouseMovement then applyAlpha(i.Position.X) end
-		end)
-		local alphaEndConn = UIS.InputEnded:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 then alphaDragging = false end
-		end)
-		table.insert(window.connections, alphaConn)
-		table.insert(window.connections, alphaEndConn)
 
-		local hexY = alphaSliderY + 12 + 8
-		local hexRow = Instance.new("Frame")
-		hexRow.Size = UDim2.new(1, -PAD*2, 0, 26)
-		hexRow.Position = UDim2.new(0, PAD, 0, hexY)
-		hexRow.BackgroundTransparency = 1
-		hexRow.Parent = pickerFrame
-
+		local hexY = alphaSliderY + 12 + 10
 		hexBox = Instance.new("TextBox")
-		hexBox.Size = UDim2.new(1, -56, 1, 0)
+		hexBox.Size = UDim2.new(1, -PAD*2, 0, 26)
+		hexBox.Position = UDim2.new(0, PAD, 0, hexY)
 		hexBox.BackgroundColor3 = window.theme.Track
 		hexBox.BorderSizePixel = 0
 		hexBox.Text = "#" .. current:ToHex()
@@ -2727,27 +2467,33 @@ local function createColorPicker(group, items, window, text, default, callback)
 		hexBox.TextSize = 12
 		hexBox.ClearTextOnFocus = false
 		hexBox.ZIndex = 2001
-		hexBox.Parent = hexRow
+		hexBox.Parent = pickerFrame
 		Instance.new("UICorner", hexBox).CornerRadius = UDim.new(0, 4)
 		local hbStroke = Instance.new("UIStroke", hexBox)
 		hbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		hbStroke.Color = window.theme.Border hbStroke.Thickness = 1
 
-		local copyBtn = makePickerBtn(hexRow, "Copy", 1, -56/pickerW, false)
-		copyBtn.Size = UDim2.new(0, 48, 1, 0)
-		copyBtn.Position = UDim2.new(1, -48, 0, 0)
-
-		local pickerDragEndConn = UIS.InputEnded:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 then hueDragging = false svDragging = false end
+		local alphaDragging = false
+		alphaTrack.InputBegan:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1 then alphaDragging = true applyAlpha(i.Position.X) end
 		end)
-		table.insert(window.connections, pickerDragEndConn)
-
 		hueSlider.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then hueDragging = true updateHue(input.Position) end end)
-		hueSlider.InputChanged:Connect(function(input) if hueDragging and input.UserInputType == Enum.UserInputType.MouseMovement then updateHue(input.Position) end end)
 		satValSquare.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then svDragging = true updateSV(input.Position) end end)
-		satValSquare.InputChanged:Connect(function(input) if svDragging and input.UserInputType == Enum.UserInputType.MouseMovement then updateSV(input.Position) end end)
 
-		copyBtn.MouseButton1Click:Connect(function() pcall(setclipboard, hexBox.Text) end)
+		local inputChangedConn = UIS.InputChanged:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseMovement then
+				if alphaDragging then applyAlpha(i.Position.X) end
+				if hueDragging then updateHue(i.Position) end
+				if svDragging then updateSV(i.Position) end
+			end
+		end)
+		local inputEndedConn = UIS.InputEnded:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1 then
+				alphaDragging, hueDragging, svDragging = false, false, false
+			end
+		end)
+		table.insert(window.connections, inputChangedConn)
+		table.insert(window.connections, inputEndedConn)
 
 		hexBox.FocusLost:Connect(function()
 			local ok, hexColor = pcall(Color3.fromHex, hexBox.Text:gsub("#", ""))
@@ -2766,10 +2512,8 @@ local function createColorPicker(group, items, window, text, default, callback)
 			if input.UserInputType == Enum.UserInputType.MouseButton1 then
 				local pos = UIS:GetMouseLocation()
 				if not pickerFrame or not pickerFrame.Parent then inputBeganConn:Disconnect() return end
-				local ap = pickerFrame.AbsolutePosition
-				local as = pickerFrame.AbsoluteSize
-				local bp = colorBox.AbsolutePosition
-				local bs2 = colorBox.AbsoluteSize
+				local ap, as = pickerFrame.AbsolutePosition, pickerFrame.AbsoluteSize
+				local bp, bs2 = colorBox.AbsolutePosition, colorBox.AbsoluteSize
 				if pos.X >= bp.X and pos.X <= bp.X + bs2.X and pos.Y >= bp.Y and pos.Y <= bp.Y + bs2.Y then return end
 				if pos.X < ap.X or pos.X > ap.X + as.X or pos.Y < ap.Y or pos.Y > ap.Y + as.Y then
 					task.spawn(closePicker)
