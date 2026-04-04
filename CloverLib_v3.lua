@@ -442,6 +442,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	local header = Instance.new("Frame")
 	header.Size = UDim2.new(1, 0, 0, 46)
 	header.BackgroundColor3 = self.theme.Panel
+	header.BackgroundTransparency = 0
 	header.BorderSizePixel = 0
 	header.ZIndex = 5
 	header.Parent = win
@@ -455,6 +456,17 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	headerLine.ZIndex = 6
 	headerLine.Parent = header
 	table.insert(self.accentObjects, headerLine)
+	
+	local uiScale = Instance.new("UIScale", win)
+	self.uiScale = uiScale
+	
+	local function updateScaling()
+		local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
+		local s = math.min(vp.X / size.X, (vp.Y-40) / size.Y, 1)
+		uiScale.Scale = s
+	end
+	table.insert(self.connections, workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScaling))
+	updateScaling()
 
 	local titleRow = Instance.new("Frame")
 	titleRow.Size = UDim2.new(0, 0, 1, 0)
@@ -474,7 +486,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	local logo = Instance.new("ImageLabel")
 	logo.Size = UDim2.new(0, 22, 0, 22)
 	logo.BackgroundTransparency = 1
-	logo.Image = "rbxassetid://75132532903654"
+	logo.Image = "rbxassetid://115924193030407"
 	logo.ZIndex = 60
 	logo.LayoutOrder = 0
 	logo.Parent = titleRow
@@ -1353,6 +1365,23 @@ function UILib:setVisible(visible)
 		local STEPS = 9
 		local STEP_TIME = 0.018
 		local step = 0
+		function self:toggle()
+		self.visibleTarget = not self.visibleTarget
+		self.sg.Enabled = true
+		local targetScale = self.visibleTarget and 1 or 0.95
+		local targetAlpha = self.visibleTarget and 0 or 1
+		
+		TweenService:Create(win, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			GroupTransparency = targetAlpha
+		}):Play()
+		TweenService:Create(uiScale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, 0.05), {
+			Scale = self.visibleTarget and uiScale.Scale or targetScale
+		}):Play()
+		
+		if not self.visibleTarget then
+			task.delay(0.25, function() if not self.visibleTarget then self.sg.Enabled = false end end)
+		end
+	end
 		local function doFadeOut()
 			if self.visibleTarget then
 				applyAlpha(objs, 1)
@@ -2444,8 +2473,8 @@ local function createColorPicker(group, items, window, text, default, callback)
 
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
-		local mainP = window.frame.AbsolutePosition
-		local mainS = window.frame.AbsoluteSize
+		local mainP = window.window.AbsolutePosition
+		local mainS = window.window.AbsoluteSize
 		local targetX = mainP.X + mainS.X + 12
 		if targetX + pickerW > screenW - 10 then targetX = mainP.X - pickerW - 12 end
 		local targetY = math.clamp(mainP.Y, 10, screenH - pickerH - 20)
