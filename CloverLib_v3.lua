@@ -1258,58 +1258,124 @@ end
 function UILib:setVisible(visible)
 	if not self.window then return end
 
+	-- Collect all tweenable descendants with their natural transparencies
+	local function collectObjects(parent)
+		local objs = {}
+		for _, obj in ipairs(parent:GetDescendants()) do
+			pcall(function()
+				local entry = {obj = obj}
+				if obj:IsA("Frame") or obj:IsA("ScrollingFrame") then
+					entry.bgNat = obj.BackgroundTransparency
+				end
+				if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+					entry.bgNat = obj:IsA("TextButton") and obj.BackgroundTransparency or nil
+					entry.textNat = obj.TextTransparency
+				end
+				if obj:IsA("ImageLabel") or obj:IsA("ImageButton") then
+					entry.imgNat = obj.ImageTransparency
+				end
+				if obj:IsA("UIStroke") then
+					entry.strokeNat = obj.Transparency
+				end
+				if entry.bgNat ~= nil or entry.textNat ~= nil or entry.imgNat ~= nil or entry.strokeNat ~= nil then
+					table.insert(objs, entry)
+				end
+			end)
+		end
+		return objs
+	end
+
+	local function applyAlpha(objs, alpha)
+		for _, e in ipairs(objs) do
+			pcall(function()
+				if e.bgNat     ~= nil then e.obj.BackgroundTransparency = 1 - (1 - e.bgNat)     * (1 - alpha) end
+				if e.textNat   ~= nil then e.obj.TextTransparency        = 1 - (1 - e.textNat)   * (1 - alpha) end
+				if e.imgNat    ~= nil then e.obj.ImageTransparency       = 1 - (1 - e.imgNat)    * (1 - alpha) end
+				if e.strokeNat ~= nil then e.obj.Transparency            = 1 - (1 - e.strokeNat) * (1 - alpha) end
+			end)
+		end
+	end
+
 	if visible then
 		if self.visibleTarget then return end
 		self.visibleTarget = true
-		local targetPos = self.savedPos or self.originalPosition
+		local targetPos  = self.savedPos  or self.originalPosition
 		local targetSize = self.savedSize or self.originalSize
 
-		local startSize = UDim2.new(
-			targetSize.X.Scale, targetSize.X.Offset,
-			targetSize.Y.Scale, math.floor(targetSize.Y.Offset * 0.96)
-		)
-		self.window.Size = startSize
-		self.window.Position = UDim2.new(targetPos.X.Scale, targetPos.X.Offset, targetPos.Y.Scale, targetPos.Y.Offset + 8)
 		self.window.BackgroundTransparency = 1
 		self.window.Visible = true
+		self.window.Size = UDim2.new(targetSize.X.Scale, targetSize.X.Offset, targetSize.Y.Scale, math.floor(targetSize.Y.Offset * 0.97))
+		self.window.Position = UDim2.new(targetPos.X.Scale, targetPos.X.Offset, targetPos.Y.Scale, targetPos.Y.Offset + 6)
+
+		local objs = collectObjects(self.window)
+		applyAlpha(objs, 0)
+
+		local STEPS = 12
+		local STEP_TIME = 0.018
+		local step = 0
+		local function doFadeIn()
+			if not self.visibleTarget then return end
+			step = step + 1
+			local t = step / STEPS
+			local eased = t * t * (3 - 2 * t) -- smoothstep
+			applyAlpha(objs, eased)
+			self.window.BackgroundTransparency = 1 - eased
+			if step < STEPS then
+				task.delay(STEP_TIME, doFadeIn)
+			else
+				applyAlpha(objs, 1)
+				self.window.BackgroundTransparency = 0
+			end
+		end
+
 		TweenService:Create(self.window,
-			TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-			{
-				Size = targetSize,
-				Position = targetPos,
-				BackgroundTransparency = 0
-			}
+			TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+			{ Size = targetSize, Position = targetPos }
 		):Play()
+		task.delay(0, doFadeIn)
+
 	else
 		if not self.visibleTarget then return end
 		self.visibleTarget = false
 		self.savedPos  = self.window.Position
 		self.savedSize = self.window.Size
+
 		for _, popup in ipairs(self.activePopups) do
 			pcall(function() if popup then popup:Destroy() end end)
 		end
 		self.activePopups = {}
-		local hidePos = UDim2.new(
-			self.savedPos.X.Scale, self.savedPos.X.Offset,
-			self.savedPos.Y.Scale, self.savedPos.Y.Offset + 10
-		)
-		local t = TweenService:Create(self.window,
-			TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-			{
-				BackgroundTransparency = 1,
-				Position = hidePos
-			}
-		)
-		t:Play()
-		t.Completed:Connect(function()
+
+		local objs = collectObjects(self.window)
+
+		local STEPS = 9
+		local STEP_TIME = 0.018
+		local step = 0
+		local function doFadeOut()
 			if self.visibleTarget then
+				applyAlpha(objs, 1)
 				self.window.BackgroundTransparency = 0
-				self.window.Position = self.savedPos
 				return
 			end
-			self.window.Visible = false
-			self.window.BackgroundTransparency = 0
-		end)
+			step = step + 1
+			local t = step / STEPS
+			local eased = t * t * (3 - 2 * t)
+			applyAlpha(objs, 1 - eased)
+			self.window.BackgroundTransparency = eased
+			if step < STEPS then
+				task.delay(STEP_TIME, doFadeOut)
+			else
+				self.window.Visible = false
+				self.window.BackgroundTransparency = 0
+				applyAlpha(objs, 1)
+			end
+		end
+
+		local hidePos = UDim2.new(self.savedPos.X.Scale, self.savedPos.X.Offset, self.savedPos.Y.Scale, self.savedPos.Y.Offset + 8)
+		TweenService:Create(self.window,
+			TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+			{ Position = hidePos }
+		):Play()
+		task.delay(0, doFadeOut)
 	end
 end
 
@@ -1964,7 +2030,10 @@ local function generateID() return "elem_" .. HS:GenerateGUID(false) end
 local function attachTooltip(element, text, window)
 	if not text or not window or not window.tooltip then return end
 	local tt = window.tooltip
-	element.MouseEnter:Connect(function() tt.start(text, element) end)
+	element.MouseEnter:Connect(function()
+		if window.tooltipSuppressed then return end
+		tt.start(text, element)
+	end)
 	element.MouseLeave:Connect(function() tt.hide() end)
 	element.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then tt.hide() end
@@ -2127,6 +2196,10 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	row.BackgroundTransparency = 1
 	row.BorderSizePixel = 0
 	row.Parent = items
+	Instance.new("UICorner", row).CornerRadius = UDim.new(0, 5)
+	local rowStroke = Instance.new("UIStroke", row)
+	rowStroke.Color = window.theme.Border
+	rowStroke.Thickness = 1
 	local rowPad = Instance.new("UIPadding", row)
 	rowPad.PaddingLeft = UDim.new(0, 6)
 	rowPad.PaddingRight = UDim.new(0, 6)
@@ -2270,6 +2343,10 @@ local function createColorPicker(group, items, window, text, default, callback)
 	row.BackgroundTransparency = 1
 	row.BorderSizePixel = 0
 	row.Parent = items
+	Instance.new("UICorner", row).CornerRadius = UDim.new(0, 5)
+	local rowStroke = Instance.new("UIStroke", row)
+	rowStroke.Color = window.theme.Border
+	rowStroke.Thickness = 1
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, -62, 1, 0)
 	label.Position = UDim2.new(0, 4, 0, 0)
@@ -2359,8 +2436,10 @@ local function createColorPicker(group, items, window, text, default, callback)
 		table.insert(window.activePopups, pickerFrame)
 		Instance.new("UICorner", pickerFrame).CornerRadius = UDim.new(0, 8)
 		local pickerStroke = Instance.new("UIStroke", pickerFrame)
-		pickerStroke.Color = window.theme.Border
-		pickerStroke.Transparency = 0
+		pickerStroke.Color = window.theme.Accent
+		pickerStroke.Transparency = 0.5
+		pickerStroke.Thickness = 1.5
+		table.insert(window.accentObjects, pickerStroke)
 
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
@@ -2828,6 +2907,8 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	local open = false
 	dbtn.MouseButton1Click:Connect(function()
 		open = not open
+		window.tooltipSuppressed = open
+		if window.tooltip then window.tooltip.hide() end
 		TweenService:Create(arrow, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
 			Rotation = open and 180 or 0
 		}):Play()
@@ -2840,6 +2921,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 				Size = UDim2.new(1, 0, 0, math.min(listH, 160))
 			}):Play()
 		else
+			window.tooltipSuppressed = false
 			multiDbtnCorner.CornerRadius = UDim.new(0, 4)
 			multiBridge.Visible = false
 			local tw = TweenService:Create(dlist, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
@@ -3052,6 +3134,10 @@ function UILib.Column:addGroup(title)
 		r.BorderSizePixel = 0
 		r.ZIndex = 3
 		r.Parent = items
+		Instance.new("UICorner", r).CornerRadius = UDim.new(0, 5)
+		local rowStroke = Instance.new("UIStroke", r)
+		rowStroke.Color = window.theme.Border
+		rowStroke.Thickness = 1
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0, 22, 0, 22)
 		cbOuter.Position = UDim2.new(1, -26, 0.5, -11)
@@ -3303,6 +3389,7 @@ function UILib.Column:addGroup(title)
 
 		local function closeDropdown()
 			open = false
+			window.tooltipSuppressed = false
 			TweenService:Create(arrow, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {Rotation = 0}):Play()
 
 			dbtnCorner.CornerRadius = UDim.new(0, 4)
@@ -3425,6 +3512,8 @@ function UILib.Column:addGroup(title)
 
 		dbtn.MouseButton1Click:Connect(function()
 			open = not open
+			window.tooltipSuppressed = open
+			if window.tooltip then window.tooltip.hide() end
 			TweenService:Create(arrow, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
 				Rotation = open and 180 or 0
 			}):Play()
@@ -3517,6 +3606,10 @@ function UILib.Column:addGroup(title)
 		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
+		Instance.new("UICorner", r).CornerRadius = UDim.new(0, 5)
+		local rowStroke = Instance.new("UIStroke", r)
+		rowStroke.Color = window.theme.Border
+		rowStroke.Thickness = 1
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -82, 1, 0)
 		lbl.Position = UDim2.new(0, 4, 0, 0)
@@ -3722,7 +3815,6 @@ function UILib.Column:addGroup(title)
 			btn.MouseEnter:Connect(function() lbl.TextColor3 = window.theme.White end)
 			btn.MouseLeave:Connect(function() lbl.TextColor3 = color or window.theme.Accent end)
 		else
-
 			local btnBg = bgColor or window.theme.Track
 			btn.BackgroundColor3 = btnBg
 			btn.BackgroundTransparency = 0
@@ -3730,15 +3822,6 @@ function UILib.Column:addGroup(title)
 			local bstroke = Instance.new("UIStroke", btn)
 			bstroke.Color = bgColor and Color3.new(bgColor.r*0.7, bgColor.g*0.7, bgColor.b*0.7) or window.theme.Border
 			bstroke.Thickness = 1
-			local rh = Instance.new("Frame")
-			rh.Size = UDim2.new(1, 0, 1, 0)
-			rh.BackgroundColor3 = bgColor and Color3.new(bgColor.r*0.85, bgColor.g*0.85, bgColor.b*0.85) or Color3.fromRGB(22,22,22)
-			rh.Visible = false
-			rh.ZIndex = 2
-			rh.Parent = btn
-			Instance.new("UICorner", rh).CornerRadius = UDim.new(0, 4)
-			btn.MouseEnter:Connect(function() rh.Visible = true end)
-			btn.MouseLeave:Connect(function() rh.Visible = false end)
 			local lbl = Instance.new("TextLabel")
 			lbl.Size = UDim2.new(1, 0, 1, 0)
 			lbl.Position = UDim2.new(0, 4, 0, 0)
@@ -4169,6 +4252,10 @@ function UILib.Column:addGroup(title)
 		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
+		Instance.new("UICorner", r).CornerRadius = UDim.new(0, 5)
+		local rowStroke = Instance.new("UIStroke", r)
+		rowStroke.Color = window.theme.Border
+		rowStroke.Thickness = 1
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -48, 0, 18)
 		lbl.Position = UDim2.new(0, 4, 0, 3)
@@ -4223,6 +4310,10 @@ function UILib.Column:addGroup(title)
 		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
+		Instance.new("UICorner", r).CornerRadius = UDim.new(0, 5)
+		local rowStroke = Instance.new("UIStroke", r)
+		rowStroke.Color = window.theme.Border
+		rowStroke.Thickness = 1
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(0.45, -8, 0, 18)
 		lbl.Position = UDim2.new(0, 4, 0, 3)
@@ -4276,6 +4367,10 @@ function UILib.Column:addGroup(title)
 		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
+		Instance.new("UICorner", r).CornerRadius = UDim.new(0, 5)
+		local rowStroke = Instance.new("UIStroke", r)
+		rowStroke.Color = window.theme.Border
+		rowStroke.Thickness = 1
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -48, 0, 18)
 		lbl.Position = UDim2.new(0, 4, 0, 3)
