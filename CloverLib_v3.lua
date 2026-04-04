@@ -3129,7 +3129,7 @@ function UILib.Column:addGroup(title)
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0, 22, 0, 22)
 		cbOuter.Position = UDim2.new(1, -26, 0.5, -11)
-		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.Base
+		cbOuter.BackgroundColor3 = default and window.theme.Accent or Color3.fromRGB(32, 32, 32)
 		cbOuter.BorderSizePixel = 0
 		cbOuter.AutoButtonColor = false
 		cbOuter.ZIndex = 4
@@ -3166,7 +3166,7 @@ function UILib.Column:addGroup(title)
 			state = val
 			elem.Value = state
 			TweenService:Create(cbOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
-				BackgroundColor3 = state and window.theme.Accent or window.theme.Base
+				BackgroundColor3 = state and window.theme.Accent or Color3.fromRGB(32, 32, 32)
 			}):Play()
 			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
 			cbMark.Text = state and "X" or ""
@@ -4077,7 +4077,7 @@ function UILib.Column:addGroup(title)
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0,18,0,18)
 		cbOuter.Position = UDim2.new(1,-22,0.5,-9)
-		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.Base
+		cbOuter.BackgroundColor3 = default and window.theme.Accent or Color3.fromRGB(32, 32, 32)
 		cbOuter.BorderSizePixel = 0
 		cbOuter.AutoButtonColor = false
 		cbOuter.ZIndex = 4
@@ -4130,7 +4130,7 @@ function UILib.Column:addGroup(title)
 		cbOuter.MouseButton1Click:Connect(function()
 			state = not state
 			TweenService:Create(cbOuter, TweenInfo.new(0.12, Enum.EasingStyle.Quad), {
-				BackgroundColor3 = state and window.theme.Accent or window.theme.Base
+				BackgroundColor3 = state and window.theme.Accent or Color3.fromRGB(32, 32, 32)
 			}):Play()
 			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
 			cbMark.Text = state and "X" or ""
