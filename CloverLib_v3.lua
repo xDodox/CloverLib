@@ -361,6 +361,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	win.Active = true
 	win.Selectable = false
 	win.AnchorPoint = Vector2.new(0.5, 0.5)
+	win.ClipsDescendants = true
 	self.uiScale = Instance.new("UIScale", win)
 	self.uiScale.Scale = 0.8
 	Instance.new("UICorner", win).CornerRadius = UDim.new(0, 8)
@@ -608,7 +609,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	navbar.CanvasSize = UDim2.new(0, 0, 0, 0)
 	navbar.ClipsDescendants = true
 	navbar.Parent = win
-	Instance.new("UICorner", navbar).CornerRadius = UDim.new(0, 6)
 
 	local navTopLine = Instance.new("Frame")
 	navTopLine.Size = UDim2.new(1, 0, 0, 1)
@@ -1261,11 +1261,11 @@ function UILib:setVisible(visible)
 	
 	if visible then
 		self.window.Visible = true
-		TweenService:Create(self.uiScale, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		TweenService:Create(self.uiScale, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 	else
-		local t = TweenService:Create(self.uiScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 })
+		local t = TweenService:Create(self.uiScale, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In), { Scale = 0 })
 		t:Play()
-		task.delay(0.35, function()
+		task.delay(0.25, function()
 			if not self.visibleTarget then 
 				self.window.Visible = false
 			end
@@ -1581,15 +1581,18 @@ function UILib:addTab(name, options)
 
 	local MIN_TAB_WIDTH = 80
 	local function refreshTabWidths()
-		local navW = self.navbar.AbsoluteSize.X
-		if navW <= 0 then navW = self.size.X end
-		local navH = self.navbar.AbsoluteSize.Y
-		if navH <= 0 then navH = self.navbarHeight or 46 end
+		local navW = self.size.X
 		local count = self.navTabCount
-		local evenW = math.floor(navW / count)
-		local useW = evenW >= MIN_TAB_WIDTH and evenW or MIN_TAB_WIDTH
-		for _, child in ipairs(self.navbar:GetChildren()) do
-			if child:IsA("TextButton") then child.Size = UDim2.new(0, useW, 0, navH) end
+		if count == 0 then return end
+		local navH = self.navbarHeight or 46
+		if navW / count < MIN_TAB_WIDTH then
+			for _, child in ipairs(self.navbar:GetChildren()) do
+				if child:IsA("TextButton") then child.Size = UDim2.new(0, MIN_TAB_WIDTH, 0, navH) end
+			end
+		else
+			for _, child in ipairs(self.navbar:GetChildren()) do
+				if child:IsA("TextButton") then child.Size = UDim2.new(1/count, 0, 0, navH) end
+			end
 		end
 	end
 	self.refreshTabWidths = refreshTabWidths
@@ -1696,9 +1699,9 @@ function UILib:addTab(name, options)
 
 	task.defer(refreshTabWidths)
 	local underline = Instance.new("Frame")
-	underline.Size = UDim2.new(0.5, 0, 0, 2)
+	underline.Size = UDim2.new(0.4, 0, 0, 2)
 	underline.AnchorPoint = Vector2.new(0.5, 1)
-	underline.Position = UDim2.new(0.5, 0, 1, -1)
+	underline.Position = UDim2.new(0.5, 0, 1, 0)
 	underline.BackgroundColor3 = self.theme.Accent
 	underline.BorderSizePixel = 0
 	underline.Visible = false
@@ -2334,7 +2337,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		local targetY = math.clamp(absPos.Y - (pickerH/2) + (absSize.Y/2), 10, screenH - pickerH - 10)
 		pickerFrame.Position = UDim2.new(0, targetX, 0, targetY)
 		
-		TweenService:Create(pickerScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		TweenService:Create(pickerScale, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 
 		local satValSquare, satValKnob, hueSlider, hueKnob, hexBox, alphaKnob, alphaValLbl
 		local hueDragging, svDragging = false, false
@@ -3236,19 +3239,23 @@ function UILib.Column:addGroup(title)
 			dbtnCorner.CornerRadius = UDim.new(0, 4)
 			dbtnStroke.Color = window.theme.Border
 			expandCorner.CornerRadius = UDim.new(0, 4)
-			searchRow.Visible = false
-			searchSep.Visible = false
-			searchBox.Text = ""
-			for _, child in ipairs(dlist:GetChildren()) do
-				if child:IsA("TextButton") then child.Visible = true end
-			end
+			
 			local tw = TweenService:Create(expandPanel, TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
 				Size = UDim2.new(1, 0, 0, 0)
 			})
 			TweenService:Create(r, TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
 				Size = UDim2.new(1, 0, 0, 56)
 			}):Play()
-			tw.Completed:Connect(function() expandPanel.Visible = false end)
+			tw.Completed:Connect(function() 
+				expandPanel.Visible = false
+				searchRow.Visible = false
+				searchSep.Visible = false
+				dlist.Position = UDim2.new(0, 0, 0, 0)
+				searchBox.Text = ""
+				for _, child in ipairs(dlist:GetChildren()) do
+					if child:IsA("TextButton") then child.Visible = true end
+				end
+			end)
 			tw:Play()
 			task.delay(0.16, updateSize)
 		end
