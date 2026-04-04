@@ -371,7 +371,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	self.window = win
 	self.originalPosition = win.Position
 	self.originalSize = win.Size
-	self.visibleTarget = true
+	self.visibleTarget = false
 
 	local function getSidebarWidth()
 		return math.max(MIN_SIDEBAR_WIDTH, math.min(MAX_SIDEBAR_WIDTH, math.floor(self.size.X * 0.22)))
@@ -1022,6 +1022,15 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 
 	self:notify("CloverLib Loaded", "success", 2)
 	table.insert(allWindows, self)
+
+	if includeUITab ~= false then
+		self:buildUITab()
+	end
+
+	task.defer(function()
+		self:setVisible(true)
+	end)
+
 	return self
 end
 
