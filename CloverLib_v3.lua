@@ -441,7 +441,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	local header = Instance.new("Frame")
 	header.Size = UDim2.new(1, 0, 0, 46)
 	header.BackgroundColor3 = self.theme.Panel
-	header.BackgroundTransparency = 1
+	header.BackgroundTransparency = 0
 	header.BorderSizePixel = 0
 	header.ZIndex = 5
 	header.Parent = win
