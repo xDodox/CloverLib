@@ -354,13 +354,16 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 
 	local win = Instance.new("CanvasGroup")
 	win.Size = UDim2.new(0, size.X, 0, size.Y)
-	win.Position = UDim2.new(0, 80, 0, 60)
+	win.Position = UDim2.new(0.5, 0, 0.5, 0)
 	win.BackgroundColor3 = self.theme.BG
 	win.BorderSizePixel = 0
 	win.Parent = self.sg
 	win.Active = true
 	win.Selectable = false
-	win.AnchorPoint = Vector2.new(0, 0)
+	win.AnchorPoint = Vector2.new(0.5, 0.5)
+	win.GroupTransparency = 1
+	self.uiScale = Instance.new("UIScale", win)
+	self.uiScale.Scale = 0.8
 	Instance.new("UICorner", win).CornerRadius = UDim.new(0, 8)
 	local winStroke = Instance.new("UIStroke", win)
 	winStroke.Color = self.theme.Border
@@ -456,8 +459,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	headerLine.Parent = header
 	table.insert(self.accentObjects, headerLine)
 	
-	local uiScale = Instance.new("UIScale", win)
-	self.uiScale = uiScale
+	local uiScale = self.uiScale
 	
 	local function updateScaling()
 		local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
@@ -644,7 +646,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		table.insert(self.connections, UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end end))
 	end
 
-	table.insert(self.connections, UIS.InputBegan:Connect(function(input, gpe) if input.KeyCode == self.toggleKey then self:setVisible(not win.Visible) end end))
+	table.insert(self.connections, UIS.InputBegan:Connect(function(input, gpe) if input.KeyCode == self.toggleKey then self:setVisible(not self.visibleTarget) end end))
 
 	self.tabs = {}
 	self.tabOrder = {}
@@ -1032,7 +1034,6 @@ function UILib:addWatermark(name)
 	wm.AnchorPoint = Vector2.new(1, 0)
 	wm.BackgroundColor3 = self.theme.Panel
 	wm.BorderSizePixel = 0
-	wm.ClipsDescendants = false
 	wm.Parent = self.sg
 	wm.ZIndex = 200
 	Instance.new("UICorner", wm).CornerRadius = UDim.new(0, 6)
@@ -1242,16 +1243,16 @@ function UILib:setVisible(visible)
 	self.visibleTarget = visible
 	
 	if visible then
-		self.sg.Enabled = true
-		self.window.GroupTransparency = 1
-		self.uiScale.Scale = 0.95
-		TweenService:Create(self.window, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { GroupTransparency = 0 }):Play()
-		TweenService:Create(self.uiScale, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		self.window.Visible = true
+		TweenService:Create(self.window, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { GroupTransparency = 0 }):Play()
+		TweenService:Create(self.uiScale, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 	else
-		TweenService:Create(self.window, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In), { GroupTransparency = 1 }):Play()
-		TweenService:Create(self.uiScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0.92 }):Play()
-		task.delay(0.25, function()
-			if not self.visibleTarget then self.sg.Enabled = false end
+		TweenService:Create(self.window, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.In), { GroupTransparency = 1 }):Play()
+		TweenService:Create(self.uiScale, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0.8 }):Play()
+		task.delay(0.35, function()
+			if not self.visibleTarget then 
+				self.window.Visible = false
+			end
 		end)
 	end
 end
@@ -2006,7 +2007,6 @@ function UILib.SubTab:addInput(labelText, default, placeholder, callback, toolti
 	box.Size = UDim2.new(1, -16, 0, 22)
 	box.Position = UDim2.new(0, 8, 0, 25)
 	box.BackgroundColor3 = window.theme.Track
-	box.ClipsDescendants = true
 	box.BorderSizePixel = 0
 	box.ZIndex = 3
 	box.Text = default or ""
@@ -2280,6 +2280,14 @@ local function createColorPicker(group, items, window, text, default, callback)
 		pickerFrame.Parent = window.sg
 		table.insert(window.activePopups, pickerFrame)
 		
+		-- Background Blocker to prevent clicking through the picker
+		local blocker = Instance.new("TextButton", pickerFrame)
+		blocker.Size = UDim2.fromScale(1, 1)
+		blocker.BackgroundTransparency = 1
+		blocker.Text = ""
+		blocker.ZIndex = 0
+		blocker.Active = true
+		
 		local pickerScale = Instance.new("UIScale", pickerFrame)
 		pickerScale.Scale = 0.9
 		pickerFrame.GroupTransparency = 1
@@ -2361,11 +2369,34 @@ local function createColorPicker(group, items, window, text, default, callback)
 		satValSquare.ZIndex = 2001
 		satValSquare.Parent = pickerFrame
 		Instance.new("UICorner", satValSquare).CornerRadius = UDim.new(0, 4)
-		local satValGrad = Instance.new("ImageLabel", satValSquare)
-		satValGrad.Size = UDim2.new(1, 0, 1, 0)
-		satValGrad.BackgroundTransparency = 1
-		satValGrad.Image = "rbxassetid://104913220551069"
-		satValGrad.ZIndex = 2002
+		
+		-- White Saturation Gradient (Left = White, Right = Transparent)
+		local satGrad = Instance.new("Frame", satValSquare)
+		satGrad.Size = UDim2.fromScale(1, 1)
+		satGrad.BackgroundTransparency = 0
+		satGrad.BorderSizePixel = 0
+		satGrad.ZIndex = 2002
+		local satUIGrad = Instance.new("UIGradient", satGrad)
+		satUIGrad.Color = ColorSequence.new(Color3.new(1,1,1))
+		satUIGrad.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0), -- Opaque White (Full Saturation/White)
+			NumberSequenceKeypoint.new(1, 1)  -- Transparent Hue
+		})
+		
+		-- Black Value Gradient (Top = Transparent, Bottom = Black)
+		local valGrad = Instance.new("Frame", satValSquare)
+		valGrad.Size = UDim2.fromScale(1, 1)
+		valGrad.BackgroundTransparency = 0
+		valGrad.BorderSizePixel = 0
+		valGrad.ZIndex = 2003
+		local valUIGrad = Instance.new("UIGradient", valGrad)
+		valUIGrad.Rotation = 90
+		valUIGrad.Color = ColorSequence.new(Color3.new(0,0,0))
+		valUIGrad.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1), -- Transparent Top
+			NumberSequenceKeypoint.new(1, 0)  -- Opaque Black Bottom
+		})
+
 		satValKnob = Instance.new("Frame")
 		satValKnob.Size = UDim2.new(0, 12, 0, 12)
 		satValKnob.Position = UDim2.new(s_, -6, 1 - v_, -6)
@@ -4319,9 +4350,8 @@ function UILib.SubTab:addGroup(title)
 	col.BackgroundTransparency = 1
 	col.AutomaticSize = Enum.AutomaticSize.Y
 	col.Parent = self.page
-	Instance.new("UIListLayout", col).Padding = UDim.new(0, 8)
+		Instance.new("UIListLayout", col).Padding = UDim.new(0, 8)
 	local colObj = setmetatable({frame = col, window = window, tab = self.tab, sub = self}, UILib.Column)
 	return colObj:addGroup(title)
 end
 
-return UILib
