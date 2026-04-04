@@ -3129,7 +3129,7 @@ function UILib.Column:addGroup(title)
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0, 22, 0, 22)
 		cbOuter.Position = UDim2.new(1, -26, 0.5, -11)
-		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.Item
+		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.Base
 		cbOuter.BorderSizePixel = 0
 		cbOuter.AutoButtonColor = false
 		cbOuter.ZIndex = 4
@@ -3166,7 +3166,7 @@ function UILib.Column:addGroup(title)
 			state = val
 			elem.Value = state
 			TweenService:Create(cbOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
-				BackgroundColor3 = state and window.theme.Accent or window.theme.Item
+				BackgroundColor3 = state and window.theme.Accent or window.theme.Base
 			}):Play()
 			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
 			cbMark.Text = state and "X" or ""
@@ -3611,7 +3611,7 @@ function UILib.Column:addGroup(title)
 		kbtn.Size = UDim2.new(0, 0, 0, 22)
 		kbtn.AnchorPoint = Vector2.new(1, 0.5)
 		kbtn.Position = UDim2.new(1, -4, 0.5, 0)
-		kbtn.BackgroundColor3 = window.theme.Item
+		kbtn.BackgroundColor3 = window.theme.Track
 		kbtn.BackgroundTransparency = 0
 		kbtn.BorderSizePixel = 0
 		kbtn.Text = currentName
@@ -3647,7 +3647,7 @@ function UILib.Column:addGroup(title)
 				if skipNext and i.UserInputType == Enum.UserInputType.MouseButton1 then skipNext = false return end
 				listening = false
 				con:Disconnect()
-				kbtn.BackgroundColor3 = window.theme.Item
+				kbtn.BackgroundColor3 = window.theme.Track
 				kbtn.BackgroundTransparency = 0
 				kbtn.TextColor3 = window.theme.Accent
 				kstroke.Color = window.theme.Border
@@ -4077,7 +4077,7 @@ function UILib.Column:addGroup(title)
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0,18,0,18)
 		cbOuter.Position = UDim2.new(1,-22,0.5,-9)
-		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.Item
+		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.Base
 		cbOuter.BorderSizePixel = 0
 		cbOuter.AutoButtonColor = false
 		cbOuter.ZIndex = 4
@@ -4130,7 +4130,7 @@ function UILib.Column:addGroup(title)
 		cbOuter.MouseButton1Click:Connect(function()
 			state = not state
 			TweenService:Create(cbOuter, TweenInfo.new(0.12, Enum.EasingStyle.Quad), {
-				BackgroundColor3 = state and window.theme.Accent or window.theme.Item
+				BackgroundColor3 = state and window.theme.Accent or window.theme.Base
 			}):Play()
 			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
 			cbMark.Text = state and "X" or ""
