@@ -2401,6 +2401,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		btn.Parent = parent
 		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
 		local bs = Instance.new("UIStroke", btn)
+		bs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		bs.Thickness = 1
 		bs.Color = isAccent and window.theme.Accent or window.theme.Border
 		if isAccent then table.insert(window.accentObjects, bs) end
@@ -2434,6 +2435,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		table.insert(window.activePopups, pickerFrame)
 		Instance.new("UICorner", pickerFrame).CornerRadius = UDim.new(0, 8)
 		local pickerStroke = Instance.new("UIStroke", pickerFrame)
+		pickerStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		pickerStroke.Color = window.theme.Accent
 		pickerStroke.Transparency = 0.5
 		pickerStroke.Thickness = 1.5
@@ -3148,7 +3150,7 @@ function UILib.Column:addGroup(title)
 		Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
 		local cbStroke = Instance.new("UIStroke", cbOuter)
 		cbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		cbStroke.Color = default and window.theme.AccentD or Color3.fromRGB(65, 65, 65)
+		cbStroke.Color = default and window.theme.AccentD or window.theme.Border
 		cbStroke.Thickness = 1
 		local cbMark = Instance.new("TextLabel")
 		cbMark.Size = UDim2.new(1, 0, 1, 0)
@@ -3179,7 +3181,7 @@ function UILib.Column:addGroup(title)
 			TweenService:Create(cbOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
 				BackgroundColor3 = state and window.theme.Accent or window.theme.BG
 			}):Play()
-			cbStroke.Color = state and window.theme.AccentD or Color3.fromRGB(65, 65, 65)
+			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
 			cbMark.Text = state and "X" or ""
 			if callback then callback(state) end
 			if window.configs[id] then window.configs[id].Value = state end
@@ -3643,7 +3645,7 @@ function UILib.Column:addGroup(title)
 		kbtnPad.PaddingRight = UDim.new(0, 8)
 		local kstroke = Instance.new("UIStroke", kbtn)
 		kstroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		kstroke.Color = Color3.fromRGB(65, 65, 65)
+		kstroke.Color = window.theme.Border
 		kstroke.Thickness = 1
 		table.insert(window.keybindButtons, kbtn)
 		local listening = false
@@ -3663,7 +3665,7 @@ function UILib.Column:addGroup(title)
 				kbtn.BackgroundColor3 = window.theme.BG
 				kbtn.BackgroundTransparency = 0
 				kbtn.TextColor3 = window.theme.GrayLt
-				kstroke.Color = Color3.fromRGB(65, 65, 65)
+				kstroke.Color = window.theme.Border
 				if i.KeyCode == Enum.KeyCode.Escape then kbtn.Text = currentName kbtn.TextColor3 = window.theme.GrayLt return end
 				local u = i.UserInputType
 				if u == Enum.UserInputType.Keyboard then
@@ -3774,6 +3776,7 @@ function UILib.Column:addGroup(title)
 			btn.BackgroundTransparency = 0
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
 			local bstroke = Instance.new("UIStroke", btn)
+			bs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 			bstroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 			bstroke.Color = window.theme.Border
 			bstroke.Thickness = 1
@@ -3818,6 +3821,7 @@ function UILib.Column:addGroup(title)
 			btn.BackgroundTransparency = 0
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
 			local bstroke = Instance.new("UIStroke", btn)
+			bs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 			bstroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 			bstroke.Color = bgColor and Color3.new(bgColor.r*0.7, bgColor.g*0.7, bgColor.b*0.7) or window.theme.Border
 			bstroke.Thickness = 1
@@ -4101,7 +4105,7 @@ function UILib.Column:addGroup(title)
 		Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0,4)
 		local cbStroke = Instance.new("UIStroke", cbOuter)
 		cbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		cbStroke.Color = default and window.theme.AccentD or Color3.fromRGB(65, 65, 65)
+		cbStroke.Color = default and window.theme.AccentD or window.theme.Border
 		cbStroke.Thickness = 1
 		local cbMark = Instance.new("TextLabel")
 		cbMark.Size = UDim2.new(1,0,1,0)
@@ -4148,7 +4152,7 @@ function UILib.Column:addGroup(title)
 			TweenService:Create(cbOuter, TweenInfo.new(0.12, Enum.EasingStyle.Quad), {
 				BackgroundColor3 = state and window.theme.Accent or window.theme.BG
 			}):Play()
-			cbStroke.Color = state and window.theme.AccentD or Color3.fromRGB(65, 65, 65)
+			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
 			cbMark.Text = state and "X" or ""
 			local targetH = 34 + (state and contentLayout.AbsoluteContentSize.Y or 0)
 			TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
