@@ -2196,10 +2196,6 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	row.BackgroundTransparency = 1
 	row.BorderSizePixel = 0
 	row.Parent = items
-	Instance.new("UICorner", row).CornerRadius = UDim.new(0, 5)
-	local rowStroke = Instance.new("UIStroke", row)
-	rowStroke.Color = window.theme.Border
-	rowStroke.Thickness = 1
 	local rowPad = Instance.new("UIPadding", row)
 	rowPad.PaddingLeft = UDim.new(0, 6)
 	rowPad.PaddingRight = UDim.new(0, 6)
@@ -2343,10 +2339,6 @@ local function createColorPicker(group, items, window, text, default, callback)
 	row.BackgroundTransparency = 1
 	row.BorderSizePixel = 0
 	row.Parent = items
-	Instance.new("UICorner", row).CornerRadius = UDim.new(0, 5)
-	local rowStroke = Instance.new("UIStroke", row)
-	rowStroke.Color = window.theme.Border
-	rowStroke.Thickness = 1
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, -62, 1, 0)
 	label.Position = UDim2.new(0, 4, 0, 0)
@@ -3134,14 +3126,10 @@ function UILib.Column:addGroup(title)
 		r.BorderSizePixel = 0
 		r.ZIndex = 3
 		r.Parent = items
-		Instance.new("UICorner", r).CornerRadius = UDim.new(0, 5)
-		local rowStroke = Instance.new("UIStroke", r)
-		rowStroke.Color = window.theme.Border
-		rowStroke.Thickness = 1
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0, 22, 0, 22)
 		cbOuter.Position = UDim2.new(1, -26, 0.5, -11)
-		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.Base
+		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.Item
 		cbOuter.BorderSizePixel = 0
 		cbOuter.AutoButtonColor = false
 		cbOuter.ZIndex = 4
@@ -3178,7 +3166,7 @@ function UILib.Column:addGroup(title)
 			state = val
 			elem.Value = state
 			TweenService:Create(cbOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
-				BackgroundColor3 = state and window.theme.Accent or window.theme.Base
+				BackgroundColor3 = state and window.theme.Accent or window.theme.Item
 			}):Play()
 			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
 			cbMark.Text = state and "X" or ""
@@ -3606,10 +3594,6 @@ function UILib.Column:addGroup(title)
 		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
-		Instance.new("UICorner", r).CornerRadius = UDim.new(0, 5)
-		local rowStroke = Instance.new("UIStroke", r)
-		rowStroke.Color = window.theme.Border
-		rowStroke.Thickness = 1
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -82, 1, 0)
 		lbl.Position = UDim2.new(0, 4, 0, 0)
@@ -3627,7 +3611,7 @@ function UILib.Column:addGroup(title)
 		kbtn.Size = UDim2.new(0, 0, 0, 22)
 		kbtn.AnchorPoint = Vector2.new(1, 0.5)
 		kbtn.Position = UDim2.new(1, -4, 0.5, 0)
-		kbtn.BackgroundColor3 = window.theme.Track
+		kbtn.BackgroundColor3 = window.theme.Item
 		kbtn.BackgroundTransparency = 0
 		kbtn.BorderSizePixel = 0
 		kbtn.Text = currentName
@@ -3663,7 +3647,7 @@ function UILib.Column:addGroup(title)
 				if skipNext and i.UserInputType == Enum.UserInputType.MouseButton1 then skipNext = false return end
 				listening = false
 				con:Disconnect()
-				kbtn.BackgroundColor3 = window.theme.Track
+				kbtn.BackgroundColor3 = window.theme.Item
 				kbtn.BackgroundTransparency = 0
 				kbtn.TextColor3 = window.theme.Accent
 				kstroke.Color = window.theme.Border
@@ -4093,7 +4077,7 @@ function UILib.Column:addGroup(title)
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0,18,0,18)
 		cbOuter.Position = UDim2.new(1,-22,0.5,-9)
-		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.Base
+		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.Item
 		cbOuter.BorderSizePixel = 0
 		cbOuter.AutoButtonColor = false
 		cbOuter.ZIndex = 4
@@ -4146,7 +4130,7 @@ function UILib.Column:addGroup(title)
 		cbOuter.MouseButton1Click:Connect(function()
 			state = not state
 			TweenService:Create(cbOuter, TweenInfo.new(0.12, Enum.EasingStyle.Quad), {
-				BackgroundColor3 = state and window.theme.Accent or window.theme.Base
+				BackgroundColor3 = state and window.theme.Accent or window.theme.Item
 			}):Play()
 			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
 			cbMark.Text = state and "X" or ""
@@ -4252,10 +4236,6 @@ function UILib.Column:addGroup(title)
 		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
-		Instance.new("UICorner", r).CornerRadius = UDim.new(0, 5)
-		local rowStroke = Instance.new("UIStroke", r)
-		rowStroke.Color = window.theme.Border
-		rowStroke.Thickness = 1
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -48, 0, 18)
 		lbl.Position = UDim2.new(0, 4, 0, 3)
@@ -4310,10 +4290,6 @@ function UILib.Column:addGroup(title)
 		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
-		Instance.new("UICorner", r).CornerRadius = UDim.new(0, 5)
-		local rowStroke = Instance.new("UIStroke", r)
-		rowStroke.Color = window.theme.Border
-		rowStroke.Thickness = 1
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(0.45, -8, 0, 18)
 		lbl.Position = UDim2.new(0, 4, 0, 3)
@@ -4367,10 +4343,6 @@ function UILib.Column:addGroup(title)
 		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
-		Instance.new("UICorner", r).CornerRadius = UDim.new(0, 5)
-		local rowStroke = Instance.new("UIStroke", r)
-		rowStroke.Color = window.theme.Border
-		rowStroke.Thickness = 1
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -48, 0, 18)
 		lbl.Position = UDim2.new(0, 4, 0, 3)
