@@ -3129,7 +3129,7 @@ function UILib.Column:addGroup(title)
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0, 22, 0, 22)
 		cbOuter.Position = UDim2.new(1, -26, 0.5, -11)
-		cbOuter.BackgroundColor3 = default and window.theme.Accent or Color3.fromRGB(24, 24, 24)
+		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.BG
 		cbOuter.BorderSizePixel = 0
 		cbOuter.AutoButtonColor = false
 		cbOuter.ZIndex = 4
@@ -3166,7 +3166,7 @@ function UILib.Column:addGroup(title)
 			state = val
 			elem.Value = state
 			TweenService:Create(cbOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
-				BackgroundColor3 = state and window.theme.Accent or Color3.fromRGB(24, 24, 24)
+				BackgroundColor3 = state and window.theme.Accent or window.theme.BG
 			}):Play()
 			cbStroke.Color = state and window.theme.AccentD or Color3.fromRGB(65, 65, 65)
 			cbMark.Text = state and "X" or ""
@@ -3611,11 +3611,11 @@ function UILib.Column:addGroup(title)
 		kbtn.Size = UDim2.new(0, 0, 0, 22)
 		kbtn.AnchorPoint = Vector2.new(1, 0.5)
 		kbtn.Position = UDim2.new(1, -4, 0.5, 0)
-		kbtn.BackgroundColor3 = window.theme.Track
+		kbtn.BackgroundColor3 = window.theme.BG
 		kbtn.BackgroundTransparency = 0
 		kbtn.BorderSizePixel = 0
 		kbtn.Text = currentName
-		kbtn.TextColor3 = window.theme.Accent
+		kbtn.TextColor3 = window.theme.GrayLt
 		kbtn.Font = Enum.Font.GothamSemibold
 		kbtn.TextSize = 12
 		kbtn.TextXAlignment = Enum.TextXAlignment.Center
@@ -3647,27 +3647,27 @@ function UILib.Column:addGroup(title)
 				if skipNext and i.UserInputType == Enum.UserInputType.MouseButton1 then skipNext = false return end
 				listening = false
 				con:Disconnect()
-				kbtn.BackgroundColor3 = window.theme.Track
+				kbtn.BackgroundColor3 = window.theme.BG
 				kbtn.BackgroundTransparency = 0
-				kbtn.TextColor3 = window.theme.Accent
+				kbtn.TextColor3 = window.theme.GrayLt
 				kstroke.Color = Color3.fromRGB(65, 65, 65)
-				if i.KeyCode == Enum.KeyCode.Escape then kbtn.Text = currentName kbtn.TextColor3 = window.theme.Accent return end
+				if i.KeyCode == Enum.KeyCode.Escape then kbtn.Text = currentName kbtn.TextColor3 = window.theme.GrayLt return end
 				local u = i.UserInputType
 				if u == Enum.UserInputType.Keyboard then
 					kbtn.Text = i.KeyCode.Name
-					kbtn.TextColor3 = window.theme.Accent
+					kbtn.TextColor3 = window.theme.GrayLt
 					onChange(i.KeyCode, i.KeyCode.Name)
 					window.configs[id].Value = i.KeyCode.Name
 				elseif u == Enum.UserInputType.MouseButton2 then
-					kbtn.Text = "RMB" kbtn.TextColor3 = window.theme.Accent
+					kbtn.Text = "RMB" kbtn.TextColor3 = window.theme.GrayLt
 					onChange(Enum.UserInputType.MouseButton2, "RMB") window.configs[id].Value = "RMB"
 				elseif u == Enum.UserInputType.MouseButton1 then
-					kbtn.Text = "LMB" kbtn.TextColor3 = window.theme.Accent
+					kbtn.Text = "LMB" kbtn.TextColor3 = window.theme.GrayLt
 					onChange(Enum.UserInputType.MouseButton1, "LMB") window.configs[id].Value = "LMB"
 				elseif u == Enum.UserInputType.MouseButton3 then
-					kbtn.Text = "MMB" kbtn.TextColor3 = window.theme.Accent
+					kbtn.Text = "MMB" kbtn.TextColor3 = window.theme.GrayLt
 					onChange(Enum.UserInputType.MouseButton3, "MMB") window.configs[id].Value = "MMB"
-				else kbtn.Text = currentName kbtn.TextColor3 = window.theme.Accent end
+				else kbtn.Text = currentName kbtn.TextColor3 = window.theme.GrayLt end
 			end)
 		end)
 		local elem = {ID = id, Value = currentName, SetValue = function(val) kbtn.Text = val end}
@@ -4077,7 +4077,7 @@ function UILib.Column:addGroup(title)
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0,18,0,18)
 		cbOuter.Position = UDim2.new(1,-22,0.5,-9)
-		cbOuter.BackgroundColor3 = default and window.theme.Accent or Color3.fromRGB(24, 24, 24)
+		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.BG
 		cbOuter.BorderSizePixel = 0
 		cbOuter.AutoButtonColor = false
 		cbOuter.ZIndex = 4
@@ -4130,7 +4130,7 @@ function UILib.Column:addGroup(title)
 		cbOuter.MouseButton1Click:Connect(function()
 			state = not state
 			TweenService:Create(cbOuter, TweenInfo.new(0.12, Enum.EasingStyle.Quad), {
-				BackgroundColor3 = state and window.theme.Accent or Color3.fromRGB(24, 24, 24)
+				BackgroundColor3 = state and window.theme.Accent or window.theme.BG
 			}):Play()
 			cbStroke.Color = state and window.theme.AccentD or Color3.fromRGB(65, 65, 65)
 			cbMark.Text = state and "X" or ""
