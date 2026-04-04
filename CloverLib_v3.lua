@@ -412,31 +412,51 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	end
 	self.updateLayout = updateLayout
 
-	local function createResizeHandle(pos, sz, cursor)
-		local handle = Instance.new("Frame")
-		handle.Size = sz
-		handle.Position = pos
-		handle.BackgroundTransparency = 1
-		handle.BorderSizePixel = 0
-		handle.ZIndex = 10
-		handle.Parent = win
-		handle.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then self.resizing = {type = cursor, startPos = input.Position, startSize = win.Size, startPosWin = win.Position} end end)
-		handle.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then self.resizing = nil end end)
-	end
-	createResizeHandle(UDim2.new(0, 0, 1, -6), UDim2.new(1, 0, 0, 12), "s")
-	createResizeHandle(UDim2.new(1, -6, 0, 0), UDim2.new(0, 12, 1, 0), "e")
-	createResizeHandle(UDim2.new(1, -12, 1, -12), UDim2.new(0, 24, 0, 24), "se")
+	local resizeHandle = Instance.new("TextButton")
+	resizeHandle.Size = UDim2.new(0, 24, 0, 24)
+	resizeHandle.Position = UDim2.new(1, -24, 1, -24)
+	resizeHandle.BackgroundTransparency = 1
+	resizeHandle.Text = "◢"
+	resizeHandle.TextColor3 = self.theme.GrayLt
+	resizeHandle.TextSize = 14
+	resizeHandle.ZIndex = 100
+	resizeHandle.Parent = win
+
+	resizeHandle.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			self.resizing = {
+				startPos = input.Position,
+				startSize = win.Size,
+				startPosWin = win.Position
+			}
+		end
+	end)
+	
+	resizeHandle.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			self.resizing = nil
+		end
+	end)
 
 	table.insert(self.connections, UIS.InputChanged:Connect(function(input)
 		if self.resizing and input.UserInputType == Enum.UserInputType.MouseMovement then
 			local delta = input.Position - self.resizing.startPos
-			local newSize = self.resizing.startSize
-			if self.resizing.type == "s" then newSize = UDim2.new(newSize.X.Scale, newSize.X.Offset, newSize.Y.Scale, newSize.Y.Offset + delta.Y)
-			elseif self.resizing.type == "e" then newSize = UDim2.new(newSize.X.Scale, newSize.X.Offset + delta.X, newSize.Y.Scale, newSize.Y.Offset)
-			elseif self.resizing.type == "se" then newSize = UDim2.new(newSize.X.Scale, newSize.X.Offset + delta.X, newSize.Y.Scale, newSize.Y.Offset + delta.Y) end
-			newSize = UDim2.new(0, math.max(400, newSize.X.Offset), 0, math.max(300, newSize.Y.Offset))
-			win.Size = newSize
-			self.size = Vector2.new(newSize.X.Offset, newSize.Y.Offset)
+			
+			local prevW = self.resizing.startSize.X.Offset
+			local prevH = self.resizing.startSize.Y.Offset
+			
+			local newW = math.max(400, prevW + delta.X)
+			local newH = math.max(300, prevH + delta.Y)
+			
+			local actualDX = newW - prevW
+			local actualDY = newH - prevH
+			
+			win.Size = UDim2.new(0, newW, 0, newH)
+			win.Position = UDim2.new(
+				self.resizing.startPosWin.X.Scale, self.resizing.startPosWin.X.Offset + actualDX / 2,
+				self.resizing.startPosWin.Y.Scale, self.resizing.startPosWin.Y.Offset + actualDY / 2
+			)
+			self.size = Vector2.new(newW, newH)
 			updateLayout()
 		end
 	end))
