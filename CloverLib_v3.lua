@@ -357,7 +357,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	win.Position = UDim2.new(0, 80, 0, 60)
 	win.BackgroundColor3 = self.theme.BG
 	win.BorderSizePixel = 0
-	win.ClipsDescendants = true
 	win.Parent = self.sg
 	win.Active = true
 	win.Selectable = false
