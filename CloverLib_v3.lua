@@ -2157,11 +2157,27 @@ function UILib.SubTab:addInput(labelText, default, placeholder, callback, toolti
 		ID = id,
 		Value = current,
 		DefaultValue = default or "",
+		frame = r,
+		DefaultHeight = 52,
 		SetValue = function(val)
 			current = val
 			box.Text = val
 		end
 	}
+	function elem:SetVisible(v, anim)
+		if not anim then
+			r.Visible = v
+			r.Size = UDim2.new(1, 0, 0, v and 52 or 0)
+			return
+		end
+		r.ClipsDescendants = true
+		if v then r.Visible = true end
+		local tw = TweenService:Create(r, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			Size = UDim2.new(1, 0, 0, v and 52 or 0)
+		})
+		tw.Completed:Connect(function() if not v then r.Visible = false end end)
+		tw:Play()
+	end
 	function elem:SetDesc(d) lbl.Text = d end
 
 	return elem
@@ -2356,7 +2372,25 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		local num = tonumber(valueBoxInput.Text)
 		if num then updateSlider(num) else valueLabel.Text = tostring(currentVal) end
 	end)
-	local elem = { ID = id, Value = currentVal, DefaultValue = defaultVal, SetValue = updateSlider }
+	local elem = { ID = id, Value = currentVal, DefaultValue = defaultVal, SetValue = updateSlider, frame = row, DefaultHeight = 42 }
+	function elem:SetVisible(v, anim)
+		if not anim then
+			row.Visible = v
+			row.Size = UDim2.new(1, 0, 0, v and 42 or 0)
+			if group and group.updateSize then group.updateSize() end
+			return
+		end
+		row.ClipsDescendants = true
+		if v then row.Visible = true end
+		local tw = TweenService:Create(row, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			Size = UDim2.new(1, 0, 0, v and 42 or 0)
+		})
+		tw.Completed:Connect(function()
+			if not v then row.Visible = false end
+			if group and group.updateSize then group.updateSize() end
+		end)
+		tw:Play()
+	end
 	elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then label.Text = self_or_d else label.Text = d end end
 	window.configs[id] = elem
 	row.InputBegan:Connect(function(input)
@@ -2364,7 +2398,6 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 			window:showContextMenu(UIS:GetMouseLocation(), elem)
 		end
 	end)
-	elem.frame = row
 	return row, elem
 end
 
@@ -2410,6 +2443,26 @@ local function createColorPicker(group, items, window, text, default, callback)
 		elem.Value = val
 		colorBox.BackgroundColor3 = val
 		if callback then callback(val) end
+	end
+	elem.frame = row
+	elem.DefaultHeight = 32
+	function elem:SetVisible(v, anim)
+		if not anim then
+			row.Visible = v
+			row.Size = UDim2.new(1, 0, 0, v and 32 or 0)
+			if group and group.updateSize then group.updateSize() end
+			return
+		end
+		row.ClipsDescendants = true
+		if v then row.Visible = true end
+		local tw = TweenService:Create(row, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			Size = UDim2.new(1, 0, 0, v and 32 or 0)
+		})
+		tw.Completed:Connect(function()
+			if not v then row.Visible = false end
+			if group and group.updateSize then group.updateSize() end
+		end)
+		tw:Play()
 	end
 	window.configs[id] = elem
 
@@ -2939,6 +2992,8 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	local elem = {
 		ID = id,
 		Value = selected,
+		frame = row,
+		DefaultHeight = 56,
 		SetValue = function(t)
 			selected = {}
 			for _, opt in ipairs(t) do selected[opt] = true end
@@ -2959,6 +3014,25 @@ local function createMultiDropdown(group, items, window, text, options, default,
 			if callback then callback(keys) end
 		end
 	}
+	function elem:SetVisible(v, anim)
+		if not anim then
+			row.Visible = v
+			row.Size = UDim2.new(1, 0, 0, v and 56 or 0)
+			if group and group.updateSize then group.updateSize() end
+			return
+		end
+		row.ClipsDescendants = true
+		if v then row.Visible = true end
+		local target = v and 56 or 0
+		local tw = TweenService:Create(row, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			Size = UDim2.new(1, 0, 0, target)
+		})
+		tw.Completed:Connect(function()
+			if not v then row.Visible = false end
+			if group and group.updateSize then group.updateSize() end
+		end)
+		tw:Play()
+	end
 	window.configs[id] = elem
 	return row, elem
 end
@@ -3058,8 +3132,9 @@ function UILib.Column:addGroup(title)
 
 	local function updateSize()
 		local ih = itemLayout.AbsoluteContentSize.Y
+		local targetH = ih + 46
 		items.Size = UDim2.new(1, 0, 0, ih + 8)
-		grp.Size = UDim2.new(1, 0, 0, ih + 46)
+		grp.Size = UDim2.new(1, 0, 0, targetH)
 	end
 	itemLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSize)
 
@@ -3067,6 +3142,20 @@ function UILib.Column:addGroup(title)
 	group.items = items
 	group.itemLayout = itemLayout
 	group.updateSize = updateSize
+	function group:SetVisible(v, anim)
+		if not anim then
+			grp.Visible = v
+			return
+		end
+		grp.ClipsDescendants = true
+		if v then grp.Visible = true end
+		local target = v and (itemLayout.AbsoluteContentSize.Y + 46) or 0
+		local tw = TweenService:Create(grp, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			Size = UDim2.new(1, 0, 0, target)
+		})
+		tw.Completed:Connect(function() if not v then grp.Visible = false end end)
+		tw:Play()
+	end
 
 	function group:setIcon(assetId)
 		if assetId then
@@ -3190,7 +3279,7 @@ function UILib.Column:addGroup(title)
 		lbl.Parent = r
 		if icon then applyRowIcon(r, lbl, icon, 4) end
 		local state = default
-		local elem = { ID = id, Value = state, DefaultValue = default, IsToggle = true, Mode = "toggle" }
+		local elem = { ID = id, Value = state, DefaultValue = default, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = 36 }
 		elem.SetValue = function(val)
 			state = val
 			elem.Value = state
@@ -3201,6 +3290,24 @@ function UILib.Column:addGroup(title)
 			cbMark.Text = state and "X" or ""
 			if callback then callback(state) end
 			if window.configs[id] then window.configs[id].Value = state end
+		end
+		function elem:SetVisible(v, anim)
+			if not anim then
+				r.Visible = v
+				r.Size = UDim2.new(1, 0, 0, v and 36 or 0)
+				if group and group.updateSize then group.updateSize() end
+				return
+			end
+			r.ClipsDescendants = true
+			if v then r.Visible = true end
+			local tw = TweenService:Create(r, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Size = UDim2.new(1, 0, 0, v and 36 or 0)
+			})
+			tw.Completed:Connect(function()
+				if not v then r.Visible = false end
+				if group and group.updateSize then group.updateSize() end
+			end)
+			tw:Play()
 		end
 		window.configs[id] = elem
 		cbOuter.MouseButton1Click:Connect(function()
