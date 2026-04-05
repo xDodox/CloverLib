@@ -2825,7 +2825,8 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	local dlayout = Instance.new("UIListLayout", dlist)
 	dlayout.SortOrder = Enum.SortOrder.LayoutOrder
 	dlayout.Padding = UDim.new(0, 0)
-	local selected = default or {}
+	local selected = {}
+	if default then for _, v in ipairs(default) do selected[v] = true end end
 	local checks = {}
 	local backgrounds = {}
 	for _, opt in ipairs(options) do
@@ -2942,9 +2943,10 @@ local function createMultiDropdown(group, items, window, text, options, default,
 			selected = {}
 			for _, opt in ipairs(t) do selected[opt] = true end
 			for opt, ck in pairs(checks) do
-				local sel = selected[opt] or false
-				ck.Text = sel and "×" or ""
-				if backgrounds[opt] then backgrounds[opt].Visible = sel end
+				local isSel = selected[opt] or false
+				ck.TextColor3 = isSel and window.theme.White or window.theme.Gray
+				ck.Font = isSel and Enum.Font.GothamBold or Enum.Font.GothamSemibold
+				if backgrounds[opt] then backgrounds[opt].Visible = isSel end
 			end
 			local keys = {}
 			for k, _ in pairs(selected) do table.insert(keys, k) end
