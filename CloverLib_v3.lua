@@ -635,26 +635,34 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 
 	do
 		local drag, dragStart, dragPos = false, nil, nil
-		header.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then
+		header.InputBegan:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1 then
 				drag = true
 				dragStart = i.Position
 				dragPos = win.Position
-			end end)
+			end
+		end)
 		table.insert(self.connections,
-			UIS.InputChanged:Connect(function(i) if drag and i.UserInputType == Enum.UserInputType.MouseMovement then
+			UIS.InputChanged:Connect(function(i)
+				if drag and i.UserInputType == Enum.UserInputType.MouseMovement then
 					local delta = i.Position - dragStart
 					win.Position = UDim2.new(dragPos.X.Scale, dragPos.X.Offset + delta.X, dragPos.Y.Scale,
 						dragPos.Y.Offset + delta.Y)
 					self.originalPosition = win.Position
 					self.savedPos = win.Position
-				end end))
+				end
+			end))
 		table.insert(self.connections,
 			UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end end))
 	end
 
 	table.insert(self.connections,
-		UIS.InputBegan:Connect(function(input, gpe) if input.KeyCode == self.toggleKey then self:setVisible(not self
-				.visibleTarget) end end))
+		UIS.InputBegan:Connect(function(input, gpe)
+			if input.KeyCode == self.toggleKey then
+				self:setVisible(not self
+					.visibleTarget)
+			end
+		end))
 
 	self.tabs = {}
 	self.tabOrder = {}
@@ -886,10 +894,14 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 				optHov.BorderSizePixel = 0
 				optHov.ZIndex = 921
 				Instance.new("UICorner", optHov).CornerRadius = UDim.new(0, 4)
-				opt.MouseEnter:Connect(function() TweenService:Create(optHov, TweenInfo.new(0.08),
-						{ BackgroundTransparency = 0 }):Play() end)
-				opt.MouseLeave:Connect(function() TweenService:Create(optHov, TweenInfo.new(0.08),
-						{ BackgroundTransparency = 1 }):Play() end)
+				opt.MouseEnter:Connect(function()
+					TweenService:Create(optHov, TweenInfo.new(0.08),
+						{ BackgroundTransparency = 0 }):Play()
+				end)
+				opt.MouseLeave:Connect(function()
+					TweenService:Create(optHov, TweenInfo.new(0.08),
+						{ BackgroundTransparency = 1 }):Play()
+				end)
 				local optLbl = Instance.new("TextLabel", opt)
 				optLbl.Size = UDim2.new(1, -28, 1, 0)
 				optLbl.Position = UDim2.new(0, 10, 0, 0)
@@ -1110,17 +1122,21 @@ function UILib:addWatermark(name)
 	dragBtn.Parent = wm
 	do
 		local drag, dragStart, dragPos = false, nil, nil
-		dragBtn.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragBtn.InputBegan:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1 then
 				drag = true
 				dragStart = i.Position
 				dragPos = wm.Position
-			end end)
+			end
+		end)
 		table.insert(self.connections,
-			UIS.InputChanged:Connect(function(i) if drag and i.UserInputType == Enum.UserInputType.MouseMovement then
+			UIS.InputChanged:Connect(function(i)
+				if drag and i.UserInputType == Enum.UserInputType.MouseMovement then
 					local delta = i.Position - dragStart
 					wm.Position = UDim2.new(dragPos.X.Scale, dragPos.X.Offset + delta.X, dragPos.Y.Scale,
 						dragPos.Y.Offset + delta.Y)
-				end end))
+				end
+			end))
 		table.insert(self.connections,
 			UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end end))
 	end
@@ -1271,9 +1287,11 @@ function UILib:buildUITab()
 
 		local keep = selectName or currentConfig
 		local exists = false
-		for _, v in ipairs(list) do if v == keep then
+		for _, v in ipairs(list) do
+			if v == keep then
 				exists = true; break
-			end end
+			end
+		end
 		if exists then
 			loadElem.Value = keep
 
@@ -1286,17 +1304,23 @@ function UILib:buildUITab()
 	end
 
 	cfg:button("Save Config",
-		function() if self.saveConfig then
+		function()
+			if self.saveConfig then
 				self:saveConfig(nameElem.Value); refreshConfigDropdown(nameElem.Value)
-			end end, nil, Enum.TextXAlignment.Center)
+			end
+		end, nil, Enum.TextXAlignment.Center)
 	cfg:button("Load Selected",
-		function() if self.loadConfig then
+		function()
+			if self.loadConfig then
 				self:loadConfig(loadElem.Value); nameElem.SetValue(loadElem.Value)
-			end end, nil, Enum.TextXAlignment.Center)
+			end
+		end, nil, Enum.TextXAlignment.Center)
 	cfg:button("Delete Config",
-		function() if self.deleteConfig then
+		function()
+			if self.deleteConfig then
 				self:deleteConfig(loadElem.Value); refreshConfigDropdown()
-			end end, nil, Enum.TextXAlignment.Center)
+			end
+		end, nil, Enum.TextXAlignment.Center)
 end
 
 function UILib:setTitle(text)
@@ -1512,16 +1536,20 @@ function UILib:newMiniWindow(title, width, posX, posY)
 
 	do
 		local drag, dragStart, dragPos = false, nil, nil
-		header.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then
+		header.InputBegan:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1 then
 				drag = true
 				dragStart = i.Position
 				dragPos = frame.Position
-			end end)
-		local dc = UIS.InputChanged:Connect(function(i) if drag and i.UserInputType == Enum.UserInputType.MouseMovement then
+			end
+		end)
+		local dc = UIS.InputChanged:Connect(function(i)
+			if drag and i.UserInputType == Enum.UserInputType.MouseMovement then
 				local delta = i.Position - dragStart
 				frame.Position = UDim2.new(dragPos.X.Scale, dragPos.X.Offset + delta.X, dragPos.Y.Scale,
 					dragPos.Y.Offset + delta.Y)
-			end end)
+			end
+		end)
 		local de = UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end end)
 		table.insert(mini.connections, dc)
 		table.insert(mini.connections, de)
@@ -1811,8 +1839,10 @@ function UILib:addTab(name, options)
 		end
 		if self.activeTab then
 			if self.activeTab.tabLbl then self.activeTab.tabLbl.TextColor3 = self.theme.Gray end
-			if self.activeTab.tabIcon and self.activeTab.tabIconId then self.activeTab.tabIcon.ImageColor3 = self.theme
-				.Gray end
+			if self.activeTab.tabIcon and self.activeTab.tabIconId then
+				self.activeTab.tabIcon.ImageColor3 = self.theme
+					.Gray
+			end
 			if self.activeTab.underline then self.activeTab.underline.Visible = false end
 		end
 		tabLbl.TextColor3 = self.theme.White
@@ -2303,18 +2333,23 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		sliding = true
 		apply(UIS:GetMouseLocation().X)
 	end)
-	local sliderInputConn = UIS.InputChanged:Connect(function(i) if sliding and i.UserInputType == Enum.UserInputType.MouseMovement then
-			apply(i.Position.X) end end)
+	local sliderInputConn = UIS.InputChanged:Connect(function(i)
+		if sliding and i.UserInputType == Enum.UserInputType.MouseMovement then
+			apply(i.Position.X)
+		end
+	end)
 	local sliderEndConn = UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then sliding = false end end)
 	table.insert(window.connections, sliderInputConn)
 	table.insert(window.connections, sliderEndConn)
-	valueLabel.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then
+	valueLabel.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			valueLabel.Visible = false
 			valueBoxInput.Visible = true
 			valueBoxInput:CaptureFocus()
 			valueBoxInput.Text = tostring(currentVal)
 			valueBoxInput.TextColor3 = window.theme.Accent
-		end end)
+		end
+	end)
 	valueBoxInput.FocusLost:Connect(function(enter)
 		valueBoxInput.Visible = false
 		valueLabel.Visible = true
@@ -2641,14 +2676,18 @@ local function createColorPicker(group, items, window, text, default, callback)
 				applyAlpha(i.Position.X)
 			end
 		end)
-		hueSlider.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		hueSlider.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
 				hueDragging = true
 				updateHue(input.Position)
-			end end)
-		satValSquare.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			end
+		end)
+		satValSquare.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
 				svDragging = true
 				updateSV(input.Position)
-			end end)
+			end
+		end)
 
 		local inputChangedConn = UIS.InputChanged:Connect(function(i)
 			if i.UserInputType == Enum.UserInputType.MouseMovement then
@@ -2851,7 +2890,12 @@ local function createMultiDropdown(group, items, window, text, options, default,
 			end
 			local keys = {}
 			for k, _ in pairs(selected) do table.insert(keys, k) end
-			selLbl.Text = #keys > 0 and table.concat(keys, ", ") or "None"
+			local s = #keys > 0 and table.concat(keys, ", ") or "None"
+			if #s > 25 then
+				selLbl.Text = #keys .. " Items Selected"
+			else
+				selLbl.Text = s
+			end
 			if callback then callback(keys) end
 			window.configs[id].Value = keys
 		end)
@@ -2904,7 +2948,12 @@ local function createMultiDropdown(group, items, window, text, options, default,
 			end
 			local keys = {}
 			for k, _ in pairs(selected) do table.insert(keys, k) end
-			selLbl.Text = #keys > 0 and table.concat(keys, ", ") or "None"
+			local s = #keys > 0 and table.concat(keys, ", ") or "None"
+			if #s > 25 then
+				selLbl.Text = #keys .. " Items Selected"
+			else
+				selLbl.Text = s
+			end
 			if callback then callback(keys) end
 		end
 	}
@@ -3367,8 +3416,8 @@ function UILib.Column:addGroup(title)
 
 			local tw = TweenService:Create(expandPanel,
 				TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
-				Size = UDim2.new(1, 0, 0, 0)
-			})
+					Size = UDim2.new(1, 0, 0, 0)
+				})
 			TweenService:Create(r, TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
 				Size = UDim2.new(1, 0, 0, 56)
 			}):Play()
@@ -3477,10 +3526,12 @@ function UILib.Column:addGroup(title)
 				if newOpts then
 					buildOptions(newOpts)
 					local exists = false
-					for _, o in ipairs(newOpts) do if o == currentSelection then
+					for _, o in ipairs(newOpts) do
+						if o == currentSelection then
 							exists = true
 							break
-						end end
+						end
+					end
 					if not exists then
 						currentSelection = newOpts[1] or ""
 						selLbl.Text = currentSelection
@@ -3559,10 +3610,12 @@ function UILib.Column:addGroup(title)
 				closeDropdown()
 				buildOptions(newOpts)
 				local exists = false
-				for _, o in ipairs(newOpts) do if o == currentSelection then
+				for _, o in ipairs(newOpts) do
+					if o == currentSelection then
 						exists = true
 						break
-					end end
+					end
+				end
 				if not exists then
 					currentSelection = newOpts[1] or ""
 					selLbl.Text = currentSelection
@@ -3571,8 +3624,10 @@ function UILib.Column:addGroup(title)
 		}
 		window.configs[id] = elem
 		r.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton2 then window:showContextMenu(UIS:GetMouseLocation(),
-					elem) end
+			if input.UserInputType == Enum.UserInputType.MouseButton2 then
+				window:showContextMenu(UIS:GetMouseLocation(),
+					elem)
+			end
 		end)
 
 		if tooltip then
@@ -3580,8 +3635,12 @@ function UILib.Column:addGroup(title)
 			if tt then
 				dbtn.MouseEnter:Connect(function() if not open then tt.start(tooltip, dbtn) end end)
 				dbtn.MouseLeave:Connect(function() tt.hide() end)
-				dbtn.InputBegan:Connect(function(inp) if inp.UserInputType == Enum.UserInputType.MouseButton1 then tt
-							.hide() end end)
+				dbtn.InputBegan:Connect(function(inp)
+					if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+						tt
+							.hide()
+					end
+				end)
 			end
 		end
 		updateSize()
@@ -3827,7 +3886,7 @@ function UILib.Column:addGroup(title)
 			local bstroke = Instance.new("UIStroke", btn)
 			bstroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 			bstroke.Color = bgColor and Color3.new(bgColor.r * 0.7, bgColor.g * 0.7, bgColor.b * 0.7) or
-			window.theme.Border
+				window.theme.Border
 			bstroke.Thickness = 1
 			local lbl = Instance.new("TextLabel")
 			lbl.Size = UDim2.new(1, 0, 1, 0)
@@ -4061,8 +4120,10 @@ function UILib.Column:addGroup(title)
 
 		function ng:numberbox(t, d, mn, mx, cb, tt2) return reparent(group:numberbox(t, d, mn, mx, cb, tt2)) end
 
-		function ng:rangeslider(t, mn, mx, dMn, dMx, cb, tt2) return reparent(group:rangeslider(t, mn, mx, dMn, dMx, cb,
-				tt2)) end
+		function ng:rangeslider(t, mn, mx, dMn, dMx, cb, tt2)
+			return reparent(group:rangeslider(t, mn, mx, dMn, dMx, cb,
+				tt2))
+		end
 
 		function ng:badge(t, col, tt2, pos) return reparent(group:badge(t, col, tt2, pos)) end
 
@@ -4329,21 +4390,30 @@ function UILib.Column:addGroup(title)
 		tbStroke.Thickness = 1
 		table.insert(window.accentObjects, box)
 		local current = default or ""
-		box.FocusLost:Connect(function(enter) if enter then
+		box.FocusLost:Connect(function(enter)
+			if enter then
 				current = box.Text
 				if callback then callback(current) end
 				window.configs[id].Value = current
-			end end)
-		local elem = { ID = id, Value = current, DefaultValue = default or "", SetValue = function(val)
-			current = val
-			box.Text = val
-			if callback then callback(val) end
-			window.configs[id].Value = val
-		end }
+			end
+		end)
+		local elem = {
+			ID = id,
+			Value = current,
+			DefaultValue = default or "",
+			SetValue = function(val)
+				current = val
+				box.Text = val
+				if callback then callback(val) end
+				window.configs[id].Value = val
+			end
+		}
 		window.configs[id] = elem
 		r.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton2 then window:showContextMenu(UIS:GetMouseLocation(),
-					elem) end
+			if input.UserInputType == Enum.UserInputType.MouseButton2 then
+				window:showContextMenu(UIS:GetMouseLocation(),
+					elem)
+			end
 		end)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
@@ -4399,20 +4469,29 @@ function UILib.Column:addGroup(title)
 				box.Text = tostring(num)
 				if callback then callback(num) end
 				window.configs[id].Value = num
-			else box.Text = tostring(current) end
+			else
+				box.Text = tostring(current)
+			end
 		end
 		box.FocusLost:Connect(function(enter) if enter then validate() end end)
-		local elem = { ID = id, Value = current, DefaultValue = default or 0, SetValue = function(val)
-			val = math.clamp(val, min, max)
-			current = val
-			box.Text = tostring(val)
-			if callback then callback(val) end
-			window.configs[id].Value = val
-		end }
+		local elem = {
+			ID = id,
+			Value = current,
+			DefaultValue = default or 0,
+			SetValue = function(val)
+				val = math.clamp(val, min, max)
+				current = val
+				box.Text = tostring(val)
+				if callback then callback(val) end
+				window.configs[id].Value = val
+			end
+		}
 		window.configs[id] = elem
 		r.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton2 then window:showContextMenu(UIS:GetMouseLocation(),
-					elem) end
+			if input.UserInputType == Enum.UserInputType.MouseButton2 then
+				window:showContextMenu(UIS:GetMouseLocation(),
+					elem)
+			end
 		end)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
@@ -4554,21 +4633,31 @@ function UILib.Column:addGroup(title)
 			dragging = true
 			dragType = "right"
 		end)
-		local rsInputConn = UIS.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
-				apply(i.Position.X, dragType) end end)
+		local rsInputConn = UIS.InputChanged:Connect(function(i)
+			if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
+				apply(i.Position.X, dragType)
+			end
+		end)
 		local rsEndConn = UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
 		table.insert(window.connections, rsInputConn)
 		table.insert(window.connections, rsEndConn)
-		local elem = { ID = id, Value = { currentMin, currentMax }, DefaultValue = { defaultMin, defaultMax }, SetValue = function(
-			t)
-			currentMin, currentMax = t[1], t[2]; updateDisplay()
-			if callback then callback(currentMin, currentMax) end
-			window.configs[id].Value = { currentMin, currentMax }
-		end }
+		local elem = {
+			ID = id,
+			Value = { currentMin, currentMax },
+			DefaultValue = { defaultMin, defaultMax },
+			SetValue = function(
+				t)
+				currentMin, currentMax = t[1], t[2]; updateDisplay()
+				if callback then callback(currentMin, currentMax) end
+				window.configs[id].Value = { currentMin, currentMax }
+			end
+		}
 		window.configs[id] = elem
 		r.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton2 then window:showContextMenu(UIS:GetMouseLocation(),
-					elem) end
+			if input.UserInputType == Enum.UserInputType.MouseButton2 then
+				window:showContextMenu(UIS:GetMouseLocation(),
+					elem)
+			end
 		end)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
@@ -4604,10 +4693,24 @@ function UILib.Column:addGroup(title)
 		end
 		lFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplitSize)
 		rFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplitSize)
-		local leftGroup = { window = window, frame = lFrame, items = lFrame, tab = group.tab, sub = group.sub, updateSize =
-		updateSplitSize }
-		local rightGroup = { window = window, frame = rFrame, items = rFrame, tab = group.tab, sub = group.sub, updateSize =
-		updateSplitSize }
+		local leftGroup = {
+			window = window,
+			frame = lFrame,
+			items = lFrame,
+			tab = group.tab,
+			sub = group.sub,
+			updateSize =
+				updateSplitSize
+		}
+		local rightGroup = {
+			window = window,
+			frame = rFrame,
+			items = rFrame,
+			tab = group.tab,
+			sub = group.sub,
+			updateSize =
+				updateSplitSize
+		}
 		for k, v in pairs(group) do
 			if type(v) == "function" and k ~= "split" and k ~= "addGroup" then
 				leftGroup[k] = function(self_, ...) return v(leftGroup, ...) end
