@@ -659,10 +659,64 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	table.insert(self.connections,
 		UIS.InputBegan:Connect(function(input, gpe)
 			if input.KeyCode == self.toggleKey then
-				self:setVisible(not self
-					.visibleTarget)
+				self:setVisible(not self.visibleTarget)
 			end
 		end))
+
+	-- Mobile Toggle Button Support
+	if UIS.TouchEnabled then
+		local mobileBtn = Instance.new("TextButton")
+		mobileBtn.Name = "MobileToggle"
+		mobileBtn.Size = UDim2.new(0, 45, 0, 45)
+		mobileBtn.Position = UDim2.new(1, -60, 0.5, -22)
+		mobileBtn.BackgroundColor3 = self.theme.Panel
+		mobileBtn.BorderSizePixel = 0
+		mobileBtn.Text = ""
+		mobileBtn.ZIndex = 1000
+		mobileBtn.Parent = self.sg
+		self.mobileToggleButton = mobileBtn
+		
+		Instance.new("UICorner", mobileBtn).CornerRadius = UDim.new(0, 10)
+		local btnStroke = Instance.new("UIStroke", mobileBtn)
+		btnStroke.Color = self.theme.Border
+		btnStroke.Thickness = 1
+		
+		local btnLogo = Instance.new("ImageLabel")
+		btnLogo.Size = UDim2.new(0, 26, 0, 26)
+		btnLogo.Position = UDim2.new(0.5, 0, 0.5, 0)
+		btnLogo.AnchorPoint = Vector2.new(0.5, 0.5)
+		btnLogo.BackgroundTransparency = 1
+		btnLogo.Image = "rbxassetid://115924193030407"
+		btnLogo.ZIndex = 1001
+		btnLogo.Parent = mobileBtn
+		
+		-- Draggable Logic for Mobile
+		local dragging, dragStart, startPos
+		mobileBtn.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragging = true
+				dragStart = input.Position
+				startPos = mobileBtn.Position
+			end
+		end)
+		
+		UIS.InputChanged:Connect(function(input)
+			if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+				local delta = input.Position - dragStart
+				mobileBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+			end
+		end)
+		
+		UIS.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragging = false
+			end
+		end)
+		
+		mobileBtn.MouseButton1Click:Connect(function()
+			self:toggle()
+		end)
+	end
 
 	self.tabs = {}
 	self.tabOrder = {}
@@ -1333,6 +1387,7 @@ function UILib:Destroy()
 		self.wmConn:Disconnect(); self.wmConn = nil
 	end
 	if self.sg then self.sg:Destroy() end
+    if self.mobileToggleButton then self.mobileToggleButton:Destroy() end
 	for i, w in ipairs(allWindows) do
 		if w == self then
 			table.remove(allWindows, i); break
