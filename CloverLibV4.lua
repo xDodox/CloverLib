@@ -806,6 +806,13 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	local ctxLayout = Instance.new("UIListLayout", ctxMenu)
 	ctxLayout.Padding = UDim.new(0, 2)
 	ctxLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+	ctxLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		if ctxMenu.Visible then
+			ctxMenu.Size = UDim2.new(0, 180, 0, ctxLayout.AbsoluteContentSize.Y + 12)
+		end
+	end)
+
 	local ctxPadding = Instance.new("UIPadding", ctxMenu)
 	ctxPadding.PaddingTop = UDim.new(0, 6)
 	ctxPadding.PaddingBottom = UDim.new(0, 6)
@@ -815,8 +822,13 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	self.contextMenu = ctxMenu
 	self.contextMenuLayout = ctxLayout
 
+	local ctxBackdrop = nil
 	local function closeContextMenu()
 		ctxMenu.Visible = false
+		if ctxBackdrop then
+			pcall(function() ctxBackdrop:Destroy() end)
+			ctxBackdrop = nil
+		end
 		for _, c in ipairs(contextMenuConnections) do pcall(c.Disconnect, c) end
 		contextMenuConnections = {}
 		for _, child in ipairs(ctxMenu:GetChildren()) do
@@ -1032,10 +1044,11 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			modeArrow.Parent = modeRow
 
 			local modeList = Instance.new("Frame")
-			modeList.Size = UDim2.new(1, 0, 0, #modeOrder * 24 + 6)
+			modeList.Size = UDim2.new(1, 0, 0, 0)
 			modeList.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 			modeList.BorderSizePixel = 0
-			modeList.Visible = false
+			modeList.Visible = true
+			modeList.ClipsDescendants = true
 			modeList.ZIndex = 920
 			modeList.LayoutOrder = 3
 			modeList.Parent = behaviorGroup
@@ -1097,9 +1110,13 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 					modeLbl.Text = modeNames[mode]
 					if mode == "always" then elemConfig:SetValue(true) end
 					self:notify("Mode: " .. modeNames[mode], "info", 1.5)
-					modeList.Visible = false
-					modeArrow.Rotation = 0
-					modeArrow.ImageColor3 = self.theme.Gray
+					TweenService:Create(modeList, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+						Size = UDim2.new(1, 0, 0, 0)
+					}):Play()
+					TweenService:Create(modeArrow, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
+						Rotation = 0,
+						ImageColor3 = self.theme.Gray
+					}):Play()
 					closeContextMenu()
 				end)
 			end
@@ -1111,14 +1128,21 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			modeBtn.ZIndex = 910
 			modeBtn.Parent = modeRow
 			local modeOpen = false
+			local activeTween = nil
 			modeBtn.MouseButton1Click:Connect(function()
 				modeOpen = not modeOpen
-				modeList.Visible = modeOpen
-				modeArrow.Rotation = modeOpen and 180 or 0
-				modeArrow.ImageColor3 = modeOpen and self.theme.Accent or self.theme.Gray
-				task.defer(function()
-					ctxMenu.Size = UDim2.new(0, 180, 0, ctxLayout.AbsoluteContentSize.Y + 12)
-				end)
+				if activeTween then activeTween:Cancel() end
+				
+				local targetHeight = modeOpen and (#modeOrder * 24 + 6) or 0
+				activeTween = TweenService:Create(modeList, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					Size = UDim2.new(1, 0, 0, targetHeight)
+				})
+				activeTween:Play()
+				
+				TweenService:Create(modeArrow, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
+					Rotation = modeOpen and 180 or 0,
+					ImageColor3 = modeOpen and self.theme.Accent or self.theme.Gray
+				}):Play()
 			end)
 
 			addCtxSeparator(nextOrder())
@@ -1155,15 +1179,11 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 
 			local hkRow = Instance.new("Frame")
 			hkRow.Size = UDim2.new(1, 0, 0, 28)
-			hkRow.BackgroundColor3 = self.theme.Surface
+			hkRow.BackgroundTransparency = 1
 			hkRow.BorderSizePixel = 0
 			hkRow.ZIndex = 901
 			hkRow.LayoutOrder = 2
 			hkRow.Parent = hotkeyGroup
-			Instance.new("UICorner", hkRow).CornerRadius = UDim.new(0, 5)
-			local hkStroke = Instance.new("UIStroke", hkRow)
-			hkStroke.Color = self.theme.Border
-			hkStroke.Thickness = 1
 			
 			local hkTextLbl = Instance.new("TextLabel")
 			hkTextLbl.Size = UDim2.new(1, -60, 1, 0)
@@ -1219,23 +1239,22 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			end)
 		end
 
-		task.defer(function()
-			ctxMenu.Size = UDim2.new(0, 180, 0, ctxLayout.AbsoluteContentSize.Y + 12)
-		end)
 		ctxMenu.Visible = true
 
-		local dismissConn
-		dismissConn = UIS.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.MouseButton2 then
-				local mp = UIS:GetMouseLocation()
-				local ap, as = ctxMenu.AbsolutePosition, ctxMenu.AbsoluteSize
-				if mp.X < ap.X or mp.X > ap.X + as.X or mp.Y < ap.Y or mp.Y > ap.Y + as.Y then
-					closeContextMenu()
-					dismissConn:Disconnect()
-				end
-			end
-		end)
-		table.insert(contextMenuConnections, dismissConn)
+		ctxBackdrop = Instance.new("TextButton")
+		ctxBackdrop.Name = "CtxMenuBackdrop"
+		ctxBackdrop.Size = UDim2.new(1, 0, 1, 0)
+		ctxBackdrop.BackgroundTransparency = 1
+		ctxBackdrop.Text = ""
+		ctxBackdrop.AutoButtonColor = false
+		ctxBackdrop.ZIndex = 899
+		ctxBackdrop.Parent = self.sg
+
+		local function onDismiss()
+			closeContextMenu()
+		end
+		table.insert(contextMenuConnections, ctxBackdrop.MouseButton1Click:Connect(onDismiss))
+		table.insert(contextMenuConnections, ctxBackdrop.MouseButton2Click:Connect(onDismiss))
 	end
 
 	table.insert(self.connections, UIS.InputBegan:Connect(function(input, gpe)
