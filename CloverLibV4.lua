@@ -370,8 +370,22 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 					obj.TextColor3 = color
 				elseif obj:IsA("TextBox") then
 					obj.TextColor3 = color
+				elseif obj:IsA("ImageLabel") or obj:IsA("ImageButton") then
+					obj.ImageColor3 = color
+				elseif obj:IsA("UIGradient") then
+					obj.Color = ColorSequence.new({
+						ColorSequenceKeypoint.new(0, color),
+						ColorSequenceKeypoint.new(1, Color3.new(color.r * 0.8, color.g * 0.8, color.b * 0.8))
+					})
 				end
 			end)
+		end
+		for _, t in pairs(self.tabs) do
+			if t == self.activeTab then
+				if t.tabIcon and t.tabIconId then
+					pcall(function() t.tabIcon.ImageColor3 = color end)
+				end
+			end
 		end
 		if self.configs then
 			for _, elem in pairs(self.configs) do
@@ -1322,17 +1336,21 @@ function UILib:buildUITab()
 		self:updateAccent(c)
 	end, "Update accent color")
 
-	grp:slider("Window Width", 450, 1200, self.size.X, function(val)
+	local widthSlider = grp:slider("Window Width", 450, 1200, self.size.X, function(val)
 		self.size = Vector2.new(val, self.size.Y)
 		self.window.Size = UDim2.new(0, val, 0, self.size.Y)
 		self.updateLayout()
 	end, 10, "Adjust the width of the menu")
 
-	grp:slider("Window Height", 350, 800, self.size.Y, function(val)
+	local heightSlider = grp:slider("Window Height", 350, 800, self.size.Y, function(val)
 		self.size = Vector2.new(self.size.X, val)
 		self.window.Size = UDim2.new(0, self.size.X, 0, val)
 		self.updateLayout()
 	end, 10, "Adjust the height of the menu")
+
+	grp:button("Visual Resize Mode", function()
+		self:enterResizeMode(widthSlider, heightSlider)
+	end, "Dim screen and scale window dynamically by dragging")
 
 	grp:keybind("Toggle Key", "RightShift", function(_, name)
 		self.toggleKey = Enum.KeyCode[name] or Enum.KeyCode.RightShift
@@ -1463,6 +1481,178 @@ end
 
 function UILib:toggle()
 	self:setVisible(not self.visibleTarget)
+end
+
+function UILib:enterResizeMode(widthSlider, heightSlider)
+	if self.inResizeMode then return end
+	self.inResizeMode = true
+
+	local backdrop = Instance.new("TextButton")
+	backdrop.Size = UDim2.new(1, 0, 1, 0)
+	backdrop.BackgroundColor3 = Color3.new(0, 0, 0)
+	backdrop.BackgroundTransparency = 1
+	backdrop.Text = ""
+	backdrop.AutoButtonColor = false
+	backdrop.ZIndex = 4
+	backdrop.Parent = self.sg
+	
+	TweenService:Create(backdrop, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { BackgroundTransparency = 0.65 }):Play()
+
+	local instruction = Instance.new("TextLabel")
+	instruction.Size = UDim2.new(1, 0, 0, 40)
+	instruction.Position = UDim2.new(0, 0, 0, 40)
+	instruction.BackgroundTransparency = 1
+	instruction.Text = "VISUAL RESIZE MODE - DRAG CORNER TO RESIZE"
+	instruction.TextColor3 = Color3.new(1, 1, 1)
+	instruction.Font = Enum.Font.GothamBold
+	instruction.TextSize = 16
+	instruction.ZIndex = 5
+	instruction.Parent = backdrop
+
+	local subtext = Instance.new("TextLabel")
+	subtext.Size = UDim2.new(1, 0, 0, 20)
+	subtext.Position = UDim2.new(0, 0, 0, 80)
+	subtext.BackgroundTransparency = 1
+	subtext.Text = "Click 'EXIT & SAVE' or Press ESC/Double-Click to Apply"
+	subtext.TextColor3 = self.theme.GrayLt
+	subtext.Font = Enum.Font.GothamSemibold
+	subtext.TextSize = 12
+	subtext.ZIndex = 5
+	subtext.Parent = backdrop
+
+	local applyBtn = Instance.new("TextButton")
+	applyBtn.Size = UDim2.new(0, 140, 0, 36)
+	applyBtn.Position = UDim2.new(0.5, -70, 0, 120)
+	applyBtn.BackgroundColor3 = self.theme.Accent
+	applyBtn.BorderSizePixel = 0
+	applyBtn.Text = "EXIT & SAVE"
+	applyBtn.TextColor3 = Color3.new(1, 1, 1)
+	applyBtn.Font = Enum.Font.GothamBold
+	applyBtn.TextSize = 13
+	applyBtn.ZIndex = 6
+	applyBtn.Parent = backdrop
+	Instance.new("UICorner", applyBtn).CornerRadius = UDim.new(0, 6)
+
+	local winStroke = self.window:FindFirstChildOfClass("UIStroke")
+	local originalColor = winStroke and winStroke.Color or self.theme.Border
+	local pulseConn
+	if winStroke then
+		pulseConn = RunService.RenderStepped:Connect(function()
+			local p = (math.sin(tick() * 4) + 1) / 2
+			winStroke.Color = Color3.new(
+				self.theme.Accent.r * p + originalColor.r * (1 - p),
+				self.theme.Accent.g * p + originalColor.g * (1 - p),
+				self.theme.Accent.b * p + originalColor.b * (1 - p)
+			)
+		end)
+	end
+
+	local handle = Instance.new("ImageButton")
+	handle.Name = "ResizeHandle"
+	handle.Size = UDim2.new(0, 28, 0, 28)
+	handle.Position = UDim2.new(1, 0, 1, 0)
+	handle.AnchorPoint = Vector2.new(0.5, 0.5)
+	handle.BackgroundTransparency = 1
+	handle.Image = "rbxassetid://16168010419"
+	handle.ImageColor3 = self.theme.Accent
+	handle.ZIndex = 2000
+	handle.Parent = self.window
+
+	handle.MouseEnter:Connect(function()
+		TweenService:Create(handle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Size = UDim2.new(0, 34, 0, 34) }):Play()
+	end)
+	handle.MouseLeave:Connect(function()
+		TweenService:Create(handle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Size = UDim2.new(0, 28, 0, 28) }):Play()
+	end)
+
+	local dragging = false
+	local dragConn
+	local dragEndConn
+
+	local function startDrag()
+		dragging = true
+	end
+
+	handle.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			startDrag()
+		end
+	end)
+
+	local function exitMode()
+		self.inResizeMode = false
+		if pulseConn then pulseConn:Disconnect() end
+		if dragConn then dragConn:Disconnect() end
+		if dragEndConn then dragEndConn:Disconnect() end
+		if winStroke then winStroke.Color = originalColor end
+		
+		TweenService:Create(backdrop, TweenInfo.new(0.2, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play()
+		task.delay(0.2, function()
+			backdrop:Destroy()
+		end)
+		handle:Destroy()
+
+		local finalW = math.floor(self.size.X)
+		local finalH = math.floor(self.size.Y)
+		self.size = Vector2.new(finalW, finalH)
+		self.window.Size = UDim2.new(0, finalW, 0, finalH)
+		self.updateLayout()
+
+		if widthSlider and widthSlider.SetValue then
+			pcall(function() widthSlider:SetValue(finalW) end)
+		end
+		if heightSlider and heightSlider.SetValue then
+			pcall(function() heightSlider:SetValue(finalH) end)
+		end
+
+		self:notify("Menu resized: " .. finalW .. "x" .. finalH, "success", 2)
+	end
+
+	dragConn = UIS.InputChanged:Connect(function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			local mousePos = UIS:GetMouseLocation()
+			local center = Vector2.new(self.window.AbsolutePosition.X, self.window.AbsolutePosition.Y)
+			
+			local newW = math.max(450, math.min(1200, (mousePos.X - center.X) * 2))
+			local newH = math.max(350, math.min(800, (mousePos.Y - center.Y) * 2))
+
+			local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
+			newW = math.min(newW, vp.X - 40)
+			newH = math.min(newH, vp.Y - 60)
+
+			self.size = Vector2.new(newW, newH)
+			self.window.Size = UDim2.new(0, newW, 0, newH)
+			self.updateLayout()
+		end
+	end)
+
+	dragEndConn = UIS.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
+		end
+	end)
+
+	applyBtn.MouseButton1Click:Connect(exitMode)
+	backdrop.MouseButton1Click:Connect(function()
+		local lastClick = backdrop:GetAttribute("LastClick") or 0
+		if tick() - lastClick < 0.35 then
+			exitMode()
+		else
+			backdrop:SetAttribute("LastClick", tick())
+		end
+	end)
+
+	local escConn
+	escConn = UIS.InputBegan:Connect(function(input, gpe)
+		if not self.inResizeMode then
+			escConn:Disconnect()
+			return
+		end
+		if input.KeyCode == Enum.KeyCode.Escape then
+			escConn:Disconnect()
+			exitMode()
+		end
+	end)
 end
 
 function UILib:confirm(message, onYes, onNo)
@@ -2028,6 +2218,7 @@ function UILib.Tab:addSubTab(name)
 	selLine.Visible = false
 	selLine.ZIndex = 6
 	selLine.Parent = btn
+	table.insert(self.window.accentObjects, selLine)
 
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, -10, 1, 0)
@@ -2406,6 +2597,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	local gradient = Instance.new("UIGradient", fill)
 	gradient.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, window.theme.Accent), ColorSequenceKeypoint.new(1,
 		Color3.new(window.theme.Accent.r * 0.8, window.theme.Accent.g * 0.8, window.theme.Accent.b * 0.8)) })
+	table.insert(window.accentObjects, gradient)
 	local knob = Instance.new("Frame")
 	knob.Size = UDim2.new(0, 12, 0, 12)
 	knob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), -6, 0.5, -6)
@@ -3666,12 +3858,23 @@ function UILib.Column:addGroup(title)
 				local isSelected = (opt == currentSelection)
 				local ob = Instance.new("TextButton")
 				ob.Size = UDim2.new(1, 0, 0, 28)
-				ob.BackgroundColor3 = isSelected and Color3.fromRGB(20, 34, 26) or Color3.fromRGB(0, 0, 0, 0)
-				ob.BackgroundTransparency = isSelected and 0 or 1
+				ob.BackgroundTransparency = 1
 				ob.AutoButtonColor = false
 				ob.Text = ""
 				ob.ZIndex = 51
 				ob.Parent = dlist
+				
+				local bg = Instance.new("Frame")
+				bg.Name = "SelectionBG"
+				bg.Size = UDim2.new(1, 0, 1, 0)
+				bg.BackgroundColor3 = window.theme.Accent
+				bg.BackgroundTransparency = isSelected and 0.9 or 1
+				bg.BorderSizePixel = 0
+				bg.ZIndex = 50
+				bg.Parent = ob
+				Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 4)
+				table.insert(window.accentObjects, bg)
+				
 				local bar = Instance.new("Frame")
 				bar.Size = UDim2.new(0, 2, 0, 14)
 				bar.Position = UDim2.new(0, 0, 0.5, -7)
@@ -3697,15 +3900,15 @@ function UILib.Column:addGroup(title)
 				checks[opt] = ol
 				ob.MouseEnter:Connect(function()
 					if opt ~= currentSelection then
-						TweenService:Create(ob, TweenInfo.new(0.08),
+						TweenService:Create(bg, TweenInfo.new(0.08),
 							{ BackgroundColor3 = Color3.fromRGB(32, 32, 32), BackgroundTransparency = 0 }):Play()
 						ol.TextColor3 = window.theme.GrayLt
 					end
 				end)
 				ob.MouseLeave:Connect(function()
 					if opt ~= currentSelection then
-						TweenService:Create(ob, TweenInfo.new(0.08),
-							{ BackgroundColor3 = window.theme.Track, BackgroundTransparency = 1 }):Play()
+						TweenService:Create(bg, TweenInfo.new(0.08),
+							{ BackgroundColor3 = window.theme.Accent, BackgroundTransparency = 1 }):Play()
 						ol.TextColor3 = window.theme.Gray
 					end
 				end)
@@ -3720,13 +3923,12 @@ function UILib.Column:addGroup(title)
 					for o, b in pairs(backgrounds) do b.Visible = (o == opt) end
 					for _, child in ipairs(dlist:GetChildren()) do
 						if child:IsA("TextButton") then
-							local isSel = child:FindFirstChildOfClass("TextLabel") and
-								child:FindFirstChildOfClass("TextLabel").Text == opt
-							if isSel then
-								child.BackgroundColor3 = Color3.fromRGB(20, 34, 26)
-								child.BackgroundTransparency = 0
-							else
-								child.BackgroundTransparency = 1
+							local sBg = child:FindFirstChild("SelectionBG")
+							if sBg then
+								local isSel = child:FindFirstChildOfClass("TextLabel") and
+									child:FindFirstChildOfClass("TextLabel").Text == opt
+								sBg.BackgroundTransparency = isSel and 0.9 or 1
+								sBg.BackgroundColor3 = window.theme.Accent
 							end
 						end
 					end
@@ -4649,8 +4851,8 @@ function UILib.Column:addGroup(title)
 		r.BorderSizePixel = 0
 		r.Parent = items
 		local lbl = Instance.new("TextLabel")
-		lbl.Size = UDim2.new(0.45, -8, 0, 18)
-		lbl.Position = UDim2.new(0, 4, 0, 3)
+		lbl.Size = UDim2.new(1, -66, 0, 18)
+		lbl.Position = UDim2.new(0, 4, 0, 14)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.GrayLt
@@ -4660,8 +4862,8 @@ function UILib.Column:addGroup(title)
 		lbl.ZIndex = 3
 		lbl.Parent = r
 		local box = Instance.new("TextBox")
-		box.Size = UDim2.new(0.55, 0, 0, 22)
-		box.Position = UDim2.new(0.45, 0, 0, 2)
+		box.Size = UDim2.new(0, 54, 0, 22)
+		box.Position = UDim2.new(1, -58, 0, 12)
 		box.BackgroundColor3 = window.theme.Track
 		box.ClipsDescendants = true
 		box.BorderSizePixel = 0
@@ -4677,6 +4879,7 @@ function UILib.Column:addGroup(title)
 		nbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		nbStroke.Color = window.theme.Border
 		nbStroke.Thickness = 1
+		table.insert(window.accentObjects, box)
 		local current = default or 0
 		local function validate()
 			local num = tonumber(box.Text)
@@ -4775,6 +4978,7 @@ function UILib.Column:addGroup(title)
 		fill.ZIndex = 4
 		fill.Parent = track
 		Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 2)
+		table.insert(window.accentObjects, fill)
 		local knobLeft = Instance.new("Frame")
 		knobLeft.Size = UDim2.new(0, 12, 0, 12)
 		knobLeft.Position = UDim2.new(pctMin, -6, 0.5, -6)
