@@ -2621,16 +2621,16 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	local knob = Instance.new("Frame")
 	knob.Size = UDim2.new(0, 12, 0, 12)
 	knob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), -6, 0.5, -6)
-	knob.BackgroundColor3 = window.theme.BG
+	knob.BackgroundColor3 = window.theme.Accent
 	knob.BorderSizePixel = 0
 	knob.ZIndex = 5
 	knob.Parent = track
 	Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
 	local knobStroke = Instance.new("UIStroke", knob)
-	knobStroke.Color = window.theme.Accent
-	knobStroke.Thickness = 2
+	knobStroke.Color = window.theme.BG
+	knobStroke.Thickness = 1.5
 	table.insert(window.accentObjects, fill)
-	table.insert(window.accentObjects, knobStroke)
+	table.insert(window.accentObjects, knob)
 	local hit = Instance.new("TextButton")
 	hit.Size = UDim2.new(1, 0, 0, 22)
 	hit.Position = UDim2.new(0, 0, 0.5, -11)
@@ -5010,27 +5010,27 @@ function UILib.Column:addGroup(title)
 		local knobLeft = Instance.new("Frame")
 		knobLeft.Size = UDim2.new(0, 12, 0, 12)
 		knobLeft.Position = UDim2.new(pctMin, -6, 0.5, -6)
-		knobLeft.BackgroundColor3 = window.theme.BG
+		knobLeft.BackgroundColor3 = window.theme.Accent
 		knobLeft.BorderSizePixel = 0
 		knobLeft.ZIndex = 5
 		knobLeft.Parent = track
 		Instance.new("UICorner", knobLeft).CornerRadius = UDim.new(1, 0)
 		local knobLeftStroke = Instance.new("UIStroke", knobLeft)
-		knobLeftStroke.Color = window.theme.Accent
-		knobLeftStroke.Thickness = 2
-		table.insert(window.accentObjects, knobLeftStroke)
+		knobLeftStroke.Color = window.theme.BG
+		knobLeftStroke.Thickness = 1.5
+		table.insert(window.accentObjects, knobLeft)
 		local knobRight = Instance.new("Frame")
 		knobRight.Size = UDim2.new(0, 12, 0, 12)
 		knobRight.Position = UDim2.new(pctMax, -6, 0.5, -6)
-		knobRight.BackgroundColor3 = window.theme.BG
+		knobRight.BackgroundColor3 = window.theme.Accent
 		knobRight.BorderSizePixel = 0
 		knobRight.ZIndex = 5
 		knobRight.Parent = track
 		Instance.new("UICorner", knobRight).CornerRadius = UDim.new(1, 0)
 		local knobRightStroke = Instance.new("UIStroke", knobRight)
-		knobRightStroke.Color = window.theme.Accent
-		knobRightStroke.Thickness = 2
-		table.insert(window.accentObjects, knobRightStroke)
+		knobRightStroke.Color = window.theme.BG
+		knobRightStroke.Thickness = 1.5
+		table.insert(window.accentObjects, knobRight)
 		local hitLeft = Instance.new("TextButton")
 		hitLeft.Size = UDim2.new(0, 16, 0, 22)
 		hitLeft.Position = UDim2.new(pctMin, -8, 0.5, -11)
