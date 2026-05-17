@@ -803,6 +803,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	local ctxStroke = Instance.new("UIStroke", ctxMenu)
 	ctxStroke.Color = self.theme.Border
 	ctxStroke.Thickness = 1
+	ctxStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
 	local ctxLayout = Instance.new("UIListLayout", ctxMenu)
 	ctxLayout.Padding = UDim.new(0, 2)
 	ctxLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -832,7 +834,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		for _, c in ipairs(contextMenuConnections) do pcall(c.Disconnect, c) end
 		contextMenuConnections = {}
 		for _, child in ipairs(ctxMenu:GetChildren()) do
-			if not child:IsA("UIListLayout") and not child:IsA("UIPadding") then
+			if not child:IsA("UIListLayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") and not child:IsA("UIStroke") then
 				pcall(function() child:Destroy() end)
 			end
 		end
@@ -1019,6 +1021,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			local modeStroke = Instance.new("UIStroke", modeRow)
 			modeStroke.Color = self.theme.Border
 			modeStroke.Thickness = 1
+			modeStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
 			local modeLbl = Instance.new("TextLabel")
 			modeLbl.Size = UDim2.new(1, -24, 1, 0)
@@ -1056,6 +1059,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			local mlStroke = Instance.new("UIStroke", modeList)
 			mlStroke.Color = self.theme.Border
 			mlStroke.Thickness = 1
+			mlStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 			local mlLayout = Instance.new("UIListLayout", modeList)
 			mlLayout.Padding = UDim.new(0, 1)
 			Instance.new("UIPadding", modeList).PaddingTop = UDim.new(0, 3)
@@ -1212,6 +1216,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			local hkStrokeBtn = Instance.new("UIStroke", hkBox)
 			hkStrokeBtn.Color = self.theme.Border
 			hkStrokeBtn.Thickness = 1
+			hkStrokeBtn.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
 			local listening = false
 			hkBox.MouseButton1Click:Connect(function()
@@ -1582,6 +1587,12 @@ end
 function UILib:setVisible(visible)
 	if visible == self.visibleTarget then return end
 	self.visibleTarget = visible
+
+	if not visible then
+		if self.closeContextMenu then
+			pcall(self.closeContextMenu)
+		end
+	end
 
 	if visible then
 		self.window.Visible = true
