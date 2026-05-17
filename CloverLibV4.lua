@@ -1341,12 +1341,14 @@ function UILib:buildUITab()
 		self.window.Size = UDim2.new(0, val, 0, self.size.Y)
 		self.updateLayout()
 	end, 10, "Adjust the width of the menu")
+	widthSlider.frame.Visible = false
 
 	local heightSlider = grp:slider("Window Height", 350, 800, self.size.Y, function(val)
 		self.size = Vector2.new(self.size.X, val)
 		self.window.Size = UDim2.new(0, self.size.X, 0, val)
 		self.updateLayout()
 	end, 10, "Adjust the height of the menu")
+	heightSlider.frame.Visible = false
 
 	grp:button("Visual Resize Mode", function()
 		self:enterResizeMode(widthSlider, heightSlider)
@@ -1488,7 +1490,10 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	self.inResizeMode = true
 
 	local originalZIndex = self.window.ZIndex
+	local originalClipsDescendants = self.window.ClipsDescendants
+	
 	self.window.ZIndex = 100
+	self.window.ClipsDescendants = false
 
 	local backdrop = Instance.new("TextButton")
 	backdrop.Size = UDim2.new(1, 0, 1, 0)
@@ -1552,7 +1557,7 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 
 	local handle = Instance.new("ImageButton")
 	handle.Name = "ResizeHandle"
-	handle.Size = UDim2.new(0, 28, 0, 28)
+	handle.Size = UDim2.new(0, 36, 0, 36)
 	handle.Position = UDim2.new(1, 0, 1, 0)
 	handle.AnchorPoint = Vector2.new(0.5, 0.5)
 	handle.BackgroundTransparency = 1
@@ -1562,10 +1567,10 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	handle.Parent = self.window
 
 	handle.MouseEnter:Connect(function()
-		TweenService:Create(handle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Size = UDim2.new(0, 34, 0, 34) }):Play()
+		TweenService:Create(handle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Size = UDim2.new(0, 42, 0, 42) }):Play()
 	end)
 	handle.MouseLeave:Connect(function()
-		TweenService:Create(handle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Size = UDim2.new(0, 28, 0, 28) }):Play()
+		TweenService:Create(handle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Size = UDim2.new(0, 36, 0, 36) }):Play()
 	end)
 
 	local dragging = false
@@ -1585,6 +1590,7 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	local function exitMode()
 		self.inResizeMode = false
 		self.window.ZIndex = originalZIndex
+		self.window.ClipsDescendants = originalClipsDescendants
 		if pulseConn then pulseConn:Disconnect() end
 		if dragConn then dragConn:Disconnect() end
 		if dragEndConn then dragEndConn:Disconnect() end
@@ -1615,7 +1621,7 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	dragConn = UIS.InputChanged:Connect(function(input)
 		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 			local mousePos = UIS:GetMouseLocation()
-			local center = Vector2.new(self.window.AbsolutePosition.X, self.window.AbsolutePosition.Y)
+			local center = self.window.AbsolutePosition + (self.window.AbsoluteSize / 2)
 			
 			local newW = math.max(450, math.min(1200, (mousePos.X - center.X) * 2))
 			local newH = math.max(350, math.min(800, (mousePos.Y - center.Y) * 2))
@@ -2537,7 +2543,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	label.Position = UDim2.new(0, 4, 0, 2)
 	label.BackgroundTransparency = 1
 	label.Text = text
-	label.TextColor3 = window.theme.GrayLt
+	label.TextColor3 = window.theme.White
 	label.Font = Enum.Font.GothamSemibold
 	label.TextSize = 12
 	label.TextXAlignment = Enum.TextXAlignment.Left
@@ -3101,10 +3107,11 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	label.Position = UDim2.new(0, 4, 0, 2)
 	label.BackgroundTransparency = 1
 	label.Text = text
-	label.TextColor3 = window.theme.GrayLt
+	label.TextColor3 = window.theme.White
 	label.Font = Enum.Font.GothamSemibold
 	label.TextSize = 12
 	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.TextWrapped = true
 	label.ZIndex = 11
 	label.Parent = row
 	local dbtn = Instance.new("TextButton")
@@ -3661,10 +3668,11 @@ function UILib.Column:addGroup(title)
 		lbl.Position = UDim2.new(0, 4, 0, 2)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
-		lbl.TextColor3 = window.theme.GrayLt
+		lbl.TextColor3 = window.theme.White
 		lbl.Font = Enum.Font.GothamSemibold
 		lbl.TextSize = 12
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
+		lbl.TextWrapped = true
 		lbl.ZIndex = 11
 		lbl.Parent = r
 
@@ -4180,11 +4188,12 @@ function UILib.Column:addGroup(title)
 
 	function group:label(text, color, tooltip)
 		local f = Instance.new("Frame")
-		f.Size = UDim2.new(1, 0, 0, 20)
+		f.Size = UDim2.new(1, 0, 0, 0)
 		f.BackgroundTransparency = 1
+		f.AutomaticSize = Enum.AutomaticSize.Y
 		f.Parent = items
 		local lbl = Instance.new("TextLabel")
-		lbl.Size = UDim2.new(1, 0, 1, 0)
+		lbl.Size = UDim2.new(1, -8, 0, 0)
 		lbl.Position = UDim2.new(0, 4, 0, 0)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
@@ -4192,12 +4201,17 @@ function UILib.Column:addGroup(title)
 		lbl.Font = Enum.Font.GothamSemibold
 		lbl.TextSize = 11
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
+		lbl.TextWrapped = true
+		lbl.AutomaticSize = Enum.AutomaticSize.Y
 		lbl.ZIndex = 3
 		lbl.Parent = f
 		if tooltip then attachTooltip(f, tooltip, window) end
 		updateSize()
 		local ref = { frame = f }
-		function ref:setText(t) lbl.Text = t end
+		function ref:setText(t)
+			lbl.Text = t
+			updateSize()
+		end
 
 		function ref:setColor(c) lbl.TextColor3 = c end
 
@@ -4783,10 +4797,11 @@ function UILib.Column:addGroup(title)
 		lbl.Position = UDim2.new(0, 4, 0, 3)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
-		lbl.TextColor3 = window.theme.GrayLt
+		lbl.TextColor3 = window.theme.White
 		lbl.Font = Enum.Font.GothamSemibold
 		lbl.TextSize = 12
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
+		lbl.TextWrapped = true
 		lbl.ZIndex = 3
 		lbl.Parent = r
 		local box = Instance.new("TextBox")
@@ -4857,10 +4872,11 @@ function UILib.Column:addGroup(title)
 		lbl.Position = UDim2.new(0, 4, 0, 14)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
-		lbl.TextColor3 = window.theme.GrayLt
+		lbl.TextColor3 = window.theme.White
 		lbl.Font = Enum.Font.GothamSemibold
 		lbl.TextSize = 12
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
+		lbl.TextWrapped = true
 		lbl.ZIndex = 3
 		lbl.Parent = r
 		local box = Instance.new("TextBox")
@@ -4934,7 +4950,7 @@ function UILib.Column:addGroup(title)
 		lbl.Position = UDim2.new(0, 4, 0, 3)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
-		lbl.TextColor3 = window.theme.GrayLt
+		lbl.TextColor3 = window.theme.White
 		lbl.Font = Enum.Font.GothamSemibold
 		lbl.TextSize = 12
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
