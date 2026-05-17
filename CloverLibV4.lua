@@ -431,9 +431,9 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	win.ClipsDescendants = true
 	self.uiScale = Instance.new("UIScale", win)
 	self.uiScale.Scale = 0.8
-	Instance.new("UICorner", win).CornerRadius = UDim.new(0, 8)
+	Instance.new("UICorner", win).CornerRadius = UDim.new(0, 10)
 	local winStroke = Instance.new("UIStroke", win)
-	winStroke.Color = self.theme.Border
+	winStroke.Color = Color3.fromRGB(40, 40, 40)
 	winStroke.Thickness = 1
 	self.window = win
 	self.originalPosition = win.Position
@@ -489,7 +489,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	header.ZIndex = 5
 	header.Parent = win
 	self.header = header
-	Instance.new("UICorner", header).CornerRadius = UDim.new(0, 8)
+	Instance.new("UICorner", header).CornerRadius = UDim.new(0, 10)
 	local headerLine = Instance.new("Frame")
 	headerLine.Size = UDim2.new(1, 0, 0, 2)
 	headerLine.Position = UDim2.new(0, 0, 1, -2)
@@ -597,7 +597,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	sidebar.CanvasSize = UDim2.new(0, 0, 0, 0)
 	sidebar.ClipsDescendants = true
 	sidebar.Parent = win
-	Instance.new("UICorner", sidebar).CornerRadius = UDim.new(0, 6)
+	Instance.new("UICorner", sidebar).CornerRadius = UDim.new(0, 10)
 	self.sidebar = sidebar
 	local sidebarLayout = Instance.new("UIListLayout", sidebar)
 	sidebarLayout.Padding = UDim.new(0, 2)
@@ -650,7 +650,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	navbar.CanvasSize = UDim2.new(0, 0, 0, 0)
 	navbar.ClipsDescendants = true
 	navbar.Parent = win
-	Instance.new("UICorner", navbar).CornerRadius = UDim.new(0, 8)
+	Instance.new("UICorner", navbar).CornerRadius = UDim.new(0, 10)
 
 	local navTopLine = Instance.new("Frame")
 	navTopLine.Size = UDim2.new(1, 0, 0, 1)
@@ -1366,9 +1366,9 @@ function UILib:buildUITab()
 	end, 10, "Adjust the height of the menu")
 	heightSlider.frame.Visible = false
 
-	grp:button("Visual Resize Mode", function()
+	grp:button("Resize Mode", function()
 		self:enterResizeMode(widthSlider, heightSlider)
-	end, "Dim screen and scale window dynamically by dragging")
+	end, "Enter drag resize mode to scale the window from the bottom-right corner")
 
 	grp:keybind("Toggle Key", "RightShift", function(_, name)
 		self.toggleKey = Enum.KeyCode[name] or Enum.KeyCode.RightShift
@@ -1526,7 +1526,7 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	instruction.Size = UDim2.new(1, 0, 0, 40)
 	instruction.Position = UDim2.new(0, 0, 0, 40)
 	instruction.BackgroundTransparency = 1
-	instruction.Text = "VISUAL RESIZE MODE - DRAG CORNER TO RESIZE"
+	instruction.Text = "RESIZE MODE - DRAG CORNER TO RESIZE"
 	instruction.TextColor3 = Color3.new(1, 1, 1)
 	instruction.Font = Enum.Font.GothamBold
 	instruction.TextSize = 16
@@ -1592,6 +1592,7 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	local dragging = false
 	local startMouse = Vector2.new(0, 0)
 	local startSize = Vector2.new(0, 0)
+	local startPos = UDim2.new(0, 0, 0, 0)
 	local dragConn
 	local dragEndConn
 
@@ -1599,6 +1600,7 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 		dragging = true
 		startMouse = UIS:GetMouseLocation()
 		startSize = self.size
+		startPos = self.window.Position
 	end
 
 	handle.InputBegan:Connect(function(input)
@@ -1626,6 +1628,7 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 		local finalH = math.floor(self.size.Y)
 		self.size = Vector2.new(finalW, finalH)
 		self.window.Size = UDim2.new(0, finalW, 0, finalH)
+		self.originalPosition = self.window.Position
 		self.updateLayout()
 
 		if widthSlider and widthSlider.SetValue then
@@ -1644,15 +1647,19 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 			local deltaX = mousePos.X - startMouse.X
 			local deltaY = mousePos.Y - startMouse.Y
 			
-			local newW = math.max(450, math.min(1200, startSize.X + deltaX * 2))
-			local newH = math.max(350, math.min(800, startSize.Y + deltaY * 2))
+			local newW = math.max(450, math.min(1200, startSize.X + deltaX))
+			local newH = math.max(350, math.min(800, startSize.Y + deltaY))
 
 			local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
 			newW = math.min(newW, vp.X - 40)
 			newH = math.min(newH, vp.Y - 60)
 
+			local changeX = newW - startSize.X
+			local changeY = newH - startSize.Y
+
 			self.size = Vector2.new(newW, newH)
 			self.window.Size = UDim2.new(0, newW, 0, newH)
+			self.window.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + (changeX / 2), startPos.Y.Scale, startPos.Y.Offset + (changeY / 2))
 			self.updateLayout()
 		end
 	end)
@@ -2225,8 +2232,8 @@ function UILib.Tab:addSubTab(name)
 
 	local btn = Instance.new("TextButton")
 	table.insert(self.subtabOrder, sub)
-	btn.Size = UDim2.new(1, 0, 0, 28)
-	btn.Position = UDim2.new(0, 0, 0, 0)
+	btn.Size = UDim2.new(1, -12, 0, 28)
+	btn.Position = UDim2.new(0, 6, 0, 0)
 	btn.BackgroundTransparency = 1
 	btn.Text = ""
 	btn.ZIndex = 5
@@ -2234,38 +2241,39 @@ function UILib.Tab:addSubTab(name)
 
 	local hov = Instance.new("Frame")
 	hov.Size = UDim2.new(1, 0, 1, 0)
-	hov.BackgroundColor3 = self.window.theme.ItemHov
+	hov.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 	hov.BorderSizePixel = 0
-	hov.Visible = false
+	hov.BackgroundTransparency = 1
 	hov.ZIndex = 4
 	hov.Parent = btn
-	Instance.new("UICorner", hov).CornerRadius = UDim.new(0, 4)
+	Instance.new("UICorner", hov).CornerRadius = UDim.new(0, 5)
 
 	local selLine = Instance.new("Frame")
-	selLine.Size = UDim2.new(0, 3, 1, -8)
-	selLine.Position = UDim2.new(0, 0, 0, 4)
+	selLine.Size = UDim2.new(0, 3, 0, 12)
+	selLine.Position = UDim2.new(0, 6, 0.5, -6)
 	selLine.BackgroundColor3 = self.window.theme.Accent
 	selLine.BorderSizePixel = 0
 	selLine.Visible = false
 	selLine.ZIndex = 6
 	selLine.Parent = btn
+	Instance.new("UICorner", selLine).CornerRadius = UDim.new(0, 1.5)
 	table.insert(self.window.accentObjects, selLine)
 
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, -10, 1, 0)
-	label.Position = UDim2.new(0, 10, 0, 0)
+	label.Size = UDim2.new(1, -20, 1, 0)
+	label.Position = UDim2.new(0, 16, 0, 0)
 	label.BackgroundTransparency = 1
 	label.Text = name
 	label.TextColor3 = self.window.theme.Gray
 	label.Font = Enum.Font.GothamSemibold
-	label.TextSize = 12
-	label.TextXAlignment = Enum.TextXAlignment.Center
+	label.TextSize = 11
+	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.ZIndex = 6
 	label.Parent = btn
 
 	function sub:select()
 		for _, t in pairs(self.window.tabs) do
-			t.btn.TextColor3 = self.window.theme.Gray
+			if t.tabLbl then t.tabLbl.TextColor3 = self.window.theme.Gray end
 			if t.underline then t.underline.Visible = false end
 			for _, s in pairs(t.subtabs) do
 				s.btn.Visible = false
@@ -2274,18 +2282,28 @@ function UILib.Tab:addSubTab(name)
 				s.label.TextColor3 = self.window.theme.Gray
 			end
 		end
-		self.tab.btn.TextColor3 = self.window.theme.White
+		self.tab.tabLbl.TextColor3 = self.window.theme.White
 		if self.tab.underline then self.tab.underline.Visible = true end
 		for _, s in pairs(self.tab.subtabs) do s.btn.Visible = true end
 		self.window.activeTab = self.tab
-		self.label.TextColor3 = self.window.theme.White
+		self.label.TextColor3 = self.window.theme.Accent
 		self.selLine.Visible = true
 		self.page.Visible = true
 		self.window.sidebar.CanvasSize = UDim2.new(0, 0, 0, #self.tab.subtabOrder * 30 + 10)
 	end
 
-	btn.MouseEnter:Connect(function() hov.Visible = true end)
-	btn.MouseLeave:Connect(function() hov.Visible = false end)
+	btn.MouseEnter:Connect(function()
+		TweenService:Create(hov, TweenInfo.new(0.08), { BackgroundTransparency = 0 }):Play()
+		if label.TextColor3 ~= self.window.theme.Accent then
+			TweenService:Create(label, TweenInfo.new(0.08), { TextColor3 = self.window.theme.White }):Play()
+		end
+	end)
+	btn.MouseLeave:Connect(function()
+		TweenService:Create(hov, TweenInfo.new(0.08), { BackgroundTransparency = 1 }):Play()
+		if label.TextColor3 ~= self.window.theme.Accent then
+			TweenService:Create(label, TweenInfo.new(0.08), { TextColor3 = self.window.theme.Gray }):Play()
+		end
+	end)
 
 	local page = Instance.new("ScrollingFrame")
 	page.Size = UDim2.new(1, -14, 1, -12)
