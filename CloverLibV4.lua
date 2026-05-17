@@ -827,13 +827,14 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	end
 	self.closeContextMenu = closeContextMenu
 
-	local function addContextMenuItem(text, callback, accent)
+	local function addContextMenuItem(text, callback, accent, layoutOrder)
 		local btn = Instance.new("TextButton")
 		btn.Size = UDim2.new(1, 0, 0, 28)
 		btn.BackgroundTransparency = 1
 		btn.Text = ""
 		btn.ZIndex = 901
 		btn.Parent = ctxMenu
+		if layoutOrder then btn.LayoutOrder = layoutOrder end
 		
 		local hov = Instance.new("Frame")
 		hov.Size = UDim2.new(1, 0, 1, 0)
@@ -874,15 +875,23 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		return lbl
 	end
 	
-	local function addCtxSeparator()
-		local sep = Instance.new("Frame")
-		sep.Size = UDim2.new(1, -12, 0, 1)
-		sep.Position = UDim2.new(0, 6, 0, 0)
-		sep.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-		sep.BackgroundTransparency = 0.4
-		sep.BorderSizePixel = 0
-		sep.ZIndex = 901
-		sep.Parent = ctxMenu
+	local function addCtxSeparator(layoutOrder)
+		local sepWrapper = Instance.new("Frame")
+		sepWrapper.Size = UDim2.new(1, 0, 0, 5)
+		sepWrapper.BackgroundTransparency = 1
+		sepWrapper.ZIndex = 901
+		sepWrapper.Parent = ctxMenu
+		if layoutOrder then sepWrapper.LayoutOrder = layoutOrder end
+
+		local sepLine = Instance.new("Frame")
+		sepLine.Size = UDim2.new(1, -12, 0, 1)
+		sepLine.Position = UDim2.new(0, 6, 0.5, 0)
+		sepLine.AnchorPoint = Vector2.new(0, 0.5)
+		sepLine.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+		sepLine.BackgroundTransparency = 0.5
+		sepLine.BorderSizePixel = 0
+		sepLine.ZIndex = 902
+		sepLine.Parent = sepWrapper
 	end
 	self.addContextMenuItem = addContextMenuItem
 
@@ -895,12 +904,20 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		local y = math.clamp(pos.Y, 4, screenH - 200)
 		ctxMenu.Position = UDim2.new(0, x, 0, y)
 
+		local itemOrder = 0
+		local function nextOrder()
+			itemOrder = itemOrder + 1
+			return itemOrder
+		end
+
 		local function addSection(txt)
 			local f = Instance.new("Frame")
 			f.Size = UDim2.new(1, 0, 0, 20)
 			f.BackgroundTransparency = 1
 			f.ZIndex = 901
+			f.LayoutOrder = nextOrder()
 			f.Parent = ctxMenu
+			
 			local l = Instance.new("TextLabel", f)
 			l.Size = UDim2.new(1, -8, 1, 0)
 			l.Position = UDim2.new(0, 8, 0, 0)
@@ -917,7 +934,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		if elemConfig and elemConfig.DefaultValue ~= nil then
 			addContextMenuItem("Reset to Default", function()
 				if elemConfig.SetValue then elemConfig:SetValue(elemConfig.DefaultValue) end
-			end)
+			end, nil, nextOrder())
 		end
 		if elemConfig and elemConfig.Value ~= nil then
 			addContextMenuItem("Copy Value", function()
@@ -939,11 +956,11 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 				end
 				if setclipboard then pcall(setclipboard, str) end
 				self:notify("Copied: " .. str, "info", 2)
-			end)
+			end, nil, nextOrder())
 		end
 
 		if elemConfig and elemConfig.IsToggle then
-			addCtxSeparator()
+			addCtxSeparator(nextOrder())
 			addSection("Behavior")
 
 			local modeNames = { always = "Always On", toggle = "Toggle", hold = "Hold" }
@@ -955,6 +972,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			modeRow.BackgroundColor3 = self.theme.Surface
 			modeRow.BorderSizePixel = 0
 			modeRow.ZIndex = 901
+			modeRow.LayoutOrder = nextOrder()
 			modeRow.Parent = ctxMenu
 			Instance.new("UICorner", modeRow).CornerRadius = UDim.new(0, 5)
 			local modeStroke = Instance.new("UIStroke", modeRow)
@@ -985,13 +1003,13 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			modeArrow.Parent = modeRow
 
 			local modeList = Instance.new("Frame")
-			modeList.Size = UDim2.new(1, 0, 0, #modeOrder * 26 + 6)
-			modeList.Position = UDim2.new(0, 0, 1, 3)
-			modeList.BackgroundColor3 = self.theme.Base
+			modeList.Size = UDim2.new(1, 0, 0, #modeOrder * 24 + 6)
+			modeList.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 			modeList.BorderSizePixel = 0
 			modeList.Visible = false
 			modeList.ZIndex = 920
-			modeList.Parent = modeRow
+			modeList.LayoutOrder = nextOrder()
+			modeList.Parent = ctxMenu
 			Instance.new("UICorner", modeList).CornerRadius = UDim.new(0, 5)
 			local mlStroke = Instance.new("UIStroke", modeList)
 			mlStroke.Color = self.theme.Border
@@ -1008,6 +1026,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 				opt.Text = ""
 				opt.ZIndex = 921
 				opt.Parent = modeList
+				
 				local optHov = Instance.new("Frame", opt)
 				optHov.Size = UDim2.new(1, -6, 1, -2)
 				optHov.Position = UDim2.new(0, 3, 0, 1)
@@ -1016,14 +1035,14 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 				optHov.BorderSizePixel = 0
 				optHov.ZIndex = 921
 				Instance.new("UICorner", optHov).CornerRadius = UDim.new(0, 4)
+				
 				opt.MouseEnter:Connect(function()
-					TweenService:Create(optHov, TweenInfo.new(0.08),
-						{ BackgroundTransparency = 0 }):Play()
+					TweenService:Create(optHov, TweenInfo.new(0.08), { BackgroundTransparency = 0 }):Play()
 				end)
 				opt.MouseLeave:Connect(function()
-					TweenService:Create(optHov, TweenInfo.new(0.08),
-						{ BackgroundTransparency = 1 }):Play()
+					TweenService:Create(optHov, TweenInfo.new(0.08), { BackgroundTransparency = 1 }):Play()
 				end)
+				
 				local optLbl = Instance.new("TextLabel", opt)
 				optLbl.Size = UDim2.new(1, -28, 1, 0)
 				optLbl.Position = UDim2.new(0, 10, 0, 0)
@@ -1069,19 +1088,20 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 				modeArrow.Rotation = modeOpen and 180 or 0
 				modeArrow.ImageColor3 = modeOpen and self.theme.Accent or self.theme.Gray
 				task.defer(function()
-					ctxMenu.Size = UDim2.new(0, 180, 0, ctxLayout.AbsoluteContentSize.Y + 12
-						+ (modeOpen and modeList.AbsoluteSize.Y or 0))
+					ctxMenu.Size = UDim2.new(0, 180, 0, ctxLayout.AbsoluteContentSize.Y + 12)
 				end)
 			end)
 
-			addCtxSeparator()
+			addCtxSeparator(nextOrder())
 			addSection("Hotkey")
 
 			local hkRow = Instance.new("Frame")
 			hkRow.Size = UDim2.new(1, 0, 0, 28)
 			hkRow.BackgroundTransparency = 1
 			hkRow.ZIndex = 901
+			hkRow.LayoutOrder = nextOrder()
 			hkRow.Parent = ctxMenu
+			
 			local hkTextLbl = Instance.new("TextLabel")
 			hkTextLbl.Size = UDim2.new(1, -60, 1, 0)
 			hkTextLbl.Position = UDim2.new(0, 10, 0, 0)
