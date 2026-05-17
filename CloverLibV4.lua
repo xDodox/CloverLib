@@ -791,7 +791,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 
 	local ctxMenu = Instance.new("TextButton")
 	ctxMenu.Size = UDim2.new(0, 180, 0, 0)
-	ctxMenu.BackgroundColor3 = self.theme.Surface
+	ctxMenu.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+	ctxMenu.BackgroundTransparency = 0.1
 	ctxMenu.BorderSizePixel = 0
 	ctxMenu.Text = ""
 	ctxMenu.AutoButtonColor = false
@@ -800,7 +801,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	ctxMenu.Parent = self.sg
 	Instance.new("UICorner", ctxMenu).CornerRadius = UDim.new(0, 7)
 	local ctxStroke = Instance.new("UIStroke", ctxMenu)
-	ctxStroke.Color = self.theme.Border
+	ctxStroke.Color = Color3.fromRGB(45, 45, 45)
 	ctxStroke.Thickness = 1
 	local ctxLayout = Instance.new("UIListLayout", ctxMenu)
 	ctxLayout.Padding = UDim.new(0, 2)
@@ -833,41 +834,52 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		btn.Text = ""
 		btn.ZIndex = 901
 		btn.Parent = ctxMenu
+		
 		local hov = Instance.new("Frame")
 		hov.Size = UDim2.new(1, 0, 1, 0)
-		hov.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
+		hov.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 		hov.BorderSizePixel = 0
 		hov.BackgroundTransparency = 1
 		hov.ZIndex = 901
 		hov.Parent = btn
 		Instance.new("UICorner", hov).CornerRadius = UDim.new(0, 5)
-		btn.MouseEnter:Connect(function()
-			TweenService:Create(hov, TweenInfo.new(0.1), { BackgroundTransparency = 0 }):Play()
-		end)
-		btn.MouseLeave:Connect(function()
-			TweenService:Create(hov, TweenInfo.new(0.1), { BackgroundTransparency = 1 }):Play()
-		end)
+		
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -12, 1, 0)
 		lbl.Position = UDim2.new(0, 10, 0, 0)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
-		lbl.TextColor3 = accent and self.theme.Accent or self.theme.White
+		local normalColor = accent and self.theme.Accent or Color3.fromRGB(200, 200, 200)
+		local hoverColor = accent and self.theme.Accent or Color3.fromRGB(255, 255, 255)
+		lbl.TextColor3 = normalColor
 		lbl.Font = Enum.Font.GothamSemibold
-		lbl.TextSize = 12
+		lbl.TextSize = 11
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 902
 		lbl.Parent = btn
+		
+		btn.MouseEnter:Connect(function()
+			TweenService:Create(hov, TweenInfo.new(0.08, Enum.EasingStyle.Quad), { BackgroundTransparency = 0 }):Play()
+			TweenService:Create(lbl, TweenInfo.new(0.08, Enum.EasingStyle.Quad), { TextColor3 = hoverColor }):Play()
+		end)
+		btn.MouseLeave:Connect(function()
+			TweenService:Create(hov, TweenInfo.new(0.08, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play()
+			TweenService:Create(lbl, TweenInfo.new(0.08, Enum.EasingStyle.Quad), { TextColor3 = normalColor }):Play()
+		end)
+		
 		btn.MouseButton1Click:Connect(function()
 			if callback then callback() end
 			closeContextMenu()
 		end)
 		return lbl
 	end
+	
 	local function addCtxSeparator()
 		local sep = Instance.new("Frame")
-		sep.Size = UDim2.new(1, 0, 0, 1)
-		sep.BackgroundColor3 = self.theme.Border
+		sep.Size = UDim2.new(1, -12, 0, 1)
+		sep.Position = UDim2.new(0, 6, 0, 0)
+		sep.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+		sep.BackgroundTransparency = 0.4
 		sep.BorderSizePixel = 0
 		sep.ZIndex = 901
 		sep.Parent = ctxMenu
@@ -885,7 +897,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 
 		local function addSection(txt)
 			local f = Instance.new("Frame")
-			f.Size = UDim2.new(1, 0, 0, 18)
+			f.Size = UDim2.new(1, 0, 0, 20)
 			f.BackgroundTransparency = 1
 			f.ZIndex = 901
 			f.Parent = ctxMenu
@@ -894,7 +906,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			l.Position = UDim2.new(0, 8, 0, 0)
 			l.BackgroundTransparency = 1
 			l.Text = txt:upper()
-			l.TextColor3 = self.theme.Gray
+			l.TextColor3 = Color3.fromRGB(110, 110, 110)
 			l.Font = Enum.Font.GothamBold
 			l.TextSize = 9
 			l.TextXAlignment = Enum.TextXAlignment.Left
@@ -2616,7 +2628,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 2)
 	local gradient = Instance.new("UIGradient", fill)
 	gradient.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, window.theme.Accent), ColorSequenceKeypoint.new(1,
-		Color3.new(window.theme.Accent.r * 0.8, window.theme.Accent.g * 0.8, window.theme.Accent.b * 0.8)) })
+		Color3.new(window.theme.Accent.r * 0.4, window.theme.Accent.g * 0.4, window.theme.Accent.b * 0.4)) })
 	table.insert(window.accentObjects, gradient)
 	local knob = Instance.new("Frame")
 	knob.Size = UDim2.new(0, 12, 0, 12)
@@ -2626,9 +2638,6 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	knob.ZIndex = 5
 	knob.Parent = track
 	Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
-	local knobStroke = Instance.new("UIStroke", knob)
-	knobStroke.Color = window.theme.BG
-	knobStroke.Thickness = 1.5
 	table.insert(window.accentObjects, fill)
 	table.insert(window.accentObjects, knob)
 	local hit = Instance.new("TextButton")
@@ -5006,7 +5015,10 @@ function UILib.Column:addGroup(title)
 		fill.ZIndex = 4
 		fill.Parent = track
 		Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 2)
-		table.insert(window.accentObjects, fill)
+		local gradient = Instance.new("UIGradient", fill)
+		gradient.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, window.theme.Accent), ColorSequenceKeypoint.new(1,
+			Color3.new(window.theme.Accent.r * 0.4, window.theme.Accent.g * 0.4, window.theme.Accent.b * 0.4)) })
+		table.insert(window.accentObjects, gradient)
 		local knobLeft = Instance.new("Frame")
 		knobLeft.Size = UDim2.new(0, 12, 0, 12)
 		knobLeft.Position = UDim2.new(pctMin, -6, 0.5, -6)
@@ -5015,9 +5027,6 @@ function UILib.Column:addGroup(title)
 		knobLeft.ZIndex = 5
 		knobLeft.Parent = track
 		Instance.new("UICorner", knobLeft).CornerRadius = UDim.new(1, 0)
-		local knobLeftStroke = Instance.new("UIStroke", knobLeft)
-		knobLeftStroke.Color = window.theme.BG
-		knobLeftStroke.Thickness = 1.5
 		table.insert(window.accentObjects, knobLeft)
 		local knobRight = Instance.new("Frame")
 		knobRight.Size = UDim2.new(0, 12, 0, 12)
@@ -5027,9 +5036,6 @@ function UILib.Column:addGroup(title)
 		knobRight.ZIndex = 5
 		knobRight.Parent = track
 		Instance.new("UICorner", knobRight).CornerRadius = UDim.new(1, 0)
-		local knobRightStroke = Instance.new("UIStroke", knobRight)
-		knobRightStroke.Color = window.theme.BG
-		knobRightStroke.Thickness = 1.5
 		table.insert(window.accentObjects, knobRight)
 		local hitLeft = Instance.new("TextButton")
 		hitLeft.Size = UDim2.new(0, 16, 0, 22)
