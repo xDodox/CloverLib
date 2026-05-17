@@ -792,7 +792,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	local ctxMenu = Instance.new("TextButton")
 	ctxMenu.Size = UDim2.new(0, 180, 0, 0)
 	ctxMenu.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-	ctxMenu.BackgroundTransparency = 0.1
+	ctxMenu.BackgroundTransparency = 0
 	ctxMenu.BorderSizePixel = 0
 	ctxMenu.Text = ""
 	ctxMenu.AutoButtonColor = false
@@ -801,7 +801,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	ctxMenu.Parent = self.sg
 	Instance.new("UICorner", ctxMenu).CornerRadius = UDim.new(0, 7)
 	local ctxStroke = Instance.new("UIStroke", ctxMenu)
-	ctxStroke.Color = Color3.fromRGB(45, 45, 45)
+	ctxStroke.Color = self.theme.Border
 	ctxStroke.Thickness = 1
 	local ctxLayout = Instance.new("UIListLayout", ctxMenu)
 	ctxLayout.Padding = UDim.new(0, 2)
@@ -961,7 +961,36 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 
 		if elemConfig and elemConfig.IsToggle then
 			addCtxSeparator(nextOrder())
-			addSection("Behavior")
+
+			local behaviorGroup = Instance.new("Frame")
+			behaviorGroup.Size = UDim2.new(1, 0, 0, 0)
+			behaviorGroup.BackgroundTransparency = 1
+			behaviorGroup.AutomaticSize = Enum.AutomaticSize.Y
+			behaviorGroup.LayoutOrder = nextOrder()
+			behaviorGroup.ZIndex = 901
+			behaviorGroup.Parent = ctxMenu
+
+			local bgLayout = Instance.new("UIListLayout", behaviorGroup)
+			bgLayout.Padding = UDim.new(0, 4)
+			bgLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+			local f_bg = Instance.new("Frame")
+			f_bg.Size = UDim2.new(1, 0, 0, 20)
+			f_bg.BackgroundTransparency = 1
+			f_bg.ZIndex = 901
+			f_bg.LayoutOrder = 1
+			f_bg.Parent = behaviorGroup
+			
+			local l_bg = Instance.new("TextLabel", f_bg)
+			l_bg.Size = UDim2.new(1, -8, 1, 0)
+			l_bg.Position = UDim2.new(0, 8, 0, 0)
+			l_bg.BackgroundTransparency = 1
+			l_bg.Text = "BEHAVIOR"
+			l_bg.TextColor3 = Color3.fromRGB(110, 110, 110)
+			l_bg.Font = Enum.Font.GothamBold
+			l_bg.TextSize = 9
+			l_bg.TextXAlignment = Enum.TextXAlignment.Left
+			l_bg.ZIndex = 902
 
 			local modeNames = { always = "Always On", toggle = "Toggle", hold = "Hold" }
 			local modeOrder = { "always", "toggle", "hold" }
@@ -972,8 +1001,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			modeRow.BackgroundColor3 = self.theme.Surface
 			modeRow.BorderSizePixel = 0
 			modeRow.ZIndex = 901
-			modeRow.LayoutOrder = nextOrder()
-			modeRow.Parent = ctxMenu
+			modeRow.LayoutOrder = 2
+			modeRow.Parent = behaviorGroup
 			Instance.new("UICorner", modeRow).CornerRadius = UDim.new(0, 5)
 			local modeStroke = Instance.new("UIStroke", modeRow)
 			modeStroke.Color = self.theme.Border
@@ -1008,8 +1037,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			modeList.BorderSizePixel = 0
 			modeList.Visible = false
 			modeList.ZIndex = 920
-			modeList.LayoutOrder = nextOrder()
-			modeList.Parent = ctxMenu
+			modeList.LayoutOrder = 3
+			modeList.Parent = behaviorGroup
 			Instance.new("UICorner", modeList).CornerRadius = UDim.new(0, 5)
 			local mlStroke = Instance.new("UIStroke", modeList)
 			mlStroke.Color = self.theme.Border
@@ -1093,14 +1122,48 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			end)
 
 			addCtxSeparator(nextOrder())
-			addSection("Hotkey")
+
+			local hotkeyGroup = Instance.new("Frame")
+			hotkeyGroup.Size = UDim2.new(1, 0, 0, 0)
+			hotkeyGroup.BackgroundTransparency = 1
+			hotkeyGroup.AutomaticSize = Enum.AutomaticSize.Y
+			hotkeyGroup.LayoutOrder = nextOrder()
+			hotkeyGroup.ZIndex = 901
+			hotkeyGroup.Parent = ctxMenu
+
+			local hgLayout = Instance.new("UIListLayout", hotkeyGroup)
+			hgLayout.Padding = UDim.new(0, 4)
+			hgLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+			local f_hk = Instance.new("Frame")
+			f_hk.Size = UDim2.new(1, 0, 0, 20)
+			f_hk.BackgroundTransparency = 1
+			f_hk.ZIndex = 901
+			f_hk.LayoutOrder = 1
+			f_hk.Parent = hotkeyGroup
+			
+			local l_hk = Instance.new("TextLabel", f_hk)
+			l_hk.Size = UDim2.new(1, -8, 1, 0)
+			l_hk.Position = UDim2.new(0, 8, 0, 0)
+			l_hk.BackgroundTransparency = 1
+			l_hk.Text = "HOTKEY"
+			l_hk.TextColor3 = Color3.fromRGB(110, 110, 110)
+			l_hk.Font = Enum.Font.GothamBold
+			l_hk.TextSize = 9
+			l_hk.TextXAlignment = Enum.TextXAlignment.Left
+			l_hk.ZIndex = 902
 
 			local hkRow = Instance.new("Frame")
 			hkRow.Size = UDim2.new(1, 0, 0, 28)
-			hkRow.BackgroundTransparency = 1
+			hkRow.BackgroundColor3 = self.theme.Surface
+			hkRow.BorderSizePixel = 0
 			hkRow.ZIndex = 901
-			hkRow.LayoutOrder = nextOrder()
-			hkRow.Parent = ctxMenu
+			hkRow.LayoutOrder = 2
+			hkRow.Parent = hotkeyGroup
+			Instance.new("UICorner", hkRow).CornerRadius = UDim.new(0, 5)
+			local hkStroke = Instance.new("UIStroke", hkRow)
+			hkStroke.Color = self.theme.Border
+			hkStroke.Thickness = 1
 			
 			local hkTextLbl = Instance.new("TextLabel")
 			hkTextLbl.Size = UDim2.new(1, -60, 1, 0)
@@ -1112,6 +1175,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			hkTextLbl.TextSize = 12
 			hkTextLbl.TextXAlignment = Enum.TextXAlignment.Left
 			hkTextLbl.ZIndex = 902
+			hkTextLbl.Parent = hkRow
 
 			local hkBox = Instance.new("TextButton")
 			hkBox.Size = UDim2.new(0, 52, 0, 20)
@@ -1123,12 +1187,11 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			hkBox.Font = Enum.Font.GothamBold
 			hkBox.TextSize = 10
 			hkBox.ZIndex = 902
-			Instance.new("UICorner", hkBox).CornerRadius = UDim.new(0, 4)
-			local hkStroke = Instance.new("UIStroke", hkBox)
-			hkStroke.Color = self.theme.Border
-			hkStroke.Thickness = 1
-			hkTextLbl.Parent = hkRow
 			hkBox.Parent = hkRow
+			Instance.new("UICorner", hkBox).CornerRadius = UDim.new(0, 4)
+			local hkStrokeBtn = Instance.new("UIStroke", hkBox)
+			hkStrokeBtn.Color = self.theme.Border
+			hkStrokeBtn.Thickness = 1
 
 			local listening = false
 			hkBox.MouseButton1Click:Connect(function()
@@ -1591,23 +1654,15 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 		end)
 	end
 
-	local handle = Instance.new("ImageButton")
-	handle.Name = "ResizeHandle"
-	handle.Size = UDim2.new(0, 36, 0, 36)
-	handle.Position = UDim2.new(1, 0, 1, 0)
-	handle.AnchorPoint = Vector2.new(0.5, 0.5)
-	handle.BackgroundTransparency = 1
-	handle.Image = "rbxassetid://16168010419"
-	handle.ImageColor3 = self.theme.Accent
-	handle.ZIndex = 105
-	handle.Parent = self.window
+	local handles = {}
+	local activeCorner = nil
 
-	handle.MouseEnter:Connect(function()
-		TweenService:Create(handle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Size = UDim2.new(0, 42, 0, 42) }):Play()
-	end)
-	handle.MouseLeave:Connect(function()
-		TweenService:Create(handle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Size = UDim2.new(0, 36, 0, 36) }):Play()
-	end)
+	local cornerConfigs = {
+		BR = { Pos = UDim2.new(1, 0, 1, 0), Rot = 0 },
+		BL = { Pos = UDim2.new(0, 0, 1, 0), Rot = 90 },
+		TL = { Pos = UDim2.new(0, 0, 0, 0), Rot = 180 },
+		TR = { Pos = UDim2.new(1, 0, 0, 0), Rot = 270 }
+	}
 
 	local dragging = false
 	local startMouse = Vector2.new(0, 0)
@@ -1616,18 +1671,37 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	local dragConn
 	local dragEndConn
 
-	local function startDrag()
-		dragging = true
-		startMouse = UIS:GetMouseLocation()
-		startSize = self.size
-		startPos = self.window.Position
-	end
+	for cornerName, config in pairs(cornerConfigs) do
+		local handle = Instance.new("ImageButton")
+		handle.Name = "ResizeHandle_" .. cornerName
+		handle.Size = UDim2.new(0, 36, 0, 36)
+		handle.Position = config.Pos
+		handle.AnchorPoint = Vector2.new(0.5, 0.5)
+		handle.BackgroundTransparency = 1
+		handle.Image = "rbxassetid://16168010419"
+		handle.Rotation = config.Rot
+		handle.ImageColor3 = self.theme.Accent
+		handle.ZIndex = 105
+		handle.Parent = self.window
+		handles[cornerName] = handle
 
-	handle.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			startDrag()
-		end
-	end)
+		handle.MouseEnter:Connect(function()
+			TweenService:Create(handle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Size = UDim2.new(0, 42, 0, 42) }):Play()
+		end)
+		handle.MouseLeave:Connect(function()
+			TweenService:Create(handle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Size = UDim2.new(0, 36, 0, 36) }):Play()
+		end)
+
+		handle.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				activeCorner = cornerName
+				dragging = true
+				startMouse = UIS:GetMouseLocation()
+				startSize = self.size
+				startPos = self.window.Position
+			end
+		end)
+	end
 
 	local function exitMode()
 		self.inResizeMode = false
@@ -1642,7 +1716,9 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 		task.delay(0.2, function()
 			backdrop:Destroy()
 		end)
-		handle:Destroy()
+		for _, h in pairs(handles) do
+			pcall(function() h:Destroy() end)
+		end
 
 		local finalW = math.floor(self.size.X)
 		local finalH = math.floor(self.size.Y)
@@ -1662,10 +1738,23 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	end
 
 	dragConn = UIS.InputChanged:Connect(function(input)
-		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		if dragging and activeCorner and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 			local mousePos = UIS:GetMouseLocation()
-			local deltaX = mousePos.X - startMouse.X
-			local deltaY = mousePos.Y - startMouse.Y
+			local deltaX, deltaY
+			
+			if activeCorner == "BR" then
+				deltaX = mousePos.X - startMouse.X
+				deltaY = mousePos.Y - startMouse.Y
+			elseif activeCorner == "BL" then
+				deltaX = startMouse.X - mousePos.X
+				deltaY = mousePos.Y - startMouse.Y
+			elseif activeCorner == "TR" then
+				deltaX = mousePos.X - startMouse.X
+				deltaY = startMouse.Y - mousePos.Y
+			elseif activeCorner == "TL" then
+				deltaX = startMouse.X - mousePos.X
+				deltaY = startMouse.Y - mousePos.Y
+			end
 			
 			local newW = math.max(450, math.min(1200, startSize.X + deltaX))
 			local newH = math.max(350, math.min(800, startSize.Y + deltaY))
@@ -1679,7 +1768,23 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 
 			self.size = Vector2.new(newW, newH)
 			self.window.Size = UDim2.new(0, newW, 0, newH)
-			self.window.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + (changeX / 2), startPos.Y.Scale, startPos.Y.Offset + (changeY / 2))
+			
+			local offsetX, offsetY
+			if activeCorner == "BR" then
+				offsetX = changeX / 2
+				offsetY = changeY / 2
+			elseif activeCorner == "BL" then
+				offsetX = -changeX / 2
+				offsetY = changeY / 2
+			elseif activeCorner == "TR" then
+				offsetX = changeX / 2
+				offsetY = -changeY / 2
+			elseif activeCorner == "TL" then
+				offsetX = -changeX / 2
+				offsetY = -changeY / 2
+			end
+			
+			self.window.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + offsetX, startPos.Y.Scale, startPos.Y.Offset + offsetY)
 			self.updateLayout()
 		end
 	end)
