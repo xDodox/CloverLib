@@ -1575,11 +1575,15 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	end)
 
 	local dragging = false
+	local startMouse = Vector2.new(0, 0)
+	local startSize = Vector2.new(0, 0)
 	local dragConn
 	local dragEndConn
 
 	local function startDrag()
 		dragging = true
+		startMouse = UIS:GetMouseLocation()
+		startSize = self.size
 	end
 
 	handle.InputBegan:Connect(function(input)
@@ -1622,10 +1626,11 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	dragConn = UIS.InputChanged:Connect(function(input)
 		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 			local mousePos = UIS:GetMouseLocation()
-			local center = self.window.AbsolutePosition + (self.window.AbsoluteSize / 2)
+			local deltaX = mousePos.X - startMouse.X
+			local deltaY = mousePos.Y - startMouse.Y
 			
-			local newW = math.max(450, math.min(1200, (mousePos.X - center.X) * 2))
-			local newH = math.max(350, math.min(800, (mousePos.Y - center.Y) * 2))
+			local newW = math.max(450, math.min(1200, startSize.X + deltaX * 2))
+			local newH = math.max(350, math.min(800, startSize.Y + deltaY * 2))
 
 			local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
 			newW = math.min(newW, vp.X - 40)
