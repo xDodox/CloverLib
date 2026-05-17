@@ -1487,16 +1487,19 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	if self.inResizeMode then return end
 	self.inResizeMode = true
 
+	local originalZIndex = self.window.ZIndex
+	self.window.ZIndex = 100
+
 	local backdrop = Instance.new("TextButton")
 	backdrop.Size = UDim2.new(1, 0, 1, 0)
 	backdrop.BackgroundColor3 = Color3.new(0, 0, 0)
 	backdrop.BackgroundTransparency = 1
 	backdrop.Text = ""
 	backdrop.AutoButtonColor = false
-	backdrop.ZIndex = 4
+	backdrop.ZIndex = 99
 	backdrop.Parent = self.sg
 	
-	TweenService:Create(backdrop, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { BackgroundTransparency = 0.65 }):Play()
+	TweenService:Create(backdrop, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { BackgroundTransparency = 0.75 }):Play()
 
 	local instruction = Instance.new("TextLabel")
 	instruction.Size = UDim2.new(1, 0, 0, 40)
@@ -1506,7 +1509,7 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	instruction.TextColor3 = Color3.new(1, 1, 1)
 	instruction.Font = Enum.Font.GothamBold
 	instruction.TextSize = 16
-	instruction.ZIndex = 5
+	instruction.ZIndex = 101
 	instruction.Parent = backdrop
 
 	local subtext = Instance.new("TextLabel")
@@ -1517,7 +1520,7 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	subtext.TextColor3 = self.theme.GrayLt
 	subtext.Font = Enum.Font.GothamSemibold
 	subtext.TextSize = 12
-	subtext.ZIndex = 5
+	subtext.ZIndex = 101
 	subtext.Parent = backdrop
 
 	local applyBtn = Instance.new("TextButton")
@@ -1529,7 +1532,7 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	applyBtn.TextColor3 = Color3.new(1, 1, 1)
 	applyBtn.Font = Enum.Font.GothamBold
 	applyBtn.TextSize = 13
-	applyBtn.ZIndex = 6
+	applyBtn.ZIndex = 102
 	applyBtn.Parent = backdrop
 	Instance.new("UICorner", applyBtn).CornerRadius = UDim.new(0, 6)
 
@@ -1555,7 +1558,7 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	handle.BackgroundTransparency = 1
 	handle.Image = "rbxassetid://16168010419"
 	handle.ImageColor3 = self.theme.Accent
-	handle.ZIndex = 2000
+	handle.ZIndex = 105
 	handle.Parent = self.window
 
 	handle.MouseEnter:Connect(function()
@@ -1581,6 +1584,7 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 
 	local function exitMode()
 		self.inResizeMode = false
+		self.window.ZIndex = originalZIndex
 		if pulseConn then pulseConn:Disconnect() end
 		if dragConn then dragConn:Disconnect() end
 		if dragEndConn then dragEndConn:Disconnect() end
@@ -2537,6 +2541,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	label.Font = Enum.Font.GothamSemibold
 	label.TextSize = 12
 	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.TextWrapped = true
 	label.ZIndex = 3
 	label.Parent = row
 
@@ -3900,15 +3905,11 @@ function UILib.Column:addGroup(title)
 				checks[opt] = ol
 				ob.MouseEnter:Connect(function()
 					if opt ~= currentSelection then
-						TweenService:Create(bg, TweenInfo.new(0.08),
-							{ BackgroundColor3 = Color3.fromRGB(32, 32, 32), BackgroundTransparency = 0 }):Play()
-						ol.TextColor3 = window.theme.GrayLt
+						ol.TextColor3 = window.theme.White
 					end
 				end)
 				ob.MouseLeave:Connect(function()
 					if opt ~= currentSelection then
-						TweenService:Create(bg, TweenInfo.new(0.08),
-							{ BackgroundColor3 = window.theme.Accent, BackgroundTransparency = 1 }):Play()
 						ol.TextColor3 = window.theme.Gray
 					end
 				end)
@@ -4085,6 +4086,7 @@ function UILib.Column:addGroup(title)
 		lbl.Font = Enum.Font.GothamSemibold
 		lbl.TextSize = 13
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
+		lbl.TextWrapped = true
 		lbl.ZIndex = 3
 		lbl.Parent = r
 
@@ -4928,7 +4930,7 @@ function UILib.Column:addGroup(title)
 		r.BorderSizePixel = 0
 		r.Parent = items
 		local lbl = Instance.new("TextLabel")
-		lbl.Size = UDim2.new(1, -48, 0, 18)
+		lbl.Size = UDim2.new(1, -90, 0, 18)
 		lbl.Position = UDim2.new(0, 4, 0, 3)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
@@ -4936,6 +4938,7 @@ function UILib.Column:addGroup(title)
 		lbl.Font = Enum.Font.GothamSemibold
 		lbl.TextSize = 12
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
+		lbl.TextWrapped = true
 		lbl.ZIndex = 3
 		lbl.Parent = r
 		local valueBox = Instance.new("Frame")
