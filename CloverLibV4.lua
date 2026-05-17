@@ -3302,7 +3302,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	label.Font = Enum.Font.GothamSemibold
 	label.TextSize = 12
 	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.TextWrapped = true
+	label.TextWrapped = false
 	label.ZIndex = 11
 	label.Parent = row
 	local dbtn = Instance.new("TextButton")
@@ -3863,7 +3863,7 @@ function UILib.Column:addGroup(title)
 		lbl.Font = Enum.Font.GothamSemibold
 		lbl.TextSize = 12
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
-		lbl.TextWrapped = true
+		lbl.TextWrapped = false
 		lbl.ZIndex = 11
 		lbl.Parent = r
 
