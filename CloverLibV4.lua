@@ -149,7 +149,8 @@ function UILib:notify(message, notifType, duration)
 	local yPos = 10 + (index - 1) * 50
 	local notif = Instance.new("Frame")
 	notif.Size = UDim2.new(0, 240, 0, 42)
-	notif.Position = UDim2.new(1, 0, 0, yPos)
+	notif.AnchorPoint = Vector2.new(0, 1)
+	notif.Position = UDim2.new(1, 0, 1, -yPos)
 	notif.BackgroundColor3 = self.theme.Panel
 	notif.BorderSizePixel = 0
 	notif.ZIndex = 500
@@ -188,8 +189,8 @@ function UILib:notify(message, notifType, duration)
 	label.ZIndex = 501
 	label.Parent = notif
 	table.insert(self.notifications, notif)
-	local targetX = UDim2.new(1, -250, 0, yPos)
-	notif.Position = UDim2.new(1, 0, 0, yPos)
+	local targetX = UDim2.new(1, -250, 1, -yPos)
+	notif.Position = UDim2.new(1, 0, 1, -yPos)
 	local tweenIn = TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 		{ Position = targetX })
 	tweenIn:Play()
@@ -198,7 +199,7 @@ function UILib:notify(message, notifType, duration)
 	task.delay(duration, function()
 		if not notif or not notif.Parent then return end
 		local out = TweenService:Create(notif, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-			{ Position = UDim2.new(1, 0, 0, yPos) })
+			{ Position = UDim2.new(1, 0, 1, -yPos) })
 		out:Play()
 		out.Completed:Connect(function()
 			if notif and notif.Parent then notif:Destroy() end
@@ -212,7 +213,7 @@ function UILib:notify(message, notifType, duration)
 					if n and n.Parent then
 						local newY = 10 + (i - 1) * 50
 						TweenService:Create(n, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-							Position = UDim2.new(1, -250, 0, newY)
+							Position = UDim2.new(1, -250, 1, -newY)
 						}):Play()
 					end
 				end
