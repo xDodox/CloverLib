@@ -961,14 +961,14 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			modeLbl.ZIndex = 902
 			modeLbl.Parent = modeRow
 
-			local modeArrow = Instance.new("TextLabel")
-			modeArrow.Size = UDim2.new(0, 18, 1, 0)
-			modeArrow.Position = UDim2.new(1, -20, 0, 0)
+			local modeArrow = Instance.new("ImageLabel")
+			modeArrow.Size = UDim2.new(0, 10, 0, 10)
+			modeArrow.AnchorPoint = Vector2.new(1, 0.5)
+			modeArrow.Position = UDim2.new(1, -10, 0.5, 0)
 			modeArrow.BackgroundTransparency = 1
-			modeArrow.Text = "â–¼"
-			modeArrow.TextColor3 = self.theme.Gray
-			modeArrow.Font = Enum.Font.GothamBold
-			modeArrow.TextSize = 9
+			modeArrow.Image = "rbxassetid://6034818379"
+			modeArrow.ImageColor3 = self.theme.Gray
+			modeArrow.ScaleType = Enum.ScaleType.Fit
 			modeArrow.ZIndex = 902
 			modeArrow.Parent = modeRow
 
@@ -1022,22 +1022,24 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 				optLbl.TextSize = 11
 				optLbl.TextXAlignment = Enum.TextXAlignment.Left
 				optLbl.ZIndex = 922
-				local checkLbl = Instance.new("TextLabel", opt)
-				checkLbl.Size = UDim2.new(0, 16, 1, 0)
-				checkLbl.Position = UDim2.new(1, -18, 0, 0)
-				checkLbl.BackgroundTransparency = 1
-				checkLbl.Text = isActive and "âœ“" or ""
-				checkLbl.TextColor3 = self.theme.Accent
-				checkLbl.Font = Enum.Font.GothamBold
-				checkLbl.TextSize = 11
-				checkLbl.ZIndex = 922
+				
+				local checkDot = Instance.new("Frame", opt)
+				checkDot.Size = UDim2.new(0, 6, 0, 6)
+				checkDot.Position = UDim2.new(1, -16, 0.5, -3)
+				checkDot.BackgroundColor3 = self.theme.Accent
+				checkDot.BorderSizePixel = 0
+				checkDot.ZIndex = 922
+				checkDot.Visible = isActive
+				Instance.new("UICorner", checkDot).CornerRadius = UDim.new(1, 0)
+
 				opt.MouseButton1Click:Connect(function()
 					elemConfig.Mode = mode
 					modeLbl.Text = modeNames[mode]
 					if mode == "always" then elemConfig:SetValue(true) end
 					self:notify("Mode: " .. modeNames[mode], "info", 1.5)
 					modeList.Visible = false
-					modeArrow.Text = "â–¼"
+					modeArrow.Rotation = 0
+					modeArrow.ImageColor3 = self.theme.Gray
 					closeContextMenu()
 				end)
 			end
@@ -1052,7 +1054,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			modeBtn.MouseButton1Click:Connect(function()
 				modeOpen = not modeOpen
 				modeList.Visible = modeOpen
-				modeArrow.Text = modeOpen and "â–²" or "â–¼"
+				modeArrow.Rotation = modeOpen and 180 or 0
+				modeArrow.ImageColor3 = modeOpen and self.theme.Accent or self.theme.Gray
 				task.defer(function()
 					ctxMenu.Size = UDim2.new(0, 180, 0, ctxLayout.AbsoluteContentSize.Y + 12
 						+ (modeOpen and modeList.AbsoluteSize.Y or 0))
