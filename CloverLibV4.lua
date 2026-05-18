@@ -1646,7 +1646,7 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	backdrop.ZIndex = 99
 	backdrop.Parent = self.sg
 	
-	TweenService:Create(backdrop, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { BackgroundTransparency = 0.75 }):Play()
+	TweenService:Create(backdrop, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { BackgroundTransparency = 0.45 }):Play()
 
 	local instruction = Instance.new("TextLabel")
 	instruction.Size = UDim2.new(1, 0, 0, 40)
@@ -1673,7 +1673,7 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	local applyBtn = Instance.new("TextButton")
 	applyBtn.Size = UDim2.new(0, 140, 0, 36)
 	applyBtn.Position = UDim2.new(0.5, -70, 0, 120)
-	applyBtn.BackgroundColor3 = self.theme.Accent
+	applyBtn.BackgroundColor3 = self.theme.Accent:Lerp(Color3.new(0, 0, 0), 0.35)
 	applyBtn.BorderSizePixel = 0
 	applyBtn.Text = "EXIT & SAVE"
 	applyBtn.TextColor3 = Color3.new(1, 1, 1)
