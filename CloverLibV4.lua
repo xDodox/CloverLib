@@ -613,6 +613,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	sidebar.ScrollBarThickness = 0
 	sidebar.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	sidebar.CanvasSize = UDim2.new(1, 0, 0, 0)
+	sidebar.ScrollingDirection = Enum.ScrollingDirection.Y
 	sidebar.ClipsDescendants = true
 	sidebar.Parent = win
 	self.sidebar = sidebar
@@ -2349,6 +2350,7 @@ function UILib:addTab(name, options)
 	tab.underline = underline
 
 	local function activate()
+		if self.activeTab == tab then return end
 		if self.tabOverlay and self.activeTab then
 			self.tabOverlay.BackgroundTransparency = 0.15
 			TweenService:Create(self.tabOverlay, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
@@ -2463,7 +2465,7 @@ function UILib.Tab:addSubTab(name)
 	label.Text = name
 	label.TextColor3 = self.window.theme.Gray
 	label.Font = Enum.Font.GothamSemibold
-	label.TextSize = 10
+	label.TextSize = 11
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.ZIndex = 6
 	label.Parent = btn
