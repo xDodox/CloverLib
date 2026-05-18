@@ -597,7 +597,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	sidebar.CanvasSize = UDim2.new(0, 0, 0, 0)
 	sidebar.ClipsDescendants = true
 	sidebar.Parent = win
-	Instance.new("UICorner", sidebar).CornerRadius = UDim.new(0, 10)
 	self.sidebar = sidebar
 	local sidebarLayout = Instance.new("UIListLayout", sidebar)
 	sidebarLayout.Padding = UDim.new(0, 2)
@@ -650,7 +649,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	navbar.CanvasSize = UDim2.new(0, 0, 0, 0)
 	navbar.ClipsDescendants = true
 	navbar.Parent = win
-	Instance.new("UICorner", navbar).CornerRadius = UDim.new(0, 10)
 
 	local navTopLine = Instance.new("Frame")
 	navTopLine.Size = UDim2.new(1, 0, 0, 1)
@@ -2405,7 +2403,7 @@ function UILib.Tab:addSubTab(name)
 
 	local selLine = Instance.new("Frame")
 	selLine.Size = UDim2.new(0, 3, 0, 12)
-	selLine.Position = UDim2.new(0, 6, 0.5, -6)
+	selLine.Position = UDim2.new(0, -6, 0.5, -6)
 	selLine.BackgroundColor3 = self.window.theme.Accent
 	selLine.BorderSizePixel = 0
 	selLine.Visible = false
