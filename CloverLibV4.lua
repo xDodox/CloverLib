@@ -3457,79 +3457,100 @@ local function createMultiDropdown(group, items, window, text, options, default,
 		end
 		checks = {}
 		backgrounds = {}
+		
+		local filtered = {}
 		for _, opt in ipairs(opts) do
-			local isSel = selected[opt] and true or false
-			local ob = Instance.new("TextButton")
-			ob.Size = UDim2.new(1, 0, 0, 28)
-			ob.BackgroundColor3 = isSel and Color3.fromRGB(20, 34, 26) or window.theme.Base
-			ob.BackgroundTransparency = 0
-			ob.AutoButtonColor = false
-			ob.Text = ""
-			ob.ZIndex = 51
-			ob.Parent = dlist
-
-			local bar = Instance.new("Frame")
-			bar.Size = UDim2.new(0, 2, 0, 14)
-			bar.Position = UDim2.new(0, 0, 0.5, -7)
-			bar.BackgroundColor3 = window.theme.Accent
-			bar.BorderSizePixel = 0
-			bar.Visible = isSel
-			bar.ZIndex = 53
-			bar.Parent = ob
-			Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 1)
-			backgrounds[opt] = bar
-			table.insert(window.accentObjects, bar)
-			local ol = Instance.new("TextLabel")
-			ol.Size = UDim2.new(1, -12, 1, 0)
-			ol.Position = UDim2.new(0, 10, 0, 0)
-			ol.BackgroundTransparency = 1
-			ol.Text = opt
-			ol.TextColor3 = isSel and window.theme.White or window.theme.Gray
-			ol.Font = isSel and Enum.Font.GothamBold or Enum.Font.GothamSemibold
-			ol.TextSize = 12
-			ol.TextXAlignment = Enum.TextXAlignment.Left
-			ol.ZIndex = 52
-			ol.Parent = ob
-			checks[opt] = ol
-			ob.MouseEnter:Connect(function()
-				if not selected[opt] then
-					TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = Color3.fromRGB(32, 32, 32) }):Play()
-					ol.TextColor3 = window.theme.GrayLt
-				end
-			end)
-			ob.MouseLeave:Connect(function()
-				if not selected[opt] then
-					TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = window.theme.Base }):Play()
-					ol.TextColor3 = window.theme.Gray
-				end
-			end)
-			ob.MouseButton1Click:Connect(function()
-				if selected[opt] then
-					selected[opt] = nil
-					bar.Visible = false
-					ol.TextColor3 = window.theme.Gray
-					ol.Font = Enum.Font.GothamSemibold
-					TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = window.theme.Base }):Play()
-				else
-					selected[opt] = true
-					bar.Visible = true
-					ol.TextColor3 = window.theme.White
-					ol.Font = Enum.Font.GothamBold
-					TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = Color3.fromRGB(20, 34, 26) }):Play()
-				end
-				local keys = {}
-				for k, _ in pairs(selected) do table.insert(keys, k) end
-				local s = #keys > 0 and table.concat(keys, ", ") or "None"
-				if #s > 25 then
-					selLbl.Text = #keys .. " Items Selected"
-				else
-					selLbl.Text = s
-				end
-				if callback then callback(keys) end
-				window.configs[id].Value = keys
-			end)
+			if opt ~= "None" and opt ~= "" then
+				table.insert(filtered, opt)
+			end
 		end
-		listH = #opts * 28 + 8
+
+		if #filtered == 0 then
+			local lbl = Instance.new("TextLabel")
+			lbl.Size = UDim2.new(1, 0, 0, 28)
+			lbl.BackgroundTransparency = 1
+			lbl.Text = "No active mobs found"
+			lbl.TextColor3 = window.theme.Gray
+			lbl.Font = Enum.Font.GothamSemibold
+			lbl.TextSize = 11
+			lbl.ZIndex = 52
+			lbl.Parent = dlist
+			listH = 36
+		else
+			for _, opt in ipairs(filtered) do
+				local isSel = selected[opt] and true or false
+				local ob = Instance.new("TextButton")
+				ob.Size = UDim2.new(1, 0, 0, 28)
+				ob.BackgroundColor3 = isSel and Color3.fromRGB(20, 34, 26) or window.theme.Base
+				ob.BackgroundTransparency = 0
+				ob.AutoButtonColor = false
+				ob.Text = ""
+				ob.ZIndex = 51
+				ob.Parent = dlist
+
+				local bar = Instance.new("Frame")
+				bar.Size = UDim2.new(0, 2, 0, 14)
+				bar.Position = UDim2.new(0, 0, 0.5, -7)
+				bar.BackgroundColor3 = window.theme.Accent
+				bar.BorderSizePixel = 0
+				bar.Visible = isSel
+				bar.ZIndex = 53
+				bar.Parent = ob
+				Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 1)
+				backgrounds[opt] = bar
+				table.insert(window.accentObjects, bar)
+				local ol = Instance.new("TextLabel")
+				ol.Size = UDim2.new(1, -12, 1, 0)
+				ol.Position = UDim2.new(0, 10, 0, 0)
+				ol.BackgroundTransparency = 1
+				ol.Text = opt
+				ol.TextColor3 = isSel and window.theme.White or window.theme.Gray
+				ol.Font = isSel and Enum.Font.GothamBold or Enum.Font.GothamSemibold
+				ol.TextSize = 12
+				ol.TextXAlignment = Enum.TextXAlignment.Left
+				ol.ZIndex = 52
+				ol.Parent = ob
+				checks[opt] = ol
+				ob.MouseEnter:Connect(function()
+					if not selected[opt] then
+						TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = Color3.fromRGB(32, 32, 32) }):Play()
+						ol.TextColor3 = window.theme.GrayLt
+					end
+				end)
+				ob.MouseLeave:Connect(function()
+					if not selected[opt] then
+						TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = window.theme.Base }):Play()
+						ol.TextColor3 = window.theme.Gray
+					end
+				end)
+				ob.MouseButton1Click:Connect(function()
+					if selected[opt] then
+						selected[opt] = nil
+						bar.Visible = false
+						ol.TextColor3 = window.theme.Gray
+						ol.Font = Enum.Font.GothamSemibold
+						TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = window.theme.Base }):Play()
+					else
+						selected[opt] = true
+						bar.Visible = true
+						ol.TextColor3 = window.theme.White
+						ol.Font = Enum.Font.GothamBold
+						TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = Color3.fromRGB(20, 34, 26) }):Play()
+					end
+					local keys = {}
+					for k, _ in pairs(selected) do table.insert(keys, k) end
+					local s = #keys > 0 and table.concat(keys, ", ") or "None"
+					if #s > 25 then
+						selLbl.Text = #keys .. " Items Selected"
+					else
+						selLbl.Text = s
+					end
+					if callback then callback(keys) end
+					window.configs[id].Value = keys
+				end)
+			end
+			listH = #filtered * 28 + 8
+		end
 		dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
 		if open then
 			local targetListH = math.min(listH, 160)
