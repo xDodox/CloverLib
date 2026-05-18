@@ -3327,6 +3327,31 @@ local function createColorPicker(group, items, window, text, default, callback)
 	return row, elem
 end
 
+local function buildDropdownRefreshBtn(row, window, refreshCallback)
+	if not refreshCallback then return nil end
+	local refreshBtn = Instance.new("TextButton")
+	refreshBtn.Size = UDim2.new(0, 52, 0, 18)
+	refreshBtn.Position = UDim2.new(1, -54, 0, 2)
+	refreshBtn.BackgroundColor3 = window.theme.Track
+	refreshBtn.Text = "Refresh"
+	refreshBtn.TextColor3 = window.theme.GrayLt
+	refreshBtn.Font = Enum.Font.GothamSemibold
+	refreshBtn.TextSize = 10
+	refreshBtn.ZIndex = 12
+	refreshBtn.Parent = row
+	Instance.new("UICorner", refreshBtn).CornerRadius = UDim.new(0, 4)
+	local rStroke = Instance.new("UIStroke", refreshBtn)
+	rStroke.Color = window.theme.Border
+	rStroke.Thickness = 1
+	refreshBtn.MouseEnter:Connect(function()
+		refreshBtn.TextColor3 = window.theme.White
+	end)
+	refreshBtn.MouseLeave:Connect(function()
+		refreshBtn.TextColor3 = window.theme.GrayLt
+	end)
+	return refreshBtn
+end
+
 local function createMultiDropdown(group, items, window, text, options, default, callback, refreshCallback)
 	local id = generateID()
 	local row = Instance.new("Frame")
@@ -3422,79 +3447,108 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	if default then for _, v in ipairs(default) do selected[v] = true end end
 	local checks = {}
 	local backgrounds = {}
-	for _, opt in ipairs(options) do
-		local isSel = selected[opt] and true or false
-		local ob = Instance.new("TextButton")
-		ob.Size = UDim2.new(1, 0, 0, 28)
-		ob.BackgroundColor3 = isSel and Color3.fromRGB(20, 34, 26) or window.theme.Base
-		ob.BackgroundTransparency = 0
-		ob.AutoButtonColor = false
-		ob.Text = ""
-		ob.ZIndex = 51
-		ob.Parent = dlist
+	local open = false
 
-		local bar = Instance.new("Frame")
-		bar.Size = UDim2.new(0, 2, 0, 14)
-		bar.Position = UDim2.new(0, 0, 0.5, -7)
-		bar.BackgroundColor3 = window.theme.Accent
-		bar.BorderSizePixel = 0
-		bar.Visible = isSel
-		bar.ZIndex = 53
-		bar.Parent = ob
-		Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 1)
-		backgrounds[opt] = bar
-		table.insert(window.accentObjects, bar)
-		local ol = Instance.new("TextLabel")
-		ol.Size = UDim2.new(1, -12, 1, 0)
-		ol.Position = UDim2.new(0, 10, 0, 0)
-		ol.BackgroundTransparency = 1
-		ol.Text = opt
-		ol.TextColor3 = isSel and window.theme.White or window.theme.Gray
-		ol.Font = isSel and Enum.Font.GothamBold or Enum.Font.GothamSemibold
-		ol.TextSize = 12
-		ol.TextXAlignment = Enum.TextXAlignment.Left
-		ol.ZIndex = 52
-		ol.Parent = ob
-		checks[opt] = ol
-		ob.MouseEnter:Connect(function()
-			if not selected[opt] then
-				TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = Color3.fromRGB(32, 32, 32) }):Play()
-				ol.TextColor3 = window.theme.GrayLt
+	local function buildOptions(opts)
+		for _, child in ipairs(dlist:GetChildren()) do
+			if not child:IsA("UIListLayout") then child:Destroy() end
+		end
+		checks = {}
+		backgrounds = {}
+		for _, opt in ipairs(opts) do
+			local isSel = selected[opt] and true or false
+			local ob = Instance.new("TextButton")
+			ob.Size = UDim2.new(1, 0, 0, 28)
+			ob.BackgroundColor3 = isSel and Color3.fromRGB(20, 34, 26) or window.theme.Base
+			ob.BackgroundTransparency = 0
+			ob.AutoButtonColor = false
+			ob.Text = ""
+			ob.ZIndex = 51
+			ob.Parent = dlist
+
+			local bar = Instance.new("Frame")
+			bar.Size = UDim2.new(0, 2, 0, 14)
+			bar.Position = UDim2.new(0, 0, 0.5, -7)
+			bar.BackgroundColor3 = window.theme.Accent
+			bar.BorderSizePixel = 0
+			bar.Visible = isSel
+			bar.ZIndex = 53
+			bar.Parent = ob
+			Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 1)
+			backgrounds[opt] = bar
+			table.insert(window.accentObjects, bar)
+			local ol = Instance.new("TextLabel")
+			ol.Size = UDim2.new(1, -12, 1, 0)
+			ol.Position = UDim2.new(0, 10, 0, 0)
+			ol.BackgroundTransparency = 1
+			ol.Text = opt
+			ol.TextColor3 = isSel and window.theme.White or window.theme.Gray
+			ol.Font = isSel and Enum.Font.GothamBold or Enum.Font.GothamSemibold
+			ol.TextSize = 12
+			ol.TextXAlignment = Enum.TextXAlignment.Left
+			ol.ZIndex = 52
+			ol.Parent = ob
+			checks[opt] = ol
+			ob.MouseEnter:Connect(function()
+				if not selected[opt] then
+					TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = Color3.fromRGB(32, 32, 32) }):Play()
+					ol.TextColor3 = window.theme.GrayLt
+				end
+			end)
+			ob.MouseLeave:Connect(function()
+				if not selected[opt] then
+					TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = window.theme.Base }):Play()
+					ol.TextColor3 = window.theme.Gray
+				end
+			end)
+			ob.MouseButton1Click:Connect(function()
+				if selected[opt] then
+					selected[opt] = nil
+					bar.Visible = false
+					ol.TextColor3 = window.theme.Gray
+					ol.Font = Enum.Font.GothamSemibold
+					TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = window.theme.Base }):Play()
+				else
+					selected[opt] = true
+					bar.Visible = true
+					ol.TextColor3 = window.theme.White
+					ol.Font = Enum.Font.GothamBold
+					TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = Color3.fromRGB(20, 34, 26) }):Play()
+				end
+				local keys = {}
+				for k, _ in pairs(selected) do table.insert(keys, k) end
+				local s = #keys > 0 and table.concat(keys, ", ") or "None"
+				if #s > 25 then
+					selLbl.Text = #keys .. " Items Selected"
+				else
+					selLbl.Text = s
+				end
+				if callback then callback(keys) end
+				window.configs[id].Value = keys
+			end)
+		end
+		listH = #opts * 28 + 8
+		dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
+		if open then
+			local targetListH = math.min(listH, 160)
+			dlist.Size = UDim2.new(1, 0, 0, targetListH)
+			row.Size = UDim2.new(1, 0, 0, 56 + targetListH)
+			group.updateSize()
+		end
+	end
+
+	buildOptions(options)
+
+	if refreshBtn then
+		refreshBtn.MouseButton1Click:Connect(function()
+			if refreshCallback then
+				local newOpts = refreshCallback()
+				if newOpts then
+					buildOptions(newOpts)
+				end
 			end
-		end)
-		ob.MouseLeave:Connect(function()
-			if not selected[opt] then
-				TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = window.theme.Base }):Play()
-				ol.TextColor3 = window.theme.Gray
-			end
-		end)
-		ob.MouseButton1Click:Connect(function()
-			if selected[opt] then
-				selected[opt] = nil
-				bar.Visible = false
-				ol.TextColor3 = window.theme.Gray
-				ol.Font = Enum.Font.GothamSemibold
-				TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = window.theme.Base }):Play()
-			else
-				selected[opt] = true
-				bar.Visible = true
-				ol.TextColor3 = window.theme.White
-				ol.Font = Enum.Font.GothamBold
-				TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = Color3.fromRGB(20, 34, 26) }):Play()
-			end
-			local keys = {}
-			for k, _ in pairs(selected) do table.insert(keys, k) end
-			local s = #keys > 0 and table.concat(keys, ", ") or "None"
-			if #s > 25 then
-				selLbl.Text = #keys .. " Items Selected"
-			else
-				selLbl.Text = s
-			end
-			if callback then callback(keys) end
-			window.configs[id].Value = keys
 		end)
 	end
-	local open = false
 	dbtn.MouseButton1Click:Connect(function()
 		open = not open
 		window.tooltipSuppressed = open
@@ -3577,30 +3631,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	return row, elem
 end
 
-local function buildDropdownRefreshBtn(row, window, refreshCallback)
-	if not refreshCallback then return nil end
-	local refreshBtn = Instance.new("TextButton")
-	refreshBtn.Size = UDim2.new(0, 52, 0, 18)
-	refreshBtn.Position = UDim2.new(1, -54, 0, 2)
-	refreshBtn.BackgroundColor3 = window.theme.Track
-	refreshBtn.Text = "Refresh"
-	refreshBtn.TextColor3 = window.theme.GrayLt
-	refreshBtn.Font = Enum.Font.GothamSemibold
-	refreshBtn.TextSize = 10
-	refreshBtn.ZIndex = 12
-	refreshBtn.Parent = row
-	Instance.new("UICorner", refreshBtn).CornerRadius = UDim.new(0, 4)
-	local rStroke = Instance.new("UIStroke", refreshBtn)
-	rStroke.Color = window.theme.Border
-	rStroke.Thickness = 1
-	refreshBtn.MouseEnter:Connect(function()
-		refreshBtn.TextColor3 = window.theme.White
-	end)
-	refreshBtn.MouseLeave:Connect(function()
-		refreshBtn.TextColor3 = window.theme.GrayLt
-	end)
-	return refreshBtn
-end
+
 
 function UILib.Column:addGroup(title)
 	local window = self.window
