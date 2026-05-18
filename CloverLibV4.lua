@@ -3327,7 +3327,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 	return row, elem
 end
 
-local function createMultiDropdown(group, items, window, text, options, default, callback)
+local function createMultiDropdown(group, items, window, text, options, default, callback, refreshCallback)
 	local id = generateID()
 	local row = Instance.new("Frame")
 	row.Size = UDim2.new(1, 0, 0, 56)
@@ -3336,7 +3336,8 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	row.ZIndex = 10
 	row.Parent = items
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, 0, 18)
+	local labelWidth = refreshCallback and UDim2.new(1, -64, 0, 18) or UDim2.new(1, -10, 0, 18)
+	label.Size = labelWidth
 	label.Position = UDim2.new(0, 4, 0, 2)
 	label.BackgroundTransparency = 1
 	label.Text = text
@@ -3347,6 +3348,8 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	label.TextWrapped = false
 	label.ZIndex = 11
 	label.Parent = row
+
+	local refreshBtn = buildDropdownRefreshBtn(row, window, refreshCallback)
 	local dbtn = Instance.new("TextButton")
 	dbtn.Size = UDim2.new(1, 0, 0, 28)
 	dbtn.Position = UDim2.new(0, 0, 0, 26)
@@ -4770,7 +4773,7 @@ function UILib.Column:addGroup(title)
 
 		function ng:slider(t, mn, mx, d, cb, s, tt2) return reparent(group:slider(t, mn, mx, d, cb, s, tt2)) end
 
-		function ng:dropdown(t, o, d, cb, tt2) return reparent(group:dropdown(t, o, d, cb, tt2)) end
+		function ng:dropdown(t, o, d, cb, tt2, rf, ic) return reparent(group:dropdown(t, o, d, cb, tt2, rf, ic)) end
 
 		function ng:keybind(t, cur, cb, tt2) return reparent(group:keybind(t, cur, cb, tt2)) end
 
@@ -4782,7 +4785,7 @@ function UILib.Column:addGroup(title)
 
 		function ng:colorpicker(t, d, cb, tt2) return reparent(group:colorpicker(t, d, cb, tt2)) end
 
-		function ng:multidropdown(t, o, d, cb, tt2) return reparent(group:multidropdown(t, o, d, cb, tt2)) end
+		function ng:multidropdown(t, o, d, cb, tt2, rf) return reparent(group:multidropdown(t, o, d, cb, tt2, rf)) end
 
 		function ng:textbox(t, d, ph, cb, tt2) return reparent(group:textbox(t, d, ph or "", cb, tt2)) end
 
@@ -5011,8 +5014,8 @@ function UILib.Column:addGroup(title)
 		return elem
 	end
 
-	function group:multidropdown(text, options, default, callback, tooltip)
-		local r, elem = createMultiDropdown(group, items, window, text, options, default, callback)
+	function group:multidropdown(text, options, default, callback, tooltip, refreshCallback)
+		local r, elem = createMultiDropdown(group, items, window, text, options, default, callback, refreshCallback)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		return elem
