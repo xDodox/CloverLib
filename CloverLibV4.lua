@@ -490,6 +490,13 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	header.Parent = win
 	self.header = header
 	Instance.new("UICorner", header).CornerRadius = UDim.new(0, 10)
+	local headerCover = Instance.new("Frame")
+	headerCover.Size = UDim2.new(1, 0, 0, 10)
+	headerCover.Position = UDim2.new(0, 0, 1, -10)
+	headerCover.BackgroundColor3 = header.BackgroundColor3
+	headerCover.BorderSizePixel = 0
+	headerCover.ZIndex = header.ZIndex
+	headerCover.Parent = header
 	local headerLine = Instance.new("Frame")
 	headerLine.Size = UDim2.new(1, 0, 0, 2)
 	headerLine.Position = UDim2.new(0, 0, 1, -2)
@@ -649,6 +656,14 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	navbar.CanvasSize = UDim2.new(0, 0, 0, 0)
 	navbar.ClipsDescendants = true
 	navbar.Parent = win
+	Instance.new("UICorner", navbar).CornerRadius = UDim.new(0, 10)
+	local navbarCover = Instance.new("Frame")
+	navbarCover.Size = UDim2.new(1, 0, 0, 10)
+	navbarCover.Position = UDim2.new(0, 0, 0, 0)
+	navbarCover.BackgroundColor3 = navbar.BackgroundColor3
+	navbarCover.BorderSizePixel = 0
+	navbarCover.ZIndex = navbar.ZIndex
+	navbarCover.Parent = navbar
 
 	local navTopLine = Instance.new("Frame")
 	navTopLine.Size = UDim2.new(1, 0, 0, 1)
