@@ -466,8 +466,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			self.sidebar.Visible = showSidebar
 			for _, sub in ipairs(self.allSubTabs) do
 				if sub.btn then
-					sub.btn.Size = UDim2.new(1, -12, 0, 28)
-					sub.btn.Position = UDim2.new(0, 6, 0, 0)
+					sub.btn.Size = UDim2.new(1, -8, 0, 28)
+					sub.btn.Position = UDim2.new(0, 4, 0, 0)
 				end
 			end
 		end
@@ -505,14 +505,14 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	headerCover.Position = UDim2.new(0, 0, 1, -10)
 	headerCover.BackgroundColor3 = header.BackgroundColor3
 	headerCover.BorderSizePixel = 0
-	headerCover.ZIndex = 1
+	headerCover.ZIndex = 6
 	headerCover.Parent = header
 	local headerLine = Instance.new("Frame")
 	headerLine.Size = UDim2.new(1, 0, 0, 2)
 	headerLine.Position = UDim2.new(0, 0, 1, -2)
 	headerLine.BackgroundColor3 = self.theme.Accent
 	headerLine.BorderSizePixel = 0
-	headerLine.ZIndex = 6
+	headerLine.ZIndex = 7
 	headerLine.Parent = header
 	table.insert(self.accentObjects, headerLine)
 
@@ -628,6 +628,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	sidebarEdge.Position = UDim2.new(0, initialSW, 0, 46)
 	sidebarEdge.BackgroundColor3 = self.theme.Border
 	sidebarEdge.BorderSizePixel = 0
+	sidebarEdge.ZIndex = 5
 	sidebarEdge.Parent = win
 	self.sidebarEdge = sidebarEdge
 
@@ -654,11 +655,30 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	tabOverlay.Parent = win
 	self.tabOverlay = tabOverlay
 
+	local navbarBG = Instance.new("Frame")
+	navbarBG.Name = "NavbarBG"
+	navbarBG.Size = UDim2.new(1, 0, 0, 46)
+	navbarBG.Position = UDim2.new(0, 0, 1, -46)
+	navbarBG.BackgroundColor3 = self.theme.Panel
+	navbarBG.BorderSizePixel = 0
+	navbarBG.ZIndex = 58
+	navbarBG.Parent = win
+	self.navbarBG = navbarBG
+	Instance.new("UICorner", navbarBG).CornerRadius = UDim.new(0, 10)
+
+	local navbarCover = Instance.new("Frame")
+	navbarCover.Name = "NavbarCover"
+	navbarCover.Size = UDim2.new(1, 0, 0, 10)
+	navbarCover.Position = UDim2.new(0, 0, 0, 0)
+	navbarCover.BackgroundColor3 = navbarBG.BackgroundColor3
+	navbarCover.BorderSizePixel = 0
+	navbarCover.ZIndex = 59
+	navbarCover.Parent = navbarBG
+
 	local navbar = Instance.new("ScrollingFrame")
 	navbar.Size = UDim2.new(1, 0, 0, 46)
 	navbar.Position = UDim2.new(0, 0, 1, -46)
-	navbar.BackgroundColor3 = self.theme.Panel
-	navbar.BackgroundTransparency = 0
+	navbar.BackgroundTransparency = 1
 	navbar.BorderSizePixel = 0
 	navbar.ZIndex = 60
 	navbar.ScrollBarThickness = 0
@@ -667,14 +687,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	navbar.CanvasSize = UDim2.new(0, 0, 0, 0)
 	navbar.ClipsDescendants = true
 	navbar.Parent = win
-	Instance.new("UICorner", navbar).CornerRadius = UDim.new(0, 10)
-	local navbarCover = Instance.new("Frame")
-	navbarCover.Size = UDim2.new(1, 0, 0, 10)
-	navbarCover.Position = UDim2.new(0, 0, 0, 0)
-	navbarCover.BackgroundColor3 = navbar.BackgroundColor3
-	navbarCover.BorderSizePixel = 0
-	navbarCover.ZIndex = 1
-	navbarCover.Parent = navbar
 
 	local navTopLine = Instance.new("Frame")
 	navTopLine.Size = UDim2.new(1, 0, 0, 1)
@@ -2219,6 +2231,10 @@ function UILib:addTab(name, options)
 		self.navbarHeight = 58
 		self.navbar.Size = UDim2.new(1, 0, 0, 58)
 		self.navbar.Position = UDim2.new(0, 0, 1, -58)
+		if self.navbarBG then
+			self.navbarBG.Size = UDim2.new(1, 0, 0, 58)
+			self.navbarBG.Position = UDim2.new(0, 0, 1, -58)
+		end
 
 		if self.navTopLine then self.navTopLine.Position = UDim2.new(0, 0, 1, -58) end
 
@@ -2413,8 +2429,8 @@ function UILib.Tab:addSubTab(name)
 
 	local btn = Instance.new("TextButton")
 	table.insert(self.subtabOrder, sub)
-	btn.Size = UDim2.new(1, -12, 0, 28)
-	btn.Position = UDim2.new(0, 6, 0, 0)
+	btn.Size = UDim2.new(1, -8, 0, 28)
+	btn.Position = UDim2.new(0, 4, 0, 0)
 	btn.BackgroundTransparency = 1
 	btn.Text = ""
 	btn.ZIndex = 5
@@ -2431,7 +2447,7 @@ function UILib.Tab:addSubTab(name)
 
 	local selLine = Instance.new("Frame")
 	selLine.Size = UDim2.new(0, 3, 0, 12)
-	selLine.Position = UDim2.new(0, -6, 0.5, -6)
+	selLine.Position = UDim2.new(0, 0, 0.5, -6)
 	selLine.BackgroundColor3 = self.window.theme.Accent
 	selLine.BorderSizePixel = 0
 	selLine.Visible = false
@@ -2441,8 +2457,8 @@ function UILib.Tab:addSubTab(name)
 	table.insert(self.window.accentObjects, selLine)
 
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, -20, 1, 0)
-	label.Position = UDim2.new(0, 16, 0, 0)
+	label.Size = UDim2.new(1, -10, 1, 0)
+	label.Position = UDim2.new(0, 8, 0, 0)
 	label.BackgroundTransparency = 1
 	label.Text = name
 	label.TextColor3 = self.window.theme.Gray
