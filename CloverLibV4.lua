@@ -450,7 +450,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	self.visibleTarget = false
 
 	local function getSidebarWidth()
-		return math.max(MIN_SIDEBAR_WIDTH, math.min(MAX_SIDEBAR_WIDTH, math.floor(self.size.X * 0.15)))
+		return math.max(MIN_SIDEBAR_WIDTH, math.min(MAX_SIDEBAR_WIDTH, math.floor(self.size.X * 0.18)))
 	end
 	self.getSidebarWidth = getSidebarWidth
 
@@ -505,14 +505,14 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	headerCover.Position = UDim2.new(0, 0, 1, -10)
 	headerCover.BackgroundColor3 = header.BackgroundColor3
 	headerCover.BorderSizePixel = 0
-	headerCover.ZIndex = 6
+	headerCover.ZIndex = 1
 	headerCover.Parent = header
 	local headerLine = Instance.new("Frame")
 	headerLine.Size = UDim2.new(1, 0, 0, 2)
 	headerLine.Position = UDim2.new(0, 0, 1, -2)
 	headerLine.BackgroundColor3 = self.theme.Accent
 	headerLine.BorderSizePixel = 0
-	headerLine.ZIndex = 7
+	headerLine.ZIndex = 6
 	headerLine.Parent = header
 	table.insert(self.accentObjects, headerLine)
 
@@ -654,30 +654,11 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	tabOverlay.Parent = win
 	self.tabOverlay = tabOverlay
 
-	local navbarBG = Instance.new("Frame")
-	navbarBG.Name = "NavbarBG"
-	navbarBG.Size = UDim2.new(1, 0, 0, 46)
-	navbarBG.Position = UDim2.new(0, 0, 1, -46)
-	navbarBG.BackgroundColor3 = self.theme.Panel
-	navbarBG.BorderSizePixel = 0
-	navbarBG.ZIndex = 58
-	navbarBG.Parent = win
-	self.navbarBG = navbarBG
-	Instance.new("UICorner", navbarBG).CornerRadius = UDim.new(0, 10)
-
-	local navbarCover = Instance.new("Frame")
-	navbarCover.Name = "NavbarCover"
-	navbarCover.Size = UDim2.new(1, 0, 0, 10)
-	navbarCover.Position = UDim2.new(0, 0, 0, 0)
-	navbarCover.BackgroundColor3 = navbarBG.BackgroundColor3
-	navbarCover.BorderSizePixel = 0
-	navbarCover.ZIndex = 59
-	navbarCover.Parent = navbarBG
-
 	local navbar = Instance.new("ScrollingFrame")
 	navbar.Size = UDim2.new(1, 0, 0, 46)
 	navbar.Position = UDim2.new(0, 0, 1, -46)
-	navbar.BackgroundTransparency = 1
+	navbar.BackgroundColor3 = self.theme.Panel
+	navbar.BackgroundTransparency = 0
 	navbar.BorderSizePixel = 0
 	navbar.ZIndex = 60
 	navbar.ScrollBarThickness = 0
@@ -686,6 +667,14 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	navbar.CanvasSize = UDim2.new(0, 0, 0, 0)
 	navbar.ClipsDescendants = true
 	navbar.Parent = win
+	Instance.new("UICorner", navbar).CornerRadius = UDim.new(0, 10)
+	local navbarCover = Instance.new("Frame")
+	navbarCover.Size = UDim2.new(1, 0, 0, 10)
+	navbarCover.Position = UDim2.new(0, 0, 0, 0)
+	navbarCover.BackgroundColor3 = navbar.BackgroundColor3
+	navbarCover.BorderSizePixel = 0
+	navbarCover.ZIndex = 1
+	navbarCover.Parent = navbar
 
 	local navTopLine = Instance.new("Frame")
 	navTopLine.Size = UDim2.new(1, 0, 0, 1)
@@ -2230,10 +2219,6 @@ function UILib:addTab(name, options)
 		self.navbarHeight = 58
 		self.navbar.Size = UDim2.new(1, 0, 0, 58)
 		self.navbar.Position = UDim2.new(0, 0, 1, -58)
-		if self.navbarBG then
-			self.navbarBG.Size = UDim2.new(1, 0, 0, 58)
-			self.navbarBG.Position = UDim2.new(0, 0, 1, -58)
-		end
 
 		if self.navTopLine then self.navTopLine.Position = UDim2.new(0, 0, 1, -58) end
 
