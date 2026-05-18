@@ -450,7 +450,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	self.visibleTarget = false
 
 	local function getSidebarWidth()
-		return math.max(MIN_SIDEBAR_WIDTH, math.min(MAX_SIDEBAR_WIDTH, math.floor(self.size.X * 0.18)))
+		return math.max(MIN_SIDEBAR_WIDTH, math.min(MAX_SIDEBAR_WIDTH, math.floor(self.size.X * 0.20)))
 	end
 	self.getSidebarWidth = getSidebarWidth
 
@@ -612,7 +612,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	sidebar.BorderSizePixel = 0
 	sidebar.ScrollBarThickness = 0
 	sidebar.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	sidebar.CanvasSize = UDim2.new(0, 0, 0, 0)
+	sidebar.CanvasSize = UDim2.new(1, 0, 0, 0)
 	sidebar.ClipsDescendants = true
 	sidebar.Parent = win
 	self.sidebar = sidebar
@@ -2381,7 +2381,7 @@ function UILib:addTab(name, options)
 			local first = tab.subtabs[tab.firstSub]
 			if first then first:select() end
 		end
-		self.sidebar.CanvasSize = UDim2.new(0, 0, 0, #tab.subtabOrder * 30 + 10)
+		self.sidebar.CanvasSize = UDim2.new(1, 0, 0, #tab.subtabOrder * 30 + 10)
 		self.activeTab = tab
 
 		local showSidebar = tab.showSidebar ~= false
@@ -2463,7 +2463,7 @@ function UILib.Tab:addSubTab(name)
 	label.Text = name
 	label.TextColor3 = self.window.theme.Gray
 	label.Font = Enum.Font.GothamSemibold
-	label.TextSize = 11
+	label.TextSize = 10
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.ZIndex = 6
 	label.Parent = btn
@@ -2486,7 +2486,7 @@ function UILib.Tab:addSubTab(name)
 		self.label.TextColor3 = self.window.theme.Accent
 		self.selLine.Visible = true
 		self.page.Visible = true
-		self.window.sidebar.CanvasSize = UDim2.new(0, 0, 0, #self.tab.subtabOrder * 30 + 10)
+		self.window.sidebar.CanvasSize = UDim2.new(1, 0, 0, #self.tab.subtabOrder * 30 + 10)
 	end
 
 	btn.MouseEnter:Connect(function()
