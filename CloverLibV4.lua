@@ -10,6 +10,34 @@ UILib.SubTab.__index = UILib.SubTab
 UILib.Column = {}
 UILib.Column.__index = UILib.Column
 
+UILib.LucideMap = nil
+function UILib.resolveIcon(id)
+    if not id then return nil end
+    local str = tostring(id)
+    if str:find("rbxassetid://") then return str end
+    if tonumber(str) then return "rbxassetid://" .. str end
+    
+    if not UILib.LucideMap then
+        pcall(function()
+            local s, res = pcall(game.HttpGet, game, "https://raw.githubusercontent.com/dawid-scripts/Fluent/master/src/Icons.lua")
+            if s and res then
+                local func = loadstring(res)
+                if func then UILib.LucideMap = func() end
+            end
+        end)
+    end
+    
+    if type(UILib.LucideMap) == "table" then
+        if UILib.LucideMap["lucide-" .. str] then
+            return UILib.LucideMap["lucide-" .. str]
+        elseif UILib.LucideMap[str] then
+            return UILib.LucideMap[str]
+        end
+    end
+    
+    return "rbxassetid://" .. str
+end
+
 local function cloneref(ref)
 	local success, result = pcall(function() return cloneref(ref) end)
 	if success then return result end
@@ -139,10 +167,17 @@ function UILib:notify(message, notifType, duration)
 	notifType = notifType or "info"
 	duration = duration or 3
 	if not self.notifications then self.notifications = {} end
+	if not self.notifQueue then self.notifQueue = {} end
 	for i = #self.notifications, 1, -1 do
 		if not self.notifications[i] or not self.notifications[i].Parent then
 			table.remove(self.notifications, i)
 		end
+	end
+	-- queue if already at max visible
+	local MAX_NOTIFS = 6
+	if #self.notifications >= MAX_NOTIFS then
+		table.insert(self.notifQueue, { message = message, notifType = notifType, duration = duration })
+		return
 	end
 	local accentColor = NOTIF_COLORS[notifType] or NOTIF_COLORS.info
 	local index = #self.notifications + 1
@@ -209,6 +244,11 @@ function UILib:notify(message, notifType, duration)
 						table.remove(self.notifications, i)
 					end
 				end
+				-- drain queue
+				if self.notifQueue and #self.notifQueue > 0 then
+					local next = table.remove(self.notifQueue, 1)
+					task.defer(function() self:notify(next.message, next.notifType, next.duration) end)
+				end
 				for i, n in ipairs(self.notifications) do
 					if n and n.Parent then
 						local newY = 10 + (i - 1) * 50
@@ -225,21 +265,29 @@ end
 function UILib:getConfigDir()
 	local gameName = (game and game.Name and game.Name ~= "" and game.Name) or "Unknown"
 	gameName = gameName:gsub("[^%w%s%-_]", ""):gsub("%s+", "_"):sub(1, 40)
-	local dir = "Clover/" .. gameName .. "/"
+	local scriptName = (self.title and self.title ~= "" and self.title) or "CloverHub"
+	scriptName = scriptName:gsub("[^%w%s%-_]", ""):gsub("%s+", "_"):sub(1, 40)
+	local dir = "Clover/" .. gameName .. "/" .. scriptName .. "/"
 	pcall(makefolder, "Clover")
 	pcall(makefolder, "Clover/" .. gameName)
+	pcall(makefolder, "Clover/" .. gameName .. "/" .. scriptName)
 	return dir
 end
 
-function UILib:saveConfig(name)
-	local data = {}
-	if not self.configs then return end
+function UILib:saveConfig(name) 
+	local data = {} 
+	if not self.configs then return end 
+	local count=0
 	for id, elem in pairs(self.configs) do
-		if elem.Value ~= nil then
-			if typeof(elem.Value) == "Color3" then
-				data[id] = {__type = "Color3", r = elem.Value.r, g = elem.Value.g, b = elem.Value.b}
-			else
-				data[id] = elem.Value
+		count=count+1
+		if count%50==0 then task.wait() end
+		if type(id)=="string" and not id:match("^elem_%%d+$") then
+			if elem.Value ~= nil then
+				if typeof(elem.Value) == "Color3" then
+					data[id] = {__type = "Color3", r = elem.Value.r, g = elem.Value.g, b = elem.Value.b}
+				else
+					data[id] = elem.Value
+				end
 			end
 		end
 	end
@@ -265,7 +313,9 @@ function UILib:loadConfig(name)
 		self:notify("Invalid config", "error")
 		return
 	end
+	local count=0
 	for id, value in pairs(data) do
+		count=count+1; if count%50==0 then task.wait() end
 		if self.configs and self.configs[id] then
 			if type(value) == "table" and value.__type == "Color3" then
 				local colorVal = Color3.new(value.r or 1, value.g or 0, value.b or 0)
@@ -327,31 +377,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	self.pulseElements = {}
 	self.keybindButtons = {}
 
-		local animConn
-	animConn = RunService.RenderStepped:Connect(function()
-		if not self.sg or not self.sg.Parent then
-			if animConn then animConn:Disconnect() end
-			return
-		end
-		local h = (tick() * 0.2) % 1
-		local p = (math.sin(tick() * 2) + 1) / 2
-		for elem, data in pairs(self.rainbowElements) do
-			local s = data.s or 1
-			local v = data.v or 1
-			local newCol = Color3.fromHSV(h, s, v)
-			elem.Value = newCol
-			if data.callback then data.callback(newCol) end
-			if data.colorBox then data.colorBox.BackgroundColor3 = newCol end
-		end
-		for elem, data in pairs(self.pulseElements) do
-			local h_, s, _ = Color3.toHSV(elem.Value)
-			local targetS = data.s or s
-			local newCol = Color3.fromHSV(h_, targetS, p)
-			elem.Value = newCol
-			if data.callback then data.callback(newCol) end
-			if data.colorBox then data.colorBox.BackgroundColor3 = newCol end
-		end
-	end)
+		-- FPS fix: static UI only
+	local animConn = nil
 	table.insert(self.connections, animConn)
 	self.allSubTabs = {}
 	self.activePopups = {}
@@ -517,11 +544,16 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	table.insert(self.accentObjects, headerLine)
 
 	local uiScale = self.uiScale
-
+	local _scalePending = false
 	local function updateScaling()
-		local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
-		local s = math.min(vp.X / size.X, (vp.Y - 40) / size.Y, 1)
-		uiScale.Scale = s
+		if _scalePending then return end
+		_scalePending = true
+		task.defer(function()
+			_scalePending = false
+			local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
+			local s = math.min(vp.X / size.X, (vp.Y - 40) / size.Y, 1)
+			uiScale.Scale = s
+		end)
 	end
 	table.insert(self.connections,
 		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScaling))
@@ -588,16 +620,100 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		self.versionLabel = versionLabel
 	end
 
+	-- Player info card (top-right of header)
+	local playerCard = Instance.new("Frame")
+	playerCard.Size = UDim2.new(0, 140, 0, 36)
+	playerCard.Position = UDim2.new(1, -8, 0.5, 0)
+	playerCard.AnchorPoint = Vector2.new(1, 0.5)
+	playerCard.BackgroundTransparency = 1
+	playerCard.ZIndex = 6
+	playerCard.Parent = header
+
+	local pcLayout = Instance.new("UIListLayout", playerCard)
+	pcLayout.FillDirection = Enum.FillDirection.Horizontal
+	pcLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	pcLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	pcLayout.Padding = UDim.new(0, 6)
+
+	-- Avatar thumbnail (right side, loaded async)
+	local avatarImg = Instance.new("ImageLabel")
+	avatarImg.Size = UDim2.new(0, 30, 0, 30)
+	avatarImg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	avatarImg.BorderSizePixel = 0
+	avatarImg.ZIndex = 7
+	avatarImg.LayoutOrder = 2
+	avatarImg.Image = ""
+	avatarImg.Parent = playerCard
+	Instance.new("UICorner", avatarImg).CornerRadius = UDim.new(1, 0)
+
+	task.spawn(function()
+		local ok, thumbUrl = pcall(function()
+			return game:GetService("Players"):GetUserThumbnailAsync(
+				LP.UserId,
+				Enum.ThumbnailType.HeadShot,
+				Enum.ThumbnailSize.Size48x48
+			)
+		end)
+		if ok and thumbUrl then
+			avatarImg.Image = thumbUrl
+		end
+	end)
+
+	-- Text column: name on top, tier below
+	local textCol = Instance.new("Frame")
+	textCol.Size = UDim2.new(0, 96, 0, 36)
+	textCol.BackgroundTransparency = 1
+	textCol.ZIndex = 7
+	textCol.LayoutOrder = 1
+	textCol.Parent = playerCard
+	local textColLayout = Instance.new("UIListLayout", textCol)
+	textColLayout.FillDirection = Enum.FillDirection.Vertical
+	textColLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	textColLayout.Padding = UDim.new(0, 1)
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(1, 0, 0, 16)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Text = LP.DisplayName or LP.Name
+	nameLabel.TextColor3 = self.theme.White
+	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.TextSize = 12
+	nameLabel.TextXAlignment = Enum.TextXAlignment.Right
+	nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+	nameLabel.ZIndex = 7
+	nameLabel.Parent = textCol
+
+	local TIER_COLORS = {
+		Standard         = Color3.fromRGB(140, 140, 140),
+		Premium          = Color3.fromRGB(0, 210, 135),
+		["Beta Testing"] = Color3.fromRGB(90, 120, 255),
+	}
+
+	local tierLabel = Instance.new("TextLabel")
+	tierLabel.Size = UDim2.new(1, 0, 0, 13)
+	tierLabel.BackgroundTransparency = 1
+	tierLabel.Text = "Standard"
+	tierLabel.TextColor3 = TIER_COLORS["Standard"]
+	tierLabel.Font = Enum.Font.GothamSemibold
+	tierLabel.TextSize = 10
+	tierLabel.TextXAlignment = Enum.TextXAlignment.Right
+	tierLabel.ZIndex = 7
+	tierLabel.Parent = textCol
+
+	self.playerCard = playerCard
+	self.tierLabel = tierLabel
+
+	function self:setTier(tier)
+		tierLabel.Text = tier
+		tierLabel.TextColor3 = TIER_COLORS[tier] or TIER_COLORS.Standard
+	end
+
+	-- Invisible hintLabel kept for internal setToggleKey compatibility
 	local hintLabel = Instance.new("TextLabel")
-	hintLabel.Size = UDim2.new(0, 120, 0, 46)
-	hintLabel.Position = UDim2.new(1, -10, 0.5, 0)
-	hintLabel.AnchorPoint = Vector2.new(1, 0.5)
+	hintLabel.Size = UDim2.new(0, 0, 0, 0)
 	hintLabel.BackgroundTransparency = 1
-	hintLabel.Text = "[ " .. (self.toggleKey and self.toggleKey.Name or "RSHIFT") .. " ]  TOGGLE"
-	hintLabel.TextColor3 = self.theme.Gray
-	hintLabel.Font = Enum.Font.GothamSemibold
-	hintLabel.TextSize = 9
-	hintLabel.TextXAlignment = Enum.TextXAlignment.Right
+	hintLabel.Text = ""
+	hintLabel.Visible = false
 	hintLabel.ZIndex = 3
 	hintLabel.Parent = header
 	self.hintLabel = hintLabel
@@ -790,7 +906,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		local mChanged = UIS.InputChanged:Connect(function(input)
 			if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
 				local delta = input.Position - dragStart
-				dragDisplacement = dragDisplacement + delta.Magnitude
+				-- Use absolute distance from start, not accumulated sum
+				dragDisplacement = delta.Magnitude
 				mobileBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 			end
 		end)
@@ -822,6 +939,18 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 			if not self.uiTabCreated then
 				self.uiTabCreated = true
 				self:buildUITab()
+			end
+		end)
+		-- Autosave load is delayed so the hub script has time to finish
+		-- building ALL tabs/toggles/sliders before we try to restore values.
+		-- task.defer runs too early (same frame); 0.5s gives the hub script
+		-- time to complete all its tab-building code after newWindow() returns.
+		task.delay(0.5, function()
+			if not self.sg or not self.sg.Parent then return end
+			local autoDir = self:getConfigDir() .. "autosave.json"
+			local ok = pcall(readfile, autoDir)
+			if ok then
+				pcall(function() self:loadConfig("autosave") end)
 			end
 		end)
 	end
@@ -947,356 +1076,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	self.addContextMenuItem = addContextMenuItem
 
 	function self:showContextMenu(pos, elemConfig)
-		closeContextMenu()
-		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
-		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
-		local menuW = 180
-		local x = math.clamp(pos.X, 4, screenW - menuW - 4)
-		local y = math.clamp(pos.Y, 4, screenH - 200)
-		ctxMenu.Position = UDim2.new(0, x, 0, y)
-
-		local itemOrder = 0
-		local function nextOrder()
-			itemOrder = itemOrder + 1
-			return itemOrder
-		end
-
-		local function addSection(txt)
-			local f = Instance.new("Frame")
-			f.Size = UDim2.new(1, 0, 0, 20)
-			f.BackgroundTransparency = 1
-			f.ZIndex = 901
-			f.LayoutOrder = nextOrder()
-			f.Parent = ctxMenu
-			
-			local l = Instance.new("TextLabel", f)
-			l.Size = UDim2.new(1, -8, 1, 0)
-			l.Position = UDim2.new(0, 8, 0, 0)
-			l.BackgroundTransparency = 1
-			l.Text = txt:upper()
-			l.TextColor3 = Color3.fromRGB(110, 110, 110)
-			l.Font = Enum.Font.GothamBold
-			l.TextSize = 9
-			l.TextXAlignment = Enum.TextXAlignment.Left
-			l.ZIndex = 902
-		end
-
-		addSection("Actions")
-		if elemConfig and elemConfig.DefaultValue ~= nil then
-			addContextMenuItem("Reset to Default", function()
-				if elemConfig.SetValue then elemConfig:SetValue(elemConfig.DefaultValue) end
-			end, nil, nextOrder())
-		end
-		if elemConfig and elemConfig.Value ~= nil then
-			addContextMenuItem("Copy Value", function()
-				local v = elemConfig.Value
-				local str
-				if type(v) == "boolean" then
-					str = tostring(v)
-				elseif type(v) == "number" then
-					str = tostring(math.floor(v * 1000) / 1000)
-				elseif type(v) == "string" then
-					str = v
-				elseif type(v) == "table" then
-					str = table.concat(v, ", ")
-				elseif typeof and typeof(v) == "Color3" then
-					str = string.format("#%02x%02x%02x", math.floor(v.R * 255 + 0.5), math.floor(v.G * 255 + 0.5),
-						math.floor(v.B * 255 + 0.5))
-				else
-					str = tostring(v)
-				end
-				if setclipboard then pcall(setclipboard, str) end
-				self:notify("Copied: " .. str, "info", 2)
-			end, nil, nextOrder())
-		end
-
-		if elemConfig and elemConfig.IsToggle then
-			addCtxSeparator(nextOrder())
-
-			local behaviorGroup = Instance.new("Frame")
-			behaviorGroup.Size = UDim2.new(1, 0, 0, 0)
-			behaviorGroup.BackgroundTransparency = 1
-			behaviorGroup.AutomaticSize = Enum.AutomaticSize.Y
-			behaviorGroup.LayoutOrder = nextOrder()
-			behaviorGroup.ZIndex = 901
-			behaviorGroup.Parent = ctxMenu
-
-			local bgLayout = Instance.new("UIListLayout", behaviorGroup)
-			bgLayout.Padding = UDim.new(0, 4)
-			bgLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
-			local f_bg = Instance.new("Frame")
-			f_bg.Size = UDim2.new(1, 0, 0, 20)
-			f_bg.BackgroundTransparency = 1
-			f_bg.ZIndex = 901
-			f_bg.LayoutOrder = 1
-			f_bg.Parent = behaviorGroup
-			
-			local l_bg = Instance.new("TextLabel", f_bg)
-			l_bg.Size = UDim2.new(1, -8, 1, 0)
-			l_bg.Position = UDim2.new(0, 8, 0, 0)
-			l_bg.BackgroundTransparency = 1
-			l_bg.Text = "BEHAVIOR"
-			l_bg.TextColor3 = Color3.fromRGB(110, 110, 110)
-			l_bg.Font = Enum.Font.GothamBold
-			l_bg.TextSize = 9
-			l_bg.TextXAlignment = Enum.TextXAlignment.Left
-			l_bg.ZIndex = 902
-
-			local modeNames = { always = "Always On", toggle = "Toggle", hold = "Hold" }
-			local modeOrder = { "always", "toggle", "hold" }
-			local currentMode = elemConfig.Mode or "toggle"
-
-			local modeRow = Instance.new("Frame")
-			modeRow.Size = UDim2.new(1, 0, 0, 28)
-			modeRow.BackgroundColor3 = self.theme.Surface
-			modeRow.BorderSizePixel = 0
-			modeRow.ZIndex = 901
-			modeRow.LayoutOrder = 2
-			modeRow.Parent = behaviorGroup
-			Instance.new("UICorner", modeRow).CornerRadius = UDim.new(0, 5)
-			local modeStroke = Instance.new("UIStroke", modeRow)
-			modeStroke.Color = self.theme.Border
-			modeStroke.Thickness = 1
-			modeStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-
-			local modeLbl = Instance.new("TextLabel")
-			modeLbl.Size = UDim2.new(1, -24, 1, 0)
-			modeLbl.Position = UDim2.new(0, 8, 0, 0)
-			modeLbl.BackgroundTransparency = 1
-			modeLbl.Text = modeNames[currentMode] or "Toggle"
-			modeLbl.TextColor3 = self.theme.Accent
-			modeLbl.Font = Enum.Font.GothamBold
-			modeLbl.TextSize = 11
-			modeLbl.TextXAlignment = Enum.TextXAlignment.Left
-			modeLbl.ZIndex = 902
-			modeLbl.Parent = modeRow
-
-			local modeArrow = Instance.new("ImageLabel")
-			modeArrow.Size = UDim2.new(0, 10, 0, 10)
-			modeArrow.AnchorPoint = Vector2.new(1, 0.5)
-			modeArrow.Position = UDim2.new(1, -10, 0.5, 0)
-			modeArrow.BackgroundTransparency = 1
-			modeArrow.Image = "rbxassetid://6034818379"
-			modeArrow.ImageColor3 = self.theme.Gray
-			modeArrow.ScaleType = Enum.ScaleType.Fit
-			modeArrow.ZIndex = 902
-			modeArrow.Parent = modeRow
-
-			local modeList = Instance.new("Frame")
-			modeList.Size = UDim2.new(1, 0, 0, 0)
-			modeList.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
-			modeList.BorderSizePixel = 0
-			modeList.Visible = true
-			modeList.ClipsDescendants = true
-			modeList.ZIndex = 920
-			modeList.LayoutOrder = 3
-			modeList.Parent = behaviorGroup
-			Instance.new("UICorner", modeList).CornerRadius = UDim.new(0, 5)
-			local mlStroke = Instance.new("UIStroke", modeList)
-			mlStroke.Color = self.theme.Border
-			mlStroke.Thickness = 1
-			mlStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-			local mlLayout = Instance.new("UIListLayout", modeList)
-			mlLayout.Padding = UDim.new(0, 1)
-			Instance.new("UIPadding", modeList).PaddingTop = UDim.new(0, 3)
-
-			for _, mode in ipairs(modeOrder) do
-				local isActive = currentMode == mode
-				local opt = Instance.new("TextButton")
-				opt.Size = UDim2.new(1, 0, 0, 24)
-				opt.BackgroundTransparency = 1
-				opt.Text = ""
-				opt.ZIndex = 921
-				opt.Parent = modeList
-				
-				local optHov = Instance.new("Frame", opt)
-				optHov.Size = UDim2.new(1, -6, 1, -2)
-				optHov.Position = UDim2.new(0, 3, 0, 1)
-				optHov.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
-				optHov.BackgroundTransparency = 1
-				optHov.BorderSizePixel = 0
-				optHov.ZIndex = 921
-				Instance.new("UICorner", optHov).CornerRadius = UDim.new(0, 4)
-				
-				opt.MouseEnter:Connect(function()
-					TweenService:Create(optHov, TweenInfo.new(0.08), { BackgroundTransparency = 0 }):Play()
-				end)
-				opt.MouseLeave:Connect(function()
-					TweenService:Create(optHov, TweenInfo.new(0.08), { BackgroundTransparency = 1 }):Play()
-				end)
-				
-				local optLbl = Instance.new("TextLabel", opt)
-				optLbl.Size = UDim2.new(1, -28, 1, 0)
-				optLbl.Position = UDim2.new(0, 10, 0, 0)
-				optLbl.BackgroundTransparency = 1
-				optLbl.Text = modeNames[mode]
-				optLbl.TextColor3 = isActive and self.theme.Accent or self.theme.GrayLt
-				optLbl.Font = Enum.Font.GothamSemibold
-				optLbl.TextSize = 11
-				optLbl.TextXAlignment = Enum.TextXAlignment.Left
-				optLbl.ZIndex = 922
-				
-				local checkDot = Instance.new("Frame", opt)
-				checkDot.Size = UDim2.new(0, 6, 0, 6)
-				checkDot.Position = UDim2.new(1, -16, 0.5, -3)
-				checkDot.BackgroundColor3 = self.theme.Accent
-				checkDot.BorderSizePixel = 0
-				checkDot.ZIndex = 922
-				checkDot.Visible = isActive
-				Instance.new("UICorner", checkDot).CornerRadius = UDim.new(1, 0)
-
-				opt.MouseButton1Click:Connect(function()
-					elemConfig.Mode = mode
-					modeLbl.Text = modeNames[mode]
-					if mode == "always" then elemConfig:SetValue(true) end
-					self:notify("Mode: " .. modeNames[mode], "info", 1.5)
-					TweenService:Create(modeList, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-						Size = UDim2.new(1, 0, 0, 0)
-					}):Play()
-					TweenService:Create(modeArrow, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
-						Rotation = 0,
-						ImageColor3 = self.theme.Gray
-					}):Play()
-					closeContextMenu()
-				end)
-			end
-
-			local modeBtn = Instance.new("TextButton")
-			modeBtn.Size = UDim2.new(1, 0, 1, 0)
-			modeBtn.BackgroundTransparency = 1
-			modeBtn.Text = ""
-			modeBtn.ZIndex = 910
-			modeBtn.Parent = modeRow
-			local modeOpen = false
-			local activeTween = nil
-			modeBtn.MouseButton1Click:Connect(function()
-				modeOpen = not modeOpen
-				if activeTween then activeTween:Cancel() end
-				
-				local targetHeight = modeOpen and (#modeOrder * 24 + 6) or 0
-				activeTween = TweenService:Create(modeList, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-					Size = UDim2.new(1, 0, 0, targetHeight)
-				})
-				activeTween:Play()
-				
-				TweenService:Create(modeArrow, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
-					Rotation = modeOpen and 180 or 0,
-					ImageColor3 = modeOpen and self.theme.Accent or self.theme.Gray
-				}):Play()
-			end)
-
-			addCtxSeparator(nextOrder())
-
-			local hotkeyGroup = Instance.new("Frame")
-			hotkeyGroup.Size = UDim2.new(1, 0, 0, 0)
-			hotkeyGroup.BackgroundTransparency = 1
-			hotkeyGroup.AutomaticSize = Enum.AutomaticSize.Y
-			hotkeyGroup.LayoutOrder = nextOrder()
-			hotkeyGroup.ZIndex = 901
-			hotkeyGroup.Parent = ctxMenu
-
-			local hgLayout = Instance.new("UIListLayout", hotkeyGroup)
-			hgLayout.Padding = UDim.new(0, 4)
-			hgLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
-			local f_hk = Instance.new("Frame")
-			f_hk.Size = UDim2.new(1, 0, 0, 20)
-			f_hk.BackgroundTransparency = 1
-			f_hk.ZIndex = 901
-			f_hk.LayoutOrder = 1
-			f_hk.Parent = hotkeyGroup
-			
-			local l_hk = Instance.new("TextLabel", f_hk)
-			l_hk.Size = UDim2.new(1, -8, 1, 0)
-			l_hk.Position = UDim2.new(0, 8, 0, 0)
-			l_hk.BackgroundTransparency = 1
-			l_hk.Text = "HOTKEY"
-			l_hk.TextColor3 = Color3.fromRGB(110, 110, 110)
-			l_hk.Font = Enum.Font.GothamBold
-			l_hk.TextSize = 9
-			l_hk.TextXAlignment = Enum.TextXAlignment.Left
-			l_hk.ZIndex = 902
-
-			local hkRow = Instance.new("Frame")
-			hkRow.Size = UDim2.new(1, 0, 0, 28)
-			hkRow.BackgroundTransparency = 1
-			hkRow.BorderSizePixel = 0
-			hkRow.ZIndex = 901
-			hkRow.LayoutOrder = 2
-			hkRow.Parent = hotkeyGroup
-			
-			local hkTextLbl = Instance.new("TextLabel")
-			hkTextLbl.Size = UDim2.new(1, -60, 1, 0)
-			hkTextLbl.Position = UDim2.new(0, 10, 0, 0)
-			hkTextLbl.BackgroundTransparency = 1
-			hkTextLbl.Text = "Bind Key"
-			hkTextLbl.TextColor3 = self.theme.White
-			hkTextLbl.Font = Enum.Font.GothamSemibold
-			hkTextLbl.TextSize = 12
-			hkTextLbl.TextXAlignment = Enum.TextXAlignment.Left
-			hkTextLbl.ZIndex = 902
-			hkTextLbl.Parent = hkRow
-
-			local hkBox = Instance.new("TextButton")
-			hkBox.Size = UDim2.new(0, 52, 0, 20)
-			hkBox.Position = UDim2.new(1, -56, 0.5, -10)
-			hkBox.BackgroundColor3 = self.theme.Surface
-			hkBox.BorderSizePixel = 0
-			hkBox.Text = elemConfig.Hotkey and elemConfig.Hotkey.Name or "None"
-			hkBox.TextColor3 = self.theme.Accent
-			hkBox.Font = Enum.Font.GothamBold
-			hkBox.TextSize = 10
-			hkBox.ZIndex = 902
-			hkBox.Parent = hkRow
-			Instance.new("UICorner", hkBox).CornerRadius = UDim.new(0, 4)
-			local hkStrokeBtn = Instance.new("UIStroke", hkBox)
-			hkStrokeBtn.Color = self.theme.Border
-			hkStrokeBtn.Thickness = 1
-			hkStrokeBtn.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-
-			local listening = false
-			hkBox.MouseButton1Click:Connect(function()
-				if listening then return end
-				listening = true
-				hkBox.Text = "..."
-				hkBox.TextColor3 = Color3.fromRGB(255, 255, 100)
-				local con
-				con = UIS.InputBegan:Connect(function(input, gpe)
-					if gpe then return end
-					con:Disconnect()
-					listening = false
-					if input.KeyCode == Enum.KeyCode.Escape then
-						elemConfig.Hotkey = nil
-						hkBox.Text = "None"
-						hkBox.TextColor3 = self.theme.Accent
-						self:notify("Hotkey cleared", "info", 1.5)
-					elseif input.UserInputType == Enum.UserInputType.Keyboard then
-						elemConfig.Hotkey = input.KeyCode
-						hkBox.Text = input.KeyCode.Name
-						hkBox.TextColor3 = self.theme.Accent
-						self:notify("Hotkey: " .. input.KeyCode.Name, "success", 1.5)
-					end
-				end)
-			end)
-		end
-
-		ctxMenu.Visible = true
-
-		ctxBackdrop = Instance.new("TextButton")
-		ctxBackdrop.Name = "CtxMenuBackdrop"
-		ctxBackdrop.Size = UDim2.new(1, 0, 1, 0)
-		ctxBackdrop.BackgroundTransparency = 1
-		ctxBackdrop.Text = ""
-		ctxBackdrop.AutoButtonColor = false
-		ctxBackdrop.ZIndex = 899
-		ctxBackdrop.Parent = self.sg
-
-		local function onDismiss()
-			closeContextMenu()
-		end
-		table.insert(contextMenuConnections, ctxBackdrop.MouseButton1Click:Connect(onDismiss))
-		table.insert(contextMenuConnections, ctxBackdrop.MouseButton2Click:Connect(onDismiss))
+		-- context menu removed
 	end
 
 	table.insert(self.connections, UIS.InputBegan:Connect(function(input, gpe)
@@ -1398,16 +1178,18 @@ function UILib:addWatermark(name)
 				dragPos = wm.Position
 			end
 		end)
-		table.insert(self.connections,
-			UIS.InputChanged:Connect(function(i)
-				if drag and i.UserInputType == Enum.UserInputType.MouseMovement then
-					local delta = i.Position - dragStart
-					wm.Position = UDim2.new(dragPos.X.Scale, dragPos.X.Offset + delta.X, dragPos.Y.Scale,
-						dragPos.Y.Offset + delta.Y)
-				end
-			end))
-		table.insert(self.connections,
-			UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end end))
+		local wmDragMove = UIS.InputChanged:Connect(function(i)
+			if drag and i.UserInputType == Enum.UserInputType.MouseMovement then
+				local delta = i.Position - dragStart
+				wm.Position = UDim2.new(dragPos.X.Scale, dragPos.X.Offset + delta.X, dragPos.Y.Scale,
+					dragPos.Y.Offset + delta.Y)
+			end
+		end)
+		local wmDragEnd = UIS.InputEnded:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end
+		end)
+		-- store so they can be cleaned up when watermark is toggled off
+		self.wmDragConns = { wmDragMove, wmDragEnd }
 	end
 	local nameLbl = Instance.new("TextLabel")
 	nameLbl.AutomaticSize = Enum.AutomaticSize.X
@@ -1471,9 +1253,10 @@ function UILib:addWatermark(name)
 			fpsLabel.Text = "FPS: " .. math.floor(frameCount / (now - lastTime) + 0.5)
 			frameCount = 0
 			lastTime = now
+			-- Throttled to once per second instead of 60x/sec
+			local ping = LP:GetNetworkPing() * 1000
+			pingLabel.Text = "Ping: " .. math.floor(ping + 0.5) .. "ms"
 		end
-		local ping = LP:GetNetworkPing() * 1000
-		pingLabel.Text = "Ping: " .. math.floor(ping + 0.5) .. "ms"
 	end)
 	self.wmConn = connection
 	self.watermark = wm
@@ -1496,6 +1279,19 @@ function UILib:buildUITab()
 		self:updateAccent(c)
 	end, "Update accent color")
 
+	grp:colorpicker("Background Color", self.theme.BG, function(c)
+		self.theme.BG = c
+		if self.window then self.window.BackgroundColor3 = c end
+		if self.content then self.content.BackgroundColor3 = c end
+	end, "Update window background")
+
+	grp:colorpicker("Panel Color", self.theme.Panel, function(c)
+		self.theme.Panel = c
+		if self.header then self.header.BackgroundColor3 = c end
+		if self.sidebar then self.sidebar.BackgroundColor3 = c end
+		if self.navbarBG then self.navbarBG.BackgroundColor3 = c end
+	end, "Update panel background")
+
 	local widthSlider = grp:slider("Window Width", 450, 1200, self.size.X, function(val)
 		self.size = Vector2.new(val, self.size.Y)
 		self.window.Size = UDim2.new(0, val, 0, self.size.Y)
@@ -1516,7 +1312,6 @@ function UILib:buildUITab()
 
 	grp:keybind("Toggle Key", "RightShift", function(_, name)
 		self.toggleKey = Enum.KeyCode[name] or Enum.KeyCode.RightShift
-		if self.hintLabel then self.hintLabel.Text = "[ " .. name .. " ]  TOGGLE" end
 	end, "Set key to show/hide menu")
 
 	grp:toggle("Show Version", self.showVersion, function(v)
@@ -1528,6 +1323,13 @@ function UILib:buildUITab()
 		if v then
 			self:addWatermark(self.title)
 		else
+			if self.wmConn then
+				self.wmConn:Disconnect(); self.wmConn = nil
+			end
+			if self.wmDragConns then
+				for _, c in ipairs(self.wmDragConns) do pcall(function() c:Disconnect() end) end
+				self.wmDragConns = nil
+			end
 			if self.watermark then
 				self.watermark:Destroy(); self.watermark = nil
 			end
@@ -1542,6 +1344,10 @@ function UILib:buildUITab()
 
 	local function getConfigList()
 		local list = self:listConfigs()
+		-- hide autosave from user-facing dropdown
+		for i = #list, 1, -1 do
+			if list[i] == "autosave" then table.remove(list, i) end
+		end
 		if #list == 0 then list = { "(no configs)" } end
 		table.sort(list)
 		return list
@@ -1574,9 +1380,6 @@ function UILib:buildUITab()
 		end
 		if exists then
 			loadElem.Value = keep
-
-			local selLbl = loadElem.frame and loadElem.frame:FindFirstChild("arrow", true)
-
 			loadElem.SetValue(keep)
 		else
 			loadElem.SetValue(list[1] or "")
@@ -1607,10 +1410,20 @@ function UILib:setTitle(text)
 	if self.titleLabel then self.titleLabel.Text = tostring(text) end
 end
 
+function UILib:setVersion(text)
+	if self.versionLabel then self.versionLabel.Text = tostring(text) end
+	if self.versionPill then self.versionPill.Visible = true end
+end
+
 function UILib:Destroy()
+	pcall(function() self:saveConfig("autosave") end)
 	for _, conn in ipairs(self.connections) do conn:Disconnect() end
 	if self.wmConn then
 		self.wmConn:Disconnect(); self.wmConn = nil
+	end
+	if self.wmDragConns then
+		for _, c in ipairs(self.wmDragConns) do pcall(function() c:Disconnect() end) end
+		self.wmDragConns = nil
 	end
 	if self.sg then self.sg:Destroy() end
     if self.mobileToggleButton then self.mobileToggleButton:Destroy() end
@@ -2224,7 +2037,7 @@ function UILib:addTab(name, options)
 	local tabIconId = options.icon
 	if tabIconId then
 		local s = tostring(tabIconId)
-		if not s:find("rbxassetid://") then s = "rbxassetid://" .. s end
+		s = UILib.resolveIcon(s)
 		tabIconId = s
 	end
 
@@ -2567,7 +2380,11 @@ function UILib.SubTab:split()
 	return leftCol, rightCol
 end
 
-local function generateID() return "elem_" .. HS:GenerateGUID(false) end
+local _elemCounter = 0
+local function generateID()
+	_elemCounter = _elemCounter + 1
+	return "elem_" .. _elemCounter
+end
 
 local function attachTooltip(element, text, window)
 	if not text or not window or not window.tooltip then return end
@@ -2934,11 +2751,6 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	end
 	elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then label.Text = self_or_d else label.Text = d end end
 	window.configs[id] = elem
-	row.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton2 then
-			window:showContextMenu(UIS:GetMouseLocation(), elem)
-		end
-	end)
 	return row, elem
 end
 
@@ -3763,7 +3575,7 @@ function UILib.Column:addGroup(title)
 	function group:setIcon(assetId)
 		if assetId then
 			local id = tostring(assetId)
-			if not id:find("rbxassetid://") then id = "rbxassetid://" .. id end
+			id = UILib.resolveIcon(id)
 			iconImg.Image = id
 			iconImg.Visible = true
 			label.Position = UDim2.new(0, 30, 0, 0)
@@ -3778,7 +3590,7 @@ function UILib.Column:addGroup(title)
 	local function applyRowIcon(rowFrame, mainLabel, assetId, baseX)
 		if not assetId then return end
 		local id = tostring(assetId)
-		if not id:find("rbxassetid://") then id = "rbxassetid://" .. id end
+		id = UILib.resolveIcon(id)
 		local iImg = Instance.new("ImageLabel")
 		iImg.Size = UDim2.new(0, 14, 0, 14)
 		iImg.Position = UDim2.new(0, baseX or 4, 0.5, -7)
@@ -3917,13 +3729,6 @@ function UILib.Column:addGroup(title)
 			if elem.Mode == "always" then return end
 			state = not state
 			elem.SetValue(state)
-		end)
-		local function openCtx() window:showContextMenu(UIS:GetMouseLocation(), elem) end
-		r.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton2 then openCtx() end
-		end)
-		cbOuter.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton2 then openCtx() end
 		end)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
@@ -4342,12 +4147,6 @@ function UILib.Column:addGroup(title)
 			end
 		}
 		window.configs[id] = elem
-		r.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton2 then
-				window:showContextMenu(UIS:GetMouseLocation(),
-					elem)
-			end
-		end)
 
 		if tooltip then
 			local tt = window.tooltip
@@ -5135,12 +4934,6 @@ function UILib.Column:addGroup(title)
 			end
 		}
 		window.configs[id] = elem
-		r.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton2 then
-				window:showContextMenu(UIS:GetMouseLocation(),
-					elem)
-			end
-		end)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		elem.frame = r
@@ -5215,12 +5008,6 @@ function UILib.Column:addGroup(title)
 			end
 		}
 		window.configs[id] = elem
-		r.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton2 then
-				window:showContextMenu(UIS:GetMouseLocation(),
-					elem)
-			end
-		end)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		elem.frame = r
@@ -5382,12 +5169,6 @@ function UILib.Column:addGroup(title)
 			end
 		}
 		window.configs[id] = elem
-		r.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton2 then
-				window:showContextMenu(UIS:GetMouseLocation(),
-					elem)
-			end
-		end)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		elem.frame = r
@@ -5466,4 +5247,3 @@ function UILib.SubTab:addGroup(title)
 end
 
 return UILib
-
