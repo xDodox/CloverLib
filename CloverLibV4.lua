@@ -77,6 +77,7 @@ local function makeTooltipSystem(sg, theme, connections)
 
 	local tooltipTimer                                  = nil
 	local tooltipActiveElement                          = nil
+	local TOOLTIP_DELAY                                 = 0.5
 
 	local function showTooltip(text, element)
 		if not element then return end
@@ -114,8 +115,14 @@ local function makeTooltipSystem(sg, theme, connections)
 	end
 
 	local function startTooltipDelay(text, element)
-		hideTooltip()
-		showTooltip(text, element)
+		-- Cancel any pending tooltip first
+		if tooltipTimer then task.cancel(tooltipTimer); tooltipTimer = nil end
+		tooltipFrame.Visible = false
+		-- Schedule show after delay so fast mouse passes don't flash tooltips
+		tooltipTimer = task.delay(TOOLTIP_DELAY, function()
+			tooltipTimer = nil
+			showTooltip(text, element)
+		end)
 	end
 
 	table.insert(connections, UIS.InputChanged:Connect(function(input)
@@ -2608,8 +2615,12 @@ end
 local function createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step)
 	step = step or 1
 	local id = generateID()
+	-- Total steps available
+	local totalSteps = math.floor((maxVal - minVal) / step)
+	-- Row height: label row (18) + gap (4) + bar (24) + bottom pad (4) = 50
+	local ROW_H = 50
 	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, 0, 0, 42)
+	row.Size = UDim2.new(1, 0, 0, ROW_H)
 	row.BackgroundTransparency = 1
 	row.BorderSizePixel = 0
 	row.Parent = items
@@ -2617,10 +2628,11 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	rowPad.PaddingLeft = UDim.new(0, 6)
 	rowPad.PaddingRight = UDim.new(0, 6)
 	rowPad.PaddingTop = UDim.new(0, 2)
-	rowPad.PaddingBottom = UDim.new(0, 2)
+	rowPad.PaddingBottom = UDim.new(0, 4)
+	-- Label (left)
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, -80, 0, 16)
-	label.Position = UDim2.new(0, 4, 0, 2)
+	label.Size = UDim2.new(1, -48, 0, 16)
+	label.Position = UDim2.new(0, 0, 0, 0)
 	label.BackgroundTransparency = 1
 	label.Text = text
 	label.TextColor3 = window.theme.White
@@ -2630,82 +2642,95 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	label.TextWrapped = true
 	label.ZIndex = 3
 	label.Parent = row
-
+	-- Value display / input (right of label row)
 	local valueBox = Instance.new("Frame")
-	valueBox.AutomaticSize = Enum.AutomaticSize.X
-	valueBox.Size = UDim2.new(0, 0, 0, 18)
+	valueBox.Size = UDim2.new(0, 42, 0, 16)
 	valueBox.AnchorPoint = Vector2.new(1, 0)
-	valueBox.Position = UDim2.new(1, -2, 0, 2)
-	valueBox.BackgroundColor3 = window.theme.Track
+	valueBox.Position = UDim2.new(1, 0, 0, 0)
+	valueBox.BackgroundTransparency = 1
 	valueBox.BorderSizePixel = 0
 	valueBox.ZIndex = 3
 	valueBox.Parent = row
-	Instance.new("UICorner", valueBox).CornerRadius = UDim.new(0, 4)
-	local valuePad = Instance.new("UIPadding", valueBox)
-	valuePad.PaddingLeft = UDim.new(0, 6)
-	valuePad.PaddingRight = UDim.new(0, 6)
-	local valueStroke = Instance.new("UIStroke", valueBox)
-	valueStroke.Color = window.theme.Border
-	valueStroke.Thickness = 1
 	local valueLabel = Instance.new("TextLabel")
-	valueLabel.AutomaticSize = Enum.AutomaticSize.X
-	valueLabel.Size = UDim2.new(0, 0, 1, 0)
+	valueLabel.Size = UDim2.new(1, 0, 1, 0)
 	valueLabel.BackgroundTransparency = 1
 	valueLabel.Text = tostring(defaultVal)
 	valueLabel.TextColor3 = window.theme.Accent
 	valueLabel.Font = Enum.Font.GothamSemibold
-	valueLabel.TextSize = 13
+	valueLabel.TextSize = 12
+	valueLabel.TextXAlignment = Enum.TextXAlignment.Right
 	valueLabel.ZIndex = 4
 	valueLabel.Parent = valueBox
 	table.insert(window.accentObjects, valueLabel)
 	local valueBoxInput = Instance.new("TextBox")
-	valueBoxInput.AutomaticSize = Enum.AutomaticSize.X
-	valueBoxInput.Size = UDim2.new(0, 0, 1, 0)
+	valueBoxInput.Size = UDim2.new(1, 0, 1, 0)
 	valueBoxInput.BackgroundTransparency = 1
 	valueBoxInput.Text = tostring(defaultVal)
 	valueBoxInput.TextColor3 = window.theme.Accent
 	valueBoxInput.Font = Enum.Font.GothamSemibold
 	valueBoxInput.TextSize = 12
+	valueBoxInput.TextXAlignment = Enum.TextXAlignment.Right
 	valueBoxInput.Visible = false
 	valueBoxInput.ZIndex = 5
 	valueBoxInput.Parent = valueBox
-	Instance.new("UICorner", valueBoxInput).CornerRadius = UDim.new(0, 4)
-	local track = Instance.new("Frame")
-	track.Size = UDim2.new(1, 0, 0, 4)
-	track.Position = UDim2.new(0, 0, 0, 28)
-	track.BackgroundColor3 = window.theme.Track
-	track.BorderSizePixel = 0
-	track.ZIndex = 3
-	track.Parent = row
-	Instance.new("UICorner", track).CornerRadius = UDim.new(0, 3)
+	-- Segment bar container
+	local BAR_H = 24
+	local barContainer = Instance.new("Frame")
+	barContainer.Size = UDim2.new(1, 0, 0, BAR_H)
+	barContainer.Position = UDim2.new(0, 0, 0, 22)
+	barContainer.BackgroundTransparency = 1
+	barContainer.BorderSizePixel = 0
+	barContainer.ClipsDescendants = true
+	barContainer.ZIndex = 3
+	barContainer.Parent = row
+	Instance.new("UICorner", barContainer).CornerRadius = UDim.new(0, 5)
+	-- Background strip (inactive color)
+	local barBg = Instance.new("Frame")
+	barBg.Size = UDim2.new(1, 0, 1, 0)
+	barBg.BackgroundColor3 = window.theme.Item
+	barBg.BorderSizePixel = 0
+	barBg.ZIndex = 3
+	barBg.Parent = barContainer
+	local barBgStroke = Instance.new("UIStroke", barBg)
+	barBgStroke.Color = window.theme.Border
+	barBgStroke.Thickness = 1
+	-- Fill strip (accent, clips from left)
 	local fill = Instance.new("Frame")
-	fill.Size = UDim2.new((defaultVal - minVal) / (maxVal - minVal), 0, 1, 0)
+	fill.Size = UDim2.new((defaultVal - minVal) / math.max(maxVal - minVal, 1), 0, 1, 0)
 	fill.BackgroundColor3 = window.theme.Accent
 	fill.BorderSizePixel = 0
 	fill.ZIndex = 4
-	fill.Parent = track
-	Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 2)
-	local gradient = Instance.new("UIGradient", fill)
-	gradient.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, window.theme.Accent), ColorSequenceKeypoint.new(1,
-		Color3.new(window.theme.Accent.r * 0.4, window.theme.Accent.g * 0.4, window.theme.Accent.b * 0.4)) })
-	table.insert(window.accentObjects, gradient)
-	local knob = Instance.new("Frame")
-	knob.Size = UDim2.new(0, 12, 0, 12)
-	knob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), -6, 0.5, -6)
-	knob.BackgroundColor3 = window.theme.Accent
-	knob.BorderSizePixel = 0
-	knob.ZIndex = 5
-	knob.Parent = track
-	Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
+	fill.Parent = barContainer
+	-- Subtle gradient on fill
+	local fillGrad = Instance.new("UIGradient", fill)
+	fillGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.new(
+			math.min(window.theme.Accent.r * 1.15, 1),
+			math.min(window.theme.Accent.g * 1.15, 1),
+			math.min(window.theme.Accent.b * 1.15, 1)
+		)),
+		ColorSequenceKeypoint.new(1, window.theme.Accent)
+	})
 	table.insert(window.accentObjects, fill)
-	table.insert(window.accentObjects, knob)
+	table.insert(window.accentObjects, fillGrad)
+	-- Value text centered inside bar
+	local barValueLabel = Instance.new("TextLabel")
+	barValueLabel.Size = UDim2.new(1, 0, 1, 0)
+	barValueLabel.BackgroundTransparency = 1
+	barValueLabel.Text = tostring(defaultVal)
+	barValueLabel.TextColor3 = window.theme.White
+	barValueLabel.Font = Enum.Font.GothamSemibold
+	barValueLabel.TextSize = 12
+	barValueLabel.TextXAlignment = Enum.TextXAlignment.Center
+	barValueLabel.ZIndex = 6
+	barValueLabel.Parent = barContainer
+	-- Invisible hit area over the full bar
 	local hit = Instance.new("TextButton")
-	hit.Size = UDim2.new(1, 0, 0, 22)
-	hit.Position = UDim2.new(0, 0, 0.5, -11)
+	hit.Size = UDim2.new(1, 0, 1, 0)
 	hit.BackgroundTransparency = 1
 	hit.Text = ""
-	hit.ZIndex = 6
-	hit.Parent = track
+	hit.ZIndex = 7
+	hit.Parent = barContainer
 	local sliding = false
 	local currentVal = defaultVal
 	local function roundToStep(val) return math.floor((val - minVal) / step + 0.5) * step + minVal end
@@ -2713,18 +2738,19 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		val = math.clamp(val, minVal, maxVal)
 		val = roundToStep(val)
 		currentVal = val
-		local rel = (val - minVal) / (maxVal - minVal)
+		local rel = (val - minVal) / math.max(maxVal - minVal, 1)
 		fill.Size = UDim2.new(rel, 0, 1, 0)
-		knob.Position = UDim2.new(rel, -6, 0.5, -6)
-		valueLabel.Text = tostring(val)
-		valueBoxInput.Text = tostring(val)
+		local valStr = tostring(val)
+		valueLabel.Text = valStr
+		valueBoxInput.Text = valStr
+		barValueLabel.Text = valStr
 		if callback then callback(val) end
 		window.configs[id].Value = val
 	end
-		local function apply(mx)
-		local trackSize = track.AbsoluteSize.X
-		if trackSize == 0 then trackSize = 1 end
-		local rel = math.clamp((mx - track.AbsolutePosition.X) / trackSize, 0, 1)
+	local function apply(mx)
+		local barW = barContainer.AbsoluteSize.X
+		if barW == 0 then barW = 1 end
+		local rel = math.clamp((mx - barContainer.AbsolutePosition.X) / barW, 0, 1)
 		local val = minVal + (maxVal - minVal) * rel
 		updateSlider(val)
 	end
@@ -2737,36 +2763,38 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 			apply(i.Position.X)
 		end
 	end)
-	local sliderEndConn = UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then sliding = false end end)
+	local sliderEndConn = UIS.InputEnded:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1 then sliding = false end
+	end)
 	table.insert(window.connections, sliderInputConn)
 	table.insert(window.connections, sliderEndConn)
+	-- Click value label to type a number
 	valueLabel.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			valueLabel.Visible = false
 			valueBoxInput.Visible = true
 			valueBoxInput:CaptureFocus()
 			valueBoxInput.Text = tostring(currentVal)
-			valueBoxInput.TextColor3 = window.theme.Accent
 		end
 	end)
-	valueBoxInput.FocusLost:Connect(function(enter)
+	valueBoxInput.FocusLost:Connect(function()
 		valueBoxInput.Visible = false
 		valueLabel.Visible = true
 		local num = tonumber(valueBoxInput.Text)
 		if num then updateSlider(num) else valueLabel.Text = tostring(currentVal) end
 	end)
-	local elem = { ID = id, Value = currentVal, DefaultValue = defaultVal, SetValue = updateSlider, frame = row, DefaultHeight = 42 }
+	local elem = { ID = id, Value = currentVal, DefaultValue = defaultVal, SetValue = updateSlider, frame = row, DefaultHeight = ROW_H }
 	function elem:SetVisible(v, anim)
 		if not anim then
 			row.Visible = v
-			row.Size = UDim2.new(1, 0, 0, v and 42 or 0)
+			row.Size = UDim2.new(1, 0, 0, v and ROW_H or 0)
 			if group and group.updateSize then group.updateSize() end
 			return
 		end
 		row.ClipsDescendants = true
 		if v then row.Visible = true end
 		local tw = TweenService:Create(row, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-			Size = UDim2.new(1, 0, 0, v and 42 or 0)
+			Size = UDim2.new(1, 0, 0, v and ROW_H or 0)
 		})
 		tw.Completed:Connect(function()
 			if not v then row.Visible = false end
