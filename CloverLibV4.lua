@@ -10,34 +10,6 @@ UILib.SubTab.__index = UILib.SubTab
 UILib.Column = {}
 UILib.Column.__index = UILib.Column
 
-UILib.LucideMap = nil
-function UILib.resolveIcon(id)
-    if not id then return nil end
-    local str = tostring(id)
-    if str:find("rbxassetid://") then return str end
-    if tonumber(str) then return "rbxassetid://" .. str end
-    
-    if not UILib.LucideMap then
-        pcall(function()
-            local s, res = pcall(game.HttpGet, game, "https://raw.githubusercontent.com/dawid-scripts/Fluent/master/src/Icons.lua")
-            if s and res then
-                local func = loadstring(res)
-                if func then UILib.LucideMap = func() end
-            end
-        end)
-    end
-    
-    if type(UILib.LucideMap) == "table" then
-        if UILib.LucideMap["lucide-" .. str] then
-            return UILib.LucideMap["lucide-" .. str]
-        elseif UILib.LucideMap[str] then
-            return UILib.LucideMap[str]
-        end
-    end
-    
-    return "rbxassetid://" .. str
-end
-
 local function cloneref(ref)
 	local success, result = pcall(function() return cloneref(ref) end)
 	if success then return result end
@@ -274,20 +246,15 @@ function UILib:getConfigDir()
 	return dir
 end
 
-function UILib:saveConfig(name) 
-	local data = {} 
-	if not self.configs then return end 
-	local count=0
+function UILib:saveConfig(name)
+	local data = {}
+	if not self.configs then return end
 	for id, elem in pairs(self.configs) do
-		count=count+1
-		if count%50==0 then task.wait() end
-		if type(id)=="string" and not id:match("^elem_%%d+$") then
-			if elem.Value ~= nil then
-				if typeof(elem.Value) == "Color3" then
-					data[id] = {__type = "Color3", r = elem.Value.r, g = elem.Value.g, b = elem.Value.b}
-				else
-					data[id] = elem.Value
-				end
+		if elem.Value ~= nil then
+			if typeof(elem.Value) == "Color3" then
+				data[id] = {__type = "Color3", r = elem.Value.r, g = elem.Value.g, b = elem.Value.b}
+			else
+				data[id] = elem.Value
 			end
 		end
 	end
@@ -313,9 +280,7 @@ function UILib:loadConfig(name)
 		self:notify("Invalid config", "error")
 		return
 	end
-	local count=0
 	for id, value in pairs(data) do
-		count=count+1; if count%50==0 then task.wait() end
 		if self.configs and self.configs[id] then
 			if type(value) == "table" and value.__type == "Color3" then
 				local colorVal = Color3.new(value.r or 1, value.g or 0, value.b or 0)
@@ -377,8 +342,31 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	self.pulseElements = {}
 	self.keybindButtons = {}
 
-		-- FPS fix: static UI only
-	local animConn = nil
+		local animConn
+	animConn = RunService.RenderStepped:Connect(function()
+		if not self.sg or not self.sg.Parent then
+			if animConn then animConn:Disconnect() end
+			return
+		end
+		local h = (tick() * 0.2) % 1
+		local p = (math.sin(tick() * 2) + 1) / 2
+		for elem, data in pairs(self.rainbowElements) do
+			local s = data.s or 1
+			local v = data.v or 1
+			local newCol = Color3.fromHSV(h, s, v)
+			elem.Value = newCol
+			if data.callback then data.callback(newCol) end
+			if data.colorBox then data.colorBox.BackgroundColor3 = newCol end
+		end
+		for elem, data in pairs(self.pulseElements) do
+			local h_, s, _ = Color3.toHSV(elem.Value)
+			local targetS = data.s or s
+			local newCol = Color3.fromHSV(h_, targetS, p)
+			elem.Value = newCol
+			if data.callback then data.callback(newCol) end
+			if data.colorBox then data.colorBox.BackgroundColor3 = newCol end
+		end
+	end)
 	table.insert(self.connections, animConn)
 	self.allSubTabs = {}
 	self.activePopups = {}
@@ -485,11 +473,16 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		return math.max(MIN_KEYBIND_WIDTH, math.min(MAX_KEYBIND_WIDTH, math.floor(self.size.X * 0.13)))
 	end
 
+	local SEARCH_BAR_H = 34
 	local function updateLayout()
 		local sw = getSidebarWidth()
 		local showSidebar = not self.activeTab or self.activeTab.showSidebar ~= false
+		if self.sidebarSearchFrame then
+			self.sidebarSearchFrame.Size = UDim2.new(0, sw, 0, SEARCH_BAR_H)
+			self.sidebarSearchFrame.Visible = showSidebar
+		end
 		if self.sidebar then
-			self.sidebar.Size = UDim2.new(0, sw, 1, -92)
+			self.sidebar.Size = UDim2.new(0, sw, 1, -(92 + SEARCH_BAR_H))
 			self.sidebar.Visible = showSidebar
 			for _, sub in ipairs(self.allSubTabs) do
 				if sub.btn then
@@ -544,16 +537,11 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	table.insert(self.accentObjects, headerLine)
 
 	local uiScale = self.uiScale
-	local _scalePending = false
+
 	local function updateScaling()
-		if _scalePending then return end
-		_scalePending = true
-		task.defer(function()
-			_scalePending = false
-			local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
-			local s = math.min(vp.X / size.X, (vp.Y - 40) / size.Y, 1)
-			uiScale.Scale = s
-		end)
+		local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
+		local s = math.min(vp.X / size.X, (vp.Y - 40) / size.Y, 1)
+		uiScale.Scale = s
 	end
 	table.insert(self.connections,
 		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScaling))
@@ -719,10 +707,51 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	self.hintLabel = hintLabel
 
 	local initialSW = getSidebarWidth()
+	local SEARCH_BAR_H = 34
+
+	-- Sidebar search bar (sits above the scrolling subtab list)
+	local sidebarSearchFrame = Instance.new("Frame")
+	sidebarSearchFrame.Name = "SidebarSearchFrame"
+	sidebarSearchFrame.Size = UDim2.new(0, initialSW, 0, SEARCH_BAR_H)
+	sidebarSearchFrame.Position = UDim2.new(0, 0, 0, 46)
+	sidebarSearchFrame.BackgroundColor3 = self.theme.Panel
+	sidebarSearchFrame.BorderSizePixel = 0
+	sidebarSearchFrame.ZIndex = 6
+	sidebarSearchFrame.Parent = win
+	self.sidebarSearchFrame = sidebarSearchFrame
+
+	local sidebarSearchBox = Instance.new("TextBox")
+	sidebarSearchBox.Size = UDim2.new(1, -14, 0, 22)
+	sidebarSearchBox.Position = UDim2.new(0, 7, 0.5, -11)
+	sidebarSearchBox.BackgroundColor3 = self.theme.BG
+	sidebarSearchBox.BorderSizePixel = 0
+	sidebarSearchBox.PlaceholderText = "Search..."
+	sidebarSearchBox.PlaceholderColor3 = self.theme.Gray
+	sidebarSearchBox.Text = ""
+	sidebarSearchBox.TextColor3 = self.theme.White
+	sidebarSearchBox.Font = Enum.Font.GothamSemibold
+	sidebarSearchBox.TextSize = 11
+	sidebarSearchBox.ClearTextOnFocus = false
+	sidebarSearchBox.ZIndex = 7
+	sidebarSearchBox.Parent = sidebarSearchFrame
+	Instance.new("UICorner", sidebarSearchBox).CornerRadius = UDim.new(0, 4)
+	local sbStroke = Instance.new("UIStroke", sidebarSearchBox)
+	sbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	sbStroke.Color = self.theme.Border
+	sbStroke.Thickness = 1
+	self.sidebarSearchBox = sidebarSearchBox
+
+	local sidebarSearchDivider = Instance.new("Frame")
+	sidebarSearchDivider.Size = UDim2.new(1, 0, 0, 1)
+	sidebarSearchDivider.Position = UDim2.new(0, 0, 1, 0)
+	sidebarSearchDivider.BackgroundColor3 = self.theme.Border
+	sidebarSearchDivider.BorderSizePixel = 0
+	sidebarSearchDivider.ZIndex = 6
+	sidebarSearchDivider.Parent = sidebarSearchFrame
 
 	local sidebar = Instance.new("ScrollingFrame")
-	sidebar.Size = UDim2.new(0, initialSW, 1, -92)
-	sidebar.Position = UDim2.new(0, 0, 0, 46)
+	sidebar.Size = UDim2.new(0, initialSW, 1, -(92 + SEARCH_BAR_H))
+	sidebar.Position = UDim2.new(0, 0, 0, 46 + SEARCH_BAR_H)
 	sidebar.BackgroundColor3 = self.theme.Panel
 	sidebar.BackgroundTransparency = 0
 	sidebar.BorderSizePixel = 0
@@ -739,6 +768,21 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	local sidebarPad = Instance.new("UIPadding", sidebar)
 	sidebarPad.PaddingTop = UDim.new(0, 6)
 	sidebarPad.PaddingBottom = UDim.new(0, 6)
+
+	-- Wire up the search filter
+	sidebarSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+		local query = sidebarSearchBox.Text:lower()
+		if not self.activeTab then return end
+		for _, sub in ipairs(self.activeTab.subtabOrder) do
+			if sub.btn then
+				if query == "" then
+					sub.btn.Visible = true
+				else
+					sub.btn.Visible = sub.name:lower():find(query, 1, true) ~= nil
+				end
+			end
+		end
+	end)
 
 	local sidebarEdge = Instance.new("Frame")
 	sidebarEdge.Size = UDim2.new(0, 1, 1, -92)
@@ -906,8 +950,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 		local mChanged = UIS.InputChanged:Connect(function(input)
 			if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
 				local delta = input.Position - dragStart
-				-- Use absolute distance from start, not accumulated sum
-				dragDisplacement = delta.Magnitude
+				dragDisplacement = dragDisplacement + delta.Magnitude
 				mobileBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 			end
 		end)
@@ -940,13 +983,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 				self.uiTabCreated = true
 				self:buildUITab()
 			end
-		end)
-		-- Autosave load is delayed so the hub script has time to finish
-		-- building ALL tabs/toggles/sliders before we try to restore values.
-		-- task.defer runs too early (same frame); 0.5s gives the hub script
-		-- time to complete all its tab-building code after newWindow() returns.
-		task.delay(0.5, function()
-			if not self.sg or not self.sg.Parent then return end
+			-- Auto-load last session after UI is built
 			local autoDir = self:getConfigDir() .. "autosave.json"
 			local ok = pcall(readfile, autoDir)
 			if ok then
@@ -1253,10 +1290,9 @@ function UILib:addWatermark(name)
 			fpsLabel.Text = "FPS: " .. math.floor(frameCount / (now - lastTime) + 0.5)
 			frameCount = 0
 			lastTime = now
-			-- Throttled to once per second instead of 60x/sec
-			local ping = LP:GetNetworkPing() * 1000
-			pingLabel.Text = "Ping: " .. math.floor(ping + 0.5) .. "ms"
 		end
+		local ping = LP:GetNetworkPing() * 1000
+		pingLabel.Text = "Ping: " .. math.floor(ping + 0.5) .. "ms"
 	end)
 	self.wmConn = connection
 	self.watermark = wm
@@ -1278,19 +1314,6 @@ function UILib:buildUITab()
 	grp:colorpicker("Accent Color", self.theme.Accent, function(c)
 		self:updateAccent(c)
 	end, "Update accent color")
-
-	grp:colorpicker("Background Color", self.theme.BG, function(c)
-		self.theme.BG = c
-		if self.window then self.window.BackgroundColor3 = c end
-		if self.content then self.content.BackgroundColor3 = c end
-	end, "Update window background")
-
-	grp:colorpicker("Panel Color", self.theme.Panel, function(c)
-		self.theme.Panel = c
-		if self.header then self.header.BackgroundColor3 = c end
-		if self.sidebar then self.sidebar.BackgroundColor3 = c end
-		if self.navbarBG then self.navbarBG.BackgroundColor3 = c end
-	end, "Update panel background")
 
 	local widthSlider = grp:slider("Window Width", 450, 1200, self.size.X, function(val)
 		self.size = Vector2.new(val, self.size.Y)
@@ -2037,7 +2060,7 @@ function UILib:addTab(name, options)
 	local tabIconId = options.icon
 	if tabIconId then
 		local s = tostring(tabIconId)
-		s = UILib.resolveIcon(s)
+		if not s:find("rbxassetid://") then s = "rbxassetid://" .. s end
 		tabIconId = s
 	end
 
@@ -2199,9 +2222,17 @@ function UILib:addTab(name, options)
 		self.sidebar.CanvasSize = UDim2.new(1, 0, 0, #tab.subtabOrder * 30 + 10)
 		self.activeTab = tab
 
+		-- Clear sidebar search when switching tabs
+		if self.sidebarSearchBox then
+			self.sidebarSearchBox.Text = ""
+		end
+
 		local showSidebar = tab.showSidebar ~= false
 		self.sidebar.Visible = showSidebar
 		self.sidebarEdge.Visible = showSidebar
+		if self.sidebarSearchFrame then
+			self.sidebarSearchFrame.Visible = showSidebar
+		end
 		local sw = self.getSidebarWidth()
 		if showSidebar then
 			self.content.Size = UDim2.new(0, self.size.X - sw - 1, 1, -92)
@@ -2380,11 +2411,7 @@ function UILib.SubTab:split()
 	return leftCol, rightCol
 end
 
-local _elemCounter = 0
-local function generateID()
-	_elemCounter = _elemCounter + 1
-	return "elem_" .. _elemCounter
-end
+local function generateID() return "elem_" .. HS:GenerateGUID(false) end
 
 local function attachTooltip(element, text, window)
 	if not text or not window or not window.tooltip then return end
@@ -2504,10 +2531,8 @@ function UILib.SubTab:addInput(labelText, default, placeholder, callback, toolti
 	boxStroke_.Thickness = 1
 	local current = default or ""
 	box.FocusLost:Connect(function(enter)
-		if enter then
 			current = box.Text
 			if callback then callback(current) end
-		end
 	end)
 	if tooltip then attachTooltip(r, tooltip, window) end
 	local elem = {
@@ -3491,9 +3516,12 @@ function UILib.Column:addGroup(title)
 	stroke.Color = window.theme.Border
 	stroke.Thickness = 1
 
-	local row = Instance.new("Frame")
+	local row = Instance.new("TextButton")
 	row.Size = UDim2.new(1, 0, 0, 30)
 	row.BackgroundTransparency = 1
+	row.Text = ""
+	row.AutoButtonColor = false
+	row.ZIndex = 3
 	row.Parent = grp
 
 	local iconImg = Instance.new("ImageLabel")
@@ -3503,7 +3531,7 @@ function UILib.Column:addGroup(title)
 	iconImg.Image = ""
 	iconImg.ImageColor3 = window.theme.Accent
 	iconImg.ScaleType = Enum.ScaleType.Fit
-	iconImg.ZIndex = 2
+	iconImg.ZIndex = 3
 	iconImg.Visible = false
 	iconImg.Parent = row
 	table.insert(window.accentObjects, iconImg)
@@ -3517,14 +3545,27 @@ function UILib.Column:addGroup(title)
 	label.Font = Enum.Font.GothamBold
 	label.TextSize = 12
 	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.ZIndex = 2
+	label.ZIndex = 3
 	label.Parent = row
+
+	-- Collapse arrow in the group header
+	local collapseArrow = Instance.new("TextLabel")
+	collapseArrow.Size = UDim2.new(0, 20, 1, 0)
+	collapseArrow.Position = UDim2.new(1, -24, 0, 0)
+	collapseArrow.BackgroundTransparency = 1
+	collapseArrow.Text = "▾"
+	collapseArrow.TextColor3 = window.theme.Gray
+	collapseArrow.Font = Enum.Font.GothamBold
+	collapseArrow.TextSize = 14
+	collapseArrow.ZIndex = 4
+	collapseArrow.Parent = row
 
 	local items = Instance.new("Frame")
 	items.Position = UDim2.new(0, 0, 0, 30)
 	items.Size = UDim2.new(1, 0, 0, 0)
 	items.BackgroundTransparency = 1
 	items.BorderSizePixel = 0
+	items.ClipsDescendants = true
 	items.Parent = grp
 
 	local itemLayout = Instance.new("UIListLayout", items)
@@ -3536,8 +3577,10 @@ function UILib.Column:addGroup(title)
 	padding.PaddingRight = UDim.new(0, 8)
 	padding.PaddingBottom = UDim.new(0, 6)
 
-		local sizeUpdateScheduled = false
+	local groupCollapsed = false
+	local sizeUpdateScheduled = false
 	local function updateSize()
+		if groupCollapsed then return end
 		local ih = itemLayout.AbsoluteContentSize.Y
 		local targetH = ih + 46
 		items.Size = UDim2.new(1, 0, 0, ih + 8)
@@ -3552,6 +3595,34 @@ function UILib.Column:addGroup(title)
 		end)
 	end
 	itemLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(deferredUpdateSize)
+
+	-- Collapse/expand toggle on header click
+	row.MouseButton1Click:Connect(function()
+		groupCollapsed = not groupCollapsed
+		local contentH = itemLayout.AbsoluteContentSize.Y
+		local targetGrpH = groupCollapsed and 30 or (contentH + 46)
+		local targetItemsH = groupCollapsed and 0 or (contentH + 8)
+		TweenService:Create(collapseArrow, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
+			Rotation = groupCollapsed and -90 or 0,
+			TextColor3 = groupCollapsed and window.theme.Accent or window.theme.Gray,
+		}):Play()
+		TweenService:Create(grp, TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			Size = UDim2.new(1, 0, 0, targetGrpH)
+		}):Play()
+		TweenService:Create(items, TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			Size = UDim2.new(1, 0, 0, targetItemsH)
+		}):Play()
+	end)
+	row.MouseEnter:Connect(function()
+		TweenService:Create(collapseArrow, TweenInfo.new(0.08), {
+			TextColor3 = groupCollapsed and window.theme.Accent or window.theme.White
+		}):Play()
+	end)
+	row.MouseLeave:Connect(function()
+		TweenService:Create(collapseArrow, TweenInfo.new(0.08), {
+			TextColor3 = groupCollapsed and window.theme.Accent or window.theme.Gray
+		}):Play()
+	end)
 
 	group.frame = grp
 	group.items = items
@@ -3571,11 +3642,19 @@ function UILib.Column:addGroup(title)
 		tw.Completed:Connect(function() if not v then grp.Visible = false end end)
 		tw:Play()
 	end
+	function group:setCollapsed(v)
+		groupCollapsed = v
+		local contentH = itemLayout.AbsoluteContentSize.Y
+		grp.Size = UDim2.new(1, 0, 0, v and 30 or (contentH + 46))
+		items.Size = UDim2.new(1, 0, 0, v and 0 or (contentH + 8))
+		collapseArrow.Rotation = v and -90 or 0
+		collapseArrow.TextColor3 = v and window.theme.Accent or window.theme.Gray
+	end
 
 	function group:setIcon(assetId)
 		if assetId then
 			local id = tostring(assetId)
-			id = UILib.resolveIcon(id)
+			if not id:find("rbxassetid://") then id = "rbxassetid://" .. id end
 			iconImg.Image = id
 			iconImg.Visible = true
 			label.Position = UDim2.new(0, 30, 0, 0)
@@ -3590,7 +3669,7 @@ function UILib.Column:addGroup(title)
 	local function applyRowIcon(rowFrame, mainLabel, assetId, baseX)
 		if not assetId then return end
 		local id = tostring(assetId)
-		id = UILib.resolveIcon(id)
+		if not id:find("rbxassetid://") then id = "rbxassetid://" .. id end
 		local iImg = Instance.new("ImageLabel")
 		iImg.Size = UDim2.new(0, 14, 0, 14)
 		iImg.Position = UDim2.new(0, baseX or 4, 0.5, -7)
@@ -4916,11 +4995,9 @@ function UILib.Column:addGroup(title)
 		table.insert(window.accentObjects, box)
 		local current = default or ""
 		box.FocusLost:Connect(function(enter)
-			if enter then
 				current = box.Text
 				if callback then callback(current) end
 				window.configs[id].Value = current
-			end
 		end)
 		local elem = {
 			ID = id,
