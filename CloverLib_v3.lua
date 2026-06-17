@@ -1180,7 +1180,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	local self = setmetatable({}, UILib)
 	self.theme = theme or {}
 	for k, v in pairs(DEFAULT_THEME) do if self.theme[k] == nil then self.theme[k] = v end end
-	self.size = size
+	self.size = Vector2.new(size.X.Offset, size.Y.Offset)
 	self.title = title
 	self.parent = parent or (gethui and gethui()) or LP:WaitForChild("PlayerGui")
 	self.connections = {}
