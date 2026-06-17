@@ -1157,6 +1157,20 @@ function UILib:listConfigs()
 	return configs
 end
 
+function UILib.new(opts)
+	opts = opts or {}
+	local theme = {}
+	if opts.Accent then theme.Accent = opts.Accent end
+	return UILib.newWindow(
+		opts.Title or opts.title or "Window",
+		opts.Size or opts.size or UDim2.new(0, 500, 0, 400),
+		theme,
+		nil,
+		opts.showVersion ~= false,
+		opts.includeUITab
+	)
+end
+
 local MIN_SIDEBAR_WIDTH = 80
 local MAX_SIDEBAR_WIDTH = 120
 local MIN_KEYBIND_WIDTH = 52
