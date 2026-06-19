@@ -1559,27 +1559,85 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	hintLabel.Parent = header
 	self.hintLabel = hintLabel
 
-	-- Search bar in header
+	-- Search toggle + bar in header
+	local searchBtn = Instance.new("ImageButton")
+	searchBtn.Size = UDim2.new(0, 28, 0, 28)
+	searchBtn.Position = UDim2.new(0.5, -14, 0.5, -14)
+	searchBtn.BackgroundTransparency = 1
+	searchBtn.Image = "rbxassetid://10734943674"
+	searchBtn.ImageColor3 = self.theme.Gray
+	searchBtn.ScaleType = Enum.ScaleType.Fit
+	searchBtn.ZIndex = 8
+	searchBtn.Parent = header
+	searchBtn.AutoButtonColor = false
+
+	local searchFrame = Instance.new("Frame")
+	local sfMaxW = math.min(self.size.X * 0.45, 280)
+	local sfLeft = math.max(10, self.size.X * 0.3 - sfMaxW * 0.4)
+	searchFrame.Size = UDim2.new(0, sfMaxW, 0, 30)
+	searchFrame.Position = UDim2.new(0, math.floor(sfLeft), 0.5, -15)
+	searchFrame.BackgroundColor3 = self.theme.BG
+	searchFrame.BorderSizePixel = 0
+	searchFrame.ZIndex = 9
+	searchFrame.Parent = header
+	searchFrame.Visible = false
+	Instance.new("UICorner", searchFrame).CornerRadius = UDim.new(0, 5)
+	local sfStroke = Instance.new("UIStroke", searchFrame)
+	sfStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	sfStroke.Color = self.theme.Border
+	sfStroke.Thickness = 1
+
 	local headerSearchBox = Instance.new("TextBox")
-	headerSearchBox.Size = UDim2.new(0.35, 0, 0, 24)
-	headerSearchBox.Position = UDim2.new(0.33, 10, 0.5, -12)
-	headerSearchBox.BackgroundColor3 = self.theme.BG
-	headerSearchBox.BorderSizePixel = 0
-	headerSearchBox.PlaceholderText = "Search..."
+	headerSearchBox.Size = UDim2.new(1, -28, 1, 0)
+	headerSearchBox.Position = UDim2.new(0, 6, 0, 0)
+	headerSearchBox.BackgroundTransparency = 1
+	headerSearchBox.PlaceholderText = "Search subtabs..."
 	headerSearchBox.PlaceholderColor3 = self.theme.Gray
 	headerSearchBox.Text = ""
 	headerSearchBox.TextColor3 = self.theme.White
 	headerSearchBox.Font = Enum.Font.GothamSemibold
 	headerSearchBox.TextSize = 12
 	headerSearchBox.ClearTextOnFocus = false
-	headerSearchBox.ZIndex = 7
-	headerSearchBox.Parent = header
-	Instance.new("UICorner", headerSearchBox).CornerRadius = UDim.new(0, 4)
-	local hsStroke = Instance.new("UIStroke", headerSearchBox)
-	hsStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	hsStroke.Color = self.theme.Border
-	hsStroke.Thickness = 1
-	self.headerSearchBox = headerSearchBox
+	headerSearchBox.ZIndex = 10
+	headerSearchBox.Parent = searchFrame
+
+	local searchClose = Instance.new("ImageButton")
+	searchClose.Size = UDim2.new(0, 18, 0, 18)
+	searchClose.Position = UDim2.new(1, -21, 0.5, -9)
+	searchClose.BackgroundTransparency = 1
+	searchClose.Image = "rbxassetid://10747384394"
+	searchClose.ImageColor3 = self.theme.Gray
+	searchClose.ScaleType = Enum.ScaleType.Fit
+	searchClose.ZIndex = 10
+	searchClose.Parent = searchFrame
+	searchClose.AutoButtonColor = false
+
+	searchClose.MouseButton1Click:Connect(function()
+		searchFrame.Visible = false
+		headerSearchBox.Text = ""
+		for _, sub in ipairs(self.allSubTabs) do
+			if sub.btn then sub.btn.Visible = true end
+		end
+	end)
+
+	local escConn = UIS.InputBegan:Connect(function(input, gpe)
+		if gpe then return end
+		if input.KeyCode == Enum.KeyCode.Escape and searchFrame.Visible then
+			searchFrame.Visible = false
+			headerSearchBox.Text = ""
+			for _, sub in ipairs(self.allSubTabs) do
+				if sub.btn then sub.btn.Visible = true end
+			end
+		end
+	end)
+	table.insert(self.connections, escConn)
+
+	searchBtn.MouseButton1Click:Connect(function()
+		searchFrame.Visible = not searchFrame.Visible
+		if searchFrame.Visible then
+			headerSearchBox:CaptureFocus()
+		end
+	end)
 
 	headerSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
 		local query = headerSearchBox.Text:lower()
@@ -1589,6 +1647,11 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 			end
 		end
 	end)
+
+	self.headerSearchBox = headerSearchBox
+	self.headerSearchFrame = searchFrame
+
+	local initialSW = getSidebarWidth()
 
 	local initialSW = getSidebarWidth()
 
@@ -3081,6 +3144,9 @@ function UILib:selectTab(n)
 	if tab and tab.activate then tab.activate() end
 	if self.headerSearchBox then
 		self.headerSearchBox.Text = ""
+	end
+	if self.headerSearchFrame then
+		self.headerSearchFrame.Visible = false
 	end
 end
 
