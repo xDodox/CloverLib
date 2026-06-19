@@ -1573,7 +1573,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	searchBtn.Parent = header
 	searchBtn.AutoButtonColor = false
 
-	local MAX_SEARCH_W = math.min(self.size.X * 0.5, 240)
+	local MAX_SEARCH_W = math.min(self.size.X * 0.4, 200)
 
 	local searchFrame = Instance.new("Frame")
 	searchFrame.Size = UDim2.new(0, 0, 0, 28)
@@ -1630,9 +1630,10 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	end
 
 	local function openSearch()
+		local targetW = math.min(self.size.X * 0.4, 200)
 		searchFrame.Size = UDim2.new(0, 0, 0, 28)
 		searchFrame.Visible = true
-		TweenService:Create(searchFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(0, MAX_SEARCH_W, 0, 28) }):Play()
+		TweenService:Create(searchFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(0, targetW, 0, 28) }):Play()
 		task.delay(0.1, function()
 			headerSearchBox:CaptureFocus()
 		end)
@@ -2492,10 +2493,10 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	local applyBtn = Instance.new("TextButton")
 	applyBtn.Size = UDim2.new(0, 130, 0, 34)
 	applyBtn.Position = UDim2.new(0.5, -65, 0, 120)
-	applyBtn.BackgroundColor3 = self.theme.Accent:Lerp(Color3.new(0, 0, 0), 0.25)
+	applyBtn.BackgroundColor3 = self.theme.Panel
 	applyBtn.BorderSizePixel = 0
 	applyBtn.Text = "SAVE"
-	applyBtn.TextColor3 = Color3.new(1, 1, 1)
+	applyBtn.TextColor3 = self.theme.White
 	applyBtn.Font = Enum.Font.GothamBold
 	applyBtn.TextSize = 12
 	applyBtn.ZIndex = 102
@@ -2503,9 +2504,8 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	Instance.new("UICorner", applyBtn).CornerRadius = UDim.new(0, 5)
 	local apStroke = Instance.new("UIStroke", applyBtn)
 	apStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	apStroke.Color = self.theme.Accent
+	apStroke.Color = self.theme.Border
 	apStroke.Thickness = 1
-	apStroke.Transparency = 0.5
 
 	local winStroke = self.window:FindFirstChildOfClass("UIStroke")
 	local originalColor = winStroke and winStroke.Color or self.theme.Border
@@ -3577,7 +3577,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	rowPad.PaddingBottom = UDim.new(0, 2)
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, -80, 0, 16)
-	label.Position = UDim2.new(0, 4, 0.5, -8)
+	label.Position = UDim2.new(0, 4, 0, 4)
 	label.BackgroundTransparency = 1
 	label.Text = text
 	label.TextColor3 = window.theme.White
@@ -3592,7 +3592,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	valueBox.AutomaticSize = Enum.AutomaticSize.X
 	valueBox.Size = UDim2.new(0, 0, 0, 18)
 	valueBox.AnchorPoint = Vector2.new(1, 0)
-	valueBox.Position = UDim2.new(1, -2, 0, 2)
+	valueBox.Position = UDim2.new(1, -2, 0, 4)
 	valueBox.BackgroundColor3 = window.theme.Track
 	valueBox.BorderSizePixel = 0
 	valueBox.ZIndex = 3
@@ -3629,7 +3629,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	Instance.new("UICorner", valueBoxInput).CornerRadius = UDim.new(0, 4)
 	local track = Instance.new("Frame")
 	track.Size = UDim2.new(1, 0, 0, 20)
-	track.Position = UDim2.new(0, 0, 0, 24)
+	track.Position = UDim2.new(0, 0, 0, 22)
 	track.BackgroundColor3 = window.theme.Track
 	track.BorderSizePixel = 0
 	track.ZIndex = 3
