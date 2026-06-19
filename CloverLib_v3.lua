@@ -1652,9 +1652,18 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	headerSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
 		local query = headerSearchBox.Text:lower()
 		local firstVisible = nil
+		local function contentMatches(sub)
+			if not sub.page then return false end
+			for _, c in ipairs(sub.page:GetDescendants()) do
+				if (c:IsA("TextLabel") or c:IsA("TextButton")) and c.Text:lower():find(query, 1, true) then
+					return true
+				end
+			end
+			return false
+		end
 		for _, sub in ipairs(self.allSubTabs) do
 			if sub.btn then
-				local match = query == "" or (sub.name and sub.name:lower():find(query, 1, true))
+				local match = query == "" or (sub.name and sub.name:lower():find(query, 1, true)) or contentMatches(sub)
 				sub.btn.Visible = match
 				if match and not firstVisible then firstVisible = sub end
 			end
@@ -2481,17 +2490,22 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	rpShortcut.Parent = resizePanel
 
 	local applyBtn = Instance.new("TextButton")
-	applyBtn.Size = UDim2.new(0, 140, 0, 34)
-	applyBtn.Position = UDim2.new(0.5, -70, 0, 120)
-	applyBtn.BackgroundColor3 = self.theme.Accent:Lerp(Color3.new(0, 0, 0), 0.35)
+	applyBtn.Size = UDim2.new(0, 130, 0, 34)
+	applyBtn.Position = UDim2.new(0.5, -65, 0, 120)
+	applyBtn.BackgroundColor3 = self.theme.Accent:Lerp(Color3.new(0, 0, 0), 0.25)
 	applyBtn.BorderSizePixel = 0
 	applyBtn.Text = "SAVE"
 	applyBtn.TextColor3 = Color3.new(1, 1, 1)
 	applyBtn.Font = Enum.Font.GothamBold
-	applyBtn.TextSize = 13
+	applyBtn.TextSize = 12
 	applyBtn.ZIndex = 102
 	applyBtn.Parent = backdrop
-	Instance.new("UICorner", applyBtn).CornerRadius = UDim.new(0, 6)
+	Instance.new("UICorner", applyBtn).CornerRadius = UDim.new(0, 5)
+	local apStroke = Instance.new("UIStroke", applyBtn)
+	apStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	apStroke.Color = self.theme.Accent
+	apStroke.Thickness = 1
+	apStroke.Transparency = 0.5
 
 	local winStroke = self.window:FindFirstChildOfClass("UIStroke")
 	local originalColor = winStroke and winStroke.Color or self.theme.Border
@@ -3552,7 +3566,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	step = step or 1
 	local id = generateID()
 	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, 0, 0, 42)
+	row.Size = UDim2.new(1, 0, 0, 48)
 	row.BackgroundTransparency = 1
 	row.BorderSizePixel = 0
 	row.Parent = items
@@ -3614,27 +3628,29 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	valueBoxInput.Parent = valueBox
 	Instance.new("UICorner", valueBoxInput).CornerRadius = UDim.new(0, 4)
 	local track = Instance.new("Frame")
-	track.Size = UDim2.new(1, 0, 0, 8)
-	track.Position = UDim2.new(0, 0, 0, 28)
+	track.Size = UDim2.new(1, 0, 0, 20)
+	track.Position = UDim2.new(0, 0, 0, 24)
 	track.BackgroundColor3 = window.theme.Track
 	track.BorderSizePixel = 0
 	track.ZIndex = 3
 	track.Parent = row
 	Instance.new("UICorner", track).CornerRadius = UDim.new(0, 4)
+	local trackStroke = Instance.new("UIStroke", track)
+	trackStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	trackStroke.Color = window.theme.Border
+	trackStroke.Thickness = 1
+
 	local fill = Instance.new("Frame")
 	fill.Size = UDim2.new((defaultVal - minVal) / (maxVal - minVal), 0, 1, 0)
 	fill.BackgroundColor3 = window.theme.Accent
 	fill.BorderSizePixel = 0
 	fill.ZIndex = 4
 	fill.Parent = track
-	Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 2)
-	local gradient = Instance.new("UIGradient", fill)
-	gradient.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, window.theme.Accent), ColorSequenceKeypoint.new(1,
-		Color3.new(window.theme.Accent.r * 0.4, window.theme.Accent.g * 0.4, window.theme.Accent.b * 0.4)) })
-	table.insert(window.accentObjects, gradient)
+	Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 4)
+
 	local hit = Instance.new("TextButton")
-	hit.Size = UDim2.new(1, 0, 0, 22)
-	hit.Position = UDim2.new(0, 0, 0.5, -11)
+	hit.Size = UDim2.new(1, 0, 1, 0)
+	hit.Position = UDim2.new(0, 0, 0, 0)
 	hit.BackgroundTransparency = 1
 	hit.Text = ""
 	hit.ZIndex = 6
