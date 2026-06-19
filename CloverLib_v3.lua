@@ -1559,10 +1559,11 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	hintLabel.Parent = header
 	self.hintLabel = hintLabel
 
-	-- Search toggle + bar in header
+	-- Search toggle + bar anchored right, left of player card
 	local searchBtn = Instance.new("ImageButton")
-	searchBtn.Size = UDim2.new(0, 28, 0, 28)
-	searchBtn.Position = UDim2.new(0.5, -14, 0.5, -14)
+	searchBtn.Size = UDim2.new(0, 26, 0, 26)
+	searchBtn.AnchorPoint = Vector2.new(1, 0.5)
+	searchBtn.Position = UDim2.new(1, -155, 0.5, 0)
 	searchBtn.BackgroundTransparency = 1
 	searchBtn.Image = "rbxassetid://10734943674"
 	searchBtn.ImageColor3 = self.theme.Gray
@@ -1572,15 +1573,15 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	searchBtn.AutoButtonColor = false
 
 	local searchFrame = Instance.new("Frame")
-	local sfMaxW = math.min(self.size.X * 0.45, 280)
-	local sfLeft = math.max(10, self.size.X * 0.3 - sfMaxW * 0.4)
-	searchFrame.Size = UDim2.new(0, sfMaxW, 0, 30)
-	searchFrame.Position = UDim2.new(0, math.floor(sfLeft), 0.5, -15)
+	searchFrame.Size = UDim2.new(0, 0, 0, 28)
+	searchFrame.AnchorPoint = Vector2.new(1, 0.5)
+	searchFrame.Position = UDim2.new(1, -155, 0.5, 0)
 	searchFrame.BackgroundColor3 = self.theme.BG
 	searchFrame.BorderSizePixel = 0
 	searchFrame.ZIndex = 9
 	searchFrame.Parent = header
 	searchFrame.Visible = false
+	searchFrame.ClipsDescendants = true
 	Instance.new("UICorner", searchFrame).CornerRadius = UDim.new(0, 5)
 	local sfStroke = Instance.new("UIStroke", searchFrame)
 	sfStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -1588,10 +1589,10 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	sfStroke.Thickness = 1
 
 	local headerSearchBox = Instance.new("TextBox")
-	headerSearchBox.Size = UDim2.new(1, -28, 1, 0)
+	headerSearchBox.Size = UDim2.new(1, -24, 1, 0)
 	headerSearchBox.Position = UDim2.new(0, 6, 0, 0)
 	headerSearchBox.BackgroundTransparency = 1
-	headerSearchBox.PlaceholderText = "Search subtabs..."
+	headerSearchBox.PlaceholderText = "Filter subtabs..."
 	headerSearchBox.PlaceholderColor3 = self.theme.Gray
 	headerSearchBox.Text = ""
 	headerSearchBox.TextColor3 = self.theme.White
@@ -1602,8 +1603,9 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	headerSearchBox.Parent = searchFrame
 
 	local searchClose = Instance.new("ImageButton")
-	searchClose.Size = UDim2.new(0, 18, 0, 18)
-	searchClose.Position = UDim2.new(1, -21, 0.5, -9)
+	searchClose.Size = UDim2.new(0, 16, 0, 16)
+	searchClose.AnchorPoint = Vector2.new(1, 0.5)
+	searchClose.Position = UDim2.new(1, -5, 0.5, 0)
 	searchClose.BackgroundTransparency = 1
 	searchClose.Image = "rbxassetid://10747384394"
 	searchClose.ImageColor3 = self.theme.Gray
@@ -1612,41 +1614,62 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	searchClose.Parent = searchFrame
 	searchClose.AutoButtonColor = false
 
-	searchClose.MouseButton1Click:Connect(function()
+	local function closeSearch()
 		searchFrame.Visible = false
 		headerSearchBox.Text = ""
 		for _, sub in ipairs(self.allSubTabs) do
 			if sub.btn then sub.btn.Visible = true end
 		end
-	end)
+	end
 
+	searchClose.MouseButton1Click:Connect(closeSearch)
 	local escConn = UIS.InputBegan:Connect(function(input, gpe)
 		if gpe then return end
-		if input.KeyCode == Enum.KeyCode.Escape and searchFrame.Visible then
-			searchFrame.Visible = false
-			headerSearchBox.Text = ""
-			for _, sub in ipairs(self.allSubTabs) do
-				if sub.btn then sub.btn.Visible = true end
-			end
-		end
+		if input.KeyCode == Enum.KeyCode.Escape and searchFrame.Visible then closeSearch() end
 	end)
 	table.insert(self.connections, escConn)
 
 	searchBtn.MouseButton1Click:Connect(function()
-		searchFrame.Visible = not searchFrame.Visible
-		if searchFrame.Visible then
+		local visible = not searchFrame.Visible
+		searchFrame.Visible = visible
+		if visible then
+			local w = math.min(self.size.X * 0.5, 220)
+			searchFrame.Size = UDim2.new(0, w, 0, 28)
 			headerSearchBox:CaptureFocus()
 		end
 	end)
 
 	headerSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
 		local query = headerSearchBox.Text:lower()
+		local firstVisible = nil
 		for _, sub in ipairs(self.allSubTabs) do
 			if sub.btn then
-				sub.btn.Visible = query == "" or (sub.name and sub.name:lower():find(query, 1, true))
+				local match = query == "" or (sub.name and sub.name:lower():find(query, 1, true))
+				sub.btn.Visible = match
+				if match and not firstVisible then firstVisible = sub end
 			end
 		end
 	end)
+
+	headerSearchBox.FocusLost:Connect(function(enter)
+		if enter and searchFrame.Visible then
+			local query = headerSearchBox.Text:lower()
+			if query ~= "" then
+				for _, sub in ipairs(self.allSubTabs) do
+					if sub.btn and sub.btn.Visible then
+						sub:select()
+						break
+					end
+				end
+			end
+			closeSearch()
+		end
+	end)
+
+	self.headerSearchBox = headerSearchBox
+	self.headerSearchFrame = searchFrame
+
+	local initialSW = getSidebarWidth()
 
 	self.headerSearchBox = headerSearchBox
 	self.headerSearchFrame = searchFrame
