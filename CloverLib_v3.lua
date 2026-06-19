@@ -1289,7 +1289,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	self.tooltip = makeTooltipSystem(self.sg, self.theme, self.connections)
 
 	local win = Instance.new("Frame")
-	win.Size = UDim2.new(0, size.X, 0, size.Y)
+	win.Size = UDim2.new(0, size.X.Offset, 0, size.Y.Offset)
 	win.Position = UDim2.new(0.5, 0, 0.5, 0)
 	win.BackgroundColor3 = self.theme.BG
 	win.BorderSizePixel = 0
@@ -1394,7 +1394,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 
 	local function updateScaling()
 		local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
-		local s = math.min(vp.X / size.X, (vp.Y - 40) / size.Y, 1)
+		local s = math.min(vp.X / size.X.Offset, (vp.Y - 40) / size.Y.Offset, 1)
 		uiScale.Scale = s
 	end
 	table.insert(self.connections,
@@ -1643,7 +1643,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	self.sidebarEdge = sidebarEdge
 
 	local content = Instance.new("ScrollingFrame")
-	content.Size = UDim2.new(0, size.X - initialSW - 1, 1, -92)
+	content.Size = UDim2.new(0, size.X.Offset - initialSW - 1, 1, -92)
 	content.Position = UDim2.new(0, initialSW + 1, 0, 46)
 	content.BackgroundColor3 = self.theme.BG
 	content.BorderSizePixel = 0
@@ -6112,4 +6112,3 @@ function UILib.SubTab:addGroup(title)
 end
 
 return UILib
-
