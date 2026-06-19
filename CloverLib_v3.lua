@@ -1561,6 +1561,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 
 	-- Search toggle + bar anchored right, left of player card
 	local searchBtn = Instance.new("ImageButton")
+	-- Search bar — animated inline bar anchored right, left of player card
 	searchBtn.Size = UDim2.new(0, 26, 0, 26)
 	searchBtn.AnchorPoint = Vector2.new(1, 0.5)
 	searchBtn.Position = UDim2.new(1, -155, 0.5, 0)
@@ -1571,6 +1572,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	searchBtn.ZIndex = 8
 	searchBtn.Parent = header
 	searchBtn.AutoButtonColor = false
+
+	local MAX_SEARCH_W = math.min(self.size.X * 0.5, 240)
 
 	local searchFrame = Instance.new("Frame")
 	searchFrame.Size = UDim2.new(0, 0, 0, 28)
@@ -1615,11 +1618,24 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	searchClose.AutoButtonColor = false
 
 	local function closeSearch()
-		searchFrame.Visible = false
-		headerSearchBox.Text = ""
-		for _, sub in ipairs(self.allSubTabs) do
-			if sub.btn then sub.btn.Visible = true end
-		end
+		if not searchFrame.Visible then return end
+		TweenService:Create(searchFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(0, 0, 0, 28) }):Play()
+		task.delay(0.2, function()
+			searchFrame.Visible = false
+			headerSearchBox.Text = ""
+			for _, sub in ipairs(self.allSubTabs) do
+				if sub.btn then sub.btn.Visible = true end
+			end
+		end)
+	end
+
+	local function openSearch()
+		searchFrame.Size = UDim2.new(0, 0, 0, 28)
+		searchFrame.Visible = true
+		TweenService:Create(searchFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(0, MAX_SEARCH_W, 0, 28) }):Play()
+		task.delay(0.1, function()
+			headerSearchBox:CaptureFocus()
+		end)
 	end
 
 	searchClose.MouseButton1Click:Connect(closeSearch)
@@ -1630,13 +1646,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	table.insert(self.connections, escConn)
 
 	searchBtn.MouseButton1Click:Connect(function()
-		local visible = not searchFrame.Visible
-		searchFrame.Visible = visible
-		if visible then
-			local w = math.min(self.size.X * 0.5, 220)
-			searchFrame.Size = UDim2.new(0, w, 0, 28)
-			headerSearchBox:CaptureFocus()
-		end
+		if searchFrame.Visible then closeSearch() else openSearch() end
 	end)
 
 	headerSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
@@ -2422,30 +2432,66 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	
 	TweenService:Create(backdrop, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { BackgroundTransparency = 0.45 }):Play()
 
-	local instruction = Instance.new("TextLabel")
-	instruction.Size = UDim2.new(1, 0, 0, 40)
-	instruction.Position = UDim2.new(0, 0, 0, 40)
-	instruction.BackgroundTransparency = 1
-	instruction.Text = "RESIZE MODE - DRAG CORNER TO RESIZE"
-	instruction.TextColor3 = Color3.new(1, 1, 1)
-	instruction.Font = Enum.Font.GothamBold
-	instruction.TextSize = 16
-	instruction.ZIndex = 101
-	instruction.Parent = backdrop
+	local resizePanel = Instance.new("Frame")
+	resizePanel.Size = UDim2.new(0, 220, 0, 80)
+	resizePanel.Position = UDim2.new(0.5, -110, 1, -110)
+	resizePanel.BackgroundColor3 = self.theme.Panel
+	resizePanel.BorderSizePixel = 0
+	resizePanel.ZIndex = 101
+	resizePanel.Parent = backdrop
+	Instance.new("UICorner", resizePanel).CornerRadius = UDim.new(0, 8)
+	local rpStroke = Instance.new("UIStroke", resizePanel)
+	rpStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	rpStroke.Color = self.theme.Border
 
-	local subtext = Instance.new("TextLabel")
-	subtext.Size = UDim2.new(1, 0, 0, 20)
-	subtext.Position = UDim2.new(0, 0, 0, 80)
-	subtext.BackgroundTransparency = 1
-	subtext.Text = "Click 'EXIT & SAVE' or Press ESC/Double-Click to Apply"
-	subtext.TextColor3 = self.theme.GrayLt
-	subtext.Font = Enum.Font.GothamSemibold
-	subtext.TextSize = 12
-	subtext.ZIndex = 101
-	subtext.Parent = backdrop
+	local rpIcon = Instance.new("ImageLabel")
+	rpIcon.Size = UDim2.new(0, 16, 0, 16)
+	rpIcon.Position = UDim2.new(0, 10, 0, 10)
+	rpIcon.BackgroundTransparency = 1
+	rpIcon.Image = "rbxassetid://10734963400"
+	rpIcon.ImageColor3 = self.theme.White
+	rpIcon.ScaleType = Enum.ScaleType.Fit
+	rpIcon.ZIndex = 102
+	rpIcon.Parent = resizePanel
+
+	local rpTitle = Instance.new("TextLabel")
+	rpTitle.Size = UDim2.new(1, -30, 0, 16)
+	rpTitle.Position = UDim2.new(0, 30, 0, 10)
+	rpTitle.BackgroundTransparency = 1
+	rpTitle.Text = "Resize"
+	rpTitle.TextColor3 = self.theme.White
+	rpTitle.Font = Enum.Font.GothamBold
+	rpTitle.TextSize = 13
+	rpTitle.TextXAlignment = Enum.TextXAlignment.Left
+	rpTitle.ZIndex = 102
+	rpTitle.Parent = resizePanel
+
+	local rpHint = Instance.new("TextLabel")
+	rpHint.Size = UDim2.new(1, -20, 0, 14)
+	rpHint.Position = UDim2.new(0, 10, 0, 32)
+	rpHint.BackgroundTransparency = 1
+	rpHint.Text = "Drag corner handles to resize"
+	rpHint.TextColor3 = self.theme.Gray
+	rpHint.Font = Enum.Font.GothamSemibold
+	rpHint.TextSize = 10
+	rpHint.TextXAlignment = Enum.TextXAlignment.Left
+	rpHint.ZIndex = 102
+	rpHint.Parent = resizePanel
+
+	local rpShortcut = Instance.new("TextLabel")
+	rpShortcut.Size = UDim2.new(1, -20, 0, 14)
+	rpShortcut.Position = UDim2.new(0, 10, 0, 48)
+	rpShortcut.BackgroundTransparency = 1
+	rpShortcut.Text = "Press ESC to cancel  ·  Double-click to apply"
+	rpShortcut.TextColor3 = self.theme.Gray
+	rpShortcut.Font = Enum.Font.GothamSemibold
+	rpShortcut.TextSize = 10
+	rpShortcut.TextXAlignment = Enum.TextXAlignment.Left
+	rpShortcut.ZIndex = 102
+	rpShortcut.Parent = resizePanel
 
 	local applyBtn = Instance.new("TextButton")
-	applyBtn.Size = UDim2.new(0, 140, 0, 36)
+	applyBtn.Size = UDim2.new(0, 140, 0, 32)
 	applyBtn.Position = UDim2.new(0.5, -70, 0, 120)
 	applyBtn.BackgroundColor3 = self.theme.Accent:Lerp(Color3.new(0, 0, 0), 0.35)
 	applyBtn.BorderSizePixel = 0
@@ -3596,16 +3642,6 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	gradient.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, window.theme.Accent), ColorSequenceKeypoint.new(1,
 		Color3.new(window.theme.Accent.r * 0.4, window.theme.Accent.g * 0.4, window.theme.Accent.b * 0.4)) })
 	table.insert(window.accentObjects, gradient)
-	local knob = Instance.new("Frame")
-	knob.Size = UDim2.new(0, 12, 0, 12)
-	knob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), -6, 0.5, -6)
-	knob.BackgroundColor3 = window.theme.Accent
-	knob.BorderSizePixel = 0
-	knob.ZIndex = 5
-	knob.Parent = track
-	Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
-	table.insert(window.accentObjects, fill)
-	table.insert(window.accentObjects, knob)
 	local hit = Instance.new("TextButton")
 	hit.Size = UDim2.new(1, 0, 0, 22)
 	hit.Position = UDim2.new(0, 0, 0.5, -11)
@@ -3622,7 +3658,6 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		currentVal = val
 		local rel = (val - minVal) / (maxVal - minVal)
 		fill.Size = UDim2.new(rel, 0, 1, 0)
-		knob.Position = UDim2.new(rel, -6, 0.5, -6)
 		valueLabel.Text = tostring(val)
 		valueBoxInput.Text = tostring(val)
 		if callback then callback(val) end
@@ -4525,7 +4560,9 @@ function UILib.Column:addGroup(title)
 		if not id then id = tostring(assetId) end
 		local iImg = Instance.new("ImageLabel")
 		iImg.Size = UDim2.new(0, 14, 0, 14)
-		iImg.Position = UDim2.new(0, baseX or 4, 0.5, -7)
+		local iconX = baseX or 4
+		local labelCenterY = mainLabel.Position.Y.Offset + mainLabel.Size.Y.Offset * 0.5
+		iImg.Position = UDim2.new(0, iconX, 0, labelCenterY - 7)
 		iImg.BackgroundTransparency = 1
 		iImg.Image = id
 		iImg.ImageColor3 = window.theme.Accent
