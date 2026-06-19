@@ -1167,7 +1167,8 @@ function UILib.new(opts)
 		theme,
 		nil,
 		opts.showVersion ~= false,
-		opts.includeUITab
+		opts.includeUITab,
+		opts.showLogo ~= false
 	)
 end
 
@@ -1176,7 +1177,7 @@ local MAX_SIDEBAR_WIDTH = 120
 local MIN_KEYBIND_WIDTH = 52
 local MAX_KEYBIND_WIDTH = 76
 
-function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
+function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, showLogo)
 	local self = setmetatable({}, UILib)
 	self.theme = theme or {}
 	for k, v in pairs(DEFAULT_THEME) do if self.theme[k] == nil then self.theme[k] = v end end
@@ -1185,6 +1186,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	self.parent = parent or (gethui and gethui()) or LP:WaitForChild("PlayerGui")
 	self.connections = {}
 	self.showVersion = showVersion ~= false
+	self.showLogo = showLogo ~= false
 	self.configs = {}
 	self.resizing = nil
 	self.toggleKey = Enum.KeyCode.RightShift
@@ -1329,10 +1331,9 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 
 	local function updateLayout()
 		local sw = getSidebarWidth()
-		local SEARCH_BAR_H = 34
 		local showSidebar = not self.activeTab or self.activeTab.showSidebar ~= false
 		if self.sidebar then
-			self.sidebar.Size = UDim2.new(0, sw, 1, -(92 + SEARCH_BAR_H))
+			self.sidebar.Size = UDim2.new(0, sw, 1, -92)
 			self.sidebar.Visible = showSidebar
 			for _, sub in ipairs(self.allSubTabs) do
 				if sub.btn then
@@ -1341,14 +1342,10 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 				end
 			end
 		end
-		if self.sidebarSearchFrame then
-			self.sidebarSearchFrame.Size = UDim2.new(0, sw, 0, SEARCH_BAR_H)
-			self.sidebarSearchFrame.Visible = showSidebar
-		end
 		if self.sidebarEdge then
 			self.sidebarEdge.Visible = showSidebar
 			self.sidebarEdge.Position = UDim2.new(0, sw, 0, 46)
-			self.sidebarEdge.Size = UDim2.new(0, 1, 1, -(92 + SEARCH_BAR_H))
+			self.sidebarEdge.Size = UDim2.new(0, 1, 1, -92)
 		end
 		if self.content then
 			if showSidebar then
@@ -1416,14 +1413,16 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	titleRowLayout.Padding = UDim.new(0, 8)
 	titleRowLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
-	local logo = Instance.new("ImageLabel")
-	logo.Size = UDim2.new(0, 22, 0, 22)
-	logo.BackgroundTransparency = 1
-	logo.Image = "rbxassetid://115924193030407"
-	logo.ZIndex = 60
-	logo.LayoutOrder = 0
-	logo.Parent = titleRow
-	logo.Visible = true
+	if self.showLogo then
+		local logo = Instance.new("ImageLabel")
+		logo.Size = UDim2.new(0, 22, 0, 22)
+		logo.BackgroundTransparency = 1
+		logo.Image = "rbxassetid://115924193030407"
+		logo.ZIndex = 60
+		logo.LayoutOrder = 0
+		logo.Parent = titleRow
+		logo.Visible = true
+	end
 
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.AutomaticSize = Enum.AutomaticSize.X
@@ -1560,62 +1559,42 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	hintLabel.Parent = header
 	self.hintLabel = hintLabel
 
-	local initialSW = getSidebarWidth()
-	local SEARCH_BAR_H = 34
+	-- Search bar in header
+	local headerSearchBox = Instance.new("TextBox")
+	headerSearchBox.Size = UDim2.new(0.35, 0, 0, 24)
+	headerSearchBox.Position = UDim2.new(0.33, 10, 0.5, -12)
+	headerSearchBox.BackgroundColor3 = self.theme.BG
+	headerSearchBox.BorderSizePixel = 0
+	headerSearchBox.PlaceholderText = "Search..."
+	headerSearchBox.PlaceholderColor3 = self.theme.Gray
+	headerSearchBox.Text = ""
+	headerSearchBox.TextColor3 = self.theme.White
+	headerSearchBox.Font = Enum.Font.GothamSemibold
+	headerSearchBox.TextSize = 12
+	headerSearchBox.ClearTextOnFocus = false
+	headerSearchBox.ZIndex = 7
+	headerSearchBox.Parent = header
+	Instance.new("UICorner", headerSearchBox).CornerRadius = UDim.new(0, 4)
+	local hsStroke = Instance.new("UIStroke", headerSearchBox)
+	hsStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	hsStroke.Color = self.theme.Border
+	hsStroke.Thickness = 1
+	self.headerSearchBox = headerSearchBox
 
-	-- Sidebar search bar
-	local sidebarSearchFrame = Instance.new("Frame")
-	sidebarSearchFrame.Name = "SidebarSearchFrame"
-	sidebarSearchFrame.Size = UDim2.new(0, initialSW, 0, SEARCH_BAR_H)
-	sidebarSearchFrame.Position = UDim2.new(0, 0, 0, 46)
-	sidebarSearchFrame.BackgroundColor3 = self.theme.Panel
-	sidebarSearchFrame.BorderSizePixel = 0
-	sidebarSearchFrame.ZIndex = 6
-	sidebarSearchFrame.Parent = win
-	self.sidebarSearchFrame = sidebarSearchFrame
-
-	local sidebarSearchBox = Instance.new("TextBox")
-	sidebarSearchBox.Size = UDim2.new(1, -14, 0, 22)
-	sidebarSearchBox.Position = UDim2.new(0, 7, 0.5, -11)
-	sidebarSearchBox.BackgroundColor3 = self.theme.BG
-	sidebarSearchBox.BorderSizePixel = 0
-	sidebarSearchBox.PlaceholderText = "Search..."
-	sidebarSearchBox.PlaceholderColor3 = self.theme.Gray
-	sidebarSearchBox.Text = ""
-	sidebarSearchBox.TextColor3 = self.theme.White
-	sidebarSearchBox.Font = Enum.Font.GothamSemibold
-	sidebarSearchBox.TextSize = 11
-	sidebarSearchBox.ClearTextOnFocus = false
-	sidebarSearchBox.ZIndex = 7
-	sidebarSearchBox.Parent = sidebarSearchFrame
-	Instance.new("UICorner", sidebarSearchBox).CornerRadius = UDim.new(0, 4)
-	local sbStroke = Instance.new("UIStroke", sidebarSearchBox)
-	sbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	sbStroke.Color = self.theme.Border
-
-	local sidebarSearchDivider = Instance.new("Frame")
-	sidebarSearchDivider.Size = UDim2.new(1, 0, 0, 1)
-	sidebarSearchDivider.Position = UDim2.new(0, 0, 1, 0)
-	sidebarSearchDivider.BackgroundColor3 = self.theme.Border
-	sidebarSearchDivider.BorderSizePixel = 0
-	sidebarSearchDivider.ZIndex = 6
-	sidebarSearchDivider.Parent = sidebarSearchFrame
-
-	self.sidebarSearchBox = sidebarSearchBox
-
-	sidebarSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
-		local query = sidebarSearchBox.Text:lower()
-		if not self.activeTab then return end
-		for _, sub in ipairs(self.activeTab.subtabOrder) do
+	headerSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+		local query = headerSearchBox.Text:lower()
+		for _, sub in ipairs(self.allSubTabs) do
 			if sub.btn then
 				sub.btn.Visible = query == "" or (sub.name and sub.name:lower():find(query, 1, true))
 			end
 		end
 	end)
 
+	local initialSW = getSidebarWidth()
+
 	local sidebar = Instance.new("ScrollingFrame")
-	sidebar.Size = UDim2.new(0, initialSW, 1, -(92 + SEARCH_BAR_H))
-	sidebar.Position = UDim2.new(0, 0, 0, 46 + SEARCH_BAR_H)
+	sidebar.Size = UDim2.new(0, initialSW, 1, -92)
+	sidebar.Position = UDim2.new(0, 0, 0, 46)
 	sidebar.BackgroundColor3 = self.theme.Panel
 	sidebar.BackgroundTransparency = 0
 	sidebar.BorderSizePixel = 0
@@ -1634,8 +1613,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab)
 	sidebarPad.PaddingBottom = UDim.new(0, 6)
 
 	local sidebarEdge = Instance.new("Frame")
-	sidebarEdge.Size = UDim2.new(0, 1, 1, -(92 + SEARCH_BAR_H))
-	sidebarEdge.Position = UDim2.new(0, initialSW, 0, 46 + SEARCH_BAR_H)
+	sidebarEdge.Size = UDim2.new(0, 1, 1, -92)
+	sidebarEdge.Position = UDim2.new(0, initialSW, 0, 46)
 	sidebarEdge.BackgroundColor3 = self.theme.Border
 	sidebarEdge.BorderSizePixel = 0
 	sidebarEdge.ZIndex = 5
@@ -2920,11 +2899,8 @@ function UILib:addTab(name, options)
 		if self.navTopLine then self.navTopLine.Position = UDim2.new(0, 0, 1, -58) end
 
 		local sw = self.sidebar and self.sidebar.Size.X.Offset or 120
-		if self.sidebar then self.sidebar.Size = UDim2.new(0, sw, 1, -138) end
-		if self.sidebarSearchFrame then
-			self.sidebarSearchFrame.Size = UDim2.new(0, sw, 0, 34)
-		end
-		if self.sidebarEdge then self.sidebarEdge.Size = UDim2.new(0, 1, 1, -138) end
+		if self.sidebar then self.sidebar.Size = UDim2.new(0, sw, 1, -104) end
+		if self.sidebarEdge then self.sidebarEdge.Size = UDim2.new(0, 1, 1, -104) end
 		if self.content then
 			local showSidebar = self.activeTab and self.activeTab.showSidebar ~= false or true
 			if showSidebar then
@@ -3103,8 +3079,8 @@ function UILib:selectTab(n)
 		tab = self.tabs[n]
 	end
 	if tab and tab.activate then tab.activate() end
-	if self.sidebarSearchBox then
-		self.sidebarSearchBox.Text = ""
+	if self.headerSearchBox then
+		self.headerSearchBox.Text = ""
 	end
 end
 
@@ -5220,6 +5196,15 @@ function UILib.Column:addGroup(title)
 
 	function group:button(text, callback, tooltip, align, color, style, bgColor, icon)
 		style = style or "bg"
+		local ALIGN_MAP = { left = Enum.TextXAlignment.Left, center = Enum.TextXAlignment.Center, right = Enum.TextXAlignment.Right }
+		local resolvedAlign = Enum.TextXAlignment.Center
+		if align then
+			if type(align) == "string" then
+				resolvedAlign = ALIGN_MAP[align:lower()] or Enum.TextXAlignment.Center
+			else
+				resolvedAlign = align
+			end
+		end
 		local btn = Instance.new("TextButton")
 		btn.Size = UDim2.new(1, 0, 0, 32)
 		btn.BorderSizePixel = 0
@@ -5252,7 +5237,7 @@ function UILib.Column:addGroup(title)
 			lbl.TextColor3 = color or window.theme.Accent
 			lbl.Font = Enum.Font.GothamBold
 			lbl.TextSize = 13
-			lbl.TextXAlignment = align or Enum.TextXAlignment.Center
+			lbl.TextXAlignment = resolvedAlign
 			lbl.ZIndex = 4
 			lbl.Parent = btn
 		elseif style == "text" then
@@ -5265,7 +5250,7 @@ function UILib.Column:addGroup(title)
 			lbl.TextColor3 = color or window.theme.Accent
 			lbl.Font = Enum.Font.GothamSemibold
 			lbl.TextSize = 13
-			lbl.TextXAlignment = align or Enum.TextXAlignment.Center
+			lbl.TextXAlignment = resolvedAlign
 			lbl.ZIndex = 4
 			lbl.Parent = btn
 			btn.MouseEnter:Connect(function() lbl.TextColor3 = window.theme.White end)
@@ -5287,7 +5272,7 @@ function UILib.Column:addGroup(title)
 			lbl.TextColor3 = color or window.theme.White
 			lbl.Font = Enum.Font.GothamSemibold
 			lbl.TextSize = 13
-			lbl.TextXAlignment = align or Enum.TextXAlignment.Center
+			lbl.TextXAlignment = resolvedAlign
 			lbl.ZIndex = 4
 			lbl.Parent = btn
 			if icon then applyRowIcon(btn, lbl, icon, 4) end
@@ -6112,3 +6097,4 @@ function UILib.SubTab:addGroup(title)
 end
 
 return UILib
+
