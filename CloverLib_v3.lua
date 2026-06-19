@@ -2444,31 +2444,21 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	rpStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	rpStroke.Color = self.theme.Border
 
-	local rpIcon = Instance.new("ImageLabel")
-	rpIcon.Size = UDim2.new(0, 16, 0, 16)
-	rpIcon.Position = UDim2.new(0, 10, 0, 10)
-	rpIcon.BackgroundTransparency = 1
-	rpIcon.Image = "rbxassetid://10734963400"
-	rpIcon.ImageColor3 = self.theme.White
-	rpIcon.ScaleType = Enum.ScaleType.Fit
-	rpIcon.ZIndex = 102
-	rpIcon.Parent = resizePanel
-
 	local rpTitle = Instance.new("TextLabel")
-	rpTitle.Size = UDim2.new(1, -30, 0, 16)
-	rpTitle.Position = UDim2.new(0, 30, 0, 10)
+	rpTitle.Size = UDim2.new(1, -20, 0, 16)
+	rpTitle.Position = UDim2.new(0, 10, 0, 10)
 	rpTitle.BackgroundTransparency = 1
 	rpTitle.Text = "Resize"
 	rpTitle.TextColor3 = self.theme.White
 	rpTitle.Font = Enum.Font.GothamBold
-	rpTitle.TextSize = 13
+	rpTitle.TextSize = 14
 	rpTitle.TextXAlignment = Enum.TextXAlignment.Left
 	rpTitle.ZIndex = 102
 	rpTitle.Parent = resizePanel
 
 	local rpHint = Instance.new("TextLabel")
 	rpHint.Size = UDim2.new(1, -20, 0, 14)
-	rpHint.Position = UDim2.new(0, 10, 0, 32)
+	rpHint.Position = UDim2.new(0, 10, 0, 30)
 	rpHint.BackgroundTransparency = 1
 	rpHint.Text = "Drag corner handles to resize"
 	rpHint.TextColor3 = self.theme.Gray
@@ -2480,9 +2470,9 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 
 	local rpShortcut = Instance.new("TextLabel")
 	rpShortcut.Size = UDim2.new(1, -20, 0, 14)
-	rpShortcut.Position = UDim2.new(0, 10, 0, 48)
+	rpShortcut.Position = UDim2.new(0, 10, 0, 46)
 	rpShortcut.BackgroundTransparency = 1
-	rpShortcut.Text = "Press ESC to cancel  ·  Double-click to apply"
+	rpShortcut.Text = "ESC to cancel  ·  Double-click to apply"
 	rpShortcut.TextColor3 = self.theme.Gray
 	rpShortcut.Font = Enum.Font.GothamSemibold
 	rpShortcut.TextSize = 10
@@ -2491,11 +2481,11 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	rpShortcut.Parent = resizePanel
 
 	local applyBtn = Instance.new("TextButton")
-	applyBtn.Size = UDim2.new(0, 140, 0, 32)
+	applyBtn.Size = UDim2.new(0, 140, 0, 34)
 	applyBtn.Position = UDim2.new(0.5, -70, 0, 120)
 	applyBtn.BackgroundColor3 = self.theme.Accent:Lerp(Color3.new(0, 0, 0), 0.35)
 	applyBtn.BorderSizePixel = 0
-	applyBtn.Text = "EXIT & SAVE"
+	applyBtn.Text = "SAVE"
 	applyBtn.TextColor3 = Color3.new(1, 1, 1)
 	applyBtn.Font = Enum.Font.GothamBold
 	applyBtn.TextSize = 13
@@ -3573,7 +3563,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	rowPad.PaddingBottom = UDim.new(0, 2)
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, -80, 0, 16)
-	label.Position = UDim2.new(0, 4, 0, 2)
+	label.Position = UDim2.new(0, 4, 0.5, -8)
 	label.BackgroundTransparency = 1
 	label.Text = text
 	label.TextColor3 = window.theme.White
@@ -3624,13 +3614,13 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	valueBoxInput.Parent = valueBox
 	Instance.new("UICorner", valueBoxInput).CornerRadius = UDim.new(0, 4)
 	local track = Instance.new("Frame")
-	track.Size = UDim2.new(1, 0, 0, 4)
+	track.Size = UDim2.new(1, 0, 0, 8)
 	track.Position = UDim2.new(0, 0, 0, 28)
 	track.BackgroundColor3 = window.theme.Track
 	track.BorderSizePixel = 0
 	track.ZIndex = 3
 	track.Parent = row
-	Instance.new("UICorner", track).CornerRadius = UDim.new(0, 3)
+	Instance.new("UICorner", track).CornerRadius = UDim.new(0, 4)
 	local fill = Instance.new("Frame")
 	fill.Size = UDim2.new((defaultVal - minVal) / (maxVal - minVal), 0, 1, 0)
 	fill.BackgroundColor3 = window.theme.Accent
@@ -4560,9 +4550,7 @@ function UILib.Column:addGroup(title)
 		if not id then id = tostring(assetId) end
 		local iImg = Instance.new("ImageLabel")
 		iImg.Size = UDim2.new(0, 14, 0, 14)
-		local iconX = baseX or 4
-		local labelCenterY = mainLabel.Position.Y.Offset + mainLabel.Size.Y.Offset * 0.5
-		iImg.Position = UDim2.new(0, iconX, 0, labelCenterY - 7)
+		iImg.Position = UDim2.new(0, baseX or 4, 0.5, -7)
 		iImg.BackgroundTransparency = 1
 		iImg.Image = id
 		iImg.ImageColor3 = window.theme.Accent
