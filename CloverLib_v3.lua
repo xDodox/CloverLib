@@ -2239,7 +2239,7 @@ end
 function UILib:buildUITab()
 	if self.uiTabBuilt then return end
 	self.uiTabBuilt = true
-	local uiTab = self:addTab("UI")
+	local uiTab = self:addTab("UI", { icon = "lucide:monitor" })
 	local uiSub = uiTab:addSubTab("Settings")
 	local uiL, uiR = uiSub:split()
 
@@ -2953,7 +2953,7 @@ function UILib:newMiniWindow(title, width, posX, posY)
 		valLbl.Parent = row
 		local track = Instance.new("Frame")
 		track.Size = UDim2.new(1, 0, 0, 4)
-		track.Position = UDim2.new(0, 0, 0, 22)
+	track.Position = UDim2.new(0, 0, 0, 24)
 		track.BackgroundColor3 = self.window.theme.Track
 		track.BorderSizePixel = 0
 		track.ZIndex = 303
