@@ -2382,9 +2382,6 @@ function UILib:buildUITab()
 			if t[1] == val then applyTheme(t); break end
 		end
 	end, "Apply a pre-made color theme")
-	themeGrp:colorpicker("Accent", self.theme.Accent, function(c)
-		self:updateAccent(c)
-	end, "Custom accent color")
 
 	local cfg = uiR:addGroup("Configs")
 	local currentConfig = "default"
@@ -3667,7 +3664,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	rowPad.PaddingBottom = UDim.new(0, 2)
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, -80, 0, 16)
-	label.Position = UDim2.new(0, 4, 0, 6)
+	label.Position = UDim2.new(0, 4, 0, 4)
 	label.BackgroundTransparency = 1
 	label.Text = text
 	label.TextColor3 = window.theme.White
@@ -3682,7 +3679,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	valueBox.AutomaticSize = Enum.AutomaticSize.X
 	valueBox.Size = UDim2.new(0, 0, 0, 18)
 	valueBox.AnchorPoint = Vector2.new(1, 0)
-	valueBox.Position = UDim2.new(1, -2, 0, 3)
+	valueBox.Position = UDim2.new(1, -2, 0, 4)
 	valueBox.BackgroundColor3 = window.theme.Track
 	valueBox.BorderSizePixel = 0
 	valueBox.ZIndex = 3
@@ -3718,8 +3715,8 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	valueBoxInput.Parent = valueBox
 	Instance.new("UICorner", valueBoxInput).CornerRadius = UDim.new(0, 4)
 	local track = Instance.new("Frame")
-	track.Size = UDim2.new(1, 0, 0, 20)
-	track.Position = UDim2.new(0, 0, 0, 22)
+	track.Size = UDim2.new(1, 0, 0, 22)
+	track.Position = UDim2.new(0, 0, 0, 24)
 	track.BackgroundColor3 = window.theme.Track
 	track.BorderSizePixel = 0
 	track.ZIndex = 3
