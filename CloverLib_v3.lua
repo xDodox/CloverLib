@@ -1168,7 +1168,8 @@ function UILib.new(opts)
 		nil,
 		opts.showVersion ~= false,
 		opts.includeUITab,
-		opts.showLogo ~= false
+		opts.showLogo ~= false,
+		opts.uiTabIcon ~= false and (opts.uiTabIcon or "lucide:monitor")
 	)
 end
 
@@ -1177,7 +1178,7 @@ local MAX_SIDEBAR_WIDTH = 120
 local MIN_KEYBIND_WIDTH = 52
 local MAX_KEYBIND_WIDTH = 76
 
-function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, showLogo)
+function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, showLogo, uiTabIcon)
 	local self = setmetatable({}, UILib)
 	self.theme = theme or {}
 	for k, v in pairs(DEFAULT_THEME) do if self.theme[k] == nil then self.theme[k] = v end end
@@ -1187,6 +1188,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	self.connections = {}
 	self.showVersion = showVersion ~= false
 	self.showLogo = showLogo ~= false
+	self.uiTabIcon = uiTabIcon
 	self.configs = {}
 	self.resizing = nil
 	self.toggleKey = Enum.KeyCode.RightShift
@@ -1625,6 +1627,11 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 			headerSearchBox.Text = ""
 			for _, sub in ipairs(self.allSubTabs) do
 				if sub.btn then sub.btn.Visible = true end
+				if sub.groups then
+					for _, g in ipairs(sub.groups) do
+						if g.frame then g.frame.Visible = true end
+					end
+				end
 			end
 		end)
 	end
@@ -1655,12 +1662,30 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		local firstVisible = nil
 		local function contentMatches(sub)
 			if not sub.page then return false end
-			for _, c in ipairs(sub.page:GetDescendants()) do
-				if (c:IsA("TextLabel") or c:IsA("TextButton")) and c.Text:lower():find(query, 1, true) then
-					return true
+			local inGroup = (sub.groups and #sub.groups > 0)
+			if not inGroup then
+				for _, c in ipairs(sub.page:GetDescendants()) do
+					if (c:IsA("TextLabel") or c:IsA("TextButton")) and c.Text:lower():find(query, 1, true) then
+						return true
+					end
 				end
+				return false
 			end
-			return false
+			local anyMatch = false
+			for _, g in ipairs(sub.groups) do
+				local gMatch = (g.frame and g.frame:FindFirstChildOfClass("TextLabel") and g.frame:FindFirstChildOfClass("TextLabel").Text:lower():find(query, 1, true))
+				if not gMatch and g.items then
+					for _, c in ipairs(g.items:GetDescendants()) do
+						if (c:IsA("TextLabel") or c:IsA("TextButton")) and c.Text:lower():find(query, 1, true) then
+							gMatch = true
+							break
+						end
+					end
+				end
+				if g.frame then g.frame.Visible = query == "" or gMatch end
+				if gMatch then anyMatch = true end
+			end
+			return anyMatch
 		end
 		for _, sub in ipairs(self.allSubTabs) do
 			if sub.btn then
@@ -2239,7 +2264,7 @@ end
 function UILib:buildUITab()
 	if self.uiTabBuilt then return end
 	self.uiTabBuilt = true
-	local uiTab = self:addTab("UI", { icon = "lucide:monitor" })
+	local uiTab = self:addTab("UI", self.uiTabIcon and { icon = self.uiTabIcon } or {})
 	local uiSub = uiTab:addSubTab("Settings")
 	local uiL, uiR = uiSub:split()
 
@@ -6227,4 +6252,3 @@ function UILib.SubTab:addGroup(title)
 end
 
 return UILib
-
