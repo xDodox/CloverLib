@@ -2332,24 +2332,26 @@ function UILib:buildUITab()
 		Enum.TextXAlignment.Center, Color3.fromRGB(255, 80, 80))
 
 	local THEMES = {
-		{ "Default",  Color3.fromRGB(0, 210, 135), Color3.fromRGB(10, 10, 10), Color3.fromRGB(24, 24, 24), Color3.fromRGB(24, 24, 24), Color3.fromRGB(42, 42, 42) },
-		{ "Midnight", Color3.fromRGB(100, 140, 255), Color3.fromRGB(8, 8, 12), Color3.fromRGB(18, 20, 28), Color3.fromRGB(20, 22, 30), Color3.fromRGB(35, 40, 55) },
-		{ "Blood",    Color3.fromRGB(220, 50, 50), Color3.fromRGB(12, 8, 8), Color3.fromRGB(28, 18, 18), Color3.fromRGB(28, 20, 20), Color3.fromRGB(50, 30, 30) },
-		{ "Ocean",    Color3.fromRGB(0, 180, 220), Color3.fromRGB(8, 12, 15), Color3.fromRGB(18, 24, 30), Color3.fromRGB(20, 26, 32), Color3.fromRGB(30, 42, 52) },
-		{ "Gold",     Color3.fromRGB(255, 180, 50), Color3.fromRGB(15, 12, 8), Color3.fromRGB(30, 26, 18), Color3.fromRGB(32, 28, 20), Color3.fromRGB(55, 45, 30) },
-		{ "Lime",     Color3.fromRGB(100, 255, 100), Color3.fromRGB(10, 15, 10), Color3.fromRGB(24, 30, 24), Color3.fromRGB(26, 32, 26), Color3.fromRGB(40, 50, 40) },
-		{ "Purple",   Color3.fromRGB(180, 100, 255), Color3.fromRGB(12, 8, 15), Color3.fromRGB(24, 18, 30), Color3.fromRGB(26, 20, 32), Color3.fromRGB(42, 30, 55) },
+		{ "Default",  Color3.fromRGB(0, 210, 135), Color3.fromRGB(10, 10, 10), Color3.fromRGB(24, 24, 24), Color3.fromRGB(24, 24, 24), Color3.fromRGB(32, 32, 32), Color3.fromRGB(10, 10, 10), Color3.fromRGB(42, 42, 42) },
+		{ "Midnight", Color3.fromRGB(100, 140, 255), Color3.fromRGB(8, 8, 12), Color3.fromRGB(18, 20, 28), Color3.fromRGB(20, 22, 30), Color3.fromRGB(26, 28, 38), Color3.fromRGB(10, 10, 14), Color3.fromRGB(35, 40, 55) },
+		{ "Blood",    Color3.fromRGB(220, 50, 50), Color3.fromRGB(12, 8, 8), Color3.fromRGB(28, 18, 18), Color3.fromRGB(28, 20, 20), Color3.fromRGB(38, 24, 24), Color3.fromRGB(14, 8, 8), Color3.fromRGB(50, 30, 30) },
+		{ "Ocean",    Color3.fromRGB(0, 180, 220), Color3.fromRGB(8, 12, 15), Color3.fromRGB(18, 24, 30), Color3.fromRGB(20, 26, 32), Color3.fromRGB(26, 32, 40), Color3.fromRGB(8, 10, 14), Color3.fromRGB(30, 42, 52) },
+		{ "Gold",     Color3.fromRGB(255, 180, 50), Color3.fromRGB(15, 12, 8), Color3.fromRGB(30, 26, 18), Color3.fromRGB(32, 28, 20), Color3.fromRGB(40, 34, 24), Color3.fromRGB(14, 10, 6), Color3.fromRGB(55, 45, 30) },
+		{ "Lime",     Color3.fromRGB(100, 255, 100), Color3.fromRGB(10, 15, 10), Color3.fromRGB(24, 30, 24), Color3.fromRGB(26, 32, 26), Color3.fromRGB(34, 40, 34), Color3.fromRGB(10, 14, 10), Color3.fromRGB(40, 50, 40) },
+		{ "Purple",   Color3.fromRGB(180, 100, 255), Color3.fromRGB(12, 8, 15), Color3.fromRGB(24, 18, 30), Color3.fromRGB(26, 20, 32), Color3.fromRGB(34, 26, 40), Color3.fromRGB(12, 8, 14), Color3.fromRGB(42, 30, 55) },
 	}
 	local themeNames = {}
 	for _, t in ipairs(THEMES) do themeNames[#themeNames + 1] = t[1] end
 
 	local function applyTheme(theme)
-		local accent, bg, panel, item, border = unpack(theme, 2)
+		local accent, bg, panel, item, itemHov, track, border = unpack(theme, 2)
 		self.theme.Accent = accent
 		self.theme.AccentD = Color3.new(accent.r * 0.70, accent.g * 0.70, accent.b * 0.70)
 		self.theme.BG = bg
 		self.theme.Panel = panel
 		self.theme.Item = item
+		self.theme.ItemHov = itemHov
+		self.theme.Track = track
 		self.theme.Border = border
 		self:updateAccent(accent)
 		if self.window then self.window.BackgroundColor3 = bg end
@@ -2359,9 +2361,11 @@ function UILib:buildUITab()
 		if self.sidebar then self.sidebar.BackgroundColor3 = panel end
 		if self.navbar then self.navbar.BackgroundColor3 = panel end
 		if self.navbarBG then self.navbarBG.BackgroundColor3 = panel end
+		if self.navTopLine then self.navTopLine.BackgroundColor3 = border end
 		for _, tab in ipairs(self.tabOrder or {}) do
 			if tab.subtabOrder then
 				for _, sub in ipairs(tab.subtabOrder) do
+					if sub.hovFrame then sub.hovFrame.BackgroundColor3 = itemHov end
 					if sub.groups then
 						for _, gr in ipairs(sub.groups) do
 							if gr.frame then gr.frame.BackgroundColor3 = item end
@@ -3330,12 +3334,13 @@ function UILib.Tab:addSubTab(name)
 
 	local hov = Instance.new("Frame")
 	hov.Size = UDim2.new(1, 0, 1, 0)
-	hov.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	hov.BackgroundColor3 = self.window.theme.ItemHov
 	hov.BorderSizePixel = 0
 	hov.BackgroundTransparency = 1
 	hov.ZIndex = 4
 	hov.Parent = btn
 	Instance.new("UICorner", hov).CornerRadius = UDim.new(0, 5)
+	sub.hovFrame = hov
 
 	local selLine = Instance.new("Frame")
 	selLine.Size = UDim2.new(0, 3, 0, 12)
