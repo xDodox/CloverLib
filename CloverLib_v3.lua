@@ -2321,6 +2321,36 @@ function UILib:buildUITab()
 	grp:button("Unload", function() self:Destroy() end, "Cleanly remove the UI",
 		Enum.TextXAlignment.Center, Color3.fromRGB(255, 80, 80))
 
+	local themeGrp = uiR:addGroup("Theme")
+	themeGrp:colorpicker("Background", self.theme.BG, function(c)
+		self.theme.BG = c
+		if self.content then self.content.BackgroundColor3 = c end
+	end, "Main background color")
+	themeGrp:colorpicker("Panel", self.theme.Panel, function(c)
+		self.theme.Panel = c
+		if self.header then self.header.BackgroundColor3 = c end
+		if self.sidebar then self.sidebar.BackgroundColor3 = c end
+	end, "Header and sidebar color")
+	themeGrp:colorpicker("Card", self.theme.Item, function(c)
+		self.theme.Item = c
+		for _, g in ipairs(self.allSubTabs) do
+			if g.groups then
+				for _, gr in ipairs(g.groups) do
+					if gr.frame then gr.frame.BackgroundColor3 = c end
+				end
+			end
+		end
+	end, "Group card background color")
+	themeGrp:colorpicker("Border", self.theme.Border, function(c)
+		self.theme.Border = c
+		-- Update all UIStroke instances in the window
+		for _, s in ipairs(self.window:GetDescendants()) do
+			if s:IsA("UIStroke") then
+				pcall(function() s.Color = c end)
+			end
+		end
+	end, "Border/outline color")
+
 	local cfg = uiR:addGroup("Configs")
 	local currentConfig = "default"
 
@@ -3823,10 +3853,12 @@ local function createColorPicker(group, items, window, text, default, callback)
 			pickerFrame = nil
 			local sc = p:FindFirstChildOfClass("UIScale")
 			if sc then
-				local t = TweenService:Create(sc, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+				local t = TweenService:Create(sc, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
 					{ Scale = 0 })
 				t:Play()
-				t.Completed:Connect(function() p:Destroy() end)
+				t.Completed:Connect(function()
+					pcall(function() p:Destroy() end)
+				end)
 			else
 				p:Destroy()
 			end
@@ -3838,6 +3870,10 @@ local function createColorPicker(group, items, window, text, default, callback)
 			closePicker()
 			return
 		end
+		-- Adding a flag so quick double-clicks don't create a second picker
+		if window._openingPicker then return end
+		window._openingPicker = true
+		task.delay(0.15, function() window._openingPicker = nil end)
 		local pickerJustOpened = true
 		task.delay(0.1, function() pickerJustOpened = false end)
 
