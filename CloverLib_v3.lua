@@ -2834,7 +2834,7 @@ function UILib:newMiniWindow(title, width, posX, posY)
 	collapseBtn.Size = UDim2.new(0, 24, 0, 24)
 	collapseBtn.Position = UDim2.new(1, -28, 0.5, -12)
 	collapseBtn.BackgroundTransparency = 1
-	collapseBtn.Text = "\u2212"
+	collapseBtn.Text = "-"
 	collapseBtn.TextColor3 = self.theme.Gray
 	collapseBtn.Font = Enum.Font.GothamBold
 	collapseBtn.TextSize = 16
@@ -2872,7 +2872,7 @@ function UILib:newMiniWindow(title, width, posX, posY)
 
 	collapseBtn.MouseButton1Click:Connect(function()
 		collapsed = not collapsed
-		collapseBtn.Text = collapsed and "+" or "\u2212"
+		collapseBtn.Text = collapsed and "+" or "-"
 		local targetH = collapsed and 32 or fullH
 		body.Visible = not collapsed
 		TweenService:Create(frame, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
@@ -2921,7 +2921,7 @@ function UILib:newMiniWindow(title, width, posX, posY)
 		val.Size = UDim2.new(0.45, 0, 1, 0)
 		val.Position = UDim2.new(0.55, 0, 0, 0)
 		val.BackgroundTransparency = 1
-		val.Text = tostring(defaultValue or "\u2014")
+		val.Text = tostring(defaultValue or "-")
 		val.TextColor3 = color or self.window.theme.Accent
 		val.Font = Enum.Font.GothamSemibold
 		val.TextSize = 12
@@ -5785,7 +5785,7 @@ function UILib.Column:addGroup(title)
 		arrow.Size = UDim2.new(0, 20, 1, 0)
 		arrow.Position = UDim2.new(1, -22, 0, 0)
 		arrow.BackgroundTransparency = 1
-		arrow.Text = default and "\u25BC" or "\u25B6"
+		arrow.Text = default and string.char(226, 150, 188) or string.char(226, 150, 182)
 		arrow.TextColor3 = window.theme.Accent
 		arrow.Font = Enum.Font.GothamBold
 		arrow.TextSize = 14
@@ -5824,7 +5824,7 @@ function UILib.Column:addGroup(title)
 		if contentFunc then contentFunc(nestedGroup) end
 		toggleRow.MouseButton1Click:Connect(function()
 			state = not state
-			arrow.Text = state and "\u25BC" or "\u25B6"
+			arrow.Text = state and string.char(226, 150, 188) or string.char(226, 150, 182)
 			local targetH = 34 + (state and contentLayout.AbsoluteContentSize.Y or 0)
 			TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 				Size = UDim2.new(1, 0, 0, targetH)
