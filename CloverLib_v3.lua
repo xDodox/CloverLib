@@ -1626,11 +1626,15 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		task.delay(0.2, function()
 			searchFrame.Visible = false
 			headerSearchBox.Text = ""
-			for _, sub in ipairs(self.allSubTabs) do
-				if sub.btn then sub.btn.Visible = true end
-				if sub.groups then
-					for _, g in ipairs(sub.groups) do
-						if g.frame then g.frame.Visible = true end
+			for _, tab in ipairs(self.tabOrder or {}) do
+				if tab.subtabOrder then
+					for _, sub in ipairs(tab.subtabOrder) do
+						if sub.btn then sub.btn.Visible = true end
+						if sub.groups then
+							for _, g in ipairs(sub.groups) do
+								if g.frame then g.frame.Visible = true end
+							end
+						end
 					end
 				end
 			end
@@ -1661,9 +1665,18 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	headerSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
 		local query = headerSearchBox.Text:lower()
 
-		-- For each subtab, check if it matches by name or content
+		-- Collect all actual subtab objects
+		local allSubs = {}
+		for _, tab in ipairs(self.tabOrder or {}) do
+			if tab.subtabOrder then
+				for _, sub in ipairs(tab.subtabOrder) do
+					allSubs[#allSubs + 1] = sub
+				end
+			end
+		end
+
 		local firstMatch = nil
-		for _, sub in ipairs(self.allSubTabs) do
+		for _, sub in ipairs(allSubs) do
 			if sub.btn then
 				local nameMatch = query == "" or (sub.name and sub.name:lower():find(query, 1, true))
 				local contentMatch = false
@@ -1689,19 +1702,17 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		end
 
 		-- Auto-navigate to first match
-		if query ~= "" and firstMatch then
-			-- Switch to the first matching subtab
+		if query ~= "" and firstMatch and firstMatch.select then
 			firstMatch:select()
 		end
 
 		-- Filter groups within the currently active subtab
 		if query ~= "" then
-			for _, sub in ipairs(self.allSubTabs) do
+			for _, sub in ipairs(allSubs) do
 				if sub.groups then
-					for _, g in ipairs(sub.groups) do
-						-- Check if this subtab is the active one
-						local isActive = sub.page and sub.page.Visible
-						if isActive then
+					local isActive = sub.page and sub.page.Visible
+					if isActive then
+						for _, g in ipairs(sub.groups) do
 							local gTitle = g.frame and g.frame:FindFirstChildOfClass("TextLabel")
 							local match = gTitle and gTitle.Text:lower():find(query, 1, true)
 							if not match and g.items then
@@ -2331,6 +2342,7 @@ function UILib:buildUITab()
 	grp:button("Unload", function() self:Destroy() end, "Cleanly remove the UI",
 		Enum.TextXAlignment.Center, Color3.fromRGB(255, 80, 80))
 
+	-- Theme section on left column
 	local THEMES = {
 		{ "Default",  Color3.fromRGB(0, 210, 135), Color3.fromRGB(10, 10, 10), Color3.fromRGB(24, 24, 24), Color3.fromRGB(24, 24, 24), Color3.fromRGB(32, 32, 32), Color3.fromRGB(10, 10, 10), Color3.fromRGB(42, 42, 42) },
 		{ "Midnight", Color3.fromRGB(100, 140, 255), Color3.fromRGB(8, 8, 12), Color3.fromRGB(18, 20, 28), Color3.fromRGB(20, 22, 30), Color3.fromRGB(26, 28, 38), Color3.fromRGB(10, 10, 14), Color3.fromRGB(35, 40, 55) },
@@ -2381,7 +2393,7 @@ function UILib:buildUITab()
 		end
 	end
 
-	local themeGrp = uiR:addGroup("Theme")
+	local themeGrp = uiL:addGroup("Theme")
 	themeGrp:dropdown("Preset", themeNames, "Default", function(val)
 		if val == "" then return end
 		for _, t in ipairs(THEMES) do
@@ -3741,6 +3753,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	fill.ZIndex = 4
 	fill.Parent = track
 	Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 4)
+	table.insert(window.accentObjects, fill)
 
 	local hit = Instance.new("TextButton")
 	hit.Size = UDim2.new(1, 0, 1, 0)
@@ -4306,6 +4319,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	dlist.Visible = false
 	dlist.ZIndex = 50
 	dlist.Parent = row
+	table.insert(window.accentObjects, dlist)
 	local multiDlistStroke = Instance.new("UIStroke", dlist)
 	multiDlistStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	multiDlistStroke.Color = window.theme.Border
@@ -4927,6 +4941,7 @@ function UILib.Column:addGroup(title)
 		dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
 		dlist.ZIndex = 51
 		dlist.Parent = expandPanel
+		table.insert(window.accentObjects, dlist)
 		local dlayout = Instance.new("UIListLayout", dlist)
 		dlayout.SortOrder = Enum.SortOrder.LayoutOrder
 		dlayout.Padding = UDim.new(0, 0)
