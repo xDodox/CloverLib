@@ -2378,7 +2378,7 @@ function UILib:buildUITab()
 	end
 
 	local themeGrp = uiR:addGroup("Theme")
-	themeGrp:dropdown("Preset", themeNames, 1, function(val)
+	themeGrp:dropdown("Preset", themeNames, "Default", function(val)
 		if val == "" then return end
 		for _, t in ipairs(THEMES) do
 			if t[1] == val then applyTheme(t); break end
