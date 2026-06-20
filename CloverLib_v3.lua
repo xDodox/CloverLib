@@ -3008,7 +3008,7 @@ function UILib:newMiniWindow(title, width, posX, posY)
 		valLbl.Parent = row
 		local track = Instance.new("Frame")
 		track.Size = UDim2.new(1, 0, 0, 4)
-	track.Position = UDim2.new(0, 0, 0, 24)
+	track.Position = UDim2.new(0, 0, 0, 26)
 		track.BackgroundColor3 = self.window.theme.Track
 		track.BorderSizePixel = 0
 		track.ZIndex = 303
@@ -3632,7 +3632,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	rowPad.PaddingBottom = UDim.new(0, 2)
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, -80, 0, 16)
-	label.Position = UDim2.new(0, 4, 0, 4)
+	label.Position = UDim2.new(0, 4, 0, 6)
 	label.BackgroundTransparency = 1
 	label.Text = text
 	label.TextColor3 = window.theme.White
@@ -3647,7 +3647,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	valueBox.AutomaticSize = Enum.AutomaticSize.X
 	valueBox.Size = UDim2.new(0, 0, 0, 18)
 	valueBox.AnchorPoint = Vector2.new(1, 0)
-	valueBox.Position = UDim2.new(1, -2, 0, 4)
+	valueBox.Position = UDim2.new(1, -2, 0, 3)
 	valueBox.BackgroundColor3 = window.theme.Track
 	valueBox.BorderSizePixel = 0
 	valueBox.ZIndex = 3
@@ -3866,12 +3866,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 	end
 
 	local function openPicker()
-		if pickerFrame then
-			closePicker()
-			return
-		end
-		-- Adding a flag so quick double-clicks don't create a second picker
-		if window._openingPicker then return end
+		if pickerFrame or window._openingPicker then return end
 		window._openingPicker = true
 		task.delay(0.15, function() window._openingPicker = nil end)
 		local pickerJustOpened = true
