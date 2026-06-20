@@ -2332,14 +2332,16 @@ function UILib:buildUITab()
 		Enum.TextXAlignment.Center, Color3.fromRGB(255, 80, 80))
 
 	local THEMES = {
-		{ "Default",    Color3.fromRGB(0, 210, 135), Color3.fromRGB(10, 10, 10), Color3.fromRGB(24, 24, 24), Color3.fromRGB(24, 24, 24), Color3.fromRGB(42, 42, 42) },
-		{ "Midnight",   Color3.fromRGB(100, 140, 255), Color3.fromRGB(8, 8, 12), Color3.fromRGB(18, 20, 28), Color3.fromRGB(20, 22, 30), Color3.fromRGB(35, 40, 55) },
-		{ "Blood",      Color3.fromRGB(220, 50, 50), Color3.fromRGB(12, 8, 8), Color3.fromRGB(28, 18, 18), Color3.fromRGB(28, 20, 20), Color3.fromRGB(50, 30, 30) },
-		{ "Ocean",      Color3.fromRGB(0, 180, 220), Color3.fromRGB(8, 12, 15), Color3.fromRGB(18, 24, 30), Color3.fromRGB(20, 26, 32), Color3.fromRGB(30, 42, 52) },
-		{ "Gold",       Color3.fromRGB(255, 180, 50), Color3.fromRGB(15, 12, 8), Color3.fromRGB(30, 26, 18), Color3.fromRGB(32, 28, 20), Color3.fromRGB(55, 45, 30) },
-		{ "Lime",       Color3.fromRGB(100, 255, 100), Color3.fromRGB(10, 15, 10), Color3.fromRGB(24, 30, 24), Color3.fromRGB(26, 32, 26), Color3.fromRGB(40, 50, 40) },
-		{ "Purple",     Color3.fromRGB(180, 100, 255), Color3.fromRGB(12, 8, 15), Color3.fromRGB(24, 18, 30), Color3.fromRGB(26, 20, 32), Color3.fromRGB(42, 30, 55) },
+		{ "Default",  Color3.fromRGB(0, 210, 135), Color3.fromRGB(10, 10, 10), Color3.fromRGB(24, 24, 24), Color3.fromRGB(24, 24, 24), Color3.fromRGB(42, 42, 42) },
+		{ "Midnight", Color3.fromRGB(100, 140, 255), Color3.fromRGB(8, 8, 12), Color3.fromRGB(18, 20, 28), Color3.fromRGB(20, 22, 30), Color3.fromRGB(35, 40, 55) },
+		{ "Blood",    Color3.fromRGB(220, 50, 50), Color3.fromRGB(12, 8, 8), Color3.fromRGB(28, 18, 18), Color3.fromRGB(28, 20, 20), Color3.fromRGB(50, 30, 30) },
+		{ "Ocean",    Color3.fromRGB(0, 180, 220), Color3.fromRGB(8, 12, 15), Color3.fromRGB(18, 24, 30), Color3.fromRGB(20, 26, 32), Color3.fromRGB(30, 42, 52) },
+		{ "Gold",     Color3.fromRGB(255, 180, 50), Color3.fromRGB(15, 12, 8), Color3.fromRGB(30, 26, 18), Color3.fromRGB(32, 28, 20), Color3.fromRGB(55, 45, 30) },
+		{ "Lime",     Color3.fromRGB(100, 255, 100), Color3.fromRGB(10, 15, 10), Color3.fromRGB(24, 30, 24), Color3.fromRGB(26, 32, 26), Color3.fromRGB(40, 50, 40) },
+		{ "Purple",   Color3.fromRGB(180, 100, 255), Color3.fromRGB(12, 8, 15), Color3.fromRGB(24, 18, 30), Color3.fromRGB(26, 20, 32), Color3.fromRGB(42, 30, 55) },
 	}
+	local themeNames = {}
+	for _, t in ipairs(THEMES) do themeNames[#themeNames + 1] = t[1] end
 
 	local function applyTheme(theme)
 		local accent, bg, panel, item, border = unpack(theme, 2)
@@ -2376,7 +2378,7 @@ function UILib:buildUITab()
 	end
 
 	local themeGrp = uiR:addGroup("Theme")
-	themeGrp:dropdown("Preset", THEMES, 1, function(val)
+	themeGrp:dropdown("Preset", themeNames, 1, function(val)
 		if val == "" then return end
 		for _, t in ipairs(THEMES) do
 			if t[1] == val then applyTheme(t); break end
