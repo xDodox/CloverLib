@@ -2834,7 +2834,7 @@ function UILib:newMiniWindow(title, width, posX, posY)
 	collapseBtn.Size = UDim2.new(0, 24, 0, 24)
 	collapseBtn.Position = UDim2.new(1, -28, 0.5, -12)
 	collapseBtn.BackgroundTransparency = 1
-	collapseBtn.Text = "Ã¢Ë†â€™"
+	collapseBtn.Text = "\u2212"
 	collapseBtn.TextColor3 = self.theme.Gray
 	collapseBtn.Font = Enum.Font.GothamBold
 	collapseBtn.TextSize = 16
@@ -2872,7 +2872,7 @@ function UILib:newMiniWindow(title, width, posX, posY)
 
 	collapseBtn.MouseButton1Click:Connect(function()
 		collapsed = not collapsed
-		collapseBtn.Text = collapsed and "+" or "Ã¢Ë†â€™"
+		collapseBtn.Text = collapsed and "+" or "\u2212"
 		local targetH = collapsed and 32 or fullH
 		body.Visible = not collapsed
 		TweenService:Create(frame, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
@@ -2921,7 +2921,7 @@ function UILib:newMiniWindow(title, width, posX, posY)
 		val.Size = UDim2.new(0.45, 0, 1, 0)
 		val.Position = UDim2.new(0.55, 0, 0, 0)
 		val.BackgroundTransparency = 1
-		val.Text = tostring(defaultValue or "Ã¢â‚¬â€")
+		val.Text = tostring(defaultValue or "\u2014")
 		val.TextColor3 = color or self.window.theme.Accent
 		val.Font = Enum.Font.GothamSemibold
 		val.TextSize = 12
@@ -4585,26 +4585,6 @@ function UILib.Column:addGroup(title)
 		end
 	end
 
-	local function applyRowIcon(rowFrame, mainLabel, assetId, baseX)
-		if not assetId then return end
-		local id = UILib.resolveIcon(assetId)
-		if not id then id = tostring(assetId) end
-		local iImg = Instance.new("ImageLabel")
-		iImg.Size = UDim2.new(0, 14, 0, 14)
-		iImg.Position = UDim2.new(0, baseX or 4, 0.5, -7)
-		iImg.BackgroundTransparency = 1
-		iImg.Image = id
-		iImg.ImageColor3 = window.theme.Accent
-		iImg.ScaleType = Enum.ScaleType.Fit
-		iImg.ZIndex = (mainLabel.ZIndex or 3)
-		iImg.Parent = rowFrame
-		table.insert(window.accentObjects, iImg)
-
-		mainLabel.Position = UDim2.new(0, (baseX or 4) + 18, mainLabel.Position.Y.Scale, mainLabel.Position.Y.Offset)
-		mainLabel.Size = UDim2.new(mainLabel.Size.X.Scale, mainLabel.Size.X.Offset - 18, mainLabel.Size.Y.Scale,
-			mainLabel.Size.Y.Offset)
-	end
-
 	function group:paragraph(ptitle, text, tooltip)
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, 0)
@@ -4690,7 +4670,6 @@ function UILib.Column:addGroup(title)
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 4
 		lbl.Parent = r
-		if icon then applyRowIcon(r, lbl, icon, 4) end
 		local state = default
 		local elem = { ID = id, Value = state, DefaultValue = default, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = 36 }
 		elem.SetValue = function(val)
@@ -4738,10 +4717,6 @@ function UILib.Column:addGroup(title)
 	function group:slider(text, minVal, maxVal, defaultVal, callback, step, tooltip, icon)
 		local r, elem = createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step)
 		if tooltip then attachTooltip(r, tooltip, window) end
-		if icon then
-			local iLabel = r:FindFirstChildOfClass("TextLabel")
-			if iLabel then applyRowIcon(r, iLabel, icon, 4) end
-		end
 		updateSize()
 		return elem
 	end
@@ -4769,7 +4744,6 @@ function UILib.Column:addGroup(title)
 		lbl.ZIndex = 11
 		lbl.Parent = r
 
-		if icon then applyRowIcon(r, lbl, icon, 4) end
 		local refreshBtn = buildDropdownRefreshBtn(r, window, refreshCallback)
 
 		local dbtn = Instance.new("TextButton")
@@ -5430,7 +5404,6 @@ function UILib.Column:addGroup(title)
 			lbl.TextXAlignment = resolvedAlign
 			lbl.ZIndex = 4
 			lbl.Parent = btn
-			if icon then applyRowIcon(btn, lbl, icon, 4) end
 		end
 
 		btn.MouseButton1Click:Connect(callback)
@@ -5812,7 +5785,7 @@ function UILib.Column:addGroup(title)
 		arrow.Size = UDim2.new(0, 20, 1, 0)
 		arrow.Position = UDim2.new(1, -22, 0, 0)
 		arrow.BackgroundTransparency = 1
-		arrow.Text = default and "Ã¢â€“Â¼" or "Ã¢â€“Â¶"
+		arrow.Text = default and "\u25BC" or "\u25B6"
 		arrow.TextColor3 = window.theme.Accent
 		arrow.Font = Enum.Font.GothamBold
 		arrow.TextSize = 14
@@ -5851,7 +5824,7 @@ function UILib.Column:addGroup(title)
 		if contentFunc then contentFunc(nestedGroup) end
 		toggleRow.MouseButton1Click:Connect(function()
 			state = not state
-			arrow.Text = state and "Ã¢â€“Â¼" or "Ã¢â€“Â¶"
+			arrow.Text = state and "\u25BC" or "\u25B6"
 			local targetH = 34 + (state and contentLayout.AbsoluteContentSize.Y or 0)
 			TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 				Size = UDim2.new(1, 0, 0, targetH)
@@ -5866,10 +5839,6 @@ function UILib.Column:addGroup(title)
 	function group:colorpicker(text, default, callback, tooltip, icon)
 		local r, elem = createColorPicker(group, items, window, text, default, callback)
 		if tooltip then attachTooltip(r, tooltip, window) end
-		if icon then
-			local iLabel = r:FindFirstChildOfClass("TextLabel")
-			if iLabel then applyRowIcon(r, iLabel, icon, 4) end
-		end
 		updateSize()
 		return elem
 	end
@@ -6235,6 +6204,7 @@ function UILib.Column:addGroup(title)
 		return leftGroup, rightGroup
 	end
 
+	if subtab and subtab.groups then table.insert(subtab.groups, group) end
 	return group
 end
 
@@ -6252,3 +6222,4 @@ function UILib.SubTab:addGroup(title)
 end
 
 return UILib
+
