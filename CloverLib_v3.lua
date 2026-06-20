@@ -2284,10 +2284,6 @@ function UILib:buildUITab()
 
 	local grp = uiL:addGroup("Interface")
 
-	grp:colorpicker("Accent Color", self.theme.Accent, function(c)
-		self:updateAccent(c)
-	end, "Update accent color")
-
 	local widthSlider = grp:slider("Window Width", 450, 1200, self.size.X, function(val)
 		self.size = Vector2.new(val, self.size.Y)
 		self.window.Size = UDim2.new(0, val, 0, self.size.Y)
@@ -2335,43 +2331,60 @@ function UILib:buildUITab()
 	grp:button("Unload", function() self:Destroy() end, "Cleanly remove the UI",
 		Enum.TextXAlignment.Center, Color3.fromRGB(255, 80, 80))
 
-	local themeGrp = uiR:addGroup("Theme")
-	themeGrp:colorpicker("Background", self.theme.BG, function(c)
-		self.theme.BG = c
-		if self.window then self.window.BackgroundColor3 = c end
-		if self.content then self.content.BackgroundColor3 = c end
-	end, "Main background color")
-	themeGrp:colorpicker("Panel", self.theme.Panel, function(c)
-		self.theme.Panel = c
-		if self.header then self.header.BackgroundColor3 = c end
-		if self.headerCover then self.headerCover.BackgroundColor3 = c end
-		if self.sidebar then self.sidebar.BackgroundColor3 = c end
-		if self.navbar then self.navbar.BackgroundColor3 = c end
-		if self.navbarBG then self.navbarBG.BackgroundColor3 = c end
-	end, "Header and sidebar color")
-	themeGrp:colorpicker("Card", self.theme.Item, function(c)
-		self.theme.Item = c
-		local function refreshGroups(list)
-			for _, sub in ipairs(list) do
-				if sub.groups then
-					for _, gr in ipairs(sub.groups) do
-						if gr.frame then gr.frame.BackgroundColor3 = c end
+	local THEMES = {
+		{ "Default",    Color3.fromRGB(0, 210, 135), Color3.fromRGB(10, 10, 10), Color3.fromRGB(24, 24, 24), Color3.fromRGB(24, 24, 24), Color3.fromRGB(42, 42, 42) },
+		{ "Midnight",   Color3.fromRGB(100, 140, 255), Color3.fromRGB(8, 8, 12), Color3.fromRGB(18, 20, 28), Color3.fromRGB(20, 22, 30), Color3.fromRGB(35, 40, 55) },
+		{ "Blood",      Color3.fromRGB(220, 50, 50), Color3.fromRGB(12, 8, 8), Color3.fromRGB(28, 18, 18), Color3.fromRGB(28, 20, 20), Color3.fromRGB(50, 30, 30) },
+		{ "Ocean",      Color3.fromRGB(0, 180, 220), Color3.fromRGB(8, 12, 15), Color3.fromRGB(18, 24, 30), Color3.fromRGB(20, 26, 32), Color3.fromRGB(30, 42, 52) },
+		{ "Gold",       Color3.fromRGB(255, 180, 50), Color3.fromRGB(15, 12, 8), Color3.fromRGB(30, 26, 18), Color3.fromRGB(32, 28, 20), Color3.fromRGB(55, 45, 30) },
+		{ "Lime",       Color3.fromRGB(100, 255, 100), Color3.fromRGB(10, 15, 10), Color3.fromRGB(24, 30, 24), Color3.fromRGB(26, 32, 26), Color3.fromRGB(40, 50, 40) },
+		{ "Purple",     Color3.fromRGB(180, 100, 255), Color3.fromRGB(12, 8, 15), Color3.fromRGB(24, 18, 30), Color3.fromRGB(26, 20, 32), Color3.fromRGB(42, 30, 55) },
+	}
+
+	local function applyTheme(theme)
+		local accent, bg, panel, item, border = unpack(theme, 2)
+		self.theme.Accent = accent
+		self.theme.AccentD = Color3.new(accent.r * 0.70, accent.g * 0.70, accent.b * 0.70)
+		self.theme.BG = bg
+		self.theme.Panel = panel
+		self.theme.Item = item
+		self.theme.Border = border
+		self:updateAccent(accent)
+		if self.window then self.window.BackgroundColor3 = bg end
+		if self.content then self.content.BackgroundColor3 = bg end
+		if self.header then self.header.BackgroundColor3 = panel end
+		if self.headerCover then self.headerCover.BackgroundColor3 = panel end
+		if self.sidebar then self.sidebar.BackgroundColor3 = panel end
+		if self.navbar then self.navbar.BackgroundColor3 = panel end
+		if self.navbarBG then self.navbarBG.BackgroundColor3 = panel end
+		for _, tab in ipairs(self.tabOrder or {}) do
+			if tab.subtabOrder then
+				for _, sub in ipairs(tab.subtabOrder) do
+					if sub.groups then
+						for _, gr in ipairs(sub.groups) do
+							if gr.frame then gr.frame.BackgroundColor3 = item end
+						end
 					end
 				end
 			end
 		end
-		for _, tab in ipairs(self.tabOrder or {}) do
-			if tab.subtabOrder then refreshGroups(tab.subtabOrder) end
-		end
-	end, "Group card background color")
-	themeGrp:colorpicker("Border", self.theme.Border, function(c)
-		self.theme.Border = c
 		for _, s in ipairs(self.window:GetDescendants()) do
 			if s:IsA("UIStroke") then
-				pcall(function() s.Color = c end)
+				pcall(function() s.Color = border end)
 			end
 		end
-	end, "Border/outline color")
+	end
+
+	local themeGrp = uiR:addGroup("Theme")
+	themeGrp:dropdown("Preset", THEMES, 1, function(val)
+		if val == "" then return end
+		for _, t in ipairs(THEMES) do
+			if t[1] == val then applyTheme(t); break end
+		end
+	end, "Apply a pre-made color theme")
+	themeGrp:colorpicker("Accent", self.theme.Accent, function(c)
+		self:updateAccent(c)
+	end, "Custom accent color")
 
 	local cfg = uiR:addGroup("Configs")
 	local currentConfig = "default"
