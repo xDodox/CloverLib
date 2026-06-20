@@ -3869,11 +3869,15 @@ local function createColorPicker(group, items, window, text, default, callback)
 
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
-		local absPos = colorBox.AbsolutePosition
-		local absSize = colorBox.AbsoluteSize
-		local targetX = absPos.X + absSize.X + 12
-		if targetX + pickerW > screenW - 10 then targetX = absPos.X - pickerW - 12 end
-		local targetY = math.clamp(absPos.Y - (pickerH / 2) + (absSize.Y / 2), 10, screenH - pickerH - 10)
+		local winAbsPos = window.window.AbsolutePosition
+		local winAbsSize = window.window.AbsoluteSize
+		local pad = 5
+		local targetX = winAbsPos.X + winAbsSize.X + pad
+		if targetX + pickerW > screenW - pad then
+			targetX = winAbsPos.X - pickerW - pad
+		end
+		targetX = math.max(pad, math.min(targetX, screenW - pickerW - pad))
+		local targetY = math.clamp(winAbsPos.Y + (winAbsSize.Y / 2) - (pickerH / 2), pad, screenH - pickerH - pad)
 		pickerFrame.Position = UDim2.new(0, targetX, 0, targetY)
 
 		TweenService:Create(pickerScale, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
