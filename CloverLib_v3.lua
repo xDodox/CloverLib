@@ -1380,6 +1380,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	headerCover.BorderSizePixel = 0
 	headerCover.ZIndex = 6
 	headerCover.Parent = header
+	self.headerCover = headerCover
 	local headerLine = Instance.new("Frame")
 	headerLine.Size = UDim2.new(1, 0, 0, 2)
 	headerLine.Position = UDim2.new(0, 0, 1, -2)
@@ -1659,54 +1660,67 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 
 	headerSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
 		local query = headerSearchBox.Text:lower()
-		local firstVisible = nil
-		local function contentMatches(sub)
-			if not sub.page then return false end
-			local inGroup = (sub.groups and #sub.groups > 0)
-			if not inGroup then
-				for _, c in ipairs(sub.page:GetDescendants()) do
-					if (c:IsA("TextLabel") or c:IsA("TextButton")) and c.Text:lower():find(query, 1, true) then
-						return true
-					end
-				end
-				return false
-			end
-			local anyMatch = false
-			for _, g in ipairs(sub.groups) do
-				local gMatch = (g.frame and g.frame:FindFirstChildOfClass("TextLabel") and g.frame:FindFirstChildOfClass("TextLabel").Text:lower():find(query, 1, true))
-				if not gMatch and g.items then
-					for _, c in ipairs(g.items:GetDescendants()) do
-						if (c:IsA("TextLabel") or c:IsA("TextButton")) and c.Text:lower():find(query, 1, true) then
-							gMatch = true
-							break
+
+		-- For each subtab, check if it matches by name or content
+		local firstMatch = nil
+		for _, sub in ipairs(self.allSubTabs) do
+			if sub.btn then
+				local nameMatch = query == "" or (sub.name and sub.name:lower():find(query, 1, true))
+				local contentMatch = false
+				if not nameMatch and sub.groups then
+					for _, g in ipairs(sub.groups) do
+						local gTitle = g.frame and g.frame:FindFirstChildOfClass("TextLabel")
+						local titleMatch = gTitle and gTitle.Text:lower():find(query, 1, true)
+						if titleMatch then contentMatch = true; break end
+						if g.items then
+							for _, c in ipairs(g.items:GetDescendants()) do
+								if (c:IsA("TextLabel") or c:IsA("TextButton")) and c.Text:lower():find(query, 1, true) then
+									contentMatch = true; break
+								end
+							end
+							if contentMatch then break end
 						end
 					end
 				end
-				if g.frame then g.frame.Visible = query == "" or gMatch end
-				if gMatch then anyMatch = true end
-			end
-			return anyMatch
-		end
-		for _, sub in ipairs(self.allSubTabs) do
-			if sub.btn then
-				local match = query == "" or (sub.name and sub.name:lower():find(query, 1, true)) or contentMatches(sub)
+				local match = query == "" or nameMatch or contentMatch
 				sub.btn.Visible = match
-				if match and not firstVisible then firstVisible = sub end
+				if match and not firstMatch then firstMatch = sub end
+			end
+		end
+
+		-- Auto-navigate to first match
+		if query ~= "" and firstMatch then
+			-- Switch to the first matching subtab
+			firstMatch:select()
+		end
+
+		-- Filter groups within the currently active subtab
+		if query ~= "" then
+			for _, sub in ipairs(self.allSubTabs) do
+				if sub.groups then
+					for _, g in ipairs(sub.groups) do
+						-- Check if this subtab is the active one
+						local isActive = sub.page and sub.page.Visible
+						if isActive then
+							local gTitle = g.frame and g.frame:FindFirstChildOfClass("TextLabel")
+							local match = gTitle and gTitle.Text:lower():find(query, 1, true)
+							if not match and g.items then
+								for _, c in ipairs(g.items:GetDescendants()) do
+									if (c:IsA("TextLabel") or c:IsA("TextButton")) and c.Text:lower():find(query, 1, true) then
+										match = true; break
+									end
+								end
+							end
+							if g.frame then g.frame.Visible = match end
+						end
+					end
+				end
 			end
 		end
 	end)
 
 	headerSearchBox.FocusLost:Connect(function(enter)
 		if enter and searchFrame.Visible then
-			local query = headerSearchBox.Text:lower()
-			if query ~= "" then
-				for _, sub in ipairs(self.allSubTabs) do
-					if sub.btn and sub.btn.Visible then
-						sub:select()
-						break
-					end
-				end
-			end
 			closeSearch()
 		end
 	end)
@@ -2324,26 +2338,34 @@ function UILib:buildUITab()
 	local themeGrp = uiR:addGroup("Theme")
 	themeGrp:colorpicker("Background", self.theme.BG, function(c)
 		self.theme.BG = c
+		if self.window then self.window.BackgroundColor3 = c end
 		if self.content then self.content.BackgroundColor3 = c end
 	end, "Main background color")
 	themeGrp:colorpicker("Panel", self.theme.Panel, function(c)
 		self.theme.Panel = c
 		if self.header then self.header.BackgroundColor3 = c end
+		if self.headerCover then self.headerCover.BackgroundColor3 = c end
 		if self.sidebar then self.sidebar.BackgroundColor3 = c end
+		if self.navbar then self.navbar.BackgroundColor3 = c end
+		if self.navbarBG then self.navbarBG.BackgroundColor3 = c end
 	end, "Header and sidebar color")
 	themeGrp:colorpicker("Card", self.theme.Item, function(c)
 		self.theme.Item = c
-		for _, g in ipairs(self.allSubTabs) do
-			if g.groups then
-				for _, gr in ipairs(g.groups) do
-					if gr.frame then gr.frame.BackgroundColor3 = c end
+		local function refreshGroups(list)
+			for _, sub in ipairs(list) do
+				if sub.groups then
+					for _, gr in ipairs(sub.groups) do
+						if gr.frame then gr.frame.BackgroundColor3 = c end
+					end
 				end
 			end
+		end
+		for _, tab in ipairs(self.tabOrder or {}) do
+			if tab.subtabOrder then refreshGroups(tab.subtabOrder) end
 		end
 	end, "Group card background color")
 	themeGrp:colorpicker("Border", self.theme.Border, function(c)
 		self.theme.Border = c
-		-- Update all UIStroke instances in the window
 		for _, s in ipairs(self.window:GetDescendants()) do
 			if s:IsA("UIStroke") then
 				pcall(function() s.Color = c end)
