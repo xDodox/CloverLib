@@ -2374,6 +2374,17 @@ function UILib:buildUITab()
 		if self.navbar then self.navbar.BackgroundColor3 = panel end
 		if self.navbarBG then self.navbarBG.BackgroundColor3 = panel end
 		if self.navTopLine then self.navTopLine.BackgroundColor3 = border end
+		-- Force update active subtab's selection line and label
+		for _, tab in ipairs(self.tabOrder or {}) do
+			if tab.subtabs then
+				for _, sub in pairs(tab.subtabs) do
+					if sub.selLine and sub.selLine.Visible then
+						sub.selLine.BackgroundColor3 = accent
+						if sub.label then sub.label.TextColor3 = accent end
+					end
+				end
+			end
+		end
 		for _, tab in ipairs(self.tabOrder or {}) do
 			if tab.subtabOrder then
 				for _, sub in ipairs(tab.subtabOrder) do
@@ -5880,6 +5891,7 @@ function UILib.Column:addGroup(title)
 		arrow.TextSize = 14
 		arrow.ZIndex = 4
 		arrow.Parent = toggleRow
+		table.insert(window.accentObjects, arrow)
 
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -28, 1, 0)
