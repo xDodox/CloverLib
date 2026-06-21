@@ -1565,7 +1565,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 
 	-- Search toggle + bar anchored right, left of player card
 	local searchBtn = Instance.new("ImageButton")
-	-- Search bar — animated inline bar anchored right, left of player card
 	searchBtn.Size = UDim2.new(0, 26, 0, 26)
 	searchBtn.AnchorPoint = Vector2.new(1, 0.5)
 	searchBtn.Position = UDim2.new(1, -155, 0.5, 0)
@@ -1576,8 +1575,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	searchBtn.ZIndex = 8
 	searchBtn.Parent = header
 	searchBtn.AutoButtonColor = false
-
-	local MAX_SEARCH_W = math.min(self.size.X * 0.4, 200)
 
 	local searchFrame = Instance.new("Frame")
 	searchFrame.Size = UDim2.new(0, 0, 0, 28)
@@ -1621,15 +1618,12 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	searchClose.Parent = searchFrame
 	searchClose.AutoButtonColor = false
 
-	local function closeSearch()
-		if not searchFrame.Visible then return end
-		TweenService:Create(searchFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(0, 0, 0, 28) }):Play()
-		headerSearchBox.Text = ""
-		task.delay(0.2, function()
-			searchFrame.Visible = false
-			-- Only restore subtabs for the active tab
-			if self.activeTab and self.activeTab.subtabOrder then
-				for _, sub in ipairs(self.activeTab.subtabOrder) do
+	local _searchClearing = false
+
+	local function restoreAllVisibility()
+		for _, tab in ipairs(self.tabOrder or {}) do
+			if tab.subtabOrder then
+				for _, sub in ipairs(tab.subtabOrder) do
 					if sub.btn then sub.btn.Visible = true end
 					if sub.groups then
 						for _, g in ipairs(sub.groups) do
@@ -1638,6 +1632,18 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 					end
 				end
 			end
+		end
+	end
+
+	local function closeSearch()
+		if not searchFrame.Visible then return end
+		TweenService:Create(searchFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(0, 0, 0, 28) }):Play()
+		_searchClearing = true
+		headerSearchBox.Text = ""
+		_searchClearing = false
+		restoreAllVisibility()
+		task.delay(0.2, function()
+			searchFrame.Visible = false
 		end)
 	end
 
@@ -1662,109 +1668,58 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		if searchFrame.Visible then closeSearch() else openSearch() end
 	end)
 
+	-- Filter subtab buttons when text changes
 	headerSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+		if _searchClearing then return end
 		local query = headerSearchBox.Text:lower()
 
-		-- Collect subtab objects from the active tab only
-		local allSubs = {}
-		local targetTabs = {}
-		if self.activeTab then
-			targetTabs[#targetTabs + 1] = self.activeTab
-		else
-			for _, tab in ipairs(self.tabOrder or {}) do targetTabs[#targetTabs + 1] = tab end
-		end
-		for _, tab in ipairs(targetTabs) do
+		for _, tab in ipairs(self.tabOrder or {}) do
 			if tab.subtabOrder then
 				for _, sub in ipairs(tab.subtabOrder) do
-					allSubs[#allSubs + 1] = sub
-				end
-			end
-		end
-
-		-- Show/hide subtab buttons and filter groups
-		for _, sub in ipairs(allSubs) do
-			if sub.btn then
-				local nameMatch = query == "" or (sub.name and sub.name:lower():find(query, 1, true))
-				local contentMatch = false
-				if not nameMatch and sub.groups then
-					for _, g in ipairs(sub.groups) do
-						local gTitle = g.frame and g.frame:FindFirstChildOfClass("TextLabel")
-						local titleMatch = gTitle and gTitle.Text:lower():find(query, 1, true)
-						if titleMatch then contentMatch = true; break end
-						if g.items then
-							for _, c in ipairs(g.items:GetDescendants()) do
-								if (c:IsA("TextLabel") or c:IsA("TextButton")) and c.Text:lower():find(query, 1, true) then
-									contentMatch = true; break
-								end
-							end
-							if contentMatch then break end
-						end
-					end
-				end
-				sub.btn.Visible = query == "" or nameMatch or contentMatch
-			end
-		end
-
-		-- Filter groups within the active subtab (no auto-navigate while typing)
-		if query ~= "" then
-			for _, sub in ipairs(allSubs) do
-				if sub.groups then
-					local isActive = sub.page and sub.page.Visible
-					if isActive then
-						for _, g in ipairs(sub.groups) do
-							local gTitle = g.frame and g.frame:FindFirstChildOfClass("TextLabel")
-							local match = gTitle and gTitle.Text:lower():find(query, 1, true)
-							if not match and g.items then
-								for _, c in ipairs(g.items:GetDescendants()) do
-									if (c:IsA("TextLabel") or c:IsA("TextButton")) and c.Text:lower():find(query, 1, true) then
-										match = true; break
+					if sub.btn then
+						local nameMatch = query == "" or (sub.name and sub.name:lower():find(query, 1, true))
+						local contentMatch = false
+						if not nameMatch and sub.groups then
+							for _, g in ipairs(sub.groups) do
+								local gTitle = g.frame and g.frame:FindFirstChildOfClass("TextLabel")
+								if gTitle and gTitle.Text:lower():find(query, 1, true) then contentMatch = true; break end
+								if not contentMatch and g.items then
+									for _, c in ipairs(g.items:GetDescendants()) do
+										if (c:IsA("TextLabel") or c:IsA("TextButton")) and c.Text:lower():find(query, 1, true) then
+											contentMatch = true; break
+										end
 									end
+									if contentMatch then break end
 								end
 							end
-							if g.frame then g.frame.Visible = match end
 						end
+						sub.btn.Visible = query == "" or nameMatch or contentMatch
 					end
 				end
 			end
 		end
 	end)
 
+	-- Press Enter to navigate to first visible subtab and close
 	headerSearchBox.FocusLost:Connect(function(enter)
 		if enter and searchFrame.Visible and headerSearchBox.Text ~= "" then
-			local q = headerSearchBox.Text:lower()
-			-- Find first visible subtab
-			local firstVisible
-			if self.activeTab and self.activeTab.subtabOrder then
-				for _, sub in ipairs(self.activeTab.subtabOrder) do
-					if sub.btn and sub.btn.Visible then
-						firstVisible = sub; break
+			for _, tab in ipairs(self.tabOrder or {}) do
+				if tab.subtabOrder then
+					for _, sub in ipairs(tab.subtabOrder) do
+						if sub.btn and sub.btn.Visible and sub.select then
+							closeSearch()
+							sub:select()
+							return
+						end
 					end
 				end
 			end
-			-- Clear search first to restore all groups
-			headerSearchBox.Text = ""
-			if firstVisible and firstVisible.select then
-				firstVisible:select()
-			end
-			closeSearch()
 		end
-	end)
-
-	headerSearchBox.FocusLost:Connect(function(enter)
-		if enter and searchFrame.Visible then
-			closeSearch()
-		end
+		if not enter then return end
 	end)
 
 	self.headerSearchBox = headerSearchBox
 	self.headerSearchFrame = searchFrame
-
-	local initialSW = getSidebarWidth()
-
-	self.headerSearchBox = headerSearchBox
-	self.headerSearchFrame = searchFrame
-
-	local initialSW = getSidebarWidth()
 
 	local initialSW = getSidebarWidth()
 
