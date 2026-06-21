@@ -1621,14 +1621,12 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	local _searchClearing = false
 
 	local function restoreAllVisibility()
-		for _, tab in ipairs(self.tabOrder or {}) do
-			if tab.subtabOrder then
-				for _, sub in ipairs(tab.subtabOrder) do
-					if sub.btn then sub.btn.Visible = true end
-					if sub.groups then
-						for _, g in ipairs(sub.groups) do
-							if g.frame then g.frame.Visible = true end
-						end
+		if self.activeTab and self.activeTab.subtabOrder then
+			for _, sub in ipairs(self.activeTab.subtabOrder) do
+				if sub.btn then sub.btn.Visible = true end
+				if sub.groups then
+					for _, g in ipairs(sub.groups) do
+						if g.frame then g.frame.Visible = true end
 					end
 				end
 			end
@@ -3293,8 +3291,8 @@ function UILib:addTab(name, options)
 			end
 		end
 		if tab.firstSub then
-			local first = tab.subtabs[tab.firstSub]
-			if first then first:select() end
+			local target = tab.lastSub or tab.subtabs[tab.firstSub]
+			if target then target:select() end
 		end
 		self.sidebar.CanvasSize = UDim2.new(1, 0, 0, #tab.subtabOrder * 30 + 10)
 		self.activeTab = tab
@@ -3408,6 +3406,7 @@ function UILib.Tab:addSubTab(name)
 		self.label.TextColor3 = self.window.theme.Accent
 		self.selLine.Visible = true
 		self.page.Visible = true
+		self.tab.lastSub = self
 		self.window.sidebar.CanvasSize = UDim2.new(1, 0, 0, #self.tab.subtabOrder * 30 + 10)
 	end
 
