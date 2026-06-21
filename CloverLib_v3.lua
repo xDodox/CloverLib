@@ -1665,7 +1665,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	headerSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
 		local query = headerSearchBox.Text:lower()
 
-		-- Collect all actual subtab objects from the active tab only
+		-- Collect subtab objects from the active tab only
 		local allSubs = {}
 		local targetTabs = {}
 		if self.activeTab then
@@ -1681,7 +1681,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 			end
 		end
 
-		local firstMatch = nil
+		-- Show/hide subtab buttons and filter groups
 		for _, sub in ipairs(allSubs) do
 			if sub.btn then
 				local nameMatch = query == "" or (sub.name and sub.name:lower():find(query, 1, true))
@@ -1701,18 +1701,11 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 						end
 					end
 				end
-				local match = query == "" or nameMatch or contentMatch
-				sub.btn.Visible = match
-				if match and not firstMatch then firstMatch = sub end
+				sub.btn.Visible = query == "" or nameMatch or contentMatch
 			end
 		end
 
-		-- Auto-navigate to first match
-		if query ~= "" and firstMatch and firstMatch.select then
-			firstMatch:select()
-		end
-
-		-- Filter groups within the currently active subtab
+		-- Filter groups within the active subtab (no auto-navigate while typing)
 		if query ~= "" then
 			for _, sub in ipairs(allSubs) do
 				if sub.groups then
@@ -1733,6 +1726,27 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 					end
 				end
 			end
+		end
+	end)
+
+	headerSearchBox.FocusLost:Connect(function(enter)
+		if enter and searchFrame.Visible and headerSearchBox.Text ~= "" then
+			local q = headerSearchBox.Text:lower()
+			-- Find first visible subtab
+			local firstVisible
+			if self.activeTab and self.activeTab.subtabOrder then
+				for _, sub in ipairs(self.activeTab.subtabOrder) do
+					if sub.btn and sub.btn.Visible then
+						firstVisible = sub; break
+					end
+				end
+			end
+			-- Clear search first to restore all groups
+			headerSearchBox.Text = ""
+			if firstVisible and firstVisible.select then
+				firstVisible:select()
+			end
+			closeSearch()
 		end
 	end)
 
@@ -3269,6 +3283,11 @@ function UILib:addTab(name, options)
 
 	local function activate()
 		if self.activeTab == tab then return end
+		-- Clear search on tab switch
+		if self.headerSearchFrame and self.headerSearchFrame.Visible then
+			self.headerSearchBox.Text = ""
+			self.headerSearchFrame.Visible = false
+		end
 		-- Animate tab switch with tweened overlay
 		if self.content then
 			local overlay = Instance.new("Frame")
