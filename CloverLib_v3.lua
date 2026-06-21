@@ -1668,7 +1668,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		if searchFrame.Visible then closeSearch() else openSearch() end
 	end)
 
-	-- Filter subtab buttons when text changes
+	-- Global search across all tabs and subtabs
 	headerSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
 		if _searchClearing then return end
 		local query = headerSearchBox.Text:lower()
@@ -1700,13 +1700,17 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		end
 	end)
 
-	-- Press Enter to navigate to first visible subtab and close
+	-- Press Enter to navigate to first visible subtab (switching tabs if needed)
 	headerSearchBox.FocusLost:Connect(function(enter)
 		if enter and searchFrame.Visible and headerSearchBox.Text ~= "" then
 			for _, tab in ipairs(self.tabOrder or {}) do
 				if tab.subtabOrder then
 					for _, sub in ipairs(tab.subtabOrder) do
 						if sub.btn and sub.btn.Visible and sub.select then
+							-- Activate the subtab's parent tab if not already active
+							if self.activeTab ~= tab and tab.activate then
+								tab.activate()
+							end
 							closeSearch()
 							sub:select()
 							return
@@ -1714,6 +1718,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 					end
 				end
 			end
+			closeSearch()
 		end
 		if not enter then return end
 	end)
