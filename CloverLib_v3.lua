@@ -1624,17 +1624,16 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	local function closeSearch()
 		if not searchFrame.Visible then return end
 		TweenService:Create(searchFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(0, 0, 0, 28) }):Play()
+		headerSearchBox.Text = ""
 		task.delay(0.2, function()
 			searchFrame.Visible = false
-			headerSearchBox.Text = ""
-			for _, tab in ipairs(self.tabOrder or {}) do
-				if tab.subtabOrder then
-					for _, sub in ipairs(tab.subtabOrder) do
-						if sub.btn then sub.btn.Visible = true end
-						if sub.groups then
-							for _, g in ipairs(sub.groups) do
-								if g.frame then g.frame.Visible = true end
-							end
+			-- Only restore subtabs for the active tab
+			if self.activeTab and self.activeTab.subtabOrder then
+				for _, sub in ipairs(self.activeTab.subtabOrder) do
+					if sub.btn then sub.btn.Visible = true end
+					if sub.groups then
+						for _, g in ipairs(sub.groups) do
+							if g.frame then g.frame.Visible = true end
 						end
 					end
 				end
@@ -1666,9 +1665,15 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	headerSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
 		local query = headerSearchBox.Text:lower()
 
-		-- Collect all actual subtab objects
+		-- Collect all actual subtab objects from the active tab only
 		local allSubs = {}
-		for _, tab in ipairs(self.tabOrder or {}) do
+		local targetTabs = {}
+		if self.activeTab then
+			targetTabs[#targetTabs + 1] = self.activeTab
+		else
+			for _, tab in ipairs(self.tabOrder or {}) do targetTabs[#targetTabs + 1] = tab end
+		end
+		for _, tab in ipairs(targetTabs) do
 			if tab.subtabOrder then
 				for _, sub in ipairs(tab.subtabOrder) do
 					allSubs[#allSubs + 1] = sub
@@ -3711,7 +3716,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	rowPad.PaddingTop = UDim.new(0, 2)
 	rowPad.PaddingBottom = UDim.new(0, 2)
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, -80, 0, 16)
+	label.Size = UDim2.new(1, -70, 0, 16)
 	label.Position = UDim2.new(0, 4, 0, 5)
 	label.BackgroundTransparency = 1
 	label.Text = text
@@ -4258,8 +4263,8 @@ end
 local function buildDropdownRefreshBtn(row, window, refreshCallback)
 	if not refreshCallback then return nil end
 	local refreshBtn = Instance.new("TextButton")
-	refreshBtn.Size = UDim2.new(0, 52, 0, 18)
-	refreshBtn.Position = UDim2.new(1, -54, 0, 4)
+	refreshBtn.Size = UDim2.new(0, 50, 0, 16)
+	refreshBtn.Position = UDim2.new(1, -54, 0, 3)
 	refreshBtn.BackgroundColor3 = window.theme.Track
 	refreshBtn.Text = "Refresh"
 	refreshBtn.TextColor3 = window.theme.GrayLt
@@ -5973,7 +5978,7 @@ function UILib.Column:addGroup(title)
 	function group:textbox(text, default, placeholder, callback, tooltip)
 		local id = generateID()
 		local r = Instance.new("Frame")
-		r.Size = UDim2.new(1, 0, 0, 46)
+		r.Size = UDim2.new(1, 0, 0, 50)
 		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
@@ -6040,7 +6045,7 @@ function UILib.Column:addGroup(title)
 		max = max or math.huge
 		local id = generateID()
 		local r = Instance.new("Frame")
-		r.Size = UDim2.new(1, 0, 0, 46)
+		r.Size = UDim2.new(1, 0, 0, 50)
 		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
