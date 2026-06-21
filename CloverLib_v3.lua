@@ -1183,7 +1183,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	local self = setmetatable({}, UILib)
 	self.theme = theme or {}
 	for k, v in pairs(DEFAULT_THEME) do if self.theme[k] == nil then self.theme[k] = v end end
-	self.size = Vector2.new(size.X.Offset, size.Y.Offset)
+	self.size = type(size.X) == "number" and size or Vector2.new(size.X.Offset, size.Y.Offset)
 	self.title = title
 	self.parent = parent or (gethui and gethui()) or LP:WaitForChild("PlayerGui")
 	self.connections = {}
@@ -1294,7 +1294,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	self.tooltip = makeTooltipSystem(self.sg, self.theme, self.connections)
 
 	local win = Instance.new("Frame")
-	win.Size = UDim2.new(0, size.X.Offset, 0, size.Y.Offset)
+	win.Size = UDim2.new(0, self.size.X, 0, self.size.Y)
 	win.Position = UDim2.new(0.5, 0, 0.5, 0)
 	win.BackgroundColor3 = self.theme.BG
 	win.BorderSizePixel = 0
@@ -1395,7 +1395,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 
 	local function updateScaling()
 		local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
-		local s = math.min(vp.X / size.X.Offset, (vp.Y - 40) / size.Y.Offset, 1)
+		local s = math.min(vp.X / self.size.X, (vp.Y - 40) / self.size.Y, 1)
 		uiScale.Scale = s
 	end
 	table.insert(self.connections,
@@ -1756,7 +1756,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	self.sidebarEdge = sidebarEdge
 
 	local content = Instance.new("ScrollingFrame")
-	content.Size = UDim2.new(0, size.X.Offset - initialSW - 1, 1, -92)
+	content.Size = UDim2.new(0, self.size.X - initialSW - 1, 1, -92)
 	content.Position = UDim2.new(0, initialSW + 1, 0, 46)
 	content.BackgroundColor3 = self.theme.BG
 	content.BorderSizePixel = 0
