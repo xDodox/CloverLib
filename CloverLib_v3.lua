@@ -1002,14 +1002,15 @@ function UILib:notify(message, notifType, duration)
 	notif.BorderSizePixel = 0
 	notif.ZIndex = 500
 	notif.Parent = self.sg
+	notif.ClipsDescendants = true
 	Instance.new("UICorner", notif).CornerRadius = UDim.new(0, 6)
 	local stroke = Instance.new("UIStroke", notif)
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Color = self.theme.Border
 	stroke.Thickness = 1
 	local progressOuter = Instance.new("Frame")
-	progressOuter.Size = UDim2.new(1, -12, 0, 2)
-	progressOuter.Position = UDim2.new(0, 6, 1, -2)
+	progressOuter.Size = UDim2.new(1, 0, 0, 2)
+	progressOuter.Position = UDim2.new(0, 0, 1, -2)
 	progressOuter.BackgroundTransparency = 1
 	progressOuter.BorderSizePixel = 0
 	progressOuter.ZIndex = 502
@@ -3700,7 +3701,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	step = step or 1
 	local id = generateID()
 	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, 0, 0, 48)
+	row.Size = UDim2.new(1, 0, 0, 50)
 	row.BackgroundTransparency = 1
 	row.BorderSizePixel = 0
 	row.Parent = items
@@ -3711,7 +3712,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	rowPad.PaddingBottom = UDim.new(0, 2)
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, -80, 0, 16)
-	label.Position = UDim2.new(0, 4, 0, 4)
+	label.Position = UDim2.new(0, 4, 0, 5)
 	label.BackgroundTransparency = 1
 	label.Text = text
 	label.TextColor3 = window.theme.White
@@ -3726,7 +3727,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	valueBox.AutomaticSize = Enum.AutomaticSize.X
 	valueBox.Size = UDim2.new(0, 0, 0, 18)
 	valueBox.AnchorPoint = Vector2.new(1, 0)
-	valueBox.Position = UDim2.new(1, -2, 0, 4)
+	valueBox.Position = UDim2.new(1, -2, 0, 5)
 	valueBox.BackgroundColor3 = window.theme.Track
 	valueBox.BorderSizePixel = 0
 	valueBox.ZIndex = 3
@@ -3763,7 +3764,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	Instance.new("UICorner", valueBoxInput).CornerRadius = UDim.new(0, 4)
 	local track = Instance.new("Frame")
 	track.Size = UDim2.new(1, 0, 0, 22)
-	track.Position = UDim2.new(0, 0, 0, 24)
+	track.Position = UDim2.new(0, 0, 0, 26)
 	track.BackgroundColor3 = window.theme.Track
 	track.BorderSizePixel = 0
 	track.ZIndex = 3
@@ -4258,7 +4259,7 @@ local function buildDropdownRefreshBtn(row, window, refreshCallback)
 	if not refreshCallback then return nil end
 	local refreshBtn = Instance.new("TextButton")
 	refreshBtn.Size = UDim2.new(0, 52, 0, 18)
-	refreshBtn.Position = UDim2.new(1, -54, 0, 2)
+	refreshBtn.Position = UDim2.new(1, -54, 0, 4)
 	refreshBtn.BackgroundColor3 = window.theme.Track
 	refreshBtn.Text = "Refresh"
 	refreshBtn.TextColor3 = window.theme.GrayLt
@@ -6045,7 +6046,7 @@ function UILib.Column:addGroup(title)
 		r.Parent = items
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -66, 0, 18)
-		lbl.Position = UDim2.new(0, 4, 0, 14)
+		lbl.Position = UDim2.new(0, 4, 0, 6)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
@@ -6057,7 +6058,7 @@ function UILib.Column:addGroup(title)
 		lbl.Parent = r
 		local box = Instance.new("TextBox")
 		box.Size = UDim2.new(0, 54, 0, 22)
-		box.Position = UDim2.new(1, -58, 0, 12)
+		box.Position = UDim2.new(1, -58, 0, 5)
 		box.BackgroundColor3 = window.theme.Track
 		box.ClipsDescendants = true
 		box.BorderSizePixel = 0
