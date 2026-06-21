@@ -3263,10 +3263,17 @@ function UILib:addTab(name, options)
 
 	local function activate()
 		if self.activeTab == tab then return end
-		if self.tabOverlay and self.activeTab then
-			self.tabOverlay.BackgroundTransparency = 0.15
-			TweenService:Create(self.tabOverlay, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		-- Animate tab switch with tweened overlay
+		if self.content then
+			local overlay = Instance.new("Frame")
+			overlay.Size = UDim2.new(1, 0, 1, 0)
+			overlay.BackgroundColor3 = self.theme.BG
+			overlay.BorderSizePixel = 0
+			overlay.ZIndex = 500
+			overlay.Parent = self.content
+			TweenService:Create(overlay, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 				{ BackgroundTransparency = 1 }):Play()
+			task.delay(0.16, function() pcall(function() overlay:Destroy() end) end)
 		end
 
 		for _, t in pairs(self.tabs) do
@@ -3287,9 +3294,18 @@ function UILib:addTab(name, options)
 		end
 		tabLbl.TextColor3 = self.theme.White
 		if tabIconId then tabIcon.ImageColor3 = self.theme.Accent end
+		underline.Size = UDim2.new(0, 0, 0, 3)
 		underline.Visible = true
+		TweenService:Create(underline, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ Size = UDim2.new(0.4, 0, 0, 3) }):Play()
 		for _, sub in pairs(tab.subtabOrder) do
-			if sub.btn then sub.btn.Visible = true end
+			if sub.btn then
+				sub.btn.Visible = true
+				-- Slide-in animation for subtab buttons
+				sub.btn.Position = UDim2.new(0, -30, 0, 0)
+				TweenService:Create(sub.btn, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+					{ Position = UDim2.new(0, 4, 0, 0) }):Play()
+			end
 		end
 		if tab.firstSub then
 			local first = tab.subtabs[tab.firstSub]
