@@ -1819,7 +1819,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	navbarCover.BorderSizePixel = 0
 	navbarCover.ZIndex = 59
 	navbarCover.Parent = navbarBG
-
+	self.navbarCover = navbarCover
 	local navbar = Instance.new("ScrollingFrame")
 	navbar.Size = UDim2.new(1, 0, 0, 46)
 	navbar.Position = UDim2.new(0, 0, 1, -46)
@@ -2373,6 +2373,7 @@ function UILib:buildUITab()
 		if self.sidebar then self.sidebar.BackgroundColor3 = panel end
 		if self.navbar then self.navbar.BackgroundColor3 = panel end
 		if self.navbarBG then self.navbarBG.BackgroundColor3 = panel end
+		if self.navbarCover then self.navbarCover.BackgroundColor3 = panel end
 		if self.navTopLine then self.navTopLine.BackgroundColor3 = border end
 		-- Force update active subtab's selection line and label
 		for _, tab in ipairs(self.tabOrder or {}) do
