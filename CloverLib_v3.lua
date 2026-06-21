@@ -1008,8 +1008,8 @@ function UILib:notify(message, notifType, duration)
 	stroke.Color = self.theme.Border
 	stroke.Thickness = 1
 	local progressOuter = Instance.new("Frame")
-	progressOuter.Size = UDim2.new(1, 0, 0, 2)
-	progressOuter.Position = UDim2.new(0, 0, 1, -2)
+	progressOuter.Size = UDim2.new(1, -12, 0, 2)
+	progressOuter.Position = UDim2.new(0, 6, 1, -2)
 	progressOuter.BackgroundTransparency = 1
 	progressOuter.BorderSizePixel = 0
 	progressOuter.ZIndex = 502
@@ -4642,12 +4642,13 @@ function UILib.Column:addGroup(title)
 	items.Parent = grp
 
 	local itemLayout = Instance.new("UIListLayout", items)
-	itemLayout.Padding = UDim.new(0, 2)
+	itemLayout.Padding = UDim.new(0, 4)
 	itemLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
 	local padding = Instance.new("UIPadding", items)
 	padding.PaddingLeft = UDim.new(0, 8)
 	padding.PaddingRight = UDim.new(0, 8)
+	padding.PaddingTop = UDim.new(0, 4)
 	padding.PaddingBottom = UDim.new(0, 6)
 
 		local sizeUpdateScheduled = false
