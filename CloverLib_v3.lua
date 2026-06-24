@@ -3684,7 +3684,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	step = step or 1
 	local id = generateID()
 	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, 0, 0, 50)
+	row.Size = UDim2.new(1, 0, 0, 52)
 	row.BackgroundTransparency = 1
 	row.BorderSizePixel = 0
 	row.Parent = items
@@ -3695,7 +3695,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	rowPad.PaddingBottom = UDim.new(0, 2)
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, -70, 0, 16)
-	label.Position = UDim2.new(0, 4, 0, 5)
+	label.Position = UDim2.new(0, 4, 0, 4)
 	label.BackgroundTransparency = 1
 	label.Text = text
 	label.TextColor3 = window.theme.White
@@ -3710,7 +3710,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	valueBox.AutomaticSize = Enum.AutomaticSize.X
 	valueBox.Size = UDim2.new(0, 0, 0, 18)
 	valueBox.AnchorPoint = Vector2.new(1, 0)
-	valueBox.Position = UDim2.new(1, -2, 0, 5)
+	valueBox.Position = UDim2.new(1, -2, 0, 4)
 	valueBox.BackgroundColor3 = window.theme.Track
 	valueBox.BorderSizePixel = 0
 	valueBox.ZIndex = 3
