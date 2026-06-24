@@ -3826,17 +3826,19 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	function elem:SetVisible(v, anim)
 		if not anim then
 			row.Visible = v
-			row.Size = UDim2.new(1, 0, 0, v and 42 or 0)
+			row.Size = UDim2.new(1, 0, 0, v and 52 or 0)
+			if v then row.ClipsDescendants = false end
 			if group and group.updateSize then group.updateSize() end
 			return
 		end
 		row.ClipsDescendants = true
 		if v then row.Visible = true end
 		local tw = TweenService:Create(row, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-			Size = UDim2.new(1, 0, 0, v and 42 or 0)
+			Size = UDim2.new(1, 0, 0, v and 52 or 0)
 		})
 		tw.Completed:Connect(function()
 			if not v then row.Visible = false end
+			if v then row.ClipsDescendants = false end
 			if group and group.updateSize then group.updateSize() end
 		end)
 		tw:Play()
