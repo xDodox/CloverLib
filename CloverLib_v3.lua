@@ -2100,7 +2100,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		end
 	end))
 
-	self:notify("CloverLib Loaded", "success", 2)
 	table.insert(allWindows, self)
 
 	if includeUITab ~= false then
