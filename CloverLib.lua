@@ -216,20 +216,14 @@ function UILib:notify(message, notifType, duration)
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Color = self.theme.Border
 	stroke.Thickness = 1
-	local progressOuter = Instance.new("Frame")
-	progressOuter.Size = UDim2.new(1, 0, 0, 2)
-	progressOuter.Position = UDim2.new(0, 0, 1, 0)
-	progressOuter.BackgroundTransparency = 1
-	progressOuter.BorderSizePixel = 0
-	progressOuter.ZIndex = 502
-	progressOuter.Parent = notif
 	local progressBar = Instance.new("Frame")
 	progressBar.Name = "indicator"
-	progressBar.Size = UDim2.new(1, 0, 1, 0)
+	progressBar.Size = UDim2.new(1, 0, 0, 2)
+	progressBar.Position = UDim2.new(0, 0, 1, 0)
 	progressBar.BackgroundColor3 = accentColor
 	progressBar.BorderSizePixel = 0
 	progressBar.ZIndex = 503
-	progressBar.Parent = progressOuter
+	progressBar.Parent = notif
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, -16, 1, -4)
 	label.Position = UDim2.new(0, 10, 0, 0)
@@ -248,7 +242,7 @@ function UILib:notify(message, notifType, duration)
 	local tweenIn = TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 		{ Position = targetX })
 	tweenIn:Play()
-	TweenService:Create(progressBar, TweenInfo.new(duration, Enum.EasingStyle.Linear), { Size = UDim2.new(0, 0, 1, 0) })
+	TweenService:Create(progressBar, TweenInfo.new(duration, Enum.EasingStyle.Linear), { Size = UDim2.new(0, 0, 0, 2) })
 		:Play()
 	task.delay(duration, function()
 		if not notif or not notif.Parent then return end
