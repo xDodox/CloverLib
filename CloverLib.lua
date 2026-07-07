@@ -210,20 +210,27 @@ function UILib:notify(message, notifType, duration)
 	notif.BorderSizePixel = 0
 	notif.ZIndex = 500
 	notif.Parent = self.sg
-	notif.ClipsDescendants = true
 	Instance.new("UICorner", notif).CornerRadius = UDim.new(0, 6)
 	local stroke = Instance.new("UIStroke", notif)
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Color = self.theme.Border
 	stroke.Thickness = 1
+	local progressOuter = Instance.new("Frame")
+	progressOuter.Size = UDim2.new(1, 0, 0, 2)
+	progressOuter.Position = UDim2.new(0, 0, 1, -2)
+	progressOuter.BackgroundTransparency = 1
+	progressOuter.BorderSizePixel = 0
+	progressOuter.ZIndex = 502
+	progressOuter.Parent = notif
+	Instance.new("UICorner", progressOuter).CornerRadius = UDim.new(0, 2)
 	local progressBar = Instance.new("Frame")
 	progressBar.Name = "indicator"
-	progressBar.Size = UDim2.new(1, 0, 0, 2)
-	progressBar.Position = UDim2.new(0, 0, 1, 0)
+	progressBar.Size = UDim2.new(1, 0, 1, 0)
 	progressBar.BackgroundColor3 = accentColor
 	progressBar.BorderSizePixel = 0
 	progressBar.ZIndex = 503
-	progressBar.Parent = notif
+	progressBar.Parent = progressOuter
+	Instance.new("UICorner", progressBar).CornerRadius = UDim.new(0, 2)
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, -16, 1, -4)
 	label.Position = UDim2.new(0, 10, 0, 0)
@@ -242,7 +249,7 @@ function UILib:notify(message, notifType, duration)
 	local tweenIn = TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 		{ Position = targetX })
 	tweenIn:Play()
-	TweenService:Create(progressBar, TweenInfo.new(duration, Enum.EasingStyle.Linear), { Size = UDim2.new(0, 0, 0, 2) })
+	TweenService:Create(progressBar, TweenInfo.new(duration, Enum.EasingStyle.Linear), { Size = UDim2.new(0, 0, 1, 0) })
 		:Play()
 	task.delay(duration, function()
 		task.defer(function()
