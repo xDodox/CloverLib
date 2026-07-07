@@ -217,13 +217,12 @@ function UILib:notify(message, notifType, duration)
 	stroke.Color = self.theme.Border
 	stroke.Thickness = 1
 	local progressOuter = Instance.new("Frame")
-	progressOuter.Size = UDim2.new(1, -2, 0, 2)
-	progressOuter.Position = UDim2.new(0, 1, 1, 0)
+	progressOuter.Size = UDim2.new(1, 0, 0, 2)
+	progressOuter.Position = UDim2.new(0, 0, 1, 0)
 	progressOuter.BackgroundTransparency = 1
 	progressOuter.BorderSizePixel = 0
 	progressOuter.ZIndex = 502
 	progressOuter.Parent = notif
-	Instance.new("UICorner", progressOuter).CornerRadius = UDim.new(0, 6)
 	local progressBar = Instance.new("Frame")
 	progressBar.Name = "indicator"
 	progressBar.Size = UDim2.new(1, 0, 1, 0)
@@ -231,7 +230,6 @@ function UILib:notify(message, notifType, duration)
 	progressBar.BorderSizePixel = 0
 	progressBar.ZIndex = 503
 	progressBar.Parent = progressOuter
-	Instance.new("UICorner", progressBar).CornerRadius = UDim.new(0, 6)
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, -16, 1, -4)
 	label.Position = UDim2.new(0, 10, 0, 0)
@@ -1373,14 +1371,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	end))
 
 	table.insert(allWindows, self)
-
-	if includeUITab ~= false then
-		task.defer(function()
-			if not self.uiTabBuilt then
-				self:buildUITab()
-			end
-		end)
-	end
 
 	task.defer(function()
 		self.uiScale.Scale = 0
