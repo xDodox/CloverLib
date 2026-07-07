@@ -249,7 +249,8 @@ function UILib:notify(message, notifType, duration)
 	local tweenIn = TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 		{ Position = targetX })
 	tweenIn:Play()
-	TweenService:Create(progressBar, TweenInfo.new(duration, Enum.EasingStyle.Linear), { Size = UDim2.new(0, 0, 1, 0) }):Play()
+	local progTween = TweenService:Create(progressBar, TweenInfo.new(duration, Enum.EasingStyle.Linear), { Size = UDim2.new(0, 0, 1, 0) })
+	progTween:Play()
 	task.delay(duration, function()
 		task.defer(function()
 		if not notif or not notif.Parent then return end
