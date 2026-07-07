@@ -25,7 +25,7 @@ local RunService = cloneref(game:GetService("RunService"))
 local allWindows = {}
 
 local LUCIDE_ICONS = nil
-local ICONS_URL = "https://cloverhub.fun/scripts/Icons.lua"
+local ICONS_URL = "https://raw.githubusercontent.com/xDodox/CloverLib/refs/heads/main/Icons.lua"
 
 local function ensureIcons()
 	if LUCIDE_ICONS then return LUCIDE_ICONS end
