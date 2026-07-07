@@ -211,6 +211,7 @@ function UILib:notify(message, notifType, duration)
 	notif.ZIndex = 500
 	notif.Parent = self.sg
 	Instance.new("UICorner", notif).CornerRadius = UDim.new(0, 6)
+	notif.ClipsDescendants = true
 	local stroke = Instance.new("UIStroke", notif)
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Color = self.theme.Border
@@ -2952,11 +2953,6 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	row.BackgroundTransparency = 1
 	row.BorderSizePixel = 0
 	row.Parent = items
-	local rowPad = Instance.new("UIPadding", row)
-	rowPad.PaddingLeft = UDim.new(0, 6)
-	rowPad.PaddingRight = UDim.new(0, 6)
-	rowPad.PaddingTop = UDim.new(0, 2)
-	rowPad.PaddingBottom = UDim.new(0, 2)
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, -70, 0, 16)
 	label.Position = UDim2.new(0, 4, 0, 4)
@@ -3010,8 +3006,8 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	valueBoxInput.Parent = valueBox
 	Instance.new("UICorner", valueBoxInput).CornerRadius = UDim.new(0, 4)
 	local track = Instance.new("Frame")
-	track.Size = UDim2.new(1, 0, 0, 22)
-	track.Position = UDim2.new(0, 0, 0, 26)
+	track.Size = UDim2.new(1, -8, 0, 22)
+	track.Position = UDim2.new(0, 4, 0, 26)
 	track.BackgroundColor3 = window.theme.Track
 	track.BorderSizePixel = 0
 	track.ZIndex = 3
@@ -3995,17 +3991,129 @@ function UILib.Column:addGroup(title)
 		return ref
 	end
 
-	function group:toggle(text, default, callback, tooltip, icon)
+	function group:toggle(text, default, callback, tooltip, icon, expandable, contentFunc)
 		local id = generateID()
+		local TOGGLE_H = 36
+		local CB_SIZE = 22
+		local CB_OFFSET = 26
+		if expandable then
+			local container = Instance.new("Frame")
+			container.Size = UDim2.new(1, 0, 0, TOGGLE_H)
+			container.BackgroundTransparency = 1
+			container.ClipsDescendants = true
+			container.Parent = items
+			local toggleRow = Instance.new("Frame")
+			toggleRow.Size = UDim2.new(1, 0, 0, TOGGLE_H)
+			toggleRow.BackgroundTransparency = 1
+			toggleRow.ZIndex = 3
+			toggleRow.Parent = container
+			local cbOuter = Instance.new("TextButton")
+			cbOuter.Size = UDim2.new(0, CB_SIZE, 0, CB_SIZE)
+			cbOuter.Position = UDim2.new(1, -CB_OFFSET, 0.5, -CB_SIZE/2)
+			cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.BG
+			cbOuter.BorderSizePixel = 0
+			cbOuter.AutoButtonColor = false
+			cbOuter.ZIndex = 4
+			cbOuter.Text = ""
+			cbOuter.Parent = toggleRow
+			Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
+			local cbStroke = Instance.new("UIStroke", cbOuter)
+			cbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+			cbStroke.Color = default and window.theme.AccentD or window.theme.Border
+			cbStroke.Thickness = 1
+			local cbMark = Instance.new("TextLabel")
+			cbMark.Size = UDim2.new(1, 0, 1, 0)
+			cbMark.BackgroundTransparency = 1
+			cbMark.Text = default and "X" or ""
+			cbMark.TextColor3 = Color3.fromRGB(10, 10, 10)
+			cbMark.Font = Enum.Font.GothamBold
+			cbMark.TextSize = 14
+			cbMark.ZIndex = 5
+			cbMark.Parent = cbOuter
+			local lbl = Instance.new("TextLabel")
+			lbl.Size = UDim2.new(1, -(CB_OFFSET + 12), 1, 0)
+			lbl.Position = UDim2.new(0, 4, 0, 0)
+			lbl.BackgroundTransparency = 1
+			lbl.Text = text
+			lbl.TextColor3 = window.theme.White
+			lbl.Font = Enum.Font.GothamSemibold
+			lbl.TextSize = 13
+			lbl.TextXAlignment = Enum.TextXAlignment.Left
+			lbl.ZIndex = 4
+			lbl.Parent = toggleRow
+			local contentFrame = Instance.new("Frame")
+			contentFrame.Size = UDim2.new(1, 0, 0, 0)
+			contentFrame.Position = UDim2.new(0, 0, 0, TOGGLE_H)
+			contentFrame.BackgroundTransparency = 1
+			contentFrame.Parent = container
+			local contentLayout = Instance.new("UIListLayout", contentFrame)
+			contentLayout.Padding = UDim.new(0, 2)
+			contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+			local state = default
+			local function updateContentSize()
+				local h = contentLayout.AbsoluteContentSize.Y
+				contentFrame.Size = UDim2.new(1, 0, 0, h)
+				container.Size = UDim2.new(1, 0, 0, TOGGLE_H + (state and h or 0))
+				updateSize()
+			end
+			contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
+			local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
+			if contentFunc then contentFunc(nestedGroup) end
+			local elem = { ID = id, Value = state, DefaultValue = default, IsToggle = true, Mode = "toggle", frame = container, DefaultHeight = TOGGLE_H }
+			elem.SetValue = function(val)
+				state = val
+				elem.Value = state
+				TweenService:Create(cbOuter, TweenInfo.new(0.12, Enum.EasingStyle.Quart), {
+					BackgroundColor3 = state and window.theme.Accent or window.theme.BG
+				}):Play()
+				cbStroke.Color = state and window.theme.AccentD or window.theme.Border
+				cbMark.Text = state and "X" or ""
+				local targetH = TOGGLE_H + (state and contentLayout.AbsoluteContentSize.Y or 0)
+				TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+					Size = UDim2.new(1, 0, 0, targetH)
+				}):Play()
+				task.delay(0.21, updateSize)
+				if callback then callback(state) end
+				if window.configs[id] then window.configs[id].Value = state end
+			end
+			function elem:SetVisible(v, anim)
+				if not anim then
+					container.Visible = v
+					container.Size = UDim2.new(1, 0, 0, v and TOGGLE_H or 0)
+					if group and group.updateSize then group.updateSize() end
+					return
+				end
+				if v then container.Visible = true end
+				local tw = TweenService:Create(container, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+					Size = UDim2.new(1, 0, 0, v and TOGGLE_H or 0)
+				})
+				tw.Completed:Connect(function()
+					if not v then container.Visible = false end
+					if group and group.updateSize then group.updateSize() end
+				end)
+				tw:Play()
+			end
+			window.configs[id] = elem
+			cbOuter.MouseButton1Click:Connect(function()
+				if elem.Mode == "always" then return end
+				state = not state
+				elem.SetValue(state)
+			end)
+			if tooltip then attachTooltip(toggleRow, tooltip, window) end
+			updateContentSize()
+			elem.frame = container
+			elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
+			return elem
+		end
 		local r = Instance.new("Frame")
-		r.Size = UDim2.new(1, 0, 0, 36)
+		r.Size = UDim2.new(1, 0, 0, TOGGLE_H)
 		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.ZIndex = 3
 		r.Parent = items
 		local cbOuter = Instance.new("TextButton")
-		cbOuter.Size = UDim2.new(0, 22, 0, 22)
-		cbOuter.Position = UDim2.new(1, -26, 0.5, -11)
+		cbOuter.Size = UDim2.new(0, CB_SIZE, 0, CB_SIZE)
+		cbOuter.Position = UDim2.new(1, -CB_OFFSET, 0.5, -CB_SIZE/2)
 		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.BG
 		cbOuter.BorderSizePixel = 0
 		cbOuter.AutoButtonColor = false
@@ -4027,7 +4135,7 @@ function UILib.Column:addGroup(title)
 		cbMark.ZIndex = 5
 		cbMark.Parent = cbOuter
 		local lbl = Instance.new("TextLabel")
-		lbl.Size = UDim2.new(1, -38, 1, 0)
+		lbl.Size = UDim2.new(1, -(CB_OFFSET + 12), 1, 0)
 		lbl.Position = UDim2.new(0, 4, 0, 0)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
@@ -4038,7 +4146,7 @@ function UILib.Column:addGroup(title)
 		lbl.ZIndex = 4
 		lbl.Parent = r
 		local state = default
-		local elem = { ID = id, Value = state, DefaultValue = default, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = 36 }
+		local elem = { ID = id, Value = state, DefaultValue = default, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = TOGGLE_H }
 		elem.SetValue = function(val)
 			state = val
 			elem.Value = state
@@ -4053,14 +4161,14 @@ function UILib.Column:addGroup(title)
 		function elem:SetVisible(v, anim)
 			if not anim then
 				r.Visible = v
-				r.Size = UDim2.new(1, 0, 0, v and 36 or 0)
+				r.Size = UDim2.new(1, 0, 0, v and TOGGLE_H or 0)
 				if group and group.updateSize then group.updateSize() end
 				return
 			end
 			r.ClipsDescendants = true
 			if v then r.Visible = true end
 			local tw = TweenService:Create(r, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-				Size = UDim2.new(1, 0, 0, v and 36 or 0)
+				Size = UDim2.new(1, 0, 0, v and TOGGLE_H or 0)
 			})
 			tw.Completed:Connect(function()
 				if not v then r.Visible = false end
@@ -5053,88 +5161,7 @@ function UILib.Column:addGroup(title)
 	end
 
 	function group:expandableToggle(text, default, contentFunc, tooltip)
-		local container = Instance.new("Frame")
-		container.Size = UDim2.new(1, 0, 0, 34)
-		container.BackgroundTransparency = 1
-		container.ClipsDescendants = true
-		container.Parent = items
-
-		local toggleRow = Instance.new("Frame")
-		toggleRow.Size = UDim2.new(1, 0, 0, 34)
-		toggleRow.BackgroundTransparency = 1
-		toggleRow.ZIndex = 3
-		toggleRow.Parent = container
-
-		local cbOuter = Instance.new("TextButton")
-		cbOuter.Size = UDim2.new(0, 18, 0, 18)
-		cbOuter.Position = UDim2.new(1, -22, 0.5, -9)
-		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.BG
-		cbOuter.BorderSizePixel = 0
-		cbOuter.AutoButtonColor = false
-		cbOuter.ZIndex = 4
-		cbOuter.Text = ""
-		cbOuter.Parent = toggleRow
-		Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
-		local cbStroke = Instance.new("UIStroke", cbOuter)
-		cbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		cbStroke.Color = default and window.theme.AccentD or window.theme.Border
-		cbStroke.Thickness = 1
-		local cbMark = Instance.new("TextLabel")
-		cbMark.Size = UDim2.new(1, 0, 1, 0)
-		cbMark.BackgroundTransparency = 1
-		cbMark.Text = default and "X" or ""
-		cbMark.TextColor3 = Color3.fromRGB(10, 10, 10)
-		cbMark.Font = Enum.Font.GothamBold
-		cbMark.TextSize = 14
-		cbMark.ZIndex = 5
-		cbMark.Parent = cbOuter
-
-		local lbl = Instance.new("TextLabel")
-		lbl.Size = UDim2.new(1, -32, 1, 0)
-		lbl.Position = UDim2.new(0, 4, 0, 0)
-		lbl.BackgroundTransparency = 1
-		lbl.Text = text
-		lbl.TextColor3 = window.theme.White
-		lbl.Font = Enum.Font.GothamSemibold
-		lbl.TextSize = 13
-		lbl.TextXAlignment = Enum.TextXAlignment.Left
-		lbl.ZIndex = 4
-		lbl.Parent = toggleRow
-
-		local contentFrame = Instance.new("Frame")
-		contentFrame.Size = UDim2.new(1, 0, 0, 0)
-		contentFrame.Position = UDim2.new(0, 0, 0, 34)
-		contentFrame.BackgroundTransparency = 1
-		contentFrame.Parent = container
-		local contentLayout = Instance.new("UIListLayout", contentFrame)
-		contentLayout.Padding = UDim.new(0, 2)
-		contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		local state = default
-		local function updateContentSize()
-			local h = contentLayout.AbsoluteContentSize.Y
-			contentFrame.Size = UDim2.new(1, 0, 0, h)
-			container.Size = UDim2.new(1, 0, 0, 34 + (state and h or 0))
-			updateSize()
-		end
-		contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
-		local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
-		if contentFunc then contentFunc(nestedGroup) end
-		cbOuter.MouseButton1Click:Connect(function()
-			state = not state
-			TweenService:Create(cbOuter, TweenInfo.new(0.12, Enum.EasingStyle.Quart), {
-				BackgroundColor3 = state and window.theme.Accent or window.theme.BG
-			}):Play()
-			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
-			cbMark.Text = state and "X" or ""
-			local targetH = 34 + (state and contentLayout.AbsoluteContentSize.Y or 0)
-			TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-				Size = UDim2.new(1, 0, 0, targetH)
-			}):Play()
-			task.delay(0.21, updateSize)
-		end)
-		if tooltip then attachTooltip(toggleRow, tooltip, window) end
-		updateContentSize()
-		return container
+		return self:toggle(text, default, nil, tooltip, nil, true, contentFunc)
 	end
 
 	function group:collapsible(text, default, contentFunc, tooltip)
