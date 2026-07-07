@@ -245,6 +245,7 @@ function UILib:notify(message, notifType, duration)
 	TweenService:Create(progressBar, TweenInfo.new(duration, Enum.EasingStyle.Linear), { Size = UDim2.new(0, 0, 0, 2) })
 		:Play()
 	task.delay(duration, function()
+		task.defer(function()
 		if not notif or not notif.Parent then return end
 		local out = TweenService:Create(notif, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
 			{ Position = UDim2.new(1, 0, 1, -yPos) })
