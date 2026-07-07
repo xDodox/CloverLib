@@ -282,6 +282,7 @@ function UILib:notify(message, notifType, duration)
 		end)
 	end)
 end)
+end
 
 function UILib:getConfigDir()
 	local gameName = (game and game.Name and game.Name ~= "" and game.Name) or "Unknown"
