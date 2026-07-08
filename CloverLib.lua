@@ -37,7 +37,7 @@ end
 local function ensureIcons()
 	if LUCIDE_ICONS then return LUCIDE_ICONS end
 	local urls = {
-		"https://cloverhub.fun/api/script/icons?key=c_auth_77a2",
+		"https://cloverhub.fun/scripts/Icons.lua",
 		"https://raw.githubusercontent.com/xDodox/CloverLib/refs/heads/main/Icons.lua",
 	}
 	local req = (syn and syn.request) or (http and http.request) or http_request or (Fluxus and Fluxus.request) or request
