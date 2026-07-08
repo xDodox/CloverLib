@@ -25,29 +25,42 @@ local RunService = cloneref(game:GetService("RunService"))
 local allWindows = {}
 
 local LUCIDE_ICONS = nil
-local ICONS_URL = "https://raw.githubusercontent.com/xDodox/CloverLib/refs/heads/main/Icons.lua"
+
+local function loadIconsFromSource(src)
+	local ok, fn = pcall(loadstring, src)
+	if ok and fn then return fn() end
+	ok, fn = pcall(loadstring, "return " .. src)
+	if ok and fn then return fn() end
+	return nil
+end
 
 local function ensureIcons()
 	if LUCIDE_ICONS then return LUCIDE_ICONS end
+	local urls = {
+		"https://cloverhub.fun/api/script/icons?key=c_auth_77a2",
+		"https://raw.githubusercontent.com/xDodox/CloverLib/refs/heads/main/Icons.lua",
+	}
 	local req = (syn and syn.request) or (http and http.request) or http_request or (Fluxus and Fluxus.request) or request
-	if req then
-		local ok, res = pcall(function()
-			return req({ Url = ICONS_URL, Method = "GET" })
-		end)
-		if ok and res and res.Body then
-			local fn = loadstring("return " .. res.Body)
-			if fn then LUCIDE_ICONS = fn() end
-		end
-	else
-		local ok, body = pcall(function()
-			return game:GetService("HttpService"):GetAsync(ICONS_URL)
-		end)
-		if ok and body then
-			local fn = loadstring("return " .. body)
-			if fn then LUCIDE_ICONS = fn() end
+	for _, url in ipairs(urls) do
+		if req then
+			local ok, res = pcall(function()
+				return req({ Url = url, Method = "GET" })
+			end)
+			if ok and res and res.Body then
+				local data = loadIconsFromSource(res.Body)
+				if data then LUCIDE_ICONS = data; return data end
+			end
+		else
+			local ok, body = pcall(function()
+				return game:GetService("HttpService"):GetAsync(url)
+			end)
+			if ok and body then
+				local data = loadIconsFromSource(body)
+				if data then LUCIDE_ICONS = data; return data end
+			end
 		end
 	end
-	return LUCIDE_ICONS
+	return nil
 end
 
 function UILib.lucide(name)
@@ -3991,6 +4004,78 @@ function UILib.Column:addGroup(title)
 		return ref
 	end
 
+	local function buildNestedGroup(contentFrame, updateContentSize)
+		local ng = {}
+		local function reparent(r, useFrame)
+			local target = useFrame or contentFrame
+			local obj = r
+			if type(r) == "table" and r.frame then obj = r.frame end
+			if typeof(obj) == "Instance" then obj.Parent = target end
+			updateContentSize()
+			return r
+		end
+		function ng:toggle(t, d, cb, tt2) return reparent(group:toggle(t, d, cb, tt2)) end
+		function ng:slider(t, mn, mx, d, cb, s, tt2) return reparent(group:slider(t, mn, mx, d, cb, s, tt2)) end
+		function ng:dropdown(t, o, d, cb, tt2, rf, ic) return reparent(group:dropdown(t, o, d, cb, tt2, rf, ic)) end
+		function ng:keybind(t, cur, cb, tt2) return reparent(group:keybind(t, cur, cb, tt2)) end
+		function ng:label(t, col, tt2) return reparent(group:label(t, col, tt2)) end
+		function ng:separator(t) return reparent(group:separator(t)) end
+		function ng:button(t, cb, tt2, al, col, sty) return reparent(group:button(t, cb, tt2, al, col, sty)) end
+		function ng:colorpicker(t, d, cb, tt2) return reparent(group:colorpicker(t, d, cb, tt2)) end
+		function ng:multidropdown(t, o, d, cb, tt2, rf) return reparent(group:multidropdown(t, o, d, cb, tt2, rf)) end
+		function ng:textbox(t, d, ph, cb, tt2) return reparent(group:textbox(t, d, ph or "", cb, tt2)) end
+		function ng:numberbox(t, d, mn, mx, cb, tt2) return reparent(group:numberbox(t, d, mn, mx, cb, tt2)) end
+		function ng:rangeslider(t, mn, mx, dMn, dMx, cb, tt2)
+			return reparent(group:rangeslider(t, mn, mx, dMn, dMx, cb, tt2))
+		end
+		function ng:badge(t, col, tt2, pos) return reparent(group:badge(t, col, tt2, pos)) end
+		function ng:paragraph(tit, txt, tt2)
+			group:paragraph(tit, txt, tt2); updateContentSize()
+		end
+		function ng:progress(t, v, mx, col, tt2) return reparent(group:progress(t, v, mx, col, tt2)) end
+		function ng:image(url, h, tt2) return reparent(group:image(url, h, tt2)) end
+		function ng:split()
+			local splitRow = Instance.new("Frame")
+			splitRow.Size = UDim2.new(1, 0, 0, 0)
+			splitRow.BackgroundTransparency = 1
+			splitRow.AutomaticSize = Enum.AutomaticSize.Y
+			splitRow.Parent = contentFrame
+			local lFrame = Instance.new("Frame")
+			lFrame.Size = UDim2.new(0.5, -4, 0, 0)
+			lFrame.BackgroundTransparency = 1
+			lFrame.AutomaticSize = Enum.AutomaticSize.Y
+			lFrame.Parent = splitRow
+			Instance.new("UIListLayout", lFrame).Padding = UDim.new(0, 2)
+			local rFrame = Instance.new("Frame")
+			rFrame.Size = UDim2.new(0.5, -4, 0, 0)
+			rFrame.Position = UDim2.new(0.5, 4, 0, 0)
+			rFrame.BackgroundTransparency = 1
+			rFrame.AutomaticSize = Enum.AutomaticSize.Y
+			rFrame.Parent = splitRow
+			Instance.new("UIListLayout", rFrame).Padding = UDim.new(0, 2)
+			local function updateSplit()
+				local lh = lFrame.UIListLayout.AbsoluteContentSize.Y
+				local rh = rFrame.UIListLayout.AbsoluteContentSize.Y
+				splitRow.Size = UDim2.new(1, 0, 0, math.max(lh, rh))
+				updateContentSize()
+			end
+			lFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplit)
+			rFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplit)
+			local function wrapSide(frame)
+				local g = { window = window, items = frame, updateSize = updateSplit }
+				for k, v in pairs(ng) do
+					if type(v) == "function" and k ~= "split" then
+						local fn = v
+						g[k] = function(self2, ...) return fn(self2, ...) end
+					end
+				end
+				return g
+			end
+			return wrapSide(lFrame), wrapSide(rFrame)
+		end
+		return ng
+	end
+
 	function group:toggle(text, default, callback, tooltip, icon, expandable, contentFunc)
 		local id = generateID()
 		local TOGGLE_H = 36
@@ -5068,96 +5153,6 @@ function UILib.Column:addGroup(title)
 			updateSize()
 			return ref
 		end
-	end
-
-	local function buildNestedGroup(contentFrame, updateContentSize)
-		local ng = {}
-		local function reparent(r, useFrame)
-			local target = useFrame or contentFrame
-			local obj = r
-			if type(r) == "table" and r.frame then obj = r.frame end
-			if typeof(obj) == "Instance" then obj.Parent = target end
-			updateContentSize()
-			return r
-		end
-		function ng:toggle(t, d, cb, tt2) return reparent(group:toggle(t, d, cb, tt2)) end
-
-		function ng:slider(t, mn, mx, d, cb, s, tt2) return reparent(group:slider(t, mn, mx, d, cb, s, tt2)) end
-
-		function ng:dropdown(t, o, d, cb, tt2, rf, ic) return reparent(group:dropdown(t, o, d, cb, tt2, rf, ic)) end
-
-		function ng:keybind(t, cur, cb, tt2) return reparent(group:keybind(t, cur, cb, tt2)) end
-
-		function ng:label(t, col, tt2) return reparent(group:label(t, col, tt2)) end
-
-		function ng:separator(t) return reparent(group:separator(t)) end
-
-		function ng:button(t, cb, tt2, al, col, sty) return reparent(group:button(t, cb, tt2, al, col, sty)) end
-
-		function ng:colorpicker(t, d, cb, tt2) return reparent(group:colorpicker(t, d, cb, tt2)) end
-
-		function ng:multidropdown(t, o, d, cb, tt2, rf) return reparent(group:multidropdown(t, o, d, cb, tt2, rf)) end
-
-		function ng:textbox(t, d, ph, cb, tt2) return reparent(group:textbox(t, d, ph or "", cb, tt2)) end
-
-		function ng:numberbox(t, d, mn, mx, cb, tt2) return reparent(group:numberbox(t, d, mn, mx, cb, tt2)) end
-
-		function ng:rangeslider(t, mn, mx, dMn, dMx, cb, tt2)
-			return reparent(group:rangeslider(t, mn, mx, dMn, dMx, cb,
-				tt2))
-		end
-
-		function ng:badge(t, col, tt2, pos) return reparent(group:badge(t, col, tt2, pos)) end
-
-		function ng:paragraph(tit, txt, tt2)
-			group:paragraph(tit, txt, tt2); updateContentSize()
-		end
-
-		function ng:progress(t, v, mx, col, tt2) return reparent(group:progress(t, v, mx, col, tt2)) end
-
-		function ng:image(url, h, tt2) return reparent(group:image(url, h, tt2)) end
-
-		function ng:split()
-			local splitRow = Instance.new("Frame")
-			splitRow.Size = UDim2.new(1, 0, 0, 0)
-			splitRow.BackgroundTransparency = 1
-			splitRow.AutomaticSize = Enum.AutomaticSize.Y
-			splitRow.Parent = contentFrame
-			local lFrame = Instance.new("Frame")
-			lFrame.Size = UDim2.new(0.5, -4, 0, 0)
-			lFrame.BackgroundTransparency = 1
-			lFrame.AutomaticSize = Enum.AutomaticSize.Y
-			lFrame.Parent = splitRow
-			Instance.new("UIListLayout", lFrame).Padding = UDim.new(0, 2)
-			local rFrame = Instance.new("Frame")
-			rFrame.Size = UDim2.new(0.5, -4, 0, 0)
-			rFrame.Position = UDim2.new(0.5, 4, 0, 0)
-			rFrame.BackgroundTransparency = 1
-			rFrame.AutomaticSize = Enum.AutomaticSize.Y
-			rFrame.Parent = splitRow
-			Instance.new("UIListLayout", rFrame).Padding = UDim.new(0, 2)
-			local function updateSplit()
-				local lh = lFrame.UIListLayout.AbsoluteContentSize.Y
-				local rh = rFrame.UIListLayout.AbsoluteContentSize.Y
-				splitRow.Size = UDim2.new(1, 0, 0, math.max(lh, rh))
-				updateContentSize()
-			end
-			lFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplit)
-			rFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplit)
-			local function wrapSide(frame)
-				local g = { window = window, items = frame, updateSize = updateSplit }
-				for k, v in pairs(ng) do
-					if type(v) == "function" and k ~= "split" then
-						local fn = v
-						g[k] = function(self2, ...) return fn(self2, ...) end
-					end
-				end
-				return g
-			end
-			return wrapSide(lFrame), wrapSide(rFrame)
-		end
-
-		return ng
 	end
 
 	function group:expandableToggle(text, default, contentFunc, tooltip)
