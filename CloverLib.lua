@@ -26,11 +26,34 @@ local allWindows = {}
 
 local LUCIDE_ICONS = nil
 
-local function loadIconsFromSource(src)
+local function tryParseIcons(src)
+	if type(src) ~= "string" or src == "" then return nil end
 	local ok, fn = pcall(loadstring, src)
-	if ok and fn then return fn() end
+	if ok and type(fn) == "function" then
+		local data = fn()
+		if type(data) == "table" and data.assets then return data end
+	end
 	ok, fn = pcall(loadstring, "return " .. src)
-	if ok and fn then return fn() end
+	if ok and type(fn) == "function" then
+		local data = fn()
+		if type(data) == "table" and data.assets then return data end
+	end
+	return nil
+end
+
+local function fetchUrl(url)
+	local req = (syn and syn.request) or (http and http.request) or http_request or (Fluxus and Fluxus.request) or request
+	if req then
+		local ok, res = pcall(req, { Url = url, Method = "GET" })
+		if ok and type(res) == "table" then
+			return res.Body or res.body or res["Body"] or nil
+		end
+	end
+	local ok, body = pcall(game.GetService, game, "HttpService")
+	if ok then
+		ok, body = pcall(function() return game:GetService("HttpService"):GetAsync(url) end)
+		if ok then return body end
+	end
 	return nil
 end
 
@@ -40,24 +63,11 @@ local function ensureIcons()
 		"https://cloverhub.fun/scripts/Icons.lua",
 		"https://raw.githubusercontent.com/xDodox/CloverLib/refs/heads/main/Icons.lua",
 	}
-	local req = (syn and syn.request) or (http and http.request) or http_request or (Fluxus and Fluxus.request) or request
 	for _, url in ipairs(urls) do
-		if req then
-			local ok, res = pcall(function()
-				return req({ Url = url, Method = "GET" })
-			end)
-			if ok and res and res.Body then
-				local data = loadIconsFromSource(res.Body)
-				if data then LUCIDE_ICONS = data; return data end
-			end
-		else
-			local ok, body = pcall(function()
-				return game:GetService("HttpService"):GetAsync(url)
-			end)
-			if ok and body then
-				local data = loadIconsFromSource(body)
-				if data then LUCIDE_ICONS = data; return data end
-			end
+		local body = fetchUrl(url)
+		if body then
+			local data = tryParseIcons(body)
+			if data then LUCIDE_ICONS = data; return data end
 		end
 	end
 	return nil
@@ -5385,13 +5395,13 @@ function UILib.Column:addGroup(title)
 	function group:rangeslider(text, minVal, maxVal, defaultMin, defaultMax, callback, tooltip)
 		local id = generateID()
 		local r = Instance.new("Frame")
-		r.Size = UDim2.new(1, 0, 0, 46)
+		r.Size = UDim2.new(1, 0, 0, 52)
 		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
 		local lbl = Instance.new("TextLabel")
-		lbl.Size = UDim2.new(1, -90, 0, 18)
-		lbl.Position = UDim2.new(0, 4, 0, 3)
+		lbl.Size = UDim2.new(1, -90, 0, 16)
+		lbl.Position = UDim2.new(0, 4, 0, 4)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
@@ -5402,35 +5412,41 @@ function UILib.Column:addGroup(title)
 		lbl.ZIndex = 3
 		lbl.Parent = r
 		local valueBox = Instance.new("Frame")
-		valueBox.Size = UDim2.new(0, 80, 0, 20)
-		valueBox.Position = UDim2.new(1, -84, 0, 2)
+		valueBox.AutomaticSize = Enum.AutomaticSize.X
+		valueBox.Size = UDim2.new(0, 0, 0, 18)
+		valueBox.AnchorPoint = Vector2.new(1, 0)
+		valueBox.Position = UDim2.new(1, -2, 0, 4)
 		valueBox.BackgroundColor3 = window.theme.Track
 		valueBox.BorderSizePixel = 0
 		valueBox.ZIndex = 3
 		valueBox.Parent = r
 		Instance.new("UICorner", valueBox).CornerRadius = UDim.new(0, 4)
+		local vbPad = Instance.new("UIPadding", valueBox)
+		vbPad.PaddingLeft = UDim.new(0, 6)
+		vbPad.PaddingRight = UDim.new(0, 6)
 		local rsVbStroke = Instance.new("UIStroke", valueBox)
 		rsVbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		rsVbStroke.Color = window.theme.Border
 		rsVbStroke.Thickness = 1
 		local valueLabel = Instance.new("TextLabel")
-		valueLabel.Size = UDim2.new(1, 0, 1, 0)
+		valueLabel.AutomaticSize = Enum.AutomaticSize.X
+		valueLabel.Size = UDim2.new(0, 0, 1, 0)
 		valueLabel.BackgroundTransparency = 1
 		valueLabel.Text = tostring(defaultMin) .. " - " .. tostring(defaultMax)
 		valueLabel.TextColor3 = window.theme.Accent
 		valueLabel.Font = Enum.Font.GothamSemibold
-		valueLabel.TextSize = 11
+		valueLabel.TextSize = 12
 		valueLabel.ZIndex = 4
 		valueLabel.Parent = valueBox
 		table.insert(window.accentObjects, valueLabel)
 		local track = Instance.new("Frame")
-		track.Size = UDim2.new(1, 0, 0, 4)
-		track.Position = UDim2.new(0, 0, 0, 28)
+		track.Size = UDim2.new(1, -8, 0, 20)
+		track.Position = UDim2.new(0, 4, 0, 28)
 		track.BackgroundColor3 = window.theme.Track
 		track.BorderSizePixel = 0
 		track.ZIndex = 3
 		track.Parent = r
-		Instance.new("UICorner", track).CornerRadius = UDim.new(0, 2)
+		Instance.new("UICorner", track).CornerRadius = UDim.new(0, 4)
 		local pctMin = (defaultMin - minVal) / (maxVal - minVal)
 		local pctMax = (defaultMax - minVal) / (maxVal - minVal)
 		local fill = Instance.new("Frame")
