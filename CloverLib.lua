@@ -5450,10 +5450,6 @@ function UILib.Column:addGroup(title)
 		fill.ZIndex = 4
 		fill.Parent = track
 		Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 2)
-		local gradient = Instance.new("UIGradient", fill)
-		gradient.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, window.theme.Accent), ColorSequenceKeypoint.new(1,
-			Color3.new(window.theme.Accent.r * 0.4, window.theme.Accent.g * 0.4, window.theme.Accent.b * 0.4)) })
-		table.insert(window.accentObjects, gradient)
 		local HANDLE_W = 3
 		local handleLeft = Instance.new("Frame")
 		handleLeft.Size = UDim2.new(0, HANDLE_W, 0, 20)
