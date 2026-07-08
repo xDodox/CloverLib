@@ -59,16 +59,10 @@ end
 
 local function ensureIcons()
 	if LUCIDE_ICONS then return LUCIDE_ICONS end
-	local urls = {
-		"https://cloverhub.fun/scripts/Icons.lua",
-		"https://raw.githubusercontent.com/xDodox/CloverLib/refs/heads/main/Icons.lua",
-	}
-	for _, url in ipairs(urls) do
-		local body = fetchUrl(url)
-		if body then
-			local data = tryParseIcons(body)
-			if data then LUCIDE_ICONS = data; return data end
-		end
+	local body = fetchUrl("https://cloverhub.fun/scripts/Icons.lua")
+	if body then
+		local data = tryParseIcons(body)
+		if data then LUCIDE_ICONS = data; return data end
 	end
 	return nil
 end
@@ -5460,24 +5454,23 @@ function UILib.Column:addGroup(title)
 		gradient.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, window.theme.Accent), ColorSequenceKeypoint.new(1,
 			Color3.new(window.theme.Accent.r * 0.4, window.theme.Accent.g * 0.4, window.theme.Accent.b * 0.4)) })
 		table.insert(window.accentObjects, gradient)
-		local knobLeft = Instance.new("Frame")
-		knobLeft.Size = UDim2.new(0, 12, 0, 12)
-		knobLeft.Position = UDim2.new(pctMin, -6, 0.5, -6)
-		knobLeft.BackgroundColor3 = window.theme.Accent
-		knobLeft.BorderSizePixel = 0
-		knobLeft.ZIndex = 5
-		knobLeft.Parent = track
-		Instance.new("UICorner", knobLeft).CornerRadius = UDim.new(1, 0)
-		table.insert(window.accentObjects, knobLeft)
-		local knobRight = Instance.new("Frame")
-		knobRight.Size = UDim2.new(0, 12, 0, 12)
-		knobRight.Position = UDim2.new(pctMax, -6, 0.5, -6)
-		knobRight.BackgroundColor3 = window.theme.Accent
-		knobRight.BorderSizePixel = 0
-		knobRight.ZIndex = 5
-		knobRight.Parent = track
-		Instance.new("UICorner", knobRight).CornerRadius = UDim.new(1, 0)
-		table.insert(window.accentObjects, knobRight)
+		local HANDLE_W = 3
+		local handleLeft = Instance.new("Frame")
+		handleLeft.Size = UDim2.new(0, HANDLE_W, 0, 20)
+		handleLeft.Position = UDim2.new(pctMin, -HANDLE_W/2, 0, 0)
+		handleLeft.BackgroundColor3 = window.theme.Accent
+		handleLeft.BorderSizePixel = 0
+		handleLeft.ZIndex = 5
+		handleLeft.Parent = track
+		table.insert(window.accentObjects, handleLeft)
+		local handleRight = Instance.new("Frame")
+		handleRight.Size = UDim2.new(0, HANDLE_W, 0, 20)
+		handleRight.Position = UDim2.new(pctMax, -HANDLE_W/2, 0, 0)
+		handleRight.BackgroundColor3 = window.theme.Accent
+		handleRight.BorderSizePixel = 0
+		handleRight.ZIndex = 5
+		handleRight.Parent = track
+		table.insert(window.accentObjects, handleRight)
 		local hitLeft = Instance.new("TextButton")
 		hitLeft.Size = UDim2.new(0, 16, 0, 22)
 		hitLeft.Position = UDim2.new(pctMin, -8, 0.5, -11)
@@ -5502,10 +5495,10 @@ function UILib.Column:addGroup(title)
 			pctMax = (currentMax - minVal) / (maxVal - minVal)
 			fill.Size = UDim2.new(pctMax - pctMin, 0, 1, 0)
 			fill.Position = UDim2.new(pctMin, 0, 0, 0)
-			knobLeft.Position = UDim2.new(pctMin, -6, 0.5, -6)
-			knobRight.Position = UDim2.new(pctMax, -6, 0.5, -6)
-			hitLeft.Position = UDim2.new(pctMin, -10, 0.5, -11)
-			hitRight.Position = UDim2.new(pctMax, -10, 0.5, -11)
+			handleLeft.Position = UDim2.new(pctMin, -HANDLE_W/2, 0, 0)
+			handleRight.Position = UDim2.new(pctMax, -HANDLE_W/2, 0, 0)
+			hitLeft.Position = UDim2.new(pctMin, -8, 0.5, -11)
+			hitRight.Position = UDim2.new(pctMax, -8, 0.5, -11)
 		end
 				local function apply(pos, which)
 			local trackSize = track.AbsoluteSize.X
