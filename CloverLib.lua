@@ -86,8 +86,7 @@ function UILib.resolveIcon(icon)
 	local s = tostring(icon)
 	local lucideName = s:match("^lucide:(.+)$")
 	if lucideName then
-		local resolved = UILib.lucide(lucideName)
-		if resolved then return resolved end
+		return UILib.lucide(lucideName)
 	end
 	if not s:find("^https?://") and not s:find("rbxassetid://") then
 		s = "rbxassetid://" .. s
