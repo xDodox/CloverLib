@@ -351,9 +351,9 @@ function UILib:loadConfig(name)
 		if self.configs and self.configs[id] then
 			if type(value) == "table" and value.__type == "Color3" then
 				local colorVal = Color3.new(value.r or 1, value.g or 0, value.b or 0)
-				pcall(self.configs[id].SetValue, colorVal)
+				pcall(self.configs[id].SetValue, colorVal, true)
 			else
-				pcall(self.configs[id].SetValue, value)
+				pcall(self.configs[id].SetValue, value, true)
 			end
 		end
 	end
@@ -482,10 +482,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 			end)
 		end
 		for _, t in pairs(self.tabs) do
-			if t == self.activeTab then
-				if t.tabIcon and t.tabIconId then
-					pcall(function() t.tabIcon.ImageColor3 = color end)
-				end
+			if t.tabIcon and t.tabIconId then
+				pcall(function() t.tabIcon.ImageColor3 = color end)
 			end
 		end
 		if self.configs then
@@ -626,6 +624,10 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	table.insert(self.connections,
 		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScaling))
 	updateScaling()
+	table.insert(self.connections,
+		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+			task.defer(function() self:updateLayout() end)
+		end))
 
 	local titleRow = Instance.new("Frame")
 	titleRow.Size = UDim2.new(0, 0, 1, 0)
@@ -1076,7 +1078,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 				dragPos = win.Position
 			end
 		end)
-		table.insert(self.connections,
+			table.insert(self.connections,
 			UIS.InputChanged:Connect(function(i)
 				if drag and i.UserInputType == Enum.UserInputType.MouseMovement then
 					local delta = i.Position - dragStart
@@ -1084,6 +1086,11 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 						dragPos.Y.Offset + delta.Y)
 					self.originalPosition = win.Position
 					self.savedPos = win.Position
+					if self._openDropdownRef and self._openDropdownPanel then
+						local ap = self._openDropdownRef.AbsolutePosition
+						local as = self._openDropdownRef.AbsoluteSize
+						self._openDropdownPanel.Position = UDim2.new(0, ap.X, 0, ap.Y + as.Y)
+					end
 				end
 			end))
 		table.insert(self.connections,
@@ -1095,6 +1102,30 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 			if gpe then return end
 			if input.KeyCode == self.toggleKey then
 				self:setVisible(not self.visibleTarget)
+			end
+		end))
+
+	table.insert(self.connections,
+		UIS.InputBegan:Connect(function(input, gpe)
+			if gpe then return end
+			if input.KeyCode == Enum.KeyCode.Escape then
+				for _, popup in ipairs(self.activePopups or {}) do
+					pcall(function() popup:Destroy() end)
+				end
+				self.activePopups = {}
+				if self.sidebarOverlay and self.sidebarOverlay.Visible then
+					self.sidebarOverlay.Visible = false
+					self.sidebar.Visible = false
+					self.sidebarEdge.Visible = false
+					self.mobileSidebarOpen = false
+				end
+				if self.contextMenuFrame and self.contextMenuFrame.Visible then
+					pcall(self.closeContextMenu)
+				end
+				if self.headerSearchFrame and self.headerSearchFrame.Visible then
+					self.headerSearchFrame.Visible = false
+					self.headerSearchBox.Text = ""
+				end
 			end
 		end))
 
@@ -1392,6 +1423,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 
 	table.insert(allWindows, self)
 
+	self:updateLayout()
+
 	task.defer(function()
 		self.uiScale.Scale = 0
 		self:setVisible(true)
@@ -1401,7 +1434,13 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 end
 
 function UILib:addWatermark(name)
-	if self.watermark then self.watermark:Destroy() end
+	local wm = Instance.new("Frame")
+	if self.watermark then
+		if self.wmDragConns then
+			for _, c in ipairs(self.wmDragConns) do pcall(function() c:Disconnect() end) end
+		end
+		self.watermark:Destroy()
+	end
 	local wm = Instance.new("Frame")
 	wm.AutomaticSize = Enum.AutomaticSize.X
 	wm.Size = UDim2.new(0, 0, 0, 30)
@@ -1795,6 +1834,152 @@ end
 
 function UILib:toggle()
 	self:setVisible(not self.visibleTarget)
+end
+
+-- ── Dialog system ──────────────────────────────────────────
+function UILib:showDialog(opts)
+	opts = opts or {}
+	local title = opts.title or "Dialog"
+	local message = opts.message or ""
+	local buttons = opts.buttons or { "OK" }
+	local callbacks = opts.callbacks or {}
+	local textInput = opts.textInput
+	local inputDefault = opts.inputDefault or ""
+
+	local overlay = Instance.new("TextButton")
+	overlay.Size = UDim2.fromScale(1, 1)
+	overlay.BackgroundColor3 = Color3.new(0, 0, 0)
+	overlay.BackgroundTransparency = 0.5
+	overlay.BorderSizePixel = 0
+	overlay.Text = ""
+	overlay.ZIndex = 5000
+	overlay.Parent = self.sg
+
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(0, 320, 0, 0)
+	frame.AnchorPoint = Vector2.new(0.5, 0.5)
+	frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+	frame.BackgroundColor3 = self.theme.Panel
+	frame.BorderSizePixel = 0
+	frame.AutomaticSize = Enum.AutomaticSize.Y
+	frame.ZIndex = 5001
+	frame.Parent = self.sg
+	Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+	local stroke = Instance.new("UIStroke", frame)
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Color = self.theme.Border
+	stroke.Thickness = 1
+
+	local layout = Instance.new("UIListLayout", frame)
+	layout.Padding = UDim.new(0, 12)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	local pad = Instance.new("UIPadding", frame)
+	pad.PaddingLeft = UDim.new(0, 16)
+	pad.PaddingRight = UDim.new(0, 16)
+	pad.PaddingTop = UDim.new(0, 16)
+	pad.PaddingBottom = UDim.new(0, 16)
+
+	local titleLbl = Instance.new("TextLabel")
+	titleLbl.Size = UDim2.new(1, 0, 0, 20)
+	titleLbl.BackgroundTransparency = 1
+	titleLbl.Text = title:upper()
+	titleLbl.TextColor3 = self.theme.Accent
+	titleLbl.Font = Enum.Font.GothamBold
+	titleLbl.TextSize = 14
+	titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+	titleLbl.ZIndex = 5002
+	titleLbl.Parent = frame
+
+	local msgLbl = Instance.new("TextLabel")
+	msgLbl.Size = UDim2.new(1, 0, 0, 0)
+	msgLbl.BackgroundTransparency = 1
+	msgLbl.Text = message
+	msgLbl.TextColor3 = self.theme.White
+	msgLbl.Font = Enum.Font.GothamSemibold
+	msgLbl.TextSize = 13
+	msgLbl.TextWrapped = true
+	msgLbl.TextXAlignment = Enum.TextXAlignment.Left
+	msgLbl.AutomaticSize = Enum.AutomaticSize.Y
+	msgLbl.ZIndex = 5002
+	msgLbl.Parent = frame
+
+	local inputBox
+	if textInput then
+		inputBox = Instance.new("TextBox")
+		inputBox.Size = UDim2.new(1, 0, 0, 28)
+		inputBox.BackgroundColor3 = self.theme.Track
+		inputBox.BorderSizePixel = 0
+		inputBox.Text = inputDefault
+		inputBox.TextColor3 = self.theme.White
+		inputBox.Font = Enum.Font.GothamSemibold
+		inputBox.TextSize = 13
+		inputBox.ZIndex = 5002
+		inputBox.ClearTextOnFocus = false
+		inputBox.Parent = frame
+		Instance.new("UICorner", inputBox).CornerRadius = UDim.new(0, 4)
+		local ibStroke = Instance.new("UIStroke", inputBox)
+		ibStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		ibStroke.Color = self.theme.Border
+		ibStroke.Thickness = 1
+	end
+
+	local btnRow = Instance.new("Frame")
+	btnRow.Size = UDim2.new(1, 0, 0, 32)
+	btnRow.BackgroundTransparency = 1
+	btnRow.ZIndex = 5002
+	btnRow.Parent = frame
+	local btnLayout = Instance.new("UIListLayout", btnRow)
+	btnLayout.FillDirection = Enum.FillDirection.Horizontal
+	btnLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	btnLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	btnLayout.Padding = UDim.new(0, 8)
+
+	local function cleanup()
+		pcall(function() overlay:Destroy() end)
+		pcall(function() frame:Destroy() end)
+	end
+
+	for i, btnText in ipairs(buttons) do
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(0, math.max(60, #btnText * 10 + 20), 0, 28)
+		btn.BackgroundColor3 = (i == 1 and #buttons == 1) and self.theme.Accent or self.theme.Track
+		btn.BorderSizePixel = 0
+		btn.Text = btnText
+		btn.TextColor3 = (i == 1 and #buttons == 1) and Color3.fromRGB(10, 10, 10) or self.theme.White
+		btn.Font = Enum.Font.GothamBold
+		btn.TextSize = 12
+		btn.ZIndex = 5003
+		btn.AutoButtonColor = false
+		btn.Parent = btnRow
+		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+		btn.MouseButton1Click:Connect(function()
+			local cb = callbacks[i]
+			if cb then
+				local result = inputBox and inputBox.Text or true
+				cb(result)
+			end
+			cleanup()
+		end)
+	end
+
+	overlay.MouseButton1Click:Connect(cleanup)
+	table.insert(self.activePopups or {}, overlay)
+	table.insert(self.activePopups or {}, frame)
+	if inputBox then task.defer(function() inputBox:CaptureFocus() end) end
+end
+
+function UILib:alert(title, message, buttonText, callback)
+	if type(buttonText) == "function" then callback, buttonText = buttonText, "OK" end
+	self:showDialog({ title = title, message = message, buttons = { buttonText or "OK" }, callbacks = { callback } })
+end
+
+function UILib:confirm(message, callback)
+	self:showDialog({ title = "Confirm", message = message, buttons = { "Cancel", "Confirm" }, callbacks = { function() callback(false) end, function() callback(true) end } })
+end
+
+function UILib:prompt(label, default, callback)
+	if type(default) == "function" then callback, default = default, "" end
+	self:showDialog({ title = label, message = "", textInput = true, inputDefault = default or "", buttons = { "Cancel", "OK" }, callbacks = { function() end, callback } })
 end
 
 function UILib:enterResizeMode(widthSlider, heightSlider)
@@ -2958,6 +3143,7 @@ function UILib.SubTab:addButton(text, callback, tooltip, color)
 	lbl.Parent = btn
 	btn.MouseButton1Click:Connect(callback)
 	if tooltip then attachTooltip(btn, tooltip, window) end
+	btn.remove = function() btn:Destroy(); updateSize() end
 	return btn
 end
 
@@ -3120,7 +3306,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		tw:Play()
 	end
 	elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then label.Text = self_or_d else label.Text = d end end
-	window.configs[id] = elem
+	window.configs[id] = finalizeElement(elem)
 	return row, elem
 end
 
@@ -3157,15 +3343,19 @@ local function createColorPicker(group, items, window, text, default, callback)
 	stroke.Color = window.theme.Border
 	stroke.Thickness = 1
 	local current = default or Color3.new(1, 0, 0)
-	local elem = { ID = id, Value = current, Alpha = 0 }
+	local currentAlpha = 0
+	local elem = { ID = id, Value = current, Alpha = currentAlpha }
 	local currentMode = "Solid"
 	local pickerFrame = nil
 
-	elem.SetValue = function(val)
+	elem.SetValue = function(val, alpha)
 		current = val
+		currentAlpha = alpha or currentAlpha
 		elem.Value = val
+		elem.Alpha = currentAlpha
 		colorBox.BackgroundColor3 = val
-		if callback then callback(val) end
+		colorBox.BackgroundTransparency = currentAlpha
+		if callback then callback(val, currentAlpha) end
 	end
 	elem.frame = row
 	elem.DefaultHeight = 32
@@ -3187,12 +3377,18 @@ local function createColorPicker(group, items, window, text, default, callback)
 		end)
 		tw:Play()
 	end
-	window.configs[id] = elem
+	window.configs[id] = finalizeElement(elem)
 
 	local function closePicker()
 		if pickerFrame then
 			local p = pickerFrame
 			pickerFrame = nil
+			local cons = p:GetAttribute("PickerCons")
+			if cons then
+				for _, c in ipairs(cons) do
+					pcall(c.Disconnect, c)
+				end
+			end
 			local sc = p:FindFirstChildOfClass("UIScale")
 			if sc then
 				local t = TweenService:Create(sc, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
@@ -3268,9 +3464,10 @@ local function createColorPicker(group, items, window, text, default, callback)
 			elem.Value = current
 			satValSquare.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
 			colorBox.BackgroundColor3 = current
+			colorBox.BackgroundTransparency = currentAlpha
 			hexBox.Text = "#" .. current:ToHex()
-			if alphaValLbl then alphaValLbl.Text = "Transparency: " .. math.floor((1 - elem.Alpha) * 100 + 0.5) .. "%" end
-			if callback then callback(current) end
+			if alphaValLbl then alphaValLbl.Text = "Transparency: " .. math.floor(currentAlpha * 100 + 0.5) .. "%" end
+			if callback then callback(current, currentAlpha) end
 		end
 
 		local function updateHue(pos)
@@ -3423,9 +3620,11 @@ local function createColorPicker(group, items, window, text, default, callback)
 		local function applyAlpha(posX)
 			local rel = math.clamp((posX - alphaTrack.AbsolutePosition.X) / alphaTrack.AbsoluteSize.X, 0, 1)
 			alphaKnob.Position = UDim2.new(rel, -7, 0.5, -7)
-			elem.Alpha = 1 - rel
+			currentAlpha = rel
+			elem.Alpha = rel
+			colorBox.BackgroundTransparency = rel
 			alphaValLbl.Text = "Transparency: " .. math.floor(rel * 100 + 0.5) .. "%"
-			if callback then callback(current) end
+			if callback then callback(current, currentAlpha) end
 		end
 
 		local hexY = alphaSliderY + 12 + 10
@@ -3511,6 +3710,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 				end
 			end
 		end)
+		if pickerFrame then pickerFrame:SetAttribute("PickerCons", { inputChangedConn, inputEndedConn, inputBeganConn }) end
 	end
 	colorBox.MouseButton1Click:Connect(openPicker)
 	return row, elem
@@ -3838,7 +4038,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 		end)
 		tw:Play()
 	end
-	window.configs[id] = elem
+	window.configs[id] = finalizeElement(elem)
 	return row, elem
 end
 
@@ -3964,6 +4164,15 @@ function UILib.Column:addGroup(title)
 		end
 	end
 
+	local function finalizeElement(elem)
+		function elem:remove()
+			if self.frame and self.frame.Parent then self.frame:Destroy() end
+			if window and window.configs then window.configs[self.ID] = nil end
+			if group and group.updateSize then group.updateSize() end
+		end
+		return elem
+	end
+
 	function group:paragraph(ptitle, text, tooltip)
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, 0)
@@ -4004,6 +4213,7 @@ function UILib.Column:addGroup(title)
 			updateSize()
 		end
 
+		ref.remove = function() r:Destroy(); updateSize() end
 		return ref
 	end
 
@@ -4017,26 +4227,19 @@ function UILib.Column:addGroup(title)
 			updateContentSize()
 			return r
 		end
-		function ng:toggle(t, d, cb, tt2) return reparent(group:toggle(t, d, cb, tt2)) end
-		function ng:slider(t, mn, mx, d, cb, s, tt2) return reparent(group:slider(t, mn, mx, d, cb, s, tt2)) end
-		function ng:dropdown(t, o, d, cb, tt2, rf, ic) return reparent(group:dropdown(t, o, d, cb, tt2, rf, ic)) end
-		function ng:keybind(t, cur, cb, tt2) return reparent(group:keybind(t, cur, cb, tt2)) end
-		function ng:label(t, col, tt2) return reparent(group:label(t, col, tt2)) end
-		function ng:separator(t) return reparent(group:separator(t)) end
-		function ng:button(t, cb, tt2, al, col, sty) return reparent(group:button(t, cb, tt2, al, col, sty)) end
-		function ng:colorpicker(t, d, cb, tt2) return reparent(group:colorpicker(t, d, cb, tt2)) end
-		function ng:multidropdown(t, o, d, cb, tt2, rf) return reparent(group:multidropdown(t, o, d, cb, tt2, rf)) end
-		function ng:textbox(t, d, ph, cb, tt2) return reparent(group:textbox(t, d, ph or "", cb, tt2)) end
-		function ng:numberbox(t, d, mn, mx, cb, tt2) return reparent(group:numberbox(t, d, mn, mx, cb, tt2)) end
-		function ng:rangeslider(t, mn, mx, dMn, dMx, cb, tt2)
-			return reparent(group:rangeslider(t, mn, mx, dMn, dMx, cb, tt2))
-		end
-		function ng:badge(t, col, tt2, pos) return reparent(group:badge(t, col, tt2, pos)) end
+		setmetatable(ng, {
+			__index = function(t, key)
+				if key == "split" or key == "paragraph" then return nil end
+				local fn = group[key]
+				if type(fn) ~= "function" then return nil end
+				return function(_, ...)
+					return reparent(fn(group, ...))
+				end
+			end
+		})
 		function ng:paragraph(tit, txt, tt2)
 			group:paragraph(tit, txt, tt2); updateContentSize()
 		end
-		function ng:progress(t, v, mx, col, tt2) return reparent(group:progress(t, v, mx, col, tt2)) end
-		function ng:image(url, h, tt2) return reparent(group:image(url, h, tt2)) end
 		function ng:split()
 			local splitRow = Instance.new("Frame")
 			splitRow.Size = UDim2.new(1, 0, 0, 0)
@@ -4164,24 +4367,38 @@ function UILib.Column:addGroup(title)
 				if callback then callback(state) end
 				if window.configs[id] then window.configs[id].Value = state end
 			end
-			function elem:SetVisible(v, anim)
-				if not anim then
-					container.Visible = v
-					container.Size = UDim2.new(1, 0, 0, v and TOGGLE_H or 0)
-					if group and group.updateSize then group.updateSize() end
-					return
+		function elem:SetVisible(v, anim)
+			if not anim then
+				if not v then
+					state = false
+					cbOuter.BackgroundColor3 = window.theme.BG
+					cbStroke.Color = window.theme.Border
+					cbMark.Text = ""
 				end
-				if v then container.Visible = true end
-				local tw = TweenService:Create(container, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-					Size = UDim2.new(1, 0, 0, v and TOGGLE_H or 0)
-				})
-				tw.Completed:Connect(function()
-					if not v then container.Visible = false end
-					if group and group.updateSize then group.updateSize() end
-				end)
-				tw:Play()
+				container.Visible = v
+				container.Size = UDim2.new(1, 0, 0, v and (TOGGLE_H + (state and contentLayout and contentLayout.AbsoluteContentSize.Y or 0)) or 0)
+				if group and group.updateSize then group.updateSize() end
+				return
 			end
-			window.configs[id] = elem
+			if not v then
+				state = false
+				TweenService:Create(cbOuter, TweenInfo.new(0.12, Enum.EasingStyle.Quart), {
+					BackgroundColor3 = window.theme.BG
+				}):Play()
+				cbStroke.Color = window.theme.Border
+				cbMark.Text = ""
+			end
+			if v then container.Visible = true end
+			local tw = TweenService:Create(container, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Size = UDim2.new(1, 0, 0, v and (TOGGLE_H + (state and contentLayout.AbsoluteContentSize.Y or 0)) or 0)
+			})
+			tw.Completed:Connect(function()
+				if not v then container.Visible = false end
+				if group and group.updateSize then group.updateSize() end
+			end)
+			tw:Play()
+		end
+			window.configs[id] = finalizeElement(elem)
 			cbOuter.MouseButton1Click:Connect(function()
 				if elem.Mode == "always" then return end
 				state = not state
@@ -4190,9 +4407,40 @@ function UILib.Column:addGroup(title)
 			if tooltip then attachTooltip(toggleRow, tooltip, window) end
 			updateContentSize()
 			elem.frame = container
-			elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
-			return elem
+		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
+		return elem
+	end
+
+	function group:confirmToggle(text, default, confirmMessage, callback, tooltip, icon)
+		local elem = self:toggle(text, default, nil, tooltip, icon)
+		local origSetValue = elem.SetValue
+		local confirmPending = false
+		elem.SetValue = function(val, _silent)
+			if confirmPending then
+				origSetValue(val)
+				if callback then callback(val) end
+				return
+			end
+			if val and confirmMessage and not _silent then
+				local msg = type(confirmMessage) == "function" and confirmMessage() or confirmMessage
+				confirmPending = true
+				window:confirm(msg, function(ok)
+					confirmPending = false
+					if ok then
+						origSetValue(true)
+						if callback then callback(true) end
+					else
+						origSetValue(false)
+					end
+				end)
+			else
+				origSetValue(val)
+				if callback then callback(val) end
+			end
 		end
+		function elem:setConfirmMessage(msg) confirmMessage = msg end
+		return elem
+	end
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, TOGGLE_H)
 		r.BackgroundTransparency = 1
@@ -4264,7 +4512,7 @@ function UILib.Column:addGroup(title)
 			end)
 			tw:Play()
 		end
-		window.configs[id] = elem
+		window.configs[id] = finalizeElement(elem)
 		cbOuter.MouseButton1Click:Connect(function()
 			if elem.Mode == "always" then return end
 			state = not state
@@ -4450,9 +4698,7 @@ function UILib.Column:addGroup(title)
 			local totalPanelH = searchExtra + clampedListH
 			if open then
 				dlist.Size = UDim2.new(1, 0, 0, clampedListH)
-				expandPanel.Size = UDim2.new(1, 0, 0, totalPanelH)
-				r.Size = UDim2.new(1, 0, 0, 56 + totalPanelH)
-				updateSize()
+				expandPanel.Size = UDim2.new(expandPanel.Size.X.Scale, expandPanel.Size.X.Offset, 0, totalPanelH)
 			end
 		end
 		searchBox:GetPropertyChangedSignal("Text"):Connect(function()
@@ -4462,6 +4708,8 @@ function UILib.Column:addGroup(title)
 		local function closeDropdown()
 			open = false
 			window.tooltipSuppressed = false
+			window._openDropdownRef = nil
+			window._openDropdownPanel = nil
 			TweenService:Create(arrow, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Rotation = 0 }):Play()
 
 			dbtnCorner.CornerRadius = UDim.new(0, 4)
@@ -4470,12 +4718,16 @@ function UILib.Column:addGroup(title)
 
 			local tw = TweenService:Create(expandPanel,
 				TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
-					Size = UDim2.new(1, 0, 0, 0)
+					Size = UDim2.new(expandPanel.Size.X.Scale, expandPanel.Size.X.Offset, 0, 0)
 				})
-			TweenService:Create(r, TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
-				Size = UDim2.new(1, 0, 0, 56)
-			}):Play()
 			tw.Completed:Connect(function()
+				expandPanel.Parent = r
+				expandPanel.Size = UDim2.new(1, 0, 0, 0)
+				expandPanel.Position = UDim2.new(0, 0, 0, 52)
+				expandPanel.ZIndex = 50
+				searchRow.ZIndex = 52
+				searchBox.ZIndex = 53
+				dlist.ZIndex = 51
 				expandPanel.Visible = false
 				searchRow.Visible = false
 				searchSep.Visible = false
@@ -4486,6 +4738,9 @@ function UILib.Column:addGroup(title)
 				end
 			end)
 			tw:Play()
+			TweenService:Create(r, TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+				Size = UDim2.new(1, 0, 0, 56)
+			}):Play()
 			task.delay(0.16, updateSize)
 		end
 
@@ -4635,11 +4890,25 @@ function UILib.Column:addGroup(title)
 
 				expandPanel.Size = UDim2.new(1, 0, 0, 0)
 				expandPanel.Visible = true
+				local ap = r.AbsolutePosition
+				local as = r.AbsoluteSize
+				expandPanel.Parent = window.sg
+				expandPanel.ZIndex = 1000
+				expandPanel.Position = UDim2.new(0, ap.X, 0, ap.Y + as.Y)
+				expandPanel.Size = UDim2.new(0, as.X, 0, 0)
+				window._openDropdownRef = r
+				window._openDropdownPanel = expandPanel
+				for _, c in ipairs(expandPanel:GetDescendants()) do
+					if c:IsA("ImageLabel") or c:IsA("TextLabel") or c:IsA("TextButton") or c:IsA("TextBox") or c:IsA("Frame") and c ~= expandPanel then
+						c.ZIndex = c.ZIndex + 1000
+					end
+				end
+				searchRow.ZIndex = 1052
+				searchBox.ZIndex = 1053
+				searchSep.ZIndex = 1052
+				dlist.ZIndex = 1051
 				TweenService:Create(expandPanel, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-					Size = UDim2.new(1, 0, 0, totalPanelH)
-				}):Play()
-				TweenService:Create(r, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-					Size = UDim2.new(1, 0, 0, 56 + totalPanelH)
+					Size = UDim2.new(0, as.X, 0, totalPanelH)
 				}):Play()
 				task.delay(0.21, updateSize)
 				if showSearch then
@@ -4682,7 +4951,7 @@ function UILib.Column:addGroup(title)
 				end
 			end
 		}
-		window.configs[id] = elem
+		window.configs[id] = finalizeElement(elem)
 
 		if tooltip then
 			local tt = window.tooltip
@@ -4803,7 +5072,7 @@ function UILib.Column:addGroup(title)
 			end)
 		end)
 		local elem = { ID = id, Value = currentName, SetValue = function(val) kbtn.Text = val end }
-		window.configs[id] = elem
+		window.configs[id] = finalizeElement(elem)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		elem.frame = r
@@ -4840,6 +5109,7 @@ function UILib.Column:addGroup(title)
 
 		function ref:setColor(c) lbl.TextColor3 = c end
 
+		ref.remove = function() f:Destroy(); updateSize() end
 		return ref
 	end
 
@@ -4884,6 +5154,7 @@ function UILib.Column:addGroup(title)
 			line.Parent = f
 			updateSize()
 		end
+		f.remove = function() f:Destroy(); updateSize() end
 		return f
 	end
 
@@ -4973,6 +5244,7 @@ function UILib.Column:addGroup(title)
 		btn.MouseButton1Click:Connect(callback)
 		if tooltip then attachTooltip(btn, tooltip, window) end
 		updateSize()
+		btn.remove = function() btn:Destroy(); updateSize() end
 		return btn
 	end
 
@@ -5030,9 +5302,10 @@ function UILib.Column:addGroup(title)
 			}):Play()
 		end
 
-		if tooltip then attachTooltip(r, tooltip, window) end
-		updateSize()
-		return ref
+			if tooltip then attachTooltip(r, tooltip, window) end
+			updateSize()
+			ref.remove = function() r:Destroy(); updateSize() end
+			return ref
 	end
 
 	function group:image(url, height, tooltip)
@@ -5062,6 +5335,7 @@ function UILib.Column:addGroup(title)
 
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
+		ref.remove = function() r:Destroy(); updateSize() end
 		return ref
 	end
 
@@ -5154,6 +5428,7 @@ function UILib.Column:addGroup(title)
 
 			if tooltip then attachTooltip(r, tooltip, window) end
 			updateSize()
+			ref.remove = function() r:Destroy(); updateSize() end
 			return ref
 		end
 	end
@@ -5303,7 +5578,7 @@ function UILib.Column:addGroup(title)
 				window.configs[id].Value = val
 			end
 		}
-		window.configs[id] = elem
+		window.configs[id] = finalizeElement(elem)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		elem.frame = r
@@ -5377,7 +5652,7 @@ function UILib.Column:addGroup(title)
 				window.configs[id].Value = val
 			end
 		}
-		window.configs[id] = elem
+		window.configs[id] = finalizeElement(elem)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		elem.frame = r
@@ -5539,7 +5814,7 @@ function UILib.Column:addGroup(title)
 				window.configs[id].Value = { currentMin, currentMax }
 			end
 		}
-		window.configs[id] = elem
+		window.configs[id] = finalizeElement(elem)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		elem.frame = r
