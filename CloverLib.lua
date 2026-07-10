@@ -3143,7 +3143,7 @@ function UILib.SubTab:addButton(text, callback, tooltip, color)
 	lbl.Parent = btn
 	btn.MouseButton1Click:Connect(callback)
 	if tooltip then attachTooltip(btn, tooltip, window) end
-	btn.remove = function() btn:Destroy(); updateSize() end
+	pcall(function() btn.remove = function() btn:Destroy(); updateSize() end end)
 	return btn
 end
 
@@ -4409,38 +4409,9 @@ function UILib.Column:addGroup(title)
 			elem.frame = container
 		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
 		return elem
+		end
 	end
 
-	function group:confirmToggle(text, default, confirmMessage, callback, tooltip, icon)
-		local elem = self:toggle(text, default, nil, tooltip, icon)
-		local origSetValue = elem.SetValue
-		local confirmPending = false
-		elem.SetValue = function(val, _silent)
-			if confirmPending then
-				origSetValue(val)
-				if callback then callback(val) end
-				return
-			end
-			if val and confirmMessage and not _silent then
-				local msg = type(confirmMessage) == "function" and confirmMessage() or confirmMessage
-				confirmPending = true
-				window:confirm(msg, function(ok)
-					confirmPending = false
-					if ok then
-						origSetValue(true)
-						if callback then callback(true) end
-					else
-						origSetValue(false)
-					end
-				end)
-			else
-				origSetValue(val)
-				if callback then callback(val) end
-			end
-		end
-		function elem:setConfirmMessage(msg) confirmMessage = msg end
-		return elem
-	end
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, TOGGLE_H)
 		r.BackgroundTransparency = 1
@@ -4522,6 +4493,37 @@ function UILib.Column:addGroup(title)
 		updateSize()
 		elem.frame = r
 		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
+		return elem
+	end
+
+	function group:confirmToggle(text, default, confirmMessage, callback, tooltip, icon)
+		local elem = self:toggle(text, default, nil, tooltip, icon)
+		local origSetValue = elem.SetValue
+		local confirmPending = false
+		elem.SetValue = function(val, _silent)
+			if confirmPending then
+				origSetValue(val)
+				if callback then callback(val) end
+				return
+			end
+			if val and confirmMessage and not _silent then
+				local msg = type(confirmMessage) == "function" and confirmMessage() or confirmMessage
+				confirmPending = true
+				window:confirm(msg, function(ok)
+					confirmPending = false
+					if ok then
+						origSetValue(true)
+						if callback then callback(true) end
+					else
+						origSetValue(false)
+					end
+				end)
+			else
+				origSetValue(val)
+				if callback then callback(val) end
+			end
+		end
+		function elem:setConfirmMessage(msg) confirmMessage = msg end
 		return elem
 	end
 
@@ -5244,7 +5246,7 @@ function UILib.Column:addGroup(title)
 		btn.MouseButton1Click:Connect(callback)
 		if tooltip then attachTooltip(btn, tooltip, window) end
 		updateSize()
-		btn.remove = function() btn:Destroy(); updateSize() end
+		pcall(function() btn.remove = function() btn:Destroy(); updateSize() end end)
 		return btn
 	end
 
