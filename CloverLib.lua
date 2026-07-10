@@ -5155,7 +5155,7 @@ function UILib.Column:addGroup(title)
 			line.Parent = f
 			updateSize()
 		end
-		f.remove = function() f:Destroy(); updateSize() end
+		pcall(function() f.remove = function() f:Destroy(); updateSize() end end)
 		return f
 	end
 
