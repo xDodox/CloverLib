@@ -415,7 +415,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	self.connections = {}
 	self.showVersion = showVersion ~= false
 	self.showLogo = showLogo ~= false
-	self.uiTabIcon = uiTabIcon
+	self.uiTabIcon = uiTabIcon or "lucide:settings"
 	self.configs = {}
 	self.resizing = nil
 	self.toggleKey = Enum.KeyCode.RightShift
@@ -3306,7 +3306,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		tw:Play()
 	end
 	elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then label.Text = self_or_d else label.Text = d end end
-	window.configs[id] = finalizeElement(elem)
+	window.configs[id] = finalizeElement(elem, window, group)
 	return row, elem
 end
 
@@ -3377,7 +3377,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		end)
 		tw:Play()
 	end
-	window.configs[id] = finalizeElement(elem)
+	window.configs[id] = finalizeElement(elem, window, group)
 
 	local function closePicker()
 		if pickerFrame then
@@ -4038,7 +4038,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 		end)
 		tw:Play()
 	end
-	window.configs[id] = finalizeElement(elem)
+	window.configs[id] = finalizeElement(elem, window, group)
 	return row, elem
 end
 
@@ -4164,15 +4164,6 @@ function UILib.Column:addGroup(title)
 		end
 	end
 
-	local function finalizeElement(elem)
-		function elem:remove()
-			if self.frame and self.frame.Parent then self.frame:Destroy() end
-			if window and window.configs then window.configs[self.ID] = nil end
-			if group and group.updateSize then group.updateSize() end
-		end
-		return elem
-	end
-
 	function group:paragraph(ptitle, text, tooltip)
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, 0)
@@ -4215,6 +4206,15 @@ function UILib.Column:addGroup(title)
 
 		ref.remove = function() r:Destroy(); updateSize() end
 		return ref
+	end
+
+	local function finalizeElement(elem, win, grp)
+		function elem:remove()
+			if self.frame and self.frame.Parent then self.frame:Destroy() end
+			if win and win.configs then win.configs[self.ID] = nil end
+			if grp and grp.updateSize then grp.updateSize() end
+		end
+		return elem
 	end
 
 	local function buildNestedGroup(contentFrame, updateContentSize)
@@ -4398,7 +4398,7 @@ function UILib.Column:addGroup(title)
 			end)
 			tw:Play()
 		end
-			window.configs[id] = finalizeElement(elem)
+			window.configs[id] = finalizeElement(elem, window, group)
 			cbOuter.MouseButton1Click:Connect(function()
 				if elem.Mode == "always" then return end
 				state = not state
@@ -4512,7 +4512,7 @@ function UILib.Column:addGroup(title)
 			end)
 			tw:Play()
 		end
-		window.configs[id] = finalizeElement(elem)
+		window.configs[id] = finalizeElement(elem, window, group)
 		cbOuter.MouseButton1Click:Connect(function()
 			if elem.Mode == "always" then return end
 			state = not state
@@ -4951,7 +4951,7 @@ function UILib.Column:addGroup(title)
 				end
 			end
 		}
-		window.configs[id] = finalizeElement(elem)
+		window.configs[id] = finalizeElement(elem, window, group)
 
 		if tooltip then
 			local tt = window.tooltip
@@ -5072,7 +5072,7 @@ function UILib.Column:addGroup(title)
 			end)
 		end)
 		local elem = { ID = id, Value = currentName, SetValue = function(val) kbtn.Text = val end }
-		window.configs[id] = finalizeElement(elem)
+		window.configs[id] = finalizeElement(elem, window, group)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		elem.frame = r
@@ -5578,7 +5578,7 @@ function UILib.Column:addGroup(title)
 				window.configs[id].Value = val
 			end
 		}
-		window.configs[id] = finalizeElement(elem)
+		window.configs[id] = finalizeElement(elem, window, group)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		elem.frame = r
@@ -5652,7 +5652,7 @@ function UILib.Column:addGroup(title)
 				window.configs[id].Value = val
 			end
 		}
-		window.configs[id] = finalizeElement(elem)
+		window.configs[id] = finalizeElement(elem, window, group)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		elem.frame = r
@@ -5814,7 +5814,7 @@ function UILib.Column:addGroup(title)
 				window.configs[id].Value = { currentMin, currentMax }
 			end
 		}
-		window.configs[id] = finalizeElement(elem)
+		window.configs[id] = finalizeElement(elem, window, group)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		elem.frame = r
