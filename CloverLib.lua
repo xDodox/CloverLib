@@ -4409,7 +4409,6 @@ function UILib.Column:addGroup(title)
 			elem.frame = container
 		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
 		return elem
-		end
 	end
 
 		local r = Instance.new("Frame")
