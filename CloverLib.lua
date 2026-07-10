@@ -415,7 +415,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	self.connections = {}
 	self.showVersion = showVersion ~= false
 	self.showLogo = showLogo ~= false
-	self.uiTabIcon = uiTabIcon or "lucide:settings"
+	self.uiTabIcon = uiTabIcon
 	self.configs = {}
 	self.resizing = nil
 	self.toggleKey = Enum.KeyCode.RightShift
