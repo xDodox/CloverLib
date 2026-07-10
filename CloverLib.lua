@@ -3147,6 +3147,15 @@ function UILib.SubTab:addButton(text, callback, tooltip, color)
 	return btn
 end
 
+local function finalizeElement(elem, win, grp)
+	function elem:remove()
+		if self.frame and self.frame.Parent then self.frame:Destroy() end
+		if win and win.configs then win.configs[self.ID] = nil end
+		if grp and grp.updateSize then grp.updateSize() end
+	end
+	return elem
+end
+
 local function createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step)
 	step = step or 1
 	local id = generateID()
@@ -4206,15 +4215,6 @@ function UILib.Column:addGroup(title)
 
 		ref.remove = function() r:Destroy(); updateSize() end
 		return ref
-	end
-
-	local function finalizeElement(elem, win, grp)
-		function elem:remove()
-			if self.frame and self.frame.Parent then self.frame:Destroy() end
-			if win and win.configs then win.configs[self.ID] = nil end
-			if grp and grp.updateSize then grp.updateSize() end
-		end
-		return elem
 	end
 
 	local function buildNestedGroup(contentFrame, updateContentSize)
