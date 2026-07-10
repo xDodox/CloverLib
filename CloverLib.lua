@@ -1086,11 +1086,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 						dragPos.Y.Offset + delta.Y)
 					self.originalPosition = win.Position
 					self.savedPos = win.Position
-					if self._openDropdownRef and self._openDropdownPanel then
-						local ap = self._openDropdownRef.AbsolutePosition
-						local as = self._openDropdownRef.AbsoluteSize
-						self._openDropdownPanel.Position = UDim2.new(0, ap.X, 0, ap.Y + as.Y)
-					end
 				end
 			end))
 		table.insert(self.connections,
@@ -4692,7 +4687,9 @@ function UILib.Column:addGroup(title)
 			local totalPanelH = searchExtra + clampedListH
 			if open then
 				dlist.Size = UDim2.new(1, 0, 0, clampedListH)
-				expandPanel.Size = UDim2.new(expandPanel.Size.X.Scale, expandPanel.Size.X.Offset, 0, totalPanelH)
+				expandPanel.Size = UDim2.new(1, 0, 0, totalPanelH)
+				r.Size = UDim2.new(1, 0, 0, 56 + totalPanelH)
+				updateSize()
 			end
 		end
 		searchBox:GetPropertyChangedSignal("Text"):Connect(function()
@@ -4702,8 +4699,6 @@ function UILib.Column:addGroup(title)
 		local function closeDropdown()
 			open = false
 			window.tooltipSuppressed = false
-			window._openDropdownRef = nil
-			window._openDropdownPanel = nil
 			TweenService:Create(arrow, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Rotation = 0 }):Play()
 
 			dbtnCorner.CornerRadius = UDim.new(0, 4)
@@ -4712,16 +4707,12 @@ function UILib.Column:addGroup(title)
 
 			local tw = TweenService:Create(expandPanel,
 				TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
-					Size = UDim2.new(expandPanel.Size.X.Scale, expandPanel.Size.X.Offset, 0, 0)
+					Size = UDim2.new(1, 0, 0, 0)
 				})
+			TweenService:Create(r, TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+				Size = UDim2.new(1, 0, 0, 56)
+			}):Play()
 			tw.Completed:Connect(function()
-				expandPanel.Parent = r
-				expandPanel.Size = UDim2.new(1, 0, 0, 0)
-				expandPanel.Position = UDim2.new(0, 0, 0, 52)
-				expandPanel.ZIndex = 50
-				searchRow.ZIndex = 52
-				searchBox.ZIndex = 53
-				dlist.ZIndex = 51
 				expandPanel.Visible = false
 				searchRow.Visible = false
 				searchSep.Visible = false
@@ -4732,9 +4723,6 @@ function UILib.Column:addGroup(title)
 				end
 			end)
 			tw:Play()
-			TweenService:Create(r, TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
-				Size = UDim2.new(1, 0, 0, 56)
-			}):Play()
 			task.delay(0.16, updateSize)
 		end
 
@@ -4884,25 +4872,11 @@ function UILib.Column:addGroup(title)
 
 				expandPanel.Size = UDim2.new(1, 0, 0, 0)
 				expandPanel.Visible = true
-				local ap = r.AbsolutePosition
-				local as = r.AbsoluteSize
-				expandPanel.Parent = window.sg
-				expandPanel.ZIndex = 1000
-				expandPanel.Position = UDim2.new(0, ap.X, 0, ap.Y + as.Y)
-				expandPanel.Size = UDim2.new(0, as.X, 0, 0)
-				window._openDropdownRef = r
-				window._openDropdownPanel = expandPanel
-				for _, c in ipairs(expandPanel:GetDescendants()) do
-					if c:IsA("ImageLabel") or c:IsA("TextLabel") or c:IsA("TextButton") or c:IsA("TextBox") or c:IsA("Frame") and c ~= expandPanel then
-						c.ZIndex = c.ZIndex + 1000
-					end
-				end
-				searchRow.ZIndex = 1052
-				searchBox.ZIndex = 1053
-				searchSep.ZIndex = 1052
-				dlist.ZIndex = 1051
 				TweenService:Create(expandPanel, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-					Size = UDim2.new(0, as.X, 0, totalPanelH)
+					Size = UDim2.new(1, 0, 0, totalPanelH)
+				}):Play()
+				TweenService:Create(r, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+					Size = UDim2.new(1, 0, 0, 56 + totalPanelH)
 				}):Play()
 				task.delay(0.21, updateSize)
 				if showSearch then
