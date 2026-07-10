@@ -1261,18 +1261,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 
 	if includeUITab ~= false then
 		self.includeUITab = true
-		task.defer(function()
-			if not self.uiTabCreated then
-				self.uiTabCreated = true
-				self:buildUITab()
-			end
-			-- Auto-load last session after UI is built
-			local autoDir = self:getConfigDir() .. "autosave.json"
-			local ok = pcall(readfile, autoDir)
-			if ok then
-				pcall(function() self:loadConfig("autosave") end)
-			end
-		end)
 	end
 
 	local ctxMenu = Instance.new("TextButton")
@@ -1426,6 +1414,15 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	self:updateLayout()
 
 	task.defer(function()
+		if self.includeUITab and not self.uiTabCreated then
+			self.uiTabCreated = true
+			self:buildUITab()
+			local autoDir = self:getConfigDir() .. "autosave.json"
+			local ok = pcall(readfile, autoDir)
+			if ok then
+				pcall(function() self:loadConfig("autosave") end)
+			end
+		end
 		self.uiScale.Scale = 0
 		self:setVisible(true)
 	end)
@@ -1942,10 +1939,10 @@ function UILib:showDialog(opts)
 	for i, btnText in ipairs(buttons) do
 		local btn = Instance.new("TextButton")
 		btn.Size = UDim2.new(0, math.max(60, #btnText * 10 + 20), 0, 28)
-		btn.BackgroundColor3 = (i == 1 and #buttons == 1) and self.theme.Accent or self.theme.Track
+		btn.BackgroundColor3 = self.theme.Track
 		btn.BorderSizePixel = 0
 		btn.Text = btnText
-		btn.TextColor3 = (i == 1 and #buttons == 1) and Color3.fromRGB(10, 10, 10) or self.theme.White
+		btn.TextColor3 = self.theme.White
 		btn.Font = Enum.Font.GothamBold
 		btn.TextSize = 12
 		btn.ZIndex = 5003
@@ -2818,6 +2815,7 @@ function UILib.Tab:addSubTab(name)
 	btn.Position = UDim2.new(0, 4, 0, 0)
 	btn.BackgroundTransparency = 1
 	btn.Text = ""
+	btn.Visible = false
 	btn.ZIndex = 5
 	btn.Parent = self.window.sidebar
 
@@ -4497,32 +4495,27 @@ function UILib.Column:addGroup(title)
 
 	function group:confirmToggle(text, default, confirmMessage, callback, tooltip, icon)
 		local elem = self:toggle(text, default, nil, tooltip, icon)
-		local origSetValue = elem.SetValue
-		local confirmPending = false
-		elem.SetValue = function(val, _silent)
-			if confirmPending then
-				origSetValue(val)
-				if callback then callback(val) end
-				return
-			end
-			if val and confirmMessage and not _silent then
-				local msg = type(confirmMessage) == "function" and confirmMessage() or confirmMessage
-				confirmPending = true
-				window:confirm(msg, function(ok)
-					confirmPending = false
-					if ok then
-						origSetValue(true)
-						if callback then callback(true) end
-					else
-						origSetValue(false)
-					end
-				end)
-			else
-				origSetValue(val)
-				if callback then callback(val) end
-			end
+		elem._confirmMessage = confirmMessage
+		local btn = elem.frame:FindFirstChildOfClass("TextButton")
+		if btn then
+			btn.MouseButton1Click:Connect(function()
+				if elem.Mode == "always" then return end
+				local isOn = elem.Value
+				if not isOn and elem._confirmMessage then
+					local msg = type(elem._confirmMessage) == "function" and elem._confirmMessage() or elem._confirmMessage
+					window:confirm(msg, function(ok)
+						if ok then
+							elem.SetValue(true)
+							if callback then callback(true) end
+						end
+					end)
+				else
+					elem.SetValue(false)
+					if callback then callback(false) end
+				end
+			end)
 		end
-		function elem:setConfirmMessage(msg) confirmMessage = msg end
+		function elem:setConfirmMessage(msg) elem._confirmMessage = msg end
 		return elem
 	end
 
