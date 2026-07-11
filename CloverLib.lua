@@ -3260,7 +3260,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	table.insert(window.accentObjects, fill)
 	local sliderHandle = Instance.new("Frame")
 	sliderHandle.Name = "SliderHandle"
-	sliderHandle.Size = UDim2.new(0, 3, 0, 22)
+	sliderHandle.Size = UDim2.new(0, 5, 0, 22)
 	sliderHandle.BackgroundColor3 = Color3.new(window.theme.Accent.r * 0.55, window.theme.Accent.g * 0.55, window.theme.Accent.b * 0.55)
 	sliderHandle.BorderSizePixel = 0
 	sliderHandle.ZIndex = 5
@@ -3283,7 +3283,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		currentVal = val
 		local rel = (val - minVal) / (maxVal - minVal)
 		fill.Size = UDim2.new(rel, 0, 1, 0)
-		if sliderHandle then sliderHandle.Position = UDim2.new(rel, -1.5, 0, 0) end
+		if sliderHandle then sliderHandle.Position = UDim2.new(rel, -4, 0, 0) end
 		valueLabel.Text = tostring(val)
 		valueBoxInput.Text = tostring(val)
 		if callback then callback(val) end
@@ -4149,7 +4149,7 @@ function UILib.Column:addGroup(title)
 	local padding = Instance.new("UIPadding", items)
 	padding.PaddingLeft = UDim.new(0, 8)
 	padding.PaddingRight = UDim.new(0, 8)
-	padding.PaddingTop = UDim.new(0, 4)
+	padding.PaddingTop = UDim.new(0, 6)
 	padding.PaddingBottom = UDim.new(0, 6)
 
 		local sizeUpdateScheduled = false
@@ -5751,7 +5751,7 @@ function UILib.Column:addGroup(title)
 		fill.ZIndex = 4
 		fill.Parent = track
 		Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 2)
-		local HANDLE_W = 3
+		local HANDLE_W = 5
 		local accentDark = Color3.new(window.theme.Accent.r * 0.55, window.theme.Accent.g * 0.55, window.theme.Accent.b * 0.55)
 		local handleLeft = Instance.new("Frame")
 		handleLeft.Size = UDim2.new(0, HANDLE_W, 0, 20)
