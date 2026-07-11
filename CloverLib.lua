@@ -2063,6 +2063,7 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	applyBtn.Size = UDim2.new(0, 130, 0, 34)
 	applyBtn.Position = UDim2.new(0.5, -65, 0, 120)
 	applyBtn.BackgroundColor3 = self.theme.Panel
+	applyBtn.AutoButtonColor = false
 	applyBtn.BorderSizePixel = 0
 	applyBtn.Text = "SAVE"
 	applyBtn.TextColor3 = self.theme.White
@@ -2318,8 +2319,8 @@ function UILib:confirm(message, onYes, onNo)
 		end)
 	end
 
-	makeBtn("Cancel", self.theme.Track, 0, onNo)
-	makeBtn("Confirm", self.theme.Accent, 0.5, onYes)
+	makeBtn("Cancel", self.theme.Track, 0, function() if onNo then onNo() end; if onYes then onYes(false) end end)
+	makeBtn("Confirm", self.theme.Track, 0.5, function() if onYes then onYes(true) end end)
 
 	local tweenIn = TweenService:Create(modal, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
 		{ Size = UDim2.new(0, 300, 0, 130) })
@@ -3132,6 +3133,7 @@ function UILib.SubTab:addButton(text, callback, tooltip, color)
 	local btn = Instance.new("TextButton")
 	btn.Size = UDim2.new(1, 0, 0, 36)
 	btn.BackgroundColor3 = window.theme.Item
+	btn.AutoButtonColor = false
 	btn.BorderSizePixel = 0
 	btn.Text = ""
 	btn.ZIndex = 3
@@ -3265,6 +3267,8 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	sliderHandle.BorderSizePixel = 0
 	sliderHandle.ZIndex = 5
 	sliderHandle.Parent = track
+	local relInit = (defaultVal - minVal) / (maxVal - minVal)
+	sliderHandle.Position = UDim2.new(relInit, relInit > 0.01 and -4 or 0, 0, 0)
 	sliderHandle.Visible = true
 
 	local hit = Instance.new("TextButton")
@@ -3283,7 +3287,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		currentVal = val
 		local rel = (val - minVal) / (maxVal - minVal)
 		fill.Size = UDim2.new(rel, 0, 1, 0)
-		if sliderHandle then sliderHandle.Position = UDim2.new(rel, -4, 0, 0) end
+		if sliderHandle then sliderHandle.Position = UDim2.new(rel, rel > 0.01 and -4 or 0, 0, 0) end
 		valueLabel.Text = tostring(val)
 		valueBoxInput.Text = tostring(val)
 		if callback then callback(val) end
@@ -3761,6 +3765,7 @@ local function buildDropdownRefreshBtn(row, window, refreshCallback)
 	refreshBtn.Size = UDim2.new(0, 50, 0, 16)
 	refreshBtn.Position = UDim2.new(1, -54, 0, 3)
 	refreshBtn.BackgroundColor3 = window.theme.Track
+	refreshBtn.AutoButtonColor = false
 	refreshBtn.Text = "Refresh"
 	refreshBtn.TextColor3 = window.theme.GrayLt
 	refreshBtn.Font = Enum.Font.GothamSemibold
@@ -4529,16 +4534,8 @@ function UILib.Column:addGroup(title)
 		local elem = self:toggle(text, default, nil, tooltip, icon)
 		elem._confirmMessage = confirmMessage
 		local origSetValue = elem.SetValue
-		local confirmBusy = false
 		elem.SetValue = function(val, _silent)
-			if confirmBusy then
-				origSetValue(val)
-				if not val and callback then callback(false) end
-				confirmBusy = false
-				return
-			end
 			if val and elem._confirmMessage and not _silent then
-				confirmBusy = true
 				local msg = type(elem._confirmMessage) == "function" and elem._confirmMessage() or elem._confirmMessage
 				window:confirm(msg, function(ok)
 					if ok then
@@ -4547,7 +4544,6 @@ function UILib.Column:addGroup(title)
 					else
 						origSetValue(false)
 					end
-					confirmBusy = false
 				end)
 			else
 				origSetValue(val)
@@ -5192,6 +5188,7 @@ function UILib.Column:addGroup(title)
 			end
 		end
 		local btn = Instance.new("TextButton")
+		btn.AutoButtonColor = false
 		btn.Size = UDim2.new(1, 0, 0, 32)
 		btn.BorderSizePixel = 0
 		btn.Text = ""
