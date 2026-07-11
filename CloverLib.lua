@@ -357,7 +357,9 @@ function UILib:loadConfig(name)
 			end
 		end
 	end
-	self:notify("Loaded: " .. name, "success")
+	if name ~= "autosave" then
+		self:notify("Loaded: " .. name, "success")
+	end
 end
 
 function UILib:deleteConfig(name)
@@ -483,7 +485,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		end
 		for _, t in pairs(self.tabs) do
 			if t.tabIcon and t.tabIconId then
-				pcall(function() t.tabIcon.ImageColor3 = color end)
+				pcall(function() t.tabIcon.ImageColor3 = t == self.activeTab and color or self.theme.Gray end)
 			end
 		end
 		if self.configs then
@@ -4342,13 +4344,17 @@ function UILib.Column:addGroup(title)
 			cbOuter.ZIndex = 4
 			cbOuter.Text = ""
 			cbOuter.Parent = toggleRow
-			do
-				local s = Instance.new("UIScale", cbOuter)
-				s.Scale = 1
-				cbOuter.MouseButton1Down:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 0.88 }):Play() end)
-				cbOuter.MouseButton1Up:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 1 }):Play() end)
-				cbOuter.MouseLeave:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 1 }):Play() end)
-			end
+			local cbOverlay = Instance.new("Frame")
+			cbOverlay.Size = UDim2.fromScale(1, 1)
+			cbOverlay.BackgroundColor3 = Color3.new(0, 0, 0)
+			cbOverlay.BackgroundTransparency = 0.7
+			cbOverlay.BorderSizePixel = 0
+			cbOverlay.Visible = false
+			cbOverlay.ZIndex = 10
+			cbOverlay.Parent = cbOuter
+			cbOuter.MouseButton1Down:Connect(function() cbOverlay.Visible = true end)
+			cbOuter.MouseButton1Up:Connect(function() cbOverlay.Visible = false end)
+			cbOuter.MouseLeave:Connect(function() cbOverlay.Visible = false end)
 			Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
 			local cbStroke = Instance.new("UIStroke", cbOuter)
 			cbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -4468,13 +4474,17 @@ function UILib.Column:addGroup(title)
 		cbOuter.ZIndex = 4
 		cbOuter.Text = ""
 		cbOuter.Parent = r
-		do
-			local s = Instance.new("UIScale", cbOuter)
-			s.Scale = 1
-			cbOuter.MouseButton1Down:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 0.88 }):Play() end)
-			cbOuter.MouseButton1Up:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 1 }):Play() end)
-			cbOuter.MouseLeave:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 1 }):Play() end)
-		end
+		local cbOverlay = Instance.new("Frame")
+		cbOverlay.Size = UDim2.fromScale(1, 1)
+		cbOverlay.BackgroundColor3 = Color3.new(0, 0, 0)
+		cbOverlay.BackgroundTransparency = 0.7
+		cbOverlay.BorderSizePixel = 0
+		cbOverlay.Visible = false
+		cbOverlay.ZIndex = 10
+		cbOverlay.Parent = cbOuter
+		cbOuter.MouseButton1Down:Connect(function() cbOverlay.Visible = true end)
+		cbOuter.MouseButton1Up:Connect(function() cbOverlay.Visible = false end)
+		cbOuter.MouseLeave:Connect(function() cbOverlay.Visible = false end)
 		Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
 		local cbStroke = Instance.new("UIStroke", cbOuter)
 		cbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -4609,13 +4619,18 @@ function UILib.Column:addGroup(title)
 		dbtn.Text = ""
 		dbtn.ZIndex = 11
 		dbtn.Parent = r
-		do
-			local s = Instance.new("UIScale", dbtn)
-			s.Scale = 1
-			dbtn.MouseButton1Down:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 0.96 }):Play() end)
-			dbtn.MouseButton1Up:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 1 }):Play() end)
-			dbtn.MouseLeave:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 1 }):Play() end)
-		end
+		local dbtnOverlay = Instance.new("Frame")
+		dbtnOverlay.Size = UDim2.fromScale(1, 1)
+		dbtnOverlay.BackgroundColor3 = Color3.new(0, 0, 0)
+		dbtnOverlay.BackgroundTransparency = 0.8
+		dbtnOverlay.BorderSizePixel = 0
+		dbtnOverlay.Visible = false
+		dbtnOverlay.ZIndex = 20
+		dbtnOverlay.Parent = dbtn
+		Instance.new("UICorner", dbtnOverlay).CornerRadius = UDim.new(0, 4)
+		dbtn.MouseButton1Down:Connect(function() dbtnOverlay.Visible = true end)
+		dbtn.MouseButton1Up:Connect(function() dbtnOverlay.Visible = false end)
+		dbtn.MouseLeave:Connect(function() dbtnOverlay.Visible = false end)
 		local dbtnCorner = Instance.new("UICorner", dbtn)
 		dbtnCorner.CornerRadius = UDim.new(0, 4)
 		local dbtnStroke = Instance.new("UIStroke", dbtn)
@@ -5048,13 +5063,18 @@ function UILib.Column:addGroup(title)
 		kbtn.AutoButtonColor = false
 		kbtn.ZIndex = 4
 		kbtn.Parent = r
-		do
-			local s = Instance.new("UIScale", kbtn)
-			s.Scale = 1
-			kbtn.MouseButton1Down:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 0.94 }):Play() end)
-			kbtn.MouseButton1Up:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 1 }):Play() end)
-			kbtn.MouseLeave:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 1 }):Play() end)
-		end
+		local kbtnOverlay = Instance.new("Frame")
+		kbtnOverlay.Size = UDim2.fromScale(1, 1)
+		kbtnOverlay.BackgroundColor3 = Color3.new(0, 0, 0)
+		kbtnOverlay.BackgroundTransparency = 0.8
+		kbtnOverlay.BorderSizePixel = 0
+		kbtnOverlay.Visible = false
+		kbtnOverlay.ZIndex = 10
+		kbtnOverlay.Parent = kbtn
+		Instance.new("UICorner", kbtnOverlay).CornerRadius = UDim.new(0, 4)
+		kbtn.MouseButton1Down:Connect(function() kbtnOverlay.Visible = true end)
+		kbtn.MouseButton1Up:Connect(function() kbtnOverlay.Visible = false end)
+		kbtn.MouseLeave:Connect(function() kbtnOverlay.Visible = false end)
 		Instance.new("UICorner", kbtn).CornerRadius = UDim.new(0, 4)
 		local kbtnPad = Instance.new("UIPadding", kbtn)
 		kbtnPad.PaddingLeft = UDim.new(0, 8)
@@ -5222,13 +5242,20 @@ function UILib.Column:addGroup(title)
 		btn.Text = ""
 		btn.ZIndex = 3
 		btn.Parent = items
-		do
-			local s = Instance.new("UIScale", btn)
-			s.Scale = 1
-			btn.MouseButton1Down:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 0.94 }):Play() end)
-			btn.MouseButton1Up:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 1 }):Play() end)
-			btn.MouseLeave:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 1 }):Play() end)
-		end
+		local btnOverlay = Instance.new("Frame")
+		btnOverlay.Size = UDim2.fromScale(1, 1)
+		btnOverlay.BackgroundColor3 = Color3.new(0, 0, 0)
+		btnOverlay.BackgroundTransparency = 0.85
+		btnOverlay.BorderSizePixel = 0
+		btnOverlay.Visible = false
+		btnOverlay.ZIndex = 10
+		btnOverlay.Parent = btn
+		Instance.new("UICorner", btnOverlay).CornerRadius = UDim.new(0, 4)
+		local function showPress() btnOverlay.Visible = true end
+		local function hidePress() btnOverlay.Visible = false end
+		btn.MouseButton1Down:Connect(showPress)
+		btn.MouseButton1Up:Connect(hidePress)
+		btn.MouseLeave:Connect(hidePress)
 
 		if style == "split" then
 			btn.BackgroundColor3 = window.theme.Item
