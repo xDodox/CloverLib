@@ -425,6 +425,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	self.notifications = {}
 	self.configPrefix = "clover_"
 	self.accentObjects = {}
+	self.accentDarkObjects = {}
 	self.rainbowElements = {}
 	self.pulseElements = {}
 	self.keybindButtons = {}
@@ -482,6 +483,10 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 					})
 				end
 			end)
+		end
+		local dark = Color3.new(color.r * 0.55, color.g * 0.55, color.b * 0.55)
+		for _, obj in ipairs(self.accentDarkObjects) do
+			pcall(function() obj.BackgroundColor3 = dark end)
 		end
 		for _, t in pairs(self.tabs) do
 			if t.tabIcon and t.tabIconId then
@@ -3272,6 +3277,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	local relInit = (defaultVal - minVal) / (maxVal - minVal)
 	sliderHandle.Position = UDim2.new(relInit, relInit > 0.01 and -4 or 0, 0, 0)
 	sliderHandle.Visible = true
+	table.insert(window.accentDarkObjects, sliderHandle)
 
 	local hit = Instance.new("TextButton")
 	hit.Size = UDim2.new(1, 0, 1, 0)
@@ -5245,7 +5251,7 @@ function UILib.Column:addGroup(title)
 		local btnOverlay = Instance.new("Frame")
 		btnOverlay.Size = UDim2.fromScale(1, 1)
 		btnOverlay.BackgroundColor3 = Color3.new(0, 0, 0)
-		btnOverlay.BackgroundTransparency = 0.85
+		btnOverlay.BackgroundTransparency = 0.7
 		btnOverlay.BorderSizePixel = 0
 		btnOverlay.Visible = false
 		btnOverlay.ZIndex = 10
@@ -5809,6 +5815,7 @@ function UILib.Column:addGroup(title)
 		fill.BorderSizePixel = 0
 		fill.ZIndex = 4
 		fill.Parent = track
+		table.insert(window.accentObjects, fill)
 		Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 2)
 		local HANDLE_W = 5
 		local accentDark = Color3.new(window.theme.Accent.r * 0.55, window.theme.Accent.g * 0.55, window.theme.Accent.b * 0.55)
@@ -5819,7 +5826,7 @@ function UILib.Column:addGroup(title)
 		handleLeft.BorderSizePixel = 0
 		handleLeft.ZIndex = 5
 		handleLeft.Parent = track
-		table.insert(window.accentObjects, handleLeft)
+		table.insert(window.accentDarkObjects, handleLeft)
 		local handleRight = Instance.new("Frame")
 		handleRight.Size = UDim2.new(0, HANDLE_W, 0, 20)
 		handleRight.Position = UDim2.new(pctMax, -HANDLE_W/2, 0, 0)
@@ -5827,7 +5834,7 @@ function UILib.Column:addGroup(title)
 		handleRight.BorderSizePixel = 0
 		handleRight.ZIndex = 5
 		handleRight.Parent = track
-		table.insert(window.accentObjects, handleRight)
+		table.insert(window.accentDarkObjects, handleRight)
 		local hitLeft = Instance.new("TextButton")
 		hitLeft.Size = UDim2.new(0, 16, 0, 22)
 		hitLeft.Position = UDim2.new(pctMin, -8, 0.5, -11)
