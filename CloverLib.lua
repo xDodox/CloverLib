@@ -972,6 +972,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	sidebar.CanvasSize = UDim2.new(1, 0, 0, 0)
 	sidebar.ScrollingDirection = Enum.ScrollingDirection.Y
 	sidebar.ClipsDescendants = true
+	sidebar.Cursor = "Arrow"
 	sidebar.Parent = win
 	self.sidebar = sidebar
 	local sidebarLayout = Instance.new("UIListLayout", sidebar)
@@ -1000,6 +1001,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	content.CanvasSize = UDim2.new(0, 0, 0, 0)
 	content.ScrollingDirection = Enum.ScrollingDirection.XY
 	content.ClipsDescendants = true
+	content.Cursor = "Arrow"
 	self.content = content
 
 	local tabOverlay = Instance.new("Frame")
@@ -4358,9 +4360,10 @@ function UILib.Column:addGroup(title)
 			cbOverlay.Visible = false
 			cbOverlay.ZIndex = 10
 			cbOverlay.Parent = cbOuter
-			cbOuter.MouseButton1Down:Connect(function() cbOverlay.Visible = true end)
-			cbOuter.MouseButton1Up:Connect(function() cbOverlay.Visible = false end)
-			cbOuter.MouseLeave:Connect(function() cbOverlay.Visible = false end)
+			cbOverlay.BackgroundTransparency = 1
+			cbOuter.MouseButton1Down:Connect(function() TweenService:Create(cbOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 0.7 }):Play(); cbOverlay.Visible = true end)
+			cbOuter.MouseButton1Up:Connect(function() TweenService:Create(cbOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play(); task.delay(0.06, function() cbOverlay.Visible = false end) end)
+			cbOuter.MouseLeave:Connect(function() TweenService:Create(cbOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play(); task.delay(0.06, function() cbOverlay.Visible = false end) end)
 			Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
 			local cbStroke = Instance.new("UIStroke", cbOuter)
 			cbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -4488,9 +4491,10 @@ function UILib.Column:addGroup(title)
 		cbOverlay.Visible = false
 		cbOverlay.ZIndex = 10
 		cbOverlay.Parent = cbOuter
-		cbOuter.MouseButton1Down:Connect(function() cbOverlay.Visible = true end)
-		cbOuter.MouseButton1Up:Connect(function() cbOverlay.Visible = false end)
-		cbOuter.MouseLeave:Connect(function() cbOverlay.Visible = false end)
+		cbOverlay.BackgroundTransparency = 1
+		cbOuter.MouseButton1Down:Connect(function() TweenService:Create(cbOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 0.7 }):Play(); cbOverlay.Visible = true end)
+		cbOuter.MouseButton1Up:Connect(function() TweenService:Create(cbOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play(); task.delay(0.06, function() cbOverlay.Visible = false end) end)
+		cbOuter.MouseLeave:Connect(function() TweenService:Create(cbOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play(); task.delay(0.06, function() cbOverlay.Visible = false end) end)
 		Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
 		local cbStroke = Instance.new("UIStroke", cbOuter)
 		cbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -4564,11 +4568,14 @@ function UILib.Column:addGroup(title)
 		local elem = self:toggle(text, default, nil, tooltip, icon)
 		elem._confirmMessage = confirmMessage
 		local origSetValue = elem.SetValue
+		local lastConfirm = 0
 		elem.SetValue = function(val, _silent)
 			if val and elem._confirmMessage and not _silent then
+				if tick() - lastConfirm < 0.5 then return end
 				local msg = type(elem._confirmMessage) == "function" and elem._confirmMessage() or elem._confirmMessage
 				window:confirm(msg, function(ok)
 					if ok then
+						lastConfirm = tick()
 						origSetValue(true)
 						if callback then callback(true) end
 					else
@@ -4633,10 +4640,11 @@ function UILib.Column:addGroup(title)
 		dbtnOverlay.Visible = false
 		dbtnOverlay.ZIndex = 20
 		dbtnOverlay.Parent = dbtn
+		dbtnOverlay.BackgroundTransparency = 1
 		Instance.new("UICorner", dbtnOverlay).CornerRadius = UDim.new(0, 4)
-		dbtn.MouseButton1Down:Connect(function() dbtnOverlay.Visible = true end)
-		dbtn.MouseButton1Up:Connect(function() dbtnOverlay.Visible = false end)
-		dbtn.MouseLeave:Connect(function() dbtnOverlay.Visible = false end)
+		dbtn.MouseButton1Down:Connect(function() TweenService:Create(dbtnOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 0.8 }):Play(); dbtnOverlay.Visible = true end)
+		dbtn.MouseButton1Up:Connect(function() TweenService:Create(dbtnOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play(); task.delay(0.06, function() dbtnOverlay.Visible = false end) end)
+		dbtn.MouseLeave:Connect(function() TweenService:Create(dbtnOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play(); task.delay(0.06, function() dbtnOverlay.Visible = false end) end)
 		local dbtnCorner = Instance.new("UICorner", dbtn)
 		dbtnCorner.CornerRadius = UDim.new(0, 4)
 		local dbtnStroke = Instance.new("UIStroke", dbtn)
@@ -4741,6 +4749,17 @@ function UILib.Column:addGroup(title)
 		dlayout.SortOrder = Enum.SortOrder.LayoutOrder
 		dlayout.Padding = UDim.new(0, 0)
 
+		local noResultsLbl = Instance.new("TextLabel")
+		noResultsLbl.Size = UDim2.new(1, 0, 0, 28)
+		noResultsLbl.BackgroundTransparency = 1
+		noResultsLbl.Text = "No results"
+		noResultsLbl.TextColor3 = window.theme.Gray
+		noResultsLbl.Font = Enum.Font.GothamSemibold
+		noResultsLbl.TextSize = 12
+		noResultsLbl.ZIndex = 51
+		noResultsLbl.Visible = false
+		noResultsLbl.Parent = dlist
+
 		local checks = {}
 		local backgrounds = {}
 		local currentOptions = options
@@ -4762,7 +4781,8 @@ function UILib.Column:addGroup(title)
 					end
 				end
 			end
-			local visH = filteredCount * 28 + 4
+			if noResultsLbl then noResultsLbl.Visible = query ~= "" and filteredCount == 0 end
+			local visH = math.max(filteredCount * 28 + 4, query ~= "" and filteredCount == 0 and 28 or 4)
 			dlist.CanvasSize = UDim2.new(0, 0, 0, visH)
 			local clampedListH = math.min(visH, 132)
 			local showSearch = #currentOptions >= 5
@@ -5077,10 +5097,11 @@ function UILib.Column:addGroup(title)
 		kbtnOverlay.Visible = false
 		kbtnOverlay.ZIndex = 10
 		kbtnOverlay.Parent = kbtn
+		kbtnOverlay.BackgroundTransparency = 1
 		Instance.new("UICorner", kbtnOverlay).CornerRadius = UDim.new(0, 4)
-		kbtn.MouseButton1Down:Connect(function() kbtnOverlay.Visible = true end)
-		kbtn.MouseButton1Up:Connect(function() kbtnOverlay.Visible = false end)
-		kbtn.MouseLeave:Connect(function() kbtnOverlay.Visible = false end)
+		kbtn.MouseButton1Down:Connect(function() TweenService:Create(kbtnOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 0.8 }):Play(); kbtnOverlay.Visible = true end)
+		kbtn.MouseButton1Up:Connect(function() TweenService:Create(kbtnOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play(); task.delay(0.06, function() kbtnOverlay.Visible = false end) end)
+		kbtn.MouseLeave:Connect(function() TweenService:Create(kbtnOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play(); task.delay(0.06, function() kbtnOverlay.Visible = false end) end)
 		Instance.new("UICorner", kbtn).CornerRadius = UDim.new(0, 4)
 		local kbtnPad = Instance.new("UIPadding", kbtn)
 		kbtnPad.PaddingLeft = UDim.new(0, 8)
@@ -5257,8 +5278,8 @@ function UILib.Column:addGroup(title)
 		btnOverlay.ZIndex = 10
 		btnOverlay.Parent = btn
 		Instance.new("UICorner", btnOverlay).CornerRadius = UDim.new(0, 4)
-		local function showPress() btnOverlay.Visible = true end
-		local function hidePress() btnOverlay.Visible = false end
+		local function showPress() TweenService:Create(btnOverlay, TweenInfo.new(0.06, Enum.EasingStyle.Quad), { BackgroundTransparency = 0.7 }):Play(); btnOverlay.Visible = true end
+		local function hidePress() TweenService:Create(btnOverlay, TweenInfo.new(0.06, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play(); task.delay(0.07, function() btnOverlay.Visible = false end) end
 		btn.MouseButton1Down:Connect(showPress)
 		btn.MouseButton1Up:Connect(hidePress)
 		btn.MouseLeave:Connect(hidePress)
@@ -5805,7 +5826,20 @@ function UILib.Column:addGroup(title)
 		local trackStroke = Instance.new("UIStroke", track)
 		trackStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		trackStroke.Color = window.theme.Border
-		trackStroke.Thickness = 1
+	trackStroke.Thickness = 1
+	local numSteps = math.floor((maxVal - minVal) / step)
+	if numSteps > 1 and numSteps <= 50 then
+		for i = 0, numSteps do
+			local pct = i / numSteps
+			local tick = Instance.new("Frame")
+			tick.Size = UDim2.new(0, 1, 0, 6)
+			tick.Position = UDim2.new(pct, 0, 0.5, -3)
+			tick.BackgroundColor3 = window.theme.Border
+			tick.BorderSizePixel = 0
+			tick.ZIndex = 5
+			tick.Parent = track
+		end
+	end
 		local pctMin = (defaultMin - minVal) / (maxVal - minVal)
 		local pctMax = (defaultMax - minVal) / (maxVal - minVal)
 		local fill = Instance.new("Frame")
