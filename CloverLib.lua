@@ -972,7 +972,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	sidebar.CanvasSize = UDim2.new(1, 0, 0, 0)
 	sidebar.ScrollingDirection = Enum.ScrollingDirection.Y
 	sidebar.ClipsDescendants = true
-	sidebar.Cursor = "Arrow"
 	sidebar.Parent = win
 	self.sidebar = sidebar
 	local sidebarLayout = Instance.new("UIListLayout", sidebar)
@@ -1001,7 +1000,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	content.CanvasSize = UDim2.new(0, 0, 0, 0)
 	content.ScrollingDirection = Enum.ScrollingDirection.XY
 	content.ClipsDescendants = true
-	content.Cursor = "Arrow"
 	self.content = content
 
 	local tabOverlay = Instance.new("Frame")
