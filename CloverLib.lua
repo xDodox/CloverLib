@@ -1128,6 +1128,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		local mobileBtn = Instance.new("TextButton")
 		mobileBtn.Name = "MobileToggle"
 		mobileBtn.Size = UDim2.new(0, 45, 0, 45)
+		mobileBtn.AutoButtonColor = false
 		mobileBtn.Position = UDim2.new(1, -60, 0.5, -22)
 		mobileBtn.BackgroundColor3 = self.theme.Panel
 		mobileBtn.BorderSizePixel = 0
@@ -1206,6 +1207,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		hamburger.Position = UDim2.new(0, 8, 0.5, -16)
 		hamburger.BackgroundColor3 = self.theme.Item
 		hamburger.BorderSizePixel = 0
+		hamburger.AutoButtonColor = false
 		hamburger.Text = "☰"
 		hamburger.TextColor3 = self.theme.White
 		hamburger.Font = Enum.Font.GothamBold
@@ -1847,8 +1849,11 @@ function UILib:showDialog(opts)
 	overlay.ZIndex = 5000
 	overlay.Parent = self.sg
 
+	local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
+	local dialogW = math.clamp(math.floor(vp.X * 0.45), 260, 380)
+
 	local frame = Instance.new("Frame")
-	frame.Size = UDim2.new(0, 320, 0, 0)
+	frame.Size = UDim2.new(0, dialogW, 0, 0)
 	frame.AnchorPoint = Vector2.new(0.5, 0.5)
 	frame.Position = UDim2.new(0.5, 0, 0.5, 0)
 	frame.BackgroundColor3 = self.theme.Panel
@@ -1856,6 +1861,8 @@ function UILib:showDialog(opts)
 	frame.AutomaticSize = Enum.AutomaticSize.Y
 	frame.ZIndex = 5001
 	frame.Parent = self.sg
+	local frameScale = Instance.new("UIScale", frame)
+	frameScale.Scale = 0
 	Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 	local stroke = Instance.new("UIStroke", frame)
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -1927,8 +1934,12 @@ function UILib:showDialog(opts)
 	btnLayout.Padding = UDim.new(0, 8)
 
 	local function cleanup()
-		pcall(function() overlay:Destroy() end)
-		pcall(function() frame:Destroy() end)
+		TweenService:Create(frameScale, TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.In), { Scale = 0 }):Play()
+		TweenService:Create(overlay, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { BackgroundTransparency = 1 }):Play()
+		task.delay(0.16, function()
+			pcall(function() overlay:Destroy() end)
+			pcall(function() frame:Destroy() end)
+		end)
 	end
 
 	for i, btnText in ipairs(buttons) do
@@ -1960,6 +1971,7 @@ function UILib:showDialog(opts)
 
 	table.insert(self.activePopups or {}, overlay)
 	table.insert(self.activePopups or {}, frame)
+	TweenService:Create(frameScale, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 	if inputBox then task.defer(function() inputBox:CaptureFocus() end) end
 end
 
@@ -2824,6 +2836,7 @@ function UILib.Tab:addSubTab(name)
 	btn.Position = UDim2.new(0, 4, 0, 0)
 	btn.BackgroundTransparency = 1
 	btn.Text = ""
+	btn.AutoButtonColor = false
 	btn.Visible = false
 	btn.ZIndex = 5
 	btn.Parent = self.window.sidebar
@@ -3269,7 +3282,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		currentVal = val
 		local rel = (val - minVal) / (maxVal - minVal)
 		fill.Size = UDim2.new(rel, 0, 1, 0)
-		if sliderHandle then sliderHandle.Position = UDim2.new(rel, -1.5, 0, 0) end
+		if sliderHandle then sliderHandle.Position = UDim2.new(rel, -1.5 + 1, 0, 0) end
 		valueLabel.Text = tostring(val)
 		valueBoxInput.Text = tostring(val)
 		if callback then callback(val) end
@@ -4514,24 +4527,31 @@ function UILib.Column:addGroup(title)
 	function group:confirmToggle(text, default, confirmMessage, callback, tooltip, icon)
 		local elem = self:toggle(text, default, nil, tooltip, icon)
 		elem._confirmMessage = confirmMessage
-		local btn = elem.frame:FindFirstChildOfClass("TextButton")
-		if btn then
-			btn.MouseButton1Click:Connect(function()
-				if elem.Mode == "always" then return end
-				local isOn = elem.Value
-				if not isOn and elem._confirmMessage then
-					local msg = type(elem._confirmMessage) == "function" and elem._confirmMessage() or elem._confirmMessage
-					window:confirm(msg, function(ok)
-						if ok then
-							elem.SetValue(true)
-							if callback then callback(true) end
-						end
-					end)
-				else
-					elem.SetValue(false)
-					if callback then callback(false) end
-				end
-			end)
+		local origSetValue = elem.SetValue
+		local confirmBusy = false
+		elem.SetValue = function(val, _silent)
+			if confirmBusy then
+				origSetValue(val)
+				if not val and callback then callback(false) end
+				confirmBusy = false
+				return
+			end
+			if val and elem._confirmMessage and not _silent then
+				confirmBusy = true
+				local msg = type(elem._confirmMessage) == "function" and elem._confirmMessage() or elem._confirmMessage
+				window:confirm(msg, function(ok)
+					if ok then
+						origSetValue(true)
+						if callback then callback(true) end
+					else
+						origSetValue(false)
+					end
+					confirmBusy = false
+				end)
+			else
+				origSetValue(val)
+				if callback then callback(val) end
+			end
 		end
 		function elem:setConfirmMessage(msg) elem._confirmMessage = msg end
 		return elem
