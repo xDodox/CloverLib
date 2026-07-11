@@ -3238,8 +3238,8 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	valueBoxInput.Parent = valueBox
 	Instance.new("UICorner", valueBoxInput).CornerRadius = UDim.new(0, 4)
 	local track = Instance.new("Frame")
-	track.Size = UDim2.new(1, -8, 0, 22)
-	track.Position = UDim2.new(0, 4, 0, 26)
+	track.Size = UDim2.new(1, 0, 0, 22)
+	track.Position = UDim2.new(0, 0, 0, 26)
 	track.BackgroundColor3 = window.theme.Track
 	track.BorderSizePixel = 0
 	track.ZIndex = 3
@@ -5563,8 +5563,8 @@ function UILib.Column:addGroup(title)
 		lbl.ZIndex = 3
 		lbl.Parent = r
 		local box = Instance.new("TextBox")
-		box.Size = UDim2.new(1, -8, 0, 22)
-		box.Position = UDim2.new(0, 4, 1, -26)
+		box.Size = UDim2.new(1, 0, 0, 22)
+		box.Position = UDim2.new(0, 0, 1, -26)
 		box.BackgroundColor3 = window.theme.Track
 		box.ClipsDescendants = true
 		box.BorderSizePixel = 0
@@ -5730,8 +5730,8 @@ function UILib.Column:addGroup(title)
 		valueLabel.Parent = valueBox
 		table.insert(window.accentObjects, valueLabel)
 		local track = Instance.new("Frame")
-		track.Size = UDim2.new(1, -8, 0, 20)
-		track.Position = UDim2.new(0, 4, 0, 28)
+		track.Size = UDim2.new(1, 0, 0, 20)
+		track.Position = UDim2.new(0, 0, 0, 28)
 		track.BackgroundColor3 = window.theme.Track
 		track.BorderSizePixel = 0
 		track.ZIndex = 3
