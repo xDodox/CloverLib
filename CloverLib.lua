@@ -4342,6 +4342,13 @@ function UILib.Column:addGroup(title)
 			cbOuter.ZIndex = 4
 			cbOuter.Text = ""
 			cbOuter.Parent = toggleRow
+			do
+				local s = Instance.new("UIScale", cbOuter)
+				s.Scale = 1
+				cbOuter.MouseButton1Down:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 0.88 }):Play() end)
+				cbOuter.MouseButton1Up:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 1 }):Play() end)
+				cbOuter.MouseLeave:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 1 }):Play() end)
+			end
 			Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
 			local cbStroke = Instance.new("UIStroke", cbOuter)
 			cbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -4461,6 +4468,13 @@ function UILib.Column:addGroup(title)
 		cbOuter.ZIndex = 4
 		cbOuter.Text = ""
 		cbOuter.Parent = r
+		do
+			local s = Instance.new("UIScale", cbOuter)
+			s.Scale = 1
+			cbOuter.MouseButton1Down:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 0.88 }):Play() end)
+			cbOuter.MouseButton1Up:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 1 }):Play() end)
+			cbOuter.MouseLeave:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 1 }):Play() end)
+		end
 		Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
 		local cbStroke = Instance.new("UIStroke", cbOuter)
 		cbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -4595,6 +4609,13 @@ function UILib.Column:addGroup(title)
 		dbtn.Text = ""
 		dbtn.ZIndex = 11
 		dbtn.Parent = r
+		do
+			local s = Instance.new("UIScale", dbtn)
+			s.Scale = 1
+			dbtn.MouseButton1Down:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 0.96 }):Play() end)
+			dbtn.MouseButton1Up:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 1 }):Play() end)
+			dbtn.MouseLeave:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 1 }):Play() end)
+		end
 		local dbtnCorner = Instance.new("UICorner", dbtn)
 		dbtnCorner.CornerRadius = UDim.new(0, 4)
 		local dbtnStroke = Instance.new("UIStroke", dbtn)
@@ -5027,6 +5048,13 @@ function UILib.Column:addGroup(title)
 		kbtn.AutoButtonColor = false
 		kbtn.ZIndex = 4
 		kbtn.Parent = r
+		do
+			local s = Instance.new("UIScale", kbtn)
+			s.Scale = 1
+			kbtn.MouseButton1Down:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 0.94 }):Play() end)
+			kbtn.MouseButton1Up:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 1 }):Play() end)
+			kbtn.MouseLeave:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 1 }):Play() end)
+		end
 		Instance.new("UICorner", kbtn).CornerRadius = UDim.new(0, 4)
 		local kbtnPad = Instance.new("UIPadding", kbtn)
 		kbtnPad.PaddingLeft = UDim.new(0, 8)
@@ -5194,6 +5222,13 @@ function UILib.Column:addGroup(title)
 		btn.Text = ""
 		btn.ZIndex = 3
 		btn.Parent = items
+		do
+			local s = Instance.new("UIScale", btn)
+			s.Scale = 1
+			btn.MouseButton1Down:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 0.94 }):Play() end)
+			btn.MouseButton1Up:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 1 }):Play() end)
+			btn.MouseLeave:Connect(function() TweenService:Create(s, TweenInfo.new(0.04, Enum.EasingStyle.Quad), { Scale = 1 }):Play() end)
+		end
 
 		if style == "split" then
 			btn.BackgroundColor3 = window.theme.Item
