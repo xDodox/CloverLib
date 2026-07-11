@@ -3258,6 +3258,19 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	trackStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	trackStroke.Color = window.theme.Border
 	trackStroke.Thickness = 1
+	local numSteps = math.floor((maxVal - minVal) / step)
+	if numSteps > 1 and numSteps <= 50 then
+		for i = 0, numSteps do
+			local pct = i / numSteps
+			local tick = Instance.new("Frame")
+			tick.Size = UDim2.new(0, 1, 0, 6)
+			tick.Position = UDim2.new(pct, 0, 0.5, -3)
+			tick.BackgroundColor3 = window.theme.Border
+			tick.BorderSizePixel = 0
+			tick.ZIndex = 5
+			tick.Parent = track
+		end
+	end
 
 	local fill = Instance.new("Frame")
 	fill.Size = UDim2.new((defaultVal - minVal) / (maxVal - minVal), 0, 1, 0)
@@ -5823,24 +5836,10 @@ function UILib.Column:addGroup(title)
 		Instance.new("UICorner", track).CornerRadius = UDim.new(0, 4)
 		local trackStroke = Instance.new("UIStroke", track)
 		trackStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		trackStroke.Color = window.theme.Border
+	trackStroke.Color = window.theme.Border
 	trackStroke.Thickness = 1
-	local numSteps = math.floor((maxVal - minVal) / step)
-	if numSteps > 1 and numSteps <= 50 then
-		for i = 0, numSteps do
-			local pct = i / numSteps
-			local tick = Instance.new("Frame")
-			tick.Size = UDim2.new(0, 1, 0, 6)
-			tick.Position = UDim2.new(pct, 0, 0.5, -3)
-			tick.BackgroundColor3 = window.theme.Border
-			tick.BorderSizePixel = 0
-			tick.ZIndex = 5
-			tick.Parent = track
-		end
-	end
-		local pctMin = (defaultMin - minVal) / (maxVal - minVal)
-		local pctMax = (defaultMax - minVal) / (maxVal - minVal)
-		local fill = Instance.new("Frame")
+
+	local fill = Instance.new("Frame")
 		fill.Size = UDim2.new(pctMax - pctMin, 0, 1, 0)
 		fill.Position = UDim2.new(pctMin, 0, 0, 0)
 		fill.BackgroundColor3 = window.theme.Accent
