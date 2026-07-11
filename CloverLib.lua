@@ -1934,7 +1934,7 @@ function UILib:showDialog(opts)
 	for i, btnText in ipairs(buttons) do
 		local btn = Instance.new("TextButton")
 		btn.Size = UDim2.new(0, math.max(60, #btnText * 10 + 20), 0, 28)
-		btn.BackgroundColor3 = self.theme.Track
+		btn.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 		btn.BorderSizePixel = 0
 		btn.Text = btnText
 		btn.TextColor3 = self.theme.White
@@ -1944,6 +1944,10 @@ function UILib:showDialog(opts)
 		btn.AutoButtonColor = false
 		btn.Parent = btnRow
 		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+		btn.MouseEnter:Connect(function() TweenService:Create(btn, TweenInfo.new(0.1), { BackgroundColor3 = Color3.fromRGB(28, 28, 28) }):Play() end)
+		btn.MouseLeave:Connect(function() TweenService:Create(btn, TweenInfo.new(0.1), { BackgroundColor3 = Color3.fromRGB(18, 18, 18) }):Play() end)
+		btn.MouseButton1Down:Connect(function() TweenService:Create(btn, TweenInfo.new(0.05), { BackgroundColor3 = Color3.fromRGB(40, 40, 40) }):Play() end)
+		btn.MouseButton1Up:Connect(function() TweenService:Create(btn, TweenInfo.new(0.05), { BackgroundColor3 = Color3.fromRGB(28, 28, 28) }):Play() end)
 		btn.MouseButton1Click:Connect(function()
 			local cb = callbacks[i]
 			if cb then
@@ -2703,6 +2707,17 @@ function UILib:addTab(name, options)
 		if self.headerSearchFrame and self.headerSearchFrame.Visible then
 			self.headerSearchBox.Text = ""
 			self.headerSearchFrame.Visible = false
+		end
+		for _, panel in ipairs(self.sg:GetDescendants()) do
+			if panel.Name == "ExpandPanel" and panel.Visible then
+				panel.Visible = false
+				panel.Parent = panel.Parent
+				panel.Size = UDim2.new(1, 0, 0, 0)
+				local p = panel.Parent
+				if p and p:IsA("Frame") and p.Size.Y.Offset > 56 then
+					p.Size = UDim2.new(1, 0, 0, 56)
+				end
+			end
 		end
 		-- Animate tab switch with tweened overlay
 		if self.content then
@@ -4590,6 +4605,7 @@ function UILib.Column:addGroup(title)
 		local listH = #options * itemH + 8
 
 		local expandPanel = Instance.new("Frame")
+		expandPanel.Name = "ExpandPanel"
 		expandPanel.Size = UDim2.new(1, 0, 0, 0)
 		expandPanel.Position = UDim2.new(0, 0, 0, 52)
 		expandPanel.BackgroundColor3 = window.theme.Track
@@ -4872,11 +4888,20 @@ function UILib.Column:addGroup(title)
 
 				expandPanel.Size = UDim2.new(1, 0, 0, 0)
 				expandPanel.Visible = true
+				local spaceBelow = workspace.CurrentCamera.ViewportSize.Y - (r.AbsolutePosition.Y + r.AbsoluteSize.Y)
+				local flipUp = spaceBelow < totalPanelH + 8
+				if flipUp then
+					expandPanel.Position = UDim2.new(0, 0, 0, -totalPanelH)
+				else
+					expandPanel.Position = UDim2.new(0, 0, 0, 52)
+				end
+				local panelSize = totalPanelH
 				TweenService:Create(expandPanel, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-					Size = UDim2.new(1, 0, 0, totalPanelH)
+					Size = UDim2.new(1, 0, 0, panelSize)
 				}):Play()
+				local rNewH = 56 + (flipUp and 0 or totalPanelH)
 				TweenService:Create(r, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-					Size = UDim2.new(1, 0, 0, 56 + totalPanelH)
+					Size = UDim2.new(1, 0, 0, rNewH)
 				}):Play()
 				task.delay(0.21, updateSize)
 				if showSearch then
@@ -5694,10 +5719,11 @@ function UILib.Column:addGroup(title)
 		fill.Parent = track
 		Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 2)
 		local HANDLE_W = 3
+		local accentDark = Color3.new(window.theme.Accent.r * 0.65, window.theme.Accent.g * 0.65, window.theme.Accent.b * 0.65)
 		local handleLeft = Instance.new("Frame")
 		handleLeft.Size = UDim2.new(0, HANDLE_W, 0, 20)
 		handleLeft.Position = UDim2.new(pctMin, -HANDLE_W/2, 0, 0)
-		handleLeft.BackgroundColor3 = window.theme.Accent
+		handleLeft.BackgroundColor3 = accentDark
 		handleLeft.BorderSizePixel = 0
 		handleLeft.ZIndex = 5
 		handleLeft.Parent = track
@@ -5705,7 +5731,7 @@ function UILib.Column:addGroup(title)
 		local handleRight = Instance.new("Frame")
 		handleRight.Size = UDim2.new(0, HANDLE_W, 0, 20)
 		handleRight.Position = UDim2.new(pctMax, -HANDLE_W/2, 0, 0)
-		handleRight.BackgroundColor3 = window.theme.Accent
+		handleRight.BackgroundColor3 = accentDark
 		handleRight.BorderSizePixel = 0
 		handleRight.ZIndex = 5
 		handleRight.Parent = track
