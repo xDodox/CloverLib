@@ -1958,7 +1958,6 @@ function UILib:showDialog(opts)
 		end)
 	end
 
-	overlay.MouseButton1Click:Connect(cleanup)
 	table.insert(self.activePopups or {}, overlay)
 	table.insert(self.activePopups or {}, frame)
 	if inputBox then task.defer(function() inputBox:CaptureFocus() end) end
@@ -3245,6 +3244,14 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	fill.Parent = track
 	Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 4)
 	table.insert(window.accentObjects, fill)
+	local sliderHandle = Instance.new("Frame")
+	sliderHandle.Name = "SliderHandle"
+	sliderHandle.Size = UDim2.new(0, 3, 0, 22)
+	sliderHandle.BackgroundColor3 = Color3.new(window.theme.Accent.r * 0.55, window.theme.Accent.g * 0.55, window.theme.Accent.b * 0.55)
+	sliderHandle.BorderSizePixel = 0
+	sliderHandle.ZIndex = 5
+	sliderHandle.Parent = track
+	sliderHandle.Visible = true
 
 	local hit = Instance.new("TextButton")
 	hit.Size = UDim2.new(1, 0, 1, 0)
@@ -3262,6 +3269,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		currentVal = val
 		local rel = (val - minVal) / (maxVal - minVal)
 		fill.Size = UDim2.new(rel, 0, 1, 0)
+		if sliderHandle then sliderHandle.Position = UDim2.new(rel, -1.5, 0, 0) end
 		valueLabel.Text = tostring(val)
 		valueBoxInput.Text = tostring(val)
 		if callback then callback(val) end
@@ -5708,6 +5716,10 @@ function UILib.Column:addGroup(title)
 		track.ZIndex = 3
 		track.Parent = r
 		Instance.new("UICorner", track).CornerRadius = UDim.new(0, 4)
+		local trackStroke = Instance.new("UIStroke", track)
+		trackStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		trackStroke.Color = window.theme.Border
+		trackStroke.Thickness = 1
 		local pctMin = (defaultMin - minVal) / (maxVal - minVal)
 		local pctMax = (defaultMax - minVal) / (maxVal - minVal)
 		local fill = Instance.new("Frame")
@@ -5719,7 +5731,7 @@ function UILib.Column:addGroup(title)
 		fill.Parent = track
 		Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 2)
 		local HANDLE_W = 3
-		local accentDark = Color3.new(window.theme.Accent.r * 0.65, window.theme.Accent.g * 0.65, window.theme.Accent.b * 0.65)
+		local accentDark = Color3.new(window.theme.Accent.r * 0.55, window.theme.Accent.g * 0.55, window.theme.Accent.b * 0.55)
 		local handleLeft = Instance.new("Frame")
 		handleLeft.Size = UDim2.new(0, HANDLE_W, 0, 20)
 		handleLeft.Position = UDim2.new(pctMin, -HANDLE_W/2, 0, 0)
