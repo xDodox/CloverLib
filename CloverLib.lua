@@ -5836,10 +5836,10 @@ function UILib.Column:addGroup(title)
 		Instance.new("UICorner", track).CornerRadius = UDim.new(0, 4)
 		local trackStroke = Instance.new("UIStroke", track)
 		trackStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	trackStroke.Color = window.theme.Border
-	trackStroke.Thickness = 1
+		trackStroke.Color = window.theme.Border
+		trackStroke.Thickness = 1
 
-	local fill = Instance.new("Frame")
+		local fill = Instance.new("Frame")
 		fill.Size = UDim2.new(pctMax - pctMin, 0, 1, 0)
 		fill.Position = UDim2.new(pctMin, 0, 0, 0)
 		fill.BackgroundColor3 = window.theme.Accent
