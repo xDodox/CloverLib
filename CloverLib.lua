@@ -1846,6 +1846,7 @@ function UILib:showDialog(opts)
 	overlay.BackgroundTransparency = 0.5
 	overlay.BorderSizePixel = 0
 	overlay.Text = ""
+	overlay.AutoButtonColor = false
 	overlay.ZIndex = 5000
 	overlay.Parent = self.sg
 
@@ -1955,9 +1956,9 @@ function UILib:showDialog(opts)
 		btn.AutoButtonColor = false
 		btn.Parent = btnRow
 		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
-		btn.MouseEnter:Connect(function() TweenService:Create(btn, TweenInfo.new(0.1), { BackgroundColor3 = Color3.fromRGB(28, 28, 28) }):Play() end)
+		btn.MouseEnter:Connect(function() TweenService:Create(btn, TweenInfo.new(0.1), { BackgroundColor3 = Color3.fromRGB(45, 45, 45) }):Play() end)
 		btn.MouseLeave:Connect(function() TweenService:Create(btn, TweenInfo.new(0.1), { BackgroundColor3 = Color3.fromRGB(18, 18, 18) }):Play() end)
-		btn.MouseButton1Down:Connect(function() TweenService:Create(btn, TweenInfo.new(0.05), { BackgroundColor3 = Color3.fromRGB(40, 40, 40) }):Play() end)
+		btn.MouseButton1Down:Connect(function() TweenService:Create(btn, TweenInfo.new(0.05), { BackgroundColor3 = Color3.fromRGB(55, 55, 55) }):Play() end)
 		btn.MouseButton1Up:Connect(function() TweenService:Create(btn, TweenInfo.new(0.05), { BackgroundColor3 = Color3.fromRGB(28, 28, 28) }):Play() end)
 		btn.MouseButton1Click:Connect(function()
 			local cb = callbacks[i]
@@ -3282,7 +3283,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		currentVal = val
 		local rel = (val - minVal) / (maxVal - minVal)
 		fill.Size = UDim2.new(rel, 0, 1, 0)
-		if sliderHandle then sliderHandle.Position = UDim2.new(rel, -1.5 + 1, 0, 0) end
+		if sliderHandle then sliderHandle.Position = UDim2.new(rel, -1.5, 0, 0) end
 		valueLabel.Text = tostring(val)
 		valueBoxInput.Text = tostring(val)
 		if callback then callback(val) end
