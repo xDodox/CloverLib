@@ -25,7 +25,6 @@ local RunService = cloneref(game:GetService("RunService"))
 local allWindows = {}
 
 local LUCIDE_ICONS = nil
-local LUCIDE_CALLBACKS = {}
 
 local function tryParseIcons(src)
 	if type(src) ~= "string" or src == "" then return nil end
@@ -58,58 +57,30 @@ local function fetchUrl(url)
 	return nil
 end
 
-local ICON_PLACEHOLDER = "rbxassetid://6031094664"
-
 local function ensureIcons()
 	if LUCIDE_ICONS then return LUCIDE_ICONS end
-	if LUCIDE_CALLBACKS.fetching then return nil end
-	LUCIDE_CALLBACKS.fetching = true
-	task.spawn(function()
-		local body = fetchUrl("https://cloverhub.fun/scripts/Icons.lua")
-		if body then
-			local data = tryParseIcons(body)
-			if data then
-				LUCIDE_ICONS = data
-				if LUCIDE_CALLBACKS.ready then
-					for _, cb in ipairs(LUCIDE_CALLBACKS.ready) do
-						pcall(cb)
-					end
-				end
-				LUCIDE_CALLBACKS.ready = nil
-			end
-		end
-		LUCIDE_CALLBACKS.fetching = nil
-	end)
+	local body = fetchUrl("https://cloverhub.fun/scripts/Icons.lua")
+	if body then
+		local data = tryParseIcons(body)
+		if data then LUCIDE_ICONS = data; return data end
+	end
 	return nil
 end
 
-function UILib.lucide(name, callback)
-	local icons = LUCIDE_ICONS
+function UILib.lucide(name)
+	local icons = ensureIcons()
 	if icons and icons.assets then
-		local asset = icons.assets["lucide-" .. name:lower()]
-		if asset then return asset end
-		return ICON_PLACEHOLDER
+		return icons.assets["lucide-" .. name:lower()]
 	end
-	if type(callback) == "function" then
-		if not LUCIDE_CALLBACKS.ready then LUCIDE_CALLBACKS.ready = {} end
-		table.insert(LUCIDE_CALLBACKS.ready, function()
-			local icons = LUCIDE_ICONS
-			if icons and icons.assets then
-				local asset = icons.assets["lucide-" .. name:lower()]
-				if asset then callback(asset) end
-			end
-		end)
-	end
-	ensureIcons()
-	return ICON_PLACEHOLDER
+	return nil
 end
 
-function UILib.resolveIcon(icon, callback)
+function UILib.resolveIcon(icon)
 	if not icon then return nil end
 	local s = tostring(icon)
 	local lucideName = s:match("^lucide:(.+)$")
 	if lucideName then
-		return UILib.lucide(lucideName, callback)
+		return UILib.lucide(lucideName)
 	end
 	if not s:find("^https?://") and not s:find("rbxassetid://") then
 		s = "rbxassetid://" .. s
@@ -476,7 +447,7 @@ function UILib.new(opts)
 end
 
 	local MIN_SIDEBAR_WIDTH = 80
-	local MAX_SIDEBAR_WIDTH = 280
+	local MAX_SIDEBAR_WIDTH = 160
 	local MIN_KEYBIND_WIDTH = 52
 local MAX_KEYBIND_WIDTH = 76
 
@@ -1878,6 +1849,27 @@ function UILib:buildUITab()
 				self:deleteConfig(loadElem.Value); refreshConfigDropdown()
 			end
 		end, nil, Enum.TextXAlignment.Center)
+	cfg:separator("Share Config")
+	cfg:button("Copy Config to Clipboard",
+		function()
+			if self.exportConfigToString then
+				self:exportConfigToString()
+			end
+		end, "Exports all current settings as JSON string to your clipboard", Enum.TextXAlignment.Center)
+	cfg:button("Import from Clipboard",
+		function()
+			local success, text = pcall(function() return (setclipboard and nil) or toclipboard() end)
+			if not success or not text then
+				success, text = pcall(function() return (syn and syn.clipboard and syn.clipboard.get()) or (clipboard and clipboard.get) and clipboard.get() or "" end)
+			end
+			if not success or not text or text == "" then
+				self:notify("Clipboard read not supported on this executor", "error")
+				return
+			end
+			if self.importConfigFromString then
+				self:importConfigFromString(text)
+			end
+		end, "Paste a config JSON string from your clipboard to apply it", Enum.TextXAlignment.Center)
 end
 
 function UILib:setTitle(text)
@@ -2699,9 +2691,7 @@ function UILib:addTab(name, options)
 	end
 	self.refreshTabWidths = refreshTabWidths
 
-	local tabIconId = UILib.resolveIcon(options.icon, function(url)
-		if tabIcon and tabIcon.Parent then tabIcon.Image = url end
-	end)
+	local tabIconId = UILib.resolveIcon(options.icon)
 
 	if tabIconId and (not self.navbarHeight or self.navbarHeight < 58) then
 		self.navbarHeight = 58
@@ -2909,62 +2899,6 @@ function UILib:addTab(name, options)
 	tab.activate = activate
 	self.tabs[name] = tab
 	table.insert(self.tabOrder, tab)
-
-	local reorderLeft = Instance.new("TextButton")
-	reorderLeft.Size = UDim2.new(0, 14, 0, 14)
-	reorderLeft.Position = UDim2.new(0, 0, 0.5, -14)
-	reorderLeft.BackgroundColor3 = Color3.new(0, 0, 0)
-	reorderLeft.BackgroundTransparency = 0.4
-	reorderLeft.Text = "<"
-	reorderLeft.TextColor3 = self.theme.White
-	reorderLeft.Font = Enum.Font.GothamBold
-	reorderLeft.TextSize = 10
-	reorderLeft.Visible = false
-	reorderLeft.ZIndex = 10
-	reorderLeft.Parent = btn
-	Instance.new("UICorner", reorderLeft).CornerRadius = UDim.new(0, 3)
-	local reorderRight = Instance.new("TextButton")
-	reorderRight.Size = UDim2.new(0, 14, 0, 14)
-	reorderRight.Position = UDim2.new(1, -14, 0.5, -14)
-	reorderRight.BackgroundColor3 = Color3.new(0, 0, 0)
-	reorderRight.BackgroundTransparency = 0.4
-	reorderRight.Text = ">"
-	reorderRight.TextColor3 = self.theme.White
-	reorderRight.Font = Enum.Font.GothamBold
-	reorderRight.TextSize = 10
-	reorderRight.Visible = false
-	reorderRight.ZIndex = 10
-	reorderRight.Parent = btn
-	Instance.new("UICorner", reorderRight).CornerRadius = UDim.new(0, 3)
-	btn.MouseEnter:Connect(function()
-		if self.tabOrder and #self.tabOrder > 1 then
-			reorderLeft.Visible = true
-			reorderRight.Visible = true
-		end
-	end)
-	btn.MouseLeave:Connect(function()
-		reorderLeft.Visible = false
-		reorderRight.Visible = false
-	end)
-	local function reorderTab(direction)
-		local idx = 0
-		for i, t in ipairs(self.tabOrder) do
-			if t == tab then idx = i; break end
-		end
-		local swapIdx = direction == "left" and idx - 1 or idx + 1
-		if not idx or swapIdx < 1 or swapIdx > #self.tabOrder then return end
-		self.tabOrder[idx], self.tabOrder[swapIdx] = self.tabOrder[swapIdx], self.tabOrder[idx]
-		for _, t in ipairs(self.tabOrder) do
-			if t.btn and t.btn.Parent then t.btn.Parent = nil end
-		end
-		for _, t in ipairs(self.tabOrder) do
-			if t.btn then t.btn.Parent = self.navbar end
-		end
-		tab:activate()
-		refreshTabWidths()
-	end
-	reorderLeft.MouseButton1Click:Connect(function() reorderTab("left") end)
-	reorderRight.MouseButton1Click:Connect(function() reorderTab("right") end)
 
 	if not self.activeTab then
 		task.defer(function()
