@@ -347,16 +347,35 @@ function UILib:loadConfig(name)
 		self:notify("Invalid config", "error")
 		return
 	end
+	self._loadingConfig = true
 	for id, value in pairs(data) do
 		if self.configs and self.configs[id] then
 			if type(value) == "table" and value.__type == "Color3" then
 				local colorVal = Color3.new(value.r or 1, value.g or 0, value.b or 0)
 				pcall(self.configs[id].SetValue, colorVal, true)
 			else
-				pcall(self.configs[id].SetValue, value, true)
+				local elem = self.configs[id]
+				if elem.SetValue then
+					if elem._confirmMessage then
+						elem.Value = value
+						if elem.frame then
+							local cbOuter = elem.frame:FindFirstChildOfClass("TextButton")
+							if cbOuter then
+								cbOuter.BackgroundColor3 = value and window.theme.Accent or window.theme.BG
+								local stroke = cbOuter:FindFirstChildOfClass("UIStroke")
+								if stroke then stroke.Color = value and window.theme.AccentD or window.theme.Border end
+								local mark = cbOuter:FindFirstChildOfClass("TextLabel")
+								if mark then mark.Text = value and "X" or "" end
+							end
+						end
+					else
+						pcall(elem.SetValue, value, true)
+					end
+				end
 			end
 		end
 	end
+	self._loadingConfig = nil
 	if name ~= "autosave" then
 		self:notify("Loaded: " .. name, "success")
 	end
@@ -1805,10 +1824,8 @@ function UILib:buildUITab()
 	local loadElem = cfg:dropdown("Load Config", getConfigList(), "", function(val)
 		if val == "" or val == "(no configs)" then return end
 		currentConfig = val
-
 		nameElem.SetValue(val)
-		self:loadConfig(val)
-	end, "Select a saved config to load", function()
+	end, "Select a saved config, then click Load Selected", function()
 		return getConfigList()
 	end)
 
@@ -4668,6 +4685,11 @@ function UILib.Column:addGroup(title)
 		local origSetValue = elem.SetValue
 		local lastConfirm = 0
 		elem.SetValue = function(val, _silent)
+			if (window._loadingConfig or (_silent)) and val and elem._confirmMessage then
+				origSetValue(val)
+				if callback then callback(val) end
+				return
+			end
 			if val and elem._confirmMessage and not _silent then
 				if tick() - lastConfirm < 0.5 then return end
 				local msg = type(elem._confirmMessage) == "function" and elem._confirmMessage() or elem._confirmMessage
