@@ -4386,8 +4386,6 @@ function UILib.Column:addGroup(title)
 		end
 		expandBtn.Text = expandedState and "⊟" or "⊞"
 	end)
-	itemLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateExpandBtn)
-	task.defer(updateExpandBtn)
 
 	local items = Instance.new("Frame")
 	items.Position = UDim2.new(0, 0, 0, 30)
@@ -4422,6 +4420,8 @@ function UILib.Column:addGroup(title)
 		end)
 	end
 	itemLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(deferredUpdateSize)
+	itemLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateExpandBtn)
+	task.defer(updateExpandBtn)
 
 	group.frame = grp
 	group.items = items
