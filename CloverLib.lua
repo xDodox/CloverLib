@@ -5781,6 +5781,7 @@ function UILib.Column:addGroup(title)
 
 	function group:rangeslider(text, minVal, maxVal, defaultMin, defaultMax, callback, tooltip)
 		local id = generateID()
+		local pctMin, pctMax = 0, 1
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, 52)
 		r.BackgroundTransparency = 1
