@@ -410,10 +410,19 @@ function UILib:exportConfigToString()
 	if not self.configs then return nil end
 	for id, elem in pairs(self.configs) do
 		if elem.Value ~= nil then
+			local label = ""
+			if elem.frame then
+				for _, child in ipairs(elem.frame:GetChildren()) do
+					if child:IsA("TextLabel") and child.Text and child.Text ~= "" then
+						label = child.Text
+						break
+					end
+				end
+			end
 			if typeof(elem.Value) == "Color3" then
-				data[id] = {__type = "Color3", r = elem.Value.r, g = elem.Value.g, b = elem.Value.b}
+				data[id] = {value = {__type = "Color3", r = elem.Value.r, g = elem.Value.g, b = elem.Value.b}, _label = label}
 			else
-				data[id] = elem.Value
+				data[id] = {value = elem.Value, _label = label}
 			end
 		end
 	end
@@ -435,17 +444,47 @@ function UILib:importConfigFromString(json)
 		return
 	end
 	local count = 0
+	self._loadingConfig = true
 	for id, value in pairs(data) do
 		if self.configs and self.configs[id] then
-			if type(value) == "table" and value.__type == "Color3" then
-				local colorVal = Color3.new(value.r or 1, value.g or 0, value.b or 0)
-				pcall(self.configs[id].SetValue, colorVal, true)
+			local raw
+			if type(value) == "table" and value.value ~= nil then
+				raw = value.value
 			else
-				pcall(self.configs[id].SetValue, value, true)
+				raw = value
+			end
+			if type(raw) == "table" and raw.__type == "Color3" then
+				local colorVal = Color3.new(raw.r or 1, raw.g or 0, raw.b or 0)
+				local elem = self.configs[id]
+				if elem._confirmMessage then
+					elem.Value = colorVal
+					local colorBox = elem.frame and elem.frame:FindFirstChild("Frame", true)
+					if colorBox and colorBox:IsA("Frame") then colorBox.BackgroundColor3 = colorVal end
+				else
+					pcall(elem.SetValue, colorVal, true)
+				end
+			else
+				local elem = self.configs[id]
+				if elem._confirmMessage then
+					elem.Value = raw
+					if elem.frame then
+						local cbOuter = elem.frame:FindFirstChildOfClass("TextButton")
+						if cbOuter then
+							cbOuter.BackgroundColor3 = raw and window.theme.Accent or window.theme.BG
+							local st = cbOuter:FindFirstChildOfClass("UIStroke")
+							if st then st.Color = raw and window.theme.AccentD or window.theme.Border end
+							local mk = cbOuter:FindFirstChildOfClass("TextLabel")
+							if mk then mk.Text = raw and "X" or "" end
+						end
+					end
+				else
+					pcall(elem.SetValue, raw, true)
+				end
 			end
 			count = count + 1
 		end
 	end
+	self._loadingConfig = nil
 	self:notify("Imported " .. count .. " value(s)", "success")
 end
 
@@ -1824,7 +1863,6 @@ function UILib:buildUITab()
 	local loadElem = cfg:dropdown("Load Config", getConfigList(), "", function(val)
 		if val == "" or val == "(no configs)" then return end
 		currentConfig = val
-		nameElem.SetValue(val)
 	end, "Select a saved config, then click Load Selected", function()
 		return getConfigList()
 	end)
@@ -1856,8 +1894,9 @@ function UILib:buildUITab()
 		end, nil, Enum.TextXAlignment.Center)
 	cfg:button("Load Selected",
 		function()
-			if self.loadConfig then
-				self:loadConfig(loadElem.Value); nameElem.SetValue(loadElem.Value)
+			local name = loadElem.Value
+			if name and self.loadConfig and name ~= "" and name ~= "(no configs)" then
+				self:loadConfig(name); nameElem.SetValue(name)
 			end
 		end, nil, Enum.TextXAlignment.Center)
 	cfg:button("Delete Config",
