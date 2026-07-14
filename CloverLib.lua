@@ -251,14 +251,13 @@ function UILib:notify(message, notifType, duration)
 	label.Parent = notif
 
 	local progressBar = Instance.new("Frame")
-	progressBar.Size = UDim2.new(1, -3, 0, 2)
+	progressBar.Size = UDim2.new(1, 0, 0, 2)
 	progressBar.Position = UDim2.new(0, 0, 1, -2)
 	progressBar.BackgroundColor3 = accentColor
-	progressBar.BackgroundTransparency = 0.6
+	progressBar.BackgroundTransparency = 0.65
 	progressBar.BorderSizePixel = 0
 	progressBar.ZIndex = 503
 	progressBar.Parent = notif
-	Instance.new("UICorner", progressBar).CornerRadius = UDim.new(0, 1)
 
 	table.insert(self.notifications, notif)
 	local targetX = UDim2.new(1, -(NOTIF_W + 10), 1, -yPos)
@@ -756,7 +755,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		local logo = Instance.new("ImageLabel")
 		logo.Size = UDim2.new(0, 22, 0, 22)
 		logo.BackgroundTransparency = 1
-		logo.Image = "rbxassetid://115924193030407"
+		logo.Image = "rbxassetid://128385522450957"
 		logo.ZIndex = 60
 		logo.LayoutOrder = 0
 		logo.Parent = titleRow
@@ -1282,7 +1281,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		btnLogo.Position = UDim2.new(0.5, 0, 0.5, 0)
 		btnLogo.AnchorPoint = Vector2.new(0.5, 0.5)
 		btnLogo.BackgroundTransparency = 1
-		btnLogo.Image = "rbxassetid://115924193030407"
+		btnLogo.Image = "rbxassetid://128385522450957"
 		btnLogo.ZIndex = 1001
 		btnLogo.Parent = mobileBtn
 		
