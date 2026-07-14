@@ -317,7 +317,7 @@ function UILib:saveConfig(name)
 	local data = {}
 	if not self.configs then return end
 	for id, elem in pairs(self.configs) do
-		if elem.Value ~= nil then
+		if elem.Value ~= nil and not elem._noConfig then
 			if typeof(elem.Value) == "Color3" then
 				data[id] = {__type = "Color3", r = elem.Value.r, g = elem.Value.g, b = elem.Value.b}
 			else
@@ -349,7 +349,7 @@ function UILib:loadConfig(name)
 	end
 	self._loadingConfig = true
 	for id, value in pairs(data) do
-		if self.configs and self.configs[id] then
+		if self.configs and self.configs[id] and not self.configs[id]._noConfig then
 			if type(value) == "table" and value.__type == "Color3" then
 				local colorVal = Color3.new(value.r or 1, value.g or 0, value.b or 0)
 				pcall(self.configs[id].SetValue, colorVal, true)
@@ -409,7 +409,7 @@ function UILib:exportConfigToString()
 	local data = {}
 	if not self.configs then return nil end
 	for id, elem in pairs(self.configs) do
-		if elem.Value ~= nil then
+		if elem.Value ~= nil and not elem._noConfig then
 			local label = ""
 			if elem.frame then
 				for _, child in ipairs(elem.frame:GetChildren()) do
@@ -446,7 +446,7 @@ function UILib:importConfigFromString(json)
 	local count = 0
 	self._loadingConfig = true
 	for id, value in pairs(data) do
-		if self.configs and self.configs[id] then
+		if self.configs and self.configs[id] and not self.configs[id]._noConfig then
 			local raw
 			if type(value) == "table" and value.value ~= nil then
 				raw = value.value
@@ -1859,6 +1859,7 @@ function UILib:buildUITab()
 	local nameElem = cfg:textbox("Config Name", "default", "", function(val)
 		currentConfig = (val ~= "" and val or "default")
 	end, "Name for save/load/delete")
+	nameElem._noConfig = true
 
 	local loadElem = cfg:dropdown("Load Config", getConfigList(), "", function(val)
 		if val == "" or val == "(no configs)" then return end
@@ -1866,6 +1867,7 @@ function UILib:buildUITab()
 	end, "Select a saved config, then click Load Selected", function()
 		return getConfigList()
 	end)
+	loadElem._noConfig = true
 
 	local function refreshConfigDropdown(selectName)
 		local list = getConfigList()
@@ -1912,11 +1914,12 @@ function UILib:buildUITab()
 				self:exportConfigToString()
 			end
 		end, "Exports all current settings as JSON string to your clipboard", Enum.TextXAlignment.Center)
-	cfg:textbox("Import JSON", "", 'Paste config JSON here...', function(val)
+	local importElem = cfg:textbox("Import JSON", "", 'Paste config JSON here...', function(val)
 		if val and val ~= "" then
 			self:importConfigFromString(val)
 		end
 	end, "Paste a config JSON string and press Enter to apply")
+	importElem._noConfig = true
 end
 
 function UILib:setTitle(text)
