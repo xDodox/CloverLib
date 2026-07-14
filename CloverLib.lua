@@ -235,7 +235,8 @@ function UILib:notify(message, notifType, duration)
 	notifStroke.Transparency = 0.7
 
 	local accentBar = Instance.new("Frame")
-	accentBar.Size = UDim2.new(0, 3, 1, 0)
+	accentBar.Size = UDim2.new(0, 3, 1, -4)
+	accentBar.Position = UDim2.new(0, 4, 0, 2)
 	accentBar.BackgroundColor3 = accentColor
 	accentBar.BorderSizePixel = 0
 	accentBar.ZIndex = 502
@@ -533,6 +534,14 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	self.rainbowElements = {}
 	self.pulseElements = {}
 	self.keybindButtons = {}
+	self._dirty = false
+	self._autosaveConn = RunService.Heartbeat:Connect(function()
+		if not self._dirty then return end
+		self._dirty = false
+		task.wait(2)
+		if self._dirty then return end
+		pcall(function() self:saveConfig("autosave") end)
+	end)
 
 		local animConn
 	animConn = RunService.RenderStepped:Connect(function()
@@ -1934,6 +1943,7 @@ function UILib:setVersion(text)
 end
 
 function UILib:Destroy()
+	if self._autosaveConn then self._autosaveConn:Disconnect(); self._autosaveConn = nil end
 	pcall(function() self:saveConfig("autosave") end)
 	for _, conn in ipairs(self.connections) do conn:Disconnect() end
 	if self.wmConn then
@@ -3323,7 +3333,22 @@ function UILib.SubTab:addButton(text, callback, tooltip, color)
 	return btn
 end
 
-local function finalizeElement(elem, win, grp)
+	local function finalizeElement(elem, win, grp)
+	local _origValue = elem.Value
+	setmetatable(elem, {
+		__index = function(t, k)
+			if k == "Value" then return _origValue end
+			return rawget(t, k)
+		end,
+		__newindex = function(t, k, v)
+			if k == "Value" then
+				_origValue = v
+				if win and win._dirty ~= nil then win._dirty = true end
+			end
+			rawset(t, k, v)
+		end
+	})
+	elem.Value = _origValue
 	function elem:remove()
 		if self.frame and self.frame.Parent then self.frame:Destroy() end
 		if win and win.configs then win.configs[self.ID] = nil end
@@ -3447,7 +3472,18 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	hit.Parent = track
 	local sliding = false
 	local currentVal = defaultVal
+	local sliderDisplay = nil
 	local function roundToStep(val) return math.floor((val - minVal) / step + 0.5) * step + minVal end
+	local function formatVal(val)
+		if type(sliderDisplay) == "function" then return sliderDisplay(val) end
+		if sliderDisplay == "%" then return math.floor(val * 100 + 0.5) .. "%" end
+		if sliderDisplay == "k" then
+			if val >= 1000000 then return ("%.1fM"):format(val / 1000000)
+			elseif val >= 1000 then return ("%.1fk"):format(val / 1000)
+			else return tostring(val) end
+		end
+		return tostring(val)
+	end
 	local function updateSlider(val)
 		val = math.clamp(val, minVal, maxVal)
 		val = roundToStep(val)
@@ -3455,7 +3491,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		local rel = (val - minVal) / (maxVal - minVal)
 		fill.Size = UDim2.new(rel, 0, 1, 0)
 		if sliderHandle then sliderHandle.Position = UDim2.new(rel, rel > 0.01 and -4 or 0, 0, 0) end
-		valueLabel.Text = tostring(val)
+		valueLabel.Text = formatVal(val)
 		valueBoxInput.Text = tostring(val)
 		if callback then callback(val) end
 		window.configs[id].Value = val
@@ -3494,7 +3530,8 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		local num = tonumber(valueBoxInput.Text)
 		if num then updateSlider(num) else valueLabel.Text = tostring(currentVal) end
 	end)
-	local elem = { ID = id, Value = currentVal, DefaultValue = defaultVal, SetValue = updateSlider, frame = row, DefaultHeight = 42 }
+	local elem = { ID = id, Value = currentVal, DefaultValue = defaultVal, SetValue = updateSlider, frame = row, DefaultHeight = 42, _display = nil }
+	function elem:setDisplay(mode) sliderDisplay = mode end
 	function elem:SetVisible(v, anim)
 		if not anim then
 			row.Visible = v
@@ -4307,6 +4344,51 @@ function UILib.Column:addGroup(title)
 	label.ZIndex = 2
 	label.Parent = row
 
+	local expandBtn = Instance.new("TextButton")
+	expandBtn.Size = UDim2.new(0, 22, 0, 22)
+	expandBtn.Position = UDim2.new(1, -26, 0.5, -11)
+	expandBtn.BackgroundTransparency = 1
+	expandBtn.Text = "⊞"
+	expandBtn.TextColor3 = window.theme.Gray
+	expandBtn.Font = Enum.Font.GothamBold
+	expandBtn.TextSize = 12
+	expandBtn.ZIndex = 5
+	expandBtn.Parent = row
+	expandBtn.Visible = false
+	local expandedState = false
+	local function updateExpandBtn()
+		local hasToggles = false
+		for _, elem in pairs(window.configs) do
+			if elem.IsToggle and elem.frame then
+				local p = elem.frame
+				while p do
+					if p == grp then hasToggles = true; break end
+					p = p.Parent
+				end
+			end
+			if hasToggles then break end
+		end
+		expandBtn.Visible = hasToggles
+	end
+	expandBtn.MouseButton1Click:Connect(function()
+		expandedState = not expandedState
+		for _, elem in pairs(window.configs) do
+			if elem.IsToggle and elem.frame and elem.SetValue then
+				local p = elem.frame
+				while p do
+					if p == grp then
+						elem.SetValue(expandedState)
+						break
+					end
+					p = p.Parent
+				end
+			end
+		end
+		expandBtn.Text = expandedState and "⊟" or "⊞"
+	end)
+	itemLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateExpandBtn)
+	task.defer(updateExpandBtn)
+
 	local items = Instance.new("Frame")
 	items.Position = UDim2.new(0, 0, 0, 30)
 	items.Size = UDim2.new(1, 0, 0, 0)
@@ -4755,8 +4837,20 @@ function UILib.Column:addGroup(title)
 		return elem
 	end
 
-	function group:slider(text, minVal, maxVal, defaultVal, callback, step, tooltip, icon)
+	local function formatSliderVal(val, mode)
+		if type(mode) == "function" then return mode(val) end
+		if mode == "%" then return math.floor(val * 100 + 0.5) .. "%" end
+		if mode == "k" then
+			if val >= 1000000 then return ("%.1fM"):format(val / 1000000)
+			elseif val >= 1000 then return ("%.1fk"):format(val / 1000)
+			else return tostring(val) end
+		end
+		return tostring(val)
+	end
+
+	function group:slider(text, minVal, maxVal, defaultVal, callback, step, tooltip, icon, display)
 		local r, elem = createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step)
+		if display then elem:setDisplay(display) end
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		return elem
