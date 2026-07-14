@@ -1896,7 +1896,7 @@ function UILib:buildUITab()
 		function()
 			local name = loadElem.Value
 			if name and self.loadConfig and name ~= "" and name ~= "(no configs)" then
-				self:loadConfig(name); nameElem.SetValue(name)
+				self:loadConfig(name)
 			end
 		end, nil, Enum.TextXAlignment.Center)
 	cfg:button("Delete Config",
