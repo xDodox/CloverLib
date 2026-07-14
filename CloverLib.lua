@@ -4357,6 +4357,11 @@ function UILib.Column:addGroup(title)
 
 		local sizeUpdateScheduled = false
 	local function updateSize()
+		if groupCollapsed then
+			grp.Size = UDim2.new(1, 0, 0, 36)
+			items.Size = UDim2.new(1, 0, 0, 0)
+			return
+		end
 		local ih = itemLayout.AbsoluteContentSize.Y
 		local targetH = ih + 46
 		items.Size = UDim2.new(1, 0, 0, ih + 8)
@@ -4373,29 +4378,33 @@ function UILib.Column:addGroup(title)
 	itemLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(deferredUpdateSize)
 
 	local collapseBtn = Instance.new("TextButton")
-	collapseBtn.Size = UDim2.new(0, 20, 0, 20)
-	collapseBtn.Position = UDim2.new(1, -24, 0.5, -10)
+	collapseBtn.Size = UDim2.new(0, 24, 0, 24)
+	collapseBtn.Position = UDim2.new(1, -28, 0.5, -12)
 	collapseBtn.BackgroundTransparency = 1
 	collapseBtn.Text = "▼"
 	collapseBtn.TextColor3 = window.theme.Gray
 	collapseBtn.Font = Enum.Font.GothamBold
-	collapseBtn.TextSize = 10
+	collapseBtn.TextSize = 13
 	collapseBtn.ZIndex = 5
 	collapseBtn.Parent = row
 	local groupCollapsed = false
 	collapseBtn.MouseButton1Click:Connect(function()
 		groupCollapsed = not groupCollapsed
+		collapseBtn.Text = groupCollapsed and "▶" or "▼"
+		grp.ClipsDescendants = true
 		if groupCollapsed then
-			items.Visible = false
-			grp.Size = UDim2.new(1, 0, 0, 36)
-			grp.ClipsDescendants = true
+			local tw = TweenService:Create(grp, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Size = UDim2.new(1, 0, 0, 36)
+			})
+			tw.Completed:Connect(function() items.Visible = false end)
+			tw:Play()
 		else
 			items.Visible = true
 			local ih = itemLayout.AbsoluteContentSize.Y
-			grp.Size = UDim2.new(1, 0, 0, ih + 46)
-			grp.ClipsDescendants = false
+			TweenService:Create(grp, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Size = UDim2.new(1, 0, 0, ih + 46)
+			}):Play()
 		end
-		collapseBtn.Text = groupCollapsed and "▶" or "▼"
 	end)
 
 	group.frame = grp
