@@ -1071,7 +1071,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	sidebarDrag.Text = ""
 	sidebarDrag.ZIndex = 10
 	sidebarDrag.Parent = win
-	sidebarDrag.Cursor = Enum.CursorSystem.ResizeWidth
+	pcall(function() sidebarDrag.Cursor = Enum.CursorSystem.ResizeWidth end)
 	self.sidebarDrag = sidebarDrag
 	local draggingSidebar = false
 	sidebarDrag.MouseButton1Down:Connect(function()
@@ -6170,7 +6170,7 @@ function UILib.Column:addGroup(title)
 		dividerHit.BackgroundTransparency = 1
 		dividerHit.Text = ""
 		dividerHit.ZIndex = 51
-		dividerHit.Cursor = Enum.CursorSystem.ResizeWidth
+		pcall(function() dividerHit.Cursor = Enum.CursorSystem.ResizeWidth end)
 		dividerHit.Parent = splitRow
 		local draggingSplit = false
 		dividerHit.MouseButton1Down:Connect(function()
