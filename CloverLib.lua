@@ -209,7 +209,7 @@ function UILib:notify(message, notifType, duration)
 			table.remove(self.notifications, i)
 		end
 	end
-	local MAX_NOTIFS = 6
+	local MAX_NOTIFS = 8
 	if #self.notifications >= MAX_NOTIFS then
 		table.insert(self.notifQueue, { message = message, notifType = notifType, duration = duration })
 		return
@@ -253,7 +253,7 @@ function UILib:notify(message, notifType, duration)
 	local progressBar = Instance.new("Frame")
 	progressBar.Size = UDim2.new(1, 0, 0, 2)
 	progressBar.Position = UDim2.new(0, 0, 1, -2)
-	progressBar.BackgroundColor3 = accentColor
+	progressBar.BackgroundColor3 = self.theme.Accent
 	progressBar.BackgroundTransparency = 0.65
 	progressBar.BorderSizePixel = 0
 	progressBar.ZIndex = 503
@@ -4385,11 +4385,17 @@ function UILib.Column:addGroup(title)
 	local groupCollapsed = false
 	collapseBtn.MouseButton1Click:Connect(function()
 		groupCollapsed = not groupCollapsed
-		local targetH = groupCollapsed and 36 or (itemLayout.AbsoluteContentSize.Y + 46)
+		if groupCollapsed then
+			items.Visible = false
+			grp.Size = UDim2.new(1, 0, 0, 36)
+			grp.ClipsDescendants = true
+		else
+			items.Visible = true
+			local ih = itemLayout.AbsoluteContentSize.Y
+			grp.Size = UDim2.new(1, 0, 0, ih + 46)
+			grp.ClipsDescendants = false
+		end
 		collapseBtn.Text = groupCollapsed and "▶" or "▼"
-		items.Visible = not groupCollapsed
-		grp.Size = UDim2.new(1, 0, 0, targetH)
-		deferredUpdateSize()
 	end)
 
 	group.frame = grp
