@@ -228,15 +228,9 @@ function UILib:notify(message, notifType, duration)
 	notif.Parent = self.sg
 	notif.ClipsDescendants = true
 	Instance.new("UICorner", notif).CornerRadius = UDim.new(0, 8)
-	local notifStroke = Instance.new("UIStroke", notif)
-	notifStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	notifStroke.Color = accentColor
-	notifStroke.Thickness = 1
-	notifStroke.Transparency = 0.7
 
 	local accentBar = Instance.new("Frame")
-	accentBar.Size = UDim2.new(0, 3, 1, -4)
-	accentBar.Position = UDim2.new(0, 4, 0, 2)
+	accentBar.Size = UDim2.new(0, 5, 1, 0)
 	accentBar.BackgroundColor3 = accentColor
 	accentBar.BorderSizePixel = 0
 	accentBar.ZIndex = 502
@@ -4344,47 +4338,24 @@ function UILib.Column:addGroup(title)
 	label.ZIndex = 2
 	label.Parent = row
 
-	local expandBtn = Instance.new("TextButton")
-	expandBtn.Size = UDim2.new(0, 22, 0, 22)
-	expandBtn.Position = UDim2.new(1, -26, 0.5, -11)
-	expandBtn.BackgroundTransparency = 1
-	expandBtn.Text = "⊞"
-	expandBtn.TextColor3 = window.theme.Gray
-	expandBtn.Font = Enum.Font.GothamBold
-	expandBtn.TextSize = 12
-	expandBtn.ZIndex = 5
-	expandBtn.Parent = row
-	expandBtn.Visible = false
-	local expandedState = false
-	local function updateExpandBtn()
-		local hasToggles = false
-		for _, elem in pairs(window.configs) do
-			if elem.IsToggle and elem.frame then
-				local p = elem.frame
-				while p do
-					if p == grp then hasToggles = true; break end
-					p = p.Parent
-				end
-			end
-			if hasToggles then break end
-		end
-		expandBtn.Visible = hasToggles
-	end
-	expandBtn.MouseButton1Click:Connect(function()
-		expandedState = not expandedState
-		for _, elem in pairs(window.configs) do
-			if elem.IsToggle and elem.frame and elem.SetValue then
-				local p = elem.frame
-				while p do
-					if p == grp then
-						elem.SetValue(expandedState)
-						break
-					end
-					p = p.Parent
-				end
-			end
-		end
-		expandBtn.Text = expandedState and "⊟" or "⊞"
+	local collapseBtn = Instance.new("TextButton")
+	collapseBtn.Size = UDim2.new(0, 20, 0, 20)
+	collapseBtn.Position = UDim2.new(1, -24, 0.5, -10)
+	collapseBtn.BackgroundTransparency = 1
+	collapseBtn.Text = "▼"
+	collapseBtn.TextColor3 = window.theme.Gray
+	collapseBtn.Font = Enum.Font.GothamBold
+	collapseBtn.TextSize = 10
+	collapseBtn.ZIndex = 5
+	collapseBtn.Parent = row
+	local groupCollapsed = false
+	collapseBtn.MouseButton1Click:Connect(function()
+		groupCollapsed = not groupCollapsed
+		local targetH = groupCollapsed and 36 or (itemLayout.AbsoluteContentSize.Y + 46)
+		collapseBtn.Text = groupCollapsed and "▶" or "▼"
+		items.Visible = not groupCollapsed
+		grp.Size = UDim2.new(1, 0, 0, targetH)
+		deferredUpdateSize()
 	end)
 
 	local items = Instance.new("Frame")
@@ -4420,8 +4391,6 @@ function UILib.Column:addGroup(title)
 		end)
 	end
 	itemLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(deferredUpdateSize)
-	itemLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateExpandBtn)
-	task.defer(updateExpandBtn)
 
 	group.frame = grp
 	group.items = items
