@@ -361,9 +361,9 @@ function UILib:loadConfig(name)
 						if elem.frame then
 							local cbOuter = elem.frame:FindFirstChildOfClass("TextButton")
 							if cbOuter then
-								cbOuter.BackgroundColor3 = value and window.theme.Accent or window.theme.BG
+								cbOuter.BackgroundColor3 = value and self.theme.Accent or self.theme.BG
 								local stroke = cbOuter:FindFirstChildOfClass("UIStroke")
-								if stroke then stroke.Color = value and window.theme.AccentD or window.theme.Border end
+								if stroke then stroke.Color = value and self.theme.AccentD or self.theme.Border end
 								local mark = cbOuter:FindFirstChildOfClass("TextLabel")
 								if mark then mark.Text = value and "X" or "" end
 							end
