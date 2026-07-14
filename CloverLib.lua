@@ -209,7 +209,6 @@ function UILib:notify(message, notifType, duration)
 			table.remove(self.notifications, i)
 		end
 	end
-	-- queue if already at max visible
 	local MAX_NOTIFS = 6
 	if #self.notifications >= MAX_NOTIFS then
 		table.insert(self.notifQueue, { message = message, notifType = notifType, duration = duration })
@@ -218,39 +217,28 @@ function UILib:notify(message, notifType, duration)
 	local accentColor = NOTIF_COLORS[notifType] or NOTIF_COLORS.info
 	local index = #self.notifications + 1
 	local yPos = 10 + (index - 1) * 50
+	local NOTIF_W = 260
 	local notif = Instance.new("Frame")
-	notif.Size = UDim2.new(0, 240, 0, 42)
+	notif.Size = UDim2.new(0, NOTIF_W, 0, 42)
 	notif.AnchorPoint = Vector2.new(0, 1)
 	notif.Position = UDim2.new(1, 0, 1, -yPos)
-	notif.BackgroundColor3 = self.theme.Panel
+	notif.BackgroundColor3 = self.theme.Surface
 	notif.BorderSizePixel = 0
 	notif.ZIndex = 500
 	notif.Parent = self.sg
-	Instance.new("UICorner", notif).CornerRadius = UDim.new(0, 6)
 	notif.ClipsDescendants = true
-	local stroke = Instance.new("UIStroke", notif)
-	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	stroke.Color = self.theme.Border
-	stroke.Thickness = 1
-	local progressOuter = Instance.new("Frame")
-	progressOuter.Size = UDim2.new(1, 0, 0, 2)
-	progressOuter.Position = UDim2.new(0, 0, 1, -2)
-	progressOuter.BackgroundTransparency = 1
-	progressOuter.BorderSizePixel = 0
-	progressOuter.ZIndex = 502
-	progressOuter.Parent = notif
-	Instance.new("UICorner", progressOuter).CornerRadius = UDim.new(0, 2)
-	local progressBar = Instance.new("Frame")
-	progressBar.Name = "indicator"
-	progressBar.Size = UDim2.new(1, 0, 1, 0)
-	progressBar.BackgroundColor3 = accentColor
-	progressBar.BorderSizePixel = 0
-	progressBar.ZIndex = 503
-	progressBar.Parent = progressOuter
-	Instance.new("UICorner", progressBar).CornerRadius = UDim.new(0, 2)
+	Instance.new("UICorner", notif).CornerRadius = UDim.new(0, 8)
+
+	local accentBar = Instance.new("Frame")
+	accentBar.Size = UDim2.new(0, 3, 1, 0)
+	accentBar.BackgroundColor3 = accentColor
+	accentBar.BorderSizePixel = 0
+	accentBar.ZIndex = 502
+	accentBar.Parent = notif
+
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, -16, 1, -4)
-	label.Position = UDim2.new(0, 10, 0, 0)
+	label.Size = UDim2.new(1, -16, 1, -8)
+	label.Position = UDim2.new(0, 12, 0, 4)
 	label.BackgroundTransparency = 1
 	label.Text = message
 	label.TextColor3 = self.theme.White
@@ -258,21 +246,32 @@ function UILib:notify(message, notifType, duration)
 	label.TextSize = 13
 	label.TextWrapped = true
 	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.TextYAlignment = Enum.TextYAlignment.Center
 	label.ZIndex = 501
 	label.Parent = notif
+
+	local progressBar = Instance.new("Frame")
+	progressBar.Size = UDim2.new(1, -3, 0, 2)
+	progressBar.Position = UDim2.new(0, 0, 1, -2)
+	progressBar.BackgroundColor3 = accentColor
+	progressBar.BackgroundTransparency = 0.6
+	progressBar.BorderSizePixel = 0
+	progressBar.ZIndex = 503
+	progressBar.Parent = notif
+	Instance.new("UICorner", progressBar).CornerRadius = UDim.new(0, 1)
+
 	table.insert(self.notifications, notif)
-	local targetX = UDim2.new(1, -250, 1, -yPos)
+	local targetX = UDim2.new(1, -(NOTIF_W + 10), 1, -yPos)
 	notif.Position = UDim2.new(1, 0, 1, -yPos)
-	local tweenIn = TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+	local tweenIn = TweenService:Create(notif, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 		{ Position = targetX })
 	tweenIn:Play()
-	local progTween = TweenService:Create(progressBar, TweenInfo.new(duration, Enum.EasingStyle.Linear), { Size = UDim2.new(0, 0, 1, 0) })
-	progTween:Play()
+	TweenService:Create(progressBar, TweenInfo.new(duration, Enum.EasingStyle.Linear), { Size = UDim2.new(0, 0, 0, 2) }):Play()
 	task.delay(duration, function()
 		task.defer(function()
 		if not notif or not notif.Parent then return end
-		local out = TweenService:Create(notif, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-			{ Position = UDim2.new(1, 0, 1, -yPos) })
+		local out = TweenService:Create(notif, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+			{ Position = UDim2.new(1, 0, 1, -yPos), BackgroundTransparency = 0.3 })
 		out:Play()
 		out.Completed:Connect(function()
 			if notif and notif.Parent then notif:Destroy() end
@@ -282,7 +281,6 @@ function UILib:notify(message, notifType, duration)
 						table.remove(self.notifications, i)
 					end
 				end
-				-- drain queue
 				if self.notifQueue and #self.notifQueue > 0 then
 					local next = table.remove(self.notifQueue, 1)
 					task.defer(function() self:notify(next.message, next.notifType, next.duration) end)
@@ -290,8 +288,8 @@ function UILib:notify(message, notifType, duration)
 				for i, n in ipairs(self.notifications) do
 					if n and n.Parent then
 						local newY = 10 + (i - 1) * 50
-						TweenService:Create(n, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-							Position = UDim2.new(1, -250, 1, -newY)
+						TweenService:Create(n, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+							Position = UDim2.new(1, -(NOTIF_W + 10), 1, -newY)
 						}):Play()
 					end
 				end
