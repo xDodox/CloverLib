@@ -228,6 +228,11 @@ function UILib:notify(message, notifType, duration)
 	notif.Parent = self.sg
 	notif.ClipsDescendants = true
 	Instance.new("UICorner", notif).CornerRadius = UDim.new(0, 8)
+	local notifStroke = Instance.new("UIStroke", notif)
+	notifStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	notifStroke.Color = accentColor
+	notifStroke.Thickness = 1
+	notifStroke.Transparency = 0.7
 
 	local accentBar = Instance.new("Frame")
 	accentBar.Size = UDim2.new(0, 3, 1, 0)
@@ -753,7 +758,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 
 	if self.showLogo then
 		local logo = Instance.new("ImageLabel")
-		logo.Size = UDim2.new(0, 22, 0, 22)
+		logo.Size = UDim2.new(0, 28, 0, 28)
 		logo.BackgroundTransparency = 1
 		logo.Image = "rbxassetid://128385522450957"
 		logo.ZIndex = 60
