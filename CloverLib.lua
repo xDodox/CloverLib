@@ -1856,20 +1856,11 @@ function UILib:buildUITab()
 				self:exportConfigToString()
 			end
 		end, "Exports all current settings as JSON string to your clipboard", Enum.TextXAlignment.Center)
-	cfg:button("Import from Clipboard",
-		function()
-			local success, text = pcall(function() return (setclipboard and nil) or toclipboard() end)
-			if not success or not text then
-				success, text = pcall(function() return (syn and syn.clipboard and syn.clipboard.get()) or (clipboard and clipboard.get) and clipboard.get() or "" end)
-			end
-			if not success or not text or text == "" then
-				self:notify("Clipboard read not supported on this executor", "error")
-				return
-			end
-			if self.importConfigFromString then
-				self:importConfigFromString(text)
-			end
-		end, "Paste a config JSON string from your clipboard to apply it", Enum.TextXAlignment.Center)
+	cfg:textbox("Import JSON", "", 'Paste config JSON here...', function(val)
+		if val and val ~= "" then
+			self:importConfigFromString(val)
+		end
+	end, "Paste a config JSON string and press Enter to apply")
 end
 
 function UILib:setTitle(text)
