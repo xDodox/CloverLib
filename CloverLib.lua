@@ -231,7 +231,7 @@ function UILib:notify(message, notifType, duration)
 
 	local accentBar = Instance.new("Frame")
 	accentBar.Size = UDim2.new(0, 5, 1, 0)
-	accentBar.BackgroundColor3 = accentColor
+	accentBar.BackgroundColor3 = self.theme.Accent
 	accentBar.BorderSizePixel = 0
 	accentBar.ZIndex = 502
 	accentBar.Parent = notif
@@ -4338,26 +4338,6 @@ function UILib.Column:addGroup(title)
 	label.ZIndex = 2
 	label.Parent = row
 
-	local collapseBtn = Instance.new("TextButton")
-	collapseBtn.Size = UDim2.new(0, 20, 0, 20)
-	collapseBtn.Position = UDim2.new(1, -24, 0.5, -10)
-	collapseBtn.BackgroundTransparency = 1
-	collapseBtn.Text = "▼"
-	collapseBtn.TextColor3 = window.theme.Gray
-	collapseBtn.Font = Enum.Font.GothamBold
-	collapseBtn.TextSize = 10
-	collapseBtn.ZIndex = 5
-	collapseBtn.Parent = row
-	local groupCollapsed = false
-	collapseBtn.MouseButton1Click:Connect(function()
-		groupCollapsed = not groupCollapsed
-		local targetH = groupCollapsed and 36 or (itemLayout.AbsoluteContentSize.Y + 46)
-		collapseBtn.Text = groupCollapsed and "▶" or "▼"
-		items.Visible = not groupCollapsed
-		grp.Size = UDim2.new(1, 0, 0, targetH)
-		deferredUpdateSize()
-	end)
-
 	local items = Instance.new("Frame")
 	items.Position = UDim2.new(0, 0, 0, 30)
 	items.Size = UDim2.new(1, 0, 0, 0)
@@ -4391,6 +4371,26 @@ function UILib.Column:addGroup(title)
 		end)
 	end
 	itemLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(deferredUpdateSize)
+
+	local collapseBtn = Instance.new("TextButton")
+	collapseBtn.Size = UDim2.new(0, 20, 0, 20)
+	collapseBtn.Position = UDim2.new(1, -24, 0.5, -10)
+	collapseBtn.BackgroundTransparency = 1
+	collapseBtn.Text = "▼"
+	collapseBtn.TextColor3 = window.theme.Gray
+	collapseBtn.Font = Enum.Font.GothamBold
+	collapseBtn.TextSize = 10
+	collapseBtn.ZIndex = 5
+	collapseBtn.Parent = row
+	local groupCollapsed = false
+	collapseBtn.MouseButton1Click:Connect(function()
+		groupCollapsed = not groupCollapsed
+		local targetH = groupCollapsed and 36 or (itemLayout.AbsoluteContentSize.Y + 46)
+		collapseBtn.Text = groupCollapsed and "▶" or "▼"
+		items.Visible = not groupCollapsed
+		grp.Size = UDim2.new(1, 0, 0, targetH)
+		deferredUpdateSize()
+	end)
 
 	group.frame = grp
 	group.items = items
