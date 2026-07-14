@@ -25,6 +25,7 @@ local RunService = cloneref(game:GetService("RunService"))
 local allWindows = {}
 
 local LUCIDE_ICONS = nil
+local LUCIDE_CALLBACKS = {}
 
 local function tryParseIcons(src)
 	if type(src) ~= "string" or src == "" then return nil end
@@ -57,30 +58,58 @@ local function fetchUrl(url)
 	return nil
 end
 
+local ICON_PLACEHOLDER = "rbxassetid://6031094664"
+
 local function ensureIcons()
 	if LUCIDE_ICONS then return LUCIDE_ICONS end
-	local body = fetchUrl("https://cloverhub.fun/scripts/Icons.lua")
-	if body then
-		local data = tryParseIcons(body)
-		if data then LUCIDE_ICONS = data; return data end
-	end
+	if LUCIDE_CALLBACKS.fetching then return nil end
+	LUCIDE_CALLBACKS.fetching = true
+	task.spawn(function()
+		local body = fetchUrl("https://cloverhub.fun/scripts/Icons.lua")
+		if body then
+			local data = tryParseIcons(body)
+			if data then
+				LUCIDE_ICONS = data
+				if LUCIDE_CALLBACKS.ready then
+					for _, cb in ipairs(LUCIDE_CALLBACKS.ready) do
+						pcall(cb)
+					end
+				end
+				LUCIDE_CALLBACKS.ready = nil
+			end
+		end
+		LUCIDE_CALLBACKS.fetching = nil
+	end)
 	return nil
 end
 
-function UILib.lucide(name)
-	local icons = ensureIcons()
+function UILib.lucide(name, callback)
+	local icons = LUCIDE_ICONS
 	if icons and icons.assets then
-		return icons.assets["lucide-" .. name:lower()]
+		local asset = icons.assets["lucide-" .. name:lower()]
+		if asset then return asset end
+		return ICON_PLACEHOLDER
 	end
-	return nil
+	if type(callback) == "function" then
+		if not LUCIDE_CALLBACKS.ready then LUCIDE_CALLBACKS.ready = {} end
+		table.insert(LUCIDE_CALLBACKS.ready, function()
+			local icons = LUCIDE_ICONS
+			if icons and icons.assets then
+				local asset = icons.assets["lucide-" .. name:lower()]
+				if asset then callback(asset) end
+			end
+		end)
+	end
+	ensureIcons()
+	return ICON_PLACEHOLDER
 end
 
-function UILib.resolveIcon(icon)
+function UILib.resolveIcon(icon, callback)
 	if not icon then return nil end
 	local s = tostring(icon)
 	local lucideName = s:match("^lucide:(.+)$")
 	if lucideName then
-		return UILib.lucide(lucideName)
+		return UILib.lucide(lucideName, callback)
 	end
 	if not s:find("^https?://") and not s:find("rbxassetid://") then
 		s = "rbxassetid://" .. s
@@ -386,6 +415,50 @@ function UILib:listConfigs()
 	return configs
 end
 
+function UILib:exportConfigToString()
+	local data = {}
+	if not self.configs then return nil end
+	for id, elem in pairs(self.configs) do
+		if elem.Value ~= nil then
+			if typeof(elem.Value) == "Color3" then
+				data[id] = {__type = "Color3", r = elem.Value.r, g = elem.Value.g, b = elem.Value.b}
+			else
+				data[id] = elem.Value
+			end
+		end
+	end
+	local json = HS:JSONEncode(data)
+	local success = pcall(setclipboard, json)
+	if success then
+		self:notify("Config copied to clipboard!", "success")
+	else
+		self:notify("Clipboard not supported on this executor", "error")
+	end
+	return json
+end
+
+function UILib:importConfigFromString(json)
+	if not json or json == "" then return end
+	local ok, data = pcall(HS.JSONDecode, HS, json)
+	if not ok or not data then
+		self:notify("Invalid config data", "error")
+		return
+	end
+	local count = 0
+	for id, value in pairs(data) do
+		if self.configs and self.configs[id] then
+			if type(value) == "table" and value.__type == "Color3" then
+				local colorVal = Color3.new(value.r or 1, value.g or 0, value.b or 0)
+				pcall(self.configs[id].SetValue, colorVal, true)
+			else
+				pcall(self.configs[id].SetValue, value, true)
+			end
+			count = count + 1
+		end
+	end
+	self:notify("Imported " .. count .. " value(s)", "success")
+end
+
 function UILib.new(opts)
 	opts = opts or {}
 	local theme = {}
@@ -402,9 +475,9 @@ function UILib.new(opts)
 	)
 end
 
-local MIN_SIDEBAR_WIDTH = 80
-local MAX_SIDEBAR_WIDTH = 120
-local MIN_KEYBIND_WIDTH = 52
+	local MIN_SIDEBAR_WIDTH = 80
+	local MAX_SIDEBAR_WIDTH = 280
+	local MIN_KEYBIND_WIDTH = 52
 local MAX_KEYBIND_WIDTH = 76
 
 function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, showLogo, uiTabIcon)
@@ -554,8 +627,9 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	self.originalSize = win.Size
 	self.visibleTarget = false
 
+	self.sidebarWidth = math.max(MIN_SIDEBAR_WIDTH, math.min(MAX_SIDEBAR_WIDTH, math.floor(self.size.X * 0.2)))
 	local function getSidebarWidth()
-		return math.max(MIN_SIDEBAR_WIDTH, math.min(MAX_SIDEBAR_WIDTH, math.floor(self.size.X * 0.20)))
+		return math.max(MIN_SIDEBAR_WIDTH, math.min(MAX_SIDEBAR_WIDTH, self.sidebarWidth))
 	end
 	self.getSidebarWidth = getSidebarWidth
 
@@ -989,6 +1063,33 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	sidebarEdge.ZIndex = 5
 	sidebarEdge.Parent = win
 	self.sidebarEdge = sidebarEdge
+
+	local sidebarDrag = Instance.new("TextButton")
+	sidebarDrag.Size = UDim2.new(0, 6, 1, -92)
+	sidebarDrag.Position = UDim2.new(0, initialSW - 3, 0, 46)
+	sidebarDrag.BackgroundTransparency = 1
+	sidebarDrag.Text = ""
+	sidebarDrag.ZIndex = 10
+	sidebarDrag.Parent = win
+	sidebarDrag.Cursor = Enum.CursorSystem.ResizeWidth
+	self.sidebarDrag = sidebarDrag
+	local draggingSidebar = false
+	sidebarDrag.MouseButton1Down:Connect(function()
+		draggingSidebar = true
+	end)
+	local sDragConn = UIS.InputChanged:Connect(function(i)
+		if not draggingSidebar or i.UserInputType ~= Enum.UserInputType.MouseMovement then return end
+		local winAbsPos = win.AbsolutePosition
+		local newW = math.clamp(i.Position.X - winAbsPos.X, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH)
+		self.sidebarWidth = newW
+		updateLayout()
+		sidebarDrag.Position = UDim2.new(0, newW - 3, 0, 46)
+	end)
+	local sDragEnd = UIS.InputEnded:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1 then draggingSidebar = false end
+	end)
+	table.insert(self.connections, sDragConn)
+	table.insert(self.connections, sDragEnd)
 
 	local content = Instance.new("ScrollingFrame")
 	content.Size = UDim2.new(0, self.size.X - initialSW - 1, 1, -92)
@@ -2598,7 +2699,9 @@ function UILib:addTab(name, options)
 	end
 	self.refreshTabWidths = refreshTabWidths
 
-	local tabIconId = UILib.resolveIcon(options.icon)
+	local tabIconId = UILib.resolveIcon(options.icon, function(url)
+		if tabIcon and tabIcon.Parent then tabIcon.Image = url end
+	end)
 
 	if tabIconId and (not self.navbarHeight or self.navbarHeight < 58) then
 		self.navbarHeight = 58
@@ -2807,6 +2910,62 @@ function UILib:addTab(name, options)
 	self.tabs[name] = tab
 	table.insert(self.tabOrder, tab)
 
+	local reorderLeft = Instance.new("TextButton")
+	reorderLeft.Size = UDim2.new(0, 14, 0, 14)
+	reorderLeft.Position = UDim2.new(0, 0, 0.5, -14)
+	reorderLeft.BackgroundColor3 = Color3.new(0, 0, 0)
+	reorderLeft.BackgroundTransparency = 0.4
+	reorderLeft.Text = "<"
+	reorderLeft.TextColor3 = self.theme.White
+	reorderLeft.Font = Enum.Font.GothamBold
+	reorderLeft.TextSize = 10
+	reorderLeft.Visible = false
+	reorderLeft.ZIndex = 10
+	reorderLeft.Parent = btn
+	Instance.new("UICorner", reorderLeft).CornerRadius = UDim.new(0, 3)
+	local reorderRight = Instance.new("TextButton")
+	reorderRight.Size = UDim2.new(0, 14, 0, 14)
+	reorderRight.Position = UDim2.new(1, -14, 0.5, -14)
+	reorderRight.BackgroundColor3 = Color3.new(0, 0, 0)
+	reorderRight.BackgroundTransparency = 0.4
+	reorderRight.Text = ">"
+	reorderRight.TextColor3 = self.theme.White
+	reorderRight.Font = Enum.Font.GothamBold
+	reorderRight.TextSize = 10
+	reorderRight.Visible = false
+	reorderRight.ZIndex = 10
+	reorderRight.Parent = btn
+	Instance.new("UICorner", reorderRight).CornerRadius = UDim.new(0, 3)
+	btn.MouseEnter:Connect(function()
+		if self.tabOrder and #self.tabOrder > 1 then
+			reorderLeft.Visible = true
+			reorderRight.Visible = true
+		end
+	end)
+	btn.MouseLeave:Connect(function()
+		reorderLeft.Visible = false
+		reorderRight.Visible = false
+	end)
+	local function reorderTab(direction)
+		local idx = 0
+		for i, t in ipairs(self.tabOrder) do
+			if t == tab then idx = i; break end
+		end
+		local swapIdx = direction == "left" and idx - 1 or idx + 1
+		if not idx or swapIdx < 1 or swapIdx > #self.tabOrder then return end
+		self.tabOrder[idx], self.tabOrder[swapIdx] = self.tabOrder[swapIdx], self.tabOrder[idx]
+		for _, t in ipairs(self.tabOrder) do
+			if t.btn and t.btn.Parent then t.btn.Parent = nil end
+		end
+		for _, t in ipairs(self.tabOrder) do
+			if t.btn then t.btn.Parent = self.navbar end
+		end
+		tab:activate()
+		refreshTabWidths()
+	end
+	reorderLeft.MouseButton1Click:Connect(function() reorderTab("left") end)
+	reorderRight.MouseButton1Click:Connect(function() reorderTab("right") end)
+
 	if not self.activeTab then
 		task.defer(function()
 			if not self.activeTab then activate() end
@@ -2981,7 +3140,8 @@ function UILib.SubTab:split()
 	return leftCol, rightCol
 end
 
-local function generateID() return "elem_" .. HS:GenerateGUID(false) end
+local elemCounter = 0
+local function generateID() elemCounter = elemCounter + 1; return "elem_" .. elemCounter end
 
 local function attachTooltip(element, text, window)
 	if not text or not window or not window.tooltip then return end
@@ -4216,7 +4376,9 @@ function UILib.Column:addGroup(title)
 
 	function group:setIcon(assetId)
 		if assetId then
-			local id = UILib.resolveIcon(assetId)
+			local id = UILib.resolveIcon(assetId, function(url)
+				if iconImg and iconImg.Parent then iconImg.Image = url end
+			end)
 			if not id then id = tostring(assetId) end
 			iconImg.Image = id
 			iconImg.Visible = true
@@ -5779,9 +5941,11 @@ function UILib.Column:addGroup(title)
 		return elem
 	end
 
-	function group:rangeslider(text, minVal, maxVal, defaultMin, defaultMax, callback, tooltip)
+	function group:rangeslider(text, minVal, maxVal, defaultMin, defaultMax, callback, step, tooltip)
 		local id = generateID()
+		step = step or 1
 		local pctMin, pctMax = 0, 1
+		local function roundToStep(val) return math.floor((val - minVal) / step + 0.5) * step + minVal end
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, 52)
 		r.BackgroundTransparency = 1
@@ -5820,7 +5984,7 @@ function UILib.Column:addGroup(title)
 		valueLabel.AutomaticSize = Enum.AutomaticSize.X
 		valueLabel.Size = UDim2.new(0, 0, 1, 0)
 		valueLabel.BackgroundTransparency = 1
-		valueLabel.Text = tostring(defaultMin) .. " - " .. tostring(defaultMax)
+		valueLabel.Text = tostring(roundToStep(defaultMin)) .. " - " .. tostring(roundToStep(defaultMax))
 		valueLabel.TextColor3 = window.theme.Accent
 		valueLabel.Font = Enum.Font.GothamSemibold
 		valueLabel.TextSize = 12
@@ -5839,6 +6003,20 @@ function UILib.Column:addGroup(title)
 		trackStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		trackStroke.Color = window.theme.Border
 		trackStroke.Thickness = 1
+
+		local numSteps = math.floor((maxVal - minVal) / step)
+		if numSteps > 1 and numSteps <= 50 then
+			for i = 0, numSteps do
+				local pct = i / numSteps
+				local tick = Instance.new("Frame")
+				tick.Size = UDim2.new(0, 1, 0, 6)
+				tick.Position = UDim2.new(pct, 0, 0.5, -3)
+				tick.BackgroundColor3 = window.theme.Border
+				tick.BorderSizePixel = 0
+				tick.ZIndex = 5
+				tick.Parent = track
+			end
+		end
 
 		local fill = Instance.new("Frame")
 		fill.Size = UDim2.new(pctMax - pctMin, 0, 1, 0)
@@ -5883,8 +6061,8 @@ function UILib.Column:addGroup(title)
 		hitRight.Parent = track
 		local dragging = false
 		local dragType = nil
-		local currentMin = defaultMin
-		local currentMax = defaultMax
+		local currentMin = roundToStep(defaultMin)
+		local currentMax = roundToStep(defaultMax)
 		local function updateDisplay()
 			valueLabel.Text = tostring(currentMin) .. " - " .. tostring(currentMax)
 			pctMin = (currentMin - minVal) / (maxVal - minVal)
@@ -5901,12 +6079,13 @@ function UILib.Column:addGroup(title)
 			if trackSize == 0 then trackSize = 1 end
 			local rel = math.clamp((pos - track.AbsolutePosition.X) / trackSize, 0, 1)
 			local val = minVal + (maxVal - minVal) * rel
+			val = roundToStep(val)
 			if which == "left" then
 				val = math.min(val, currentMax)
-				currentMin = math.floor(val + 0.5)
+				currentMin = val
 			else
 				val = math.max(val, currentMin)
-				currentMax = math.floor(val + 0.5)
+				currentMax = val
 			end
 			updateDisplay()
 			if callback then callback(currentMin, currentMax) end
@@ -5931,10 +6110,10 @@ function UILib.Column:addGroup(title)
 		local elem = {
 			ID = id,
 			Value = { currentMin, currentMax },
-			DefaultValue = { defaultMin, defaultMax },
+			DefaultValue = { roundToStep(defaultMin), roundToStep(defaultMax) },
 			SetValue = function(
 				t)
-				currentMin, currentMax = t[1], t[2]; updateDisplay()
+				currentMin, currentMax = roundToStep(t[1]), roundToStep(t[2]); updateDisplay()
 				if callback then callback(currentMin, currentMax) end
 				window.configs[id].Value = { currentMin, currentMax }
 			end
@@ -5953,27 +6132,79 @@ function UILib.Column:addGroup(title)
 		splitRow.BackgroundTransparency = 1
 		splitRow.AutomaticSize = Enum.AutomaticSize.Y
 		splitRow.Parent = items
+		local splitRatio = 0.5
+		local SPLIT_GAP = 8
+		local function applySplitRatio()
+			local w = splitRow.AbsoluteSize.X
+			if w == 0 then w = 400 end
+			local lw = math.floor(w * splitRatio - SPLIT_GAP / 2)
+			local rw = w - lw - SPLIT_GAP
+			lFrame.Size = UDim2.new(0, math.max(lw, 50), 0, 0)
+			rFrame.Size = UDim2.new(0, math.max(rw, 50), 0, 0)
+		end
 		local lFrame = Instance.new("Frame")
-		lFrame.Size = UDim2.new(0.5, -4, 0, 0)
+		lFrame.Size = UDim2.new(0.5, -(SPLIT_GAP / 2), 0, 0)
 		lFrame.BackgroundTransparency = 1
 		lFrame.AutomaticSize = Enum.AutomaticSize.Y
+		lFrame.ClipsDescendants = true
 		lFrame.Parent = splitRow
 		Instance.new("UIListLayout", lFrame).Padding = UDim.new(0, 2)
 		local rFrame = Instance.new("Frame")
-		rFrame.Size = UDim2.new(0.5, -4, 0, 0)
-		rFrame.Position = UDim2.new(0.5, 4, 0, 0)
+		rFrame.Size = UDim2.new(0.5, -(SPLIT_GAP / 2), 0, 0)
+		rFrame.Position = UDim2.new(0.5, SPLIT_GAP / 2, 0, 0)
 		rFrame.BackgroundTransparency = 1
 		rFrame.AutomaticSize = Enum.AutomaticSize.Y
+		rFrame.ClipsDescendants = true
 		rFrame.Parent = splitRow
 		Instance.new("UIListLayout", rFrame).Padding = UDim.new(0, 2)
+		local divider = Instance.new("Frame")
+		divider.Size = UDim2.new(0, 4, 1, 0)
+		divider.Position = UDim2.new(0.5, -2, 0, 0)
+		divider.BackgroundColor3 = window.theme.Border
+		divider.BorderSizePixel = 0
+		divider.ZIndex = 50
+		divider.Parent = splitRow
+		local dividerHit = Instance.new("TextButton")
+		dividerHit.Size = UDim2.new(0, 10, 1, 0)
+		dividerHit.Position = UDim2.new(0.5, -5, 0, 0)
+		dividerHit.BackgroundTransparency = 1
+		dividerHit.Text = ""
+		dividerHit.ZIndex = 51
+		dividerHit.Cursor = Enum.CursorSystem.ResizeWidth
+		dividerHit.Parent = splitRow
+		local draggingSplit = false
+		dividerHit.MouseButton1Down:Connect(function()
+			draggingSplit = true
+		end)
+		local splitInputConn = UIS.InputChanged:Connect(function(i)
+			if not draggingSplit or i.UserInputType ~= Enum.UserInputType.MouseMovement then return end
+			local w = splitRow.AbsoluteSize.X
+			if w == 0 then return end
+			splitRatio = math.clamp((i.Position.X - splitRow.AbsolutePosition.X) / w, 0.15, 0.85)
+			applySplitRatio()
+			updateSplitSize()
+		end)
+		local splitEndConn = UIS.InputEnded:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1 then draggingSplit = false end
+		end)
+		table.insert(window.connections, splitInputConn)
+		table.insert(window.connections, splitEndConn)
 		local function updateSplitSize()
 			local lh = lFrame.UIListLayout.AbsoluteContentSize.Y
 			local rh = rFrame.UIListLayout.AbsoluteContentSize.Y
 			splitRow.Size = UDim2.new(1, 0, 0, math.max(lh, rh))
 			updateSize()
 		end
-		lFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplitSize)
-		rFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSplitSize)
+		local rsConn1 = lFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+			applySplitRatio()
+			updateSplitSize()
+		end)
+		local rsConn2 = rFrame.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+			applySplitRatio()
+			updateSplitSize()
+		end)
+		table.insert(window.connections, rsConn1)
+		table.insert(window.connections, rsConn2)
 		local leftGroup = {
 			window = window,
 			frame = lFrame,
@@ -5998,6 +6229,7 @@ function UILib.Column:addGroup(title)
 				rightGroup[k] = function(self_, ...) return v(rightGroup, ...) end
 			end
 		end
+		task.defer(applySplitRatio)
 		return leftGroup, rightGroup
 	end
 
