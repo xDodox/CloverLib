@@ -1724,6 +1724,7 @@ function UILib:buildUITab()
 	if self.uiTabBuilt then return end
 	self.uiTabBuilt = true
 	local uiTab = self:addTab("UI", self.uiTabIcon and { icon = self.uiTabIcon } or {})
+	if uiTab and uiTab.btn then uiTab.btn.LayoutOrder = 999 end
 	local uiSub = uiTab:addSubTab("Settings")
 	local uiL, uiR = uiSub:split()
 
