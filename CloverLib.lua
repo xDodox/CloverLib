@@ -1840,12 +1840,13 @@ function UILib:buildUITab()
 	end
 
 	local themeGrp = uiL:addGroup("Theme")
-	themeGrp:dropdown("Preset", themeNames, "Default", function(val)
+	local themeDropdown = themeGrp:dropdown("Preset", themeNames, "Default", function(val)
 		if val == "" then return end
 		for _, t in ipairs(THEMES) do
 			if t[1] == val then applyTheme(t); break end
 		end
 	end, "Apply a pre-made color theme")
+	if themeDropdown then themeDropdown._noConfig = true end
 
 	local cfg = uiR:addGroup("Configs")
 	local currentConfig = "default"
