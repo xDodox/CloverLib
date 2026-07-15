@@ -529,13 +529,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	self.pulseElements = {}
 	self.keybindButtons = {}
 	self._dirty = false
-	self._autosaveConn = RunService.Heartbeat:Connect(function()
-		if not self._dirty then return end
-		self._dirty = false
-		task.wait(2)
-		if self._dirty then return end
-		pcall(function() self:saveConfig("autosave") end)
-	end)
+	self._autosaveConn = nil
 
 		local animConn
 	animConn = RunService.RenderStepped:Connect(function()
@@ -1552,16 +1546,11 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 
 	self:updateLayout()
 
-	task.defer(function()
-		if self.includeUITab and not self.uiTabCreated then
-			self.uiTabCreated = true
-			self:buildUITab()
-			local autoDir = self:getConfigDir() .. "autosave.json"
-			local ok = pcall(readfile, autoDir)
-			if ok then
-				pcall(function() self:loadConfig("autosave") end)
+		task.defer(function()
+			if self.includeUITab and not self.uiTabCreated then
+				self.uiTabCreated = true
+				self:buildUITab()
 			end
-		end
 		self.uiScale.Scale = 0
 		self:setVisible(true)
 	end)
@@ -1939,8 +1928,6 @@ function UILib:setVersion(text)
 end
 
 function UILib:Destroy()
-	if self._autosaveConn then self._autosaveConn:Disconnect(); self._autosaveConn = nil end
-	pcall(function() self:saveConfig("autosave") end)
 	for _, conn in ipairs(self.connections) do conn:Disconnect() end
 	if self.wmConn then
 		self.wmConn:Disconnect(); self.wmConn = nil
