@@ -4111,7 +4111,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 				local isSel = selected[opt] and true or false
 				local ob = Instance.new("TextButton")
 				ob.Size = UDim2.new(1, 0, 0, 28)
-				ob.BackgroundColor3 = isSel and Color3.fromRGB(20, 34, 26) or window.theme.Base
+				ob.BackgroundColor3 = isSel and Color3.new(window.theme.Accent.r * 0.15, window.theme.Accent.g * 0.15, window.theme.Accent.b * 0.15) or window.theme.Base
 				ob.BackgroundTransparency = 0
 				ob.AutoButtonColor = false
 				ob.Text = ""
@@ -4165,7 +4165,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 						bar.Visible = true
 						ol.TextColor3 = window.theme.White
 						ol.Font = Enum.Font.GothamBold
-						TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = Color3.fromRGB(20, 34, 26) }):Play()
+						TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = Color3.new(window.theme.Accent.r * 0.15, window.theme.Accent.g * 0.15, window.theme.Accent.b * 0.15) }):Play()
 					end
 					local keys = {}
 					for k, _ in pairs(selected) do table.insert(keys, k) end
@@ -5094,7 +5094,7 @@ function UILib.Column:addGroup(title)
 				bg.Name = "SelectionBG"
 				bg.Size = UDim2.new(1, 0, 1, 0)
 				bg.BackgroundColor3 = window.theme.Accent
-				bg.BackgroundTransparency = isSelected and 0.9 or 1
+				bg.BackgroundTransparency = isSelected and 0.7 or 1
 				bg.BorderSizePixel = 0
 				bg.ZIndex = 50
 				bg.Parent = ob
