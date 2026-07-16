@@ -636,7 +636,14 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	win.AnchorPoint = Vector2.new(0.5, 0.5)
 	win.ClipsDescendants = true
 	self.uiScale = Instance.new("UIScale", win)
-	self.uiScale.Scale = 0.8
+	self._targetScale = 0.8
+	local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
+	if vp.X < 900 then
+		local margin = 20
+		self.size = Vector2.new(math.floor(vp.X - margin * 2), math.floor(math.min(self.size.Y, vp.Y - 80)))
+		self._targetScale = 0.7
+	end
+	self.uiScale.Scale = self._targetScale
 	Instance.new("UICorner", win).CornerRadius = UDim.new(0, 10)
 	self.window = win
 
@@ -1958,7 +1965,7 @@ function UILib:setVisible(visible)
 	if visible then
 		self.window.Visible = true
 		TweenService:Create(self.uiScale, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-			{ Scale = 1 }):Play()
+			{ Scale = self._targetScale or 0.8 }):Play()
 	else
 		local t = TweenService:Create(self.uiScale, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In),
 			{ Scale = 0 })
