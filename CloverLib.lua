@@ -1964,9 +1964,11 @@ function UILib:setVisible(visible)
 
 	if visible then
 		self.window.Visible = true
+		if self.watermark then self.watermark.Visible = true end
 		TweenService:Create(self.uiScale, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
 			{ Scale = self._targetScale or 0.8 }):Play()
 	else
+		if self.watermark then self.watermark.Visible = false end
 		local t = TweenService:Create(self.uiScale, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In),
 			{ Scale = 0 })
 		t:Play()
@@ -5145,7 +5147,7 @@ function UILib.Column:addGroup(title)
 							if sBg then
 								local isSel = child:FindFirstChildOfClass("TextLabel") and
 									child:FindFirstChildOfClass("TextLabel").Text == opt
-								sBg.BackgroundTransparency = isSel and 0.9 or 1
+								sBg.BackgroundTransparency = isSel and 0.7 or 1
 								sBg.BackgroundColor3 = window.theme.Accent
 							end
 						end
