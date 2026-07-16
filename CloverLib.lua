@@ -625,6 +625,10 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 
 	self.tooltip = makeTooltipSystem(self.sg, self.theme, self.connections)
 
+	local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
+	if vp.X < 800 then
+		self.size = Vector2.new(math.max(300, vp.X - 12), math.max(260, math.min(self.size.Y, vp.Y - 50)))
+	end
 	local win = Instance.new("Frame")
 	win.Size = UDim2.new(0, self.size.X, 0, self.size.Y)
 	win.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -639,6 +643,15 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	self.uiScale.Scale = 0.8
 	Instance.new("UICorner", win).CornerRadius = UDim.new(0, 10)
 	self.window = win
+
+	local animOverlay = Instance.new("Frame")
+	animOverlay.Size = UDim2.new(1, 0, 1, 0)
+	animOverlay.BackgroundColor3 = Color3.new(0, 0, 0)
+	animOverlay.BackgroundTransparency = 0
+	animOverlay.BorderSizePixel = 0
+	animOverlay.ZIndex = 999
+	animOverlay.Parent = win
+	self._animOverlay = animOverlay
 
 	local winStrokeFrame = Instance.new("Frame")
 	winStrokeFrame.Name = "WindowStrokeFrame"
@@ -1958,18 +1971,22 @@ function UILib:setVisible(visible)
 	if visible then
 		self.window.Visible = true
 		if self.watermark then self.watermark.Visible = true end
-		TweenService:Create(self.uiScale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-			{ Scale = 1 }):Play()
+		if self._animOverlay then
+			self._animOverlay.BackgroundTransparency = 0
+			TweenService:Create(self._animOverlay, TweenInfo.new(0.08), { BackgroundTransparency = 1 }):Play()
+		end
 	else
 		if self.watermark then self.watermark.Visible = false end
-		local t = TweenService:Create(self.uiScale, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-			{ Scale = 0 })
-		t:Play()
-		task.delay(0.1, function()
-			if not self.visibleTarget then
-				self.window.Visible = false
-			end
-		end)
+		if self._animOverlay then
+			self._animOverlay.BackgroundTransparency = 1
+			local t = TweenService:Create(self._animOverlay, TweenInfo.new(0.08), { BackgroundTransparency = 0 })
+			t:Play()
+			task.delay(0.08, function()
+				if not self.visibleTarget then self.window.Visible = false end
+			end)
+		else
+			self.window.Visible = false
+		end
 	end
 end
 
@@ -5084,8 +5101,8 @@ function UILib.Column:addGroup(title)
 				local bg = Instance.new("Frame")
 				bg.Name = "SelectionBG"
 				bg.Size = UDim2.new(1, 0, 1, 0)
-				bg.BackgroundColor3 = window.theme.Accent
-				bg.BackgroundTransparency = isSelected and 0.7 or 1
+			bg.BackgroundColor3 = window.theme.AccentD
+			bg.BackgroundTransparency = isSelected and 0.5 or 1
 				bg.BorderSizePixel = 0
 				bg.ZIndex = 50
 				bg.Parent = ob
@@ -5140,8 +5157,8 @@ function UILib.Column:addGroup(title)
 							if sBg then
 								local isSel = child:FindFirstChildOfClass("TextLabel") and
 									child:FindFirstChildOfClass("TextLabel").Text == opt
-								sBg.BackgroundTransparency = isSel and 0.7 or 1
-								sBg.BackgroundColor3 = window.theme.Accent
+								sBg.BackgroundTransparency = isSel and 0.5 or 1
+								sBg.BackgroundColor3 = window.theme.AccentD
 							end
 						end
 					end
