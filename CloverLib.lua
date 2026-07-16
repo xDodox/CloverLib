@@ -636,14 +636,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	win.AnchorPoint = Vector2.new(0.5, 0.5)
 	win.ClipsDescendants = true
 	self.uiScale = Instance.new("UIScale", win)
-	self._targetScale = 0.8
-	local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
-	if vp.X < 900 then
-		local margin = 20
-		self.size = Vector2.new(math.floor(vp.X - margin * 2), math.floor(math.min(self.size.Y, vp.Y - 80)))
-		self._targetScale = 0.7
-	end
-	self.uiScale.Scale = self._targetScale
+	self.uiScale.Scale = 0.8
 	Instance.new("UICorner", win).CornerRadius = UDim.new(0, 10)
 	self.window = win
 
@@ -1965,14 +1958,14 @@ function UILib:setVisible(visible)
 	if visible then
 		self.window.Visible = true
 		if self.watermark then self.watermark.Visible = true end
-		TweenService:Create(self.uiScale, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-			{ Scale = self._targetScale or 0.8 }):Play()
+		TweenService:Create(self.uiScale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ Scale = 1 }):Play()
 	else
 		if self.watermark then self.watermark.Visible = false end
-		local t = TweenService:Create(self.uiScale, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In),
+		local t = TweenService:Create(self.uiScale, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
 			{ Scale = 0 })
 		t:Play()
-		task.delay(0.25, function()
+		task.delay(0.1, function()
 			if not self.visibleTarget then
 				self.window.Visible = false
 			end
