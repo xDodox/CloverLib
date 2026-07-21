@@ -1947,11 +1947,11 @@ function UILib:buildUITab()
 	local function syncColorPickers()
 		if _themeApplying then return end
 		_themeApplying = true
-		if accentPicker and typeof(self.theme.Accent) == "Color3" then pcall(function() accentPicker:SetValue(self.theme.Accent) end) end
-		if themeBGPicker and typeof(self.theme.BG) == "Color3" then pcall(function() themeBGPicker:SetValue(self.theme.BG) end) end
-		if themePanelPicker and typeof(self.theme.Panel) == "Color3" then pcall(function() themePanelPicker:SetValue(self.theme.Panel) end) end
-		if themeItemPicker and typeof(self.theme.ItemHov) == "Color3" then pcall(function() themeItemPicker:SetValue(self.theme.ItemHov) end) end
-		if themeBorderPicker and typeof(self.theme.Border) == "Color3" then pcall(function() themeBorderPicker:SetValue(self.theme.Border) end) end
+		if accentPicker and typeof(self.theme.Accent) == "Color3" then pcall(function() accentPicker:SetColor(self.theme.Accent) end) end
+		if themeBGPicker and typeof(self.theme.BG) == "Color3" then pcall(function() themeBGPicker:SetColor(self.theme.BG) end) end
+		if themePanelPicker and typeof(self.theme.Panel) == "Color3" then pcall(function() themePanelPicker:SetColor(self.theme.Panel) end) end
+		if themeItemPicker and typeof(self.theme.ItemHov) == "Color3" then pcall(function() themeItemPicker:SetColor(self.theme.ItemHov) end) end
+		if themeBorderPicker and typeof(self.theme.Border) == "Color3" then pcall(function() themeBorderPicker:SetColor(self.theme.Border) end) end
 		_themeApplying = false
 	end
 
@@ -3816,6 +3816,12 @@ local function createColorPicker(group, items, window, text, default, callback)
 		colorBox.BackgroundTransparency = currentAlpha
 		if callback then callback(val, currentAlpha) end
 	end
+	function elem:SetColor(val)
+		current = val
+		elem.Value = val
+		colorBox.BackgroundColor3 = val
+	end
+	elem.colorBox = colorBox
 	elem.frame = row
 	elem.DefaultHeight = 32
 	function elem:SetVisible(v, anim)
@@ -4259,11 +4265,11 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	table.insert(window.accentObjects, arrow)
 	local listH = #options * 28 + 8
 	local dlist = Instance.new("ScrollingFrame")
-	dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 160))
+	dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 220))
 	dlist.Position = UDim2.new(0, 0, 0, 54)
 	dlist.BackgroundColor3 = window.theme.Base
 	dlist.BorderSizePixel = 0
-	dlist.ScrollBarThickness = listH > 160 and 2 or 0
+	dlist.ScrollBarThickness = listH > 220 and 2 or 0
 	dlist.ScrollBarImageColor3 = window.theme.Accent
 	dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
 	dlist.Visible = false
@@ -4401,7 +4407,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 		end
 		dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
 		if open then
-			local targetListH = math.min(listH, 160)
+			local targetListH = math.min(listH, 220)
 			dlist.Size = UDim2.new(1, 0, 0, targetListH)
 			row.Size = UDim2.new(1, 0, 0, 56 + targetListH)
 			group.updateSize()
@@ -4432,7 +4438,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 			multiBridge.Visible = true
 			dlist.Visible = true
 			dlist.Size = UDim2.new(1, 0, 0, 0)
-			local targetListH = math.min(listH, 160)
+			local targetListH = math.min(listH, 220)
 			TweenService:Create(dlist, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 				Size = UDim2.new(1, 0, 0, targetListH)
 			}):Play()
@@ -4791,7 +4797,7 @@ function UILib.Column:addGroup(title)
 		local CB_SIZE = 22
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0, CB_SIZE, 0, CB_SIZE)
-		cbOuter.Position = UDim2.new(0, 8, 0.5, -CB_SIZE/2)
+		cbOuter.Position = UDim2.new(0, 4, 0.5, -CB_SIZE/2)
 		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.BG
 		cbOuter.BorderSizePixel = 0
 		cbOuter.AutoButtonColor = false
@@ -4826,7 +4832,7 @@ function UILib.Column:addGroup(title)
 		cbMark.Parent = cbOuter
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -(46 + rightOffset), 1, 0)
-		lbl.Position = UDim2.new(0, 38, 0, 0)
+		lbl.Position = UDim2.new(0, 34, 0, 0)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
@@ -5257,7 +5263,7 @@ function UILib.Column:addGroup(title)
 		local currentSelection = default or ""
 		local open = false
 
-		local function getListMaxH() return math.min(listH, 160) end
+		local function getListMaxH() return math.min(listH, 220) end
 
 		local function applyFilter(query)
 			query = query:lower()
@@ -5275,7 +5281,7 @@ function UILib.Column:addGroup(title)
 			if noResultsLbl then noResultsLbl.Visible = query ~= "" and filteredCount == 0 end
 			local visH = math.max(filteredCount * 28 + 4, query ~= "" and filteredCount == 0 and 28 or 4)
 			dlist.CanvasSize = UDim2.new(0, 0, 0, visH)
-			local clampedListH = math.min(visH, 132)
+			local clampedListH = math.min(visH, 188)
 			local showSearch = #currentOptions >= 5
 			local searchExtra = showSearch and SEARCH_H or 0
 			local totalPanelH = searchExtra + clampedListH
@@ -5328,7 +5334,7 @@ function UILib.Column:addGroup(title)
 			searchBox.Text = ""
 			listH = #opts * 28 + 4
 			dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
-			dlist.ScrollBarThickness = listH > 160 and 2 or 0
+		dlist.ScrollBarThickness = listH > 220 and 2 or 0
 			for _, opt in ipairs(opts) do
 				local isSelected = (opt == currentSelection)
 				local ob = Instance.new("TextButton")
@@ -5342,8 +5348,8 @@ function UILib.Column:addGroup(title)
 				local bg = Instance.new("Frame")
 				bg.Name = "SelectionBG"
 				bg.Size = UDim2.new(1, 0, 1, 0)
-			bg.BackgroundColor3 = window.theme.AccentD
-			bg.BackgroundTransparency = isSelected and 0.6 or 1
+			bg.BackgroundColor3 = Color3.new(window.theme.Accent.r * 0.25, window.theme.Accent.g * 0.25, window.theme.Accent.b * 0.25)
+			bg.BackgroundTransparency = isSelected and 0.3 or 1
 				bg.BorderSizePixel = 0
 				bg.ZIndex = 50
 				bg.Parent = ob
@@ -5397,8 +5403,8 @@ function UILib.Column:addGroup(title)
 							if sBg then
 								local isSel = child:FindFirstChildOfClass("TextLabel") and
 									child:FindFirstChildOfClass("TextLabel").Text == opt
-								sBg.BackgroundTransparency = isSel and 0.6 or 1
-								sBg.BackgroundColor3 = window.theme.AccentD
+								sBg.BackgroundTransparency = isSel and 0.3 or 1
+								sBg.BackgroundColor3 = Color3.new(window.theme.Accent.r * 0.25, window.theme.Accent.g * 0.25, window.theme.Accent.b * 0.25)
 							end
 						end
 					end
