@@ -24,8 +24,8 @@ local RunService = cloneref(game:GetService("RunService"))
 
 local function cleanNum(n)
 	if type(n) ~= "number" then return tostring(n) end
-	local s = ("%.6f"):format(n):gsub("0+$", ""):gsub("%.$", "")
-	return s
+	if n == math.floor(n) then return tostring(math.floor(n)) end
+	return tostring(math.floor(n * 10000 + 0.5) / 10000)
 end
 
 local allWindows = {}
@@ -519,25 +519,33 @@ end
 local function _configStructuredToJSON(self)
 	local data = { _version = 2, _timestamp = os.time() }
 	for id, elem in pairs(self.configs) do
-		if elem._noConfig or elem.Value == nil then continue end
+		if elem._noConfig then continue end
+		local val = elem.Value
+		if val == nil then continue end
 		local label = self:getElementLabel(elem) or id
 		local etype = self:getElementType(elem)
 		if not etype then continue end
 		if not data[etype] then data[etype] = {} end
 		if etype == "Toggle" then
-			data[etype][label] = { state = elem.Value }
+			data[etype][label] = { state = val == true }
 		elseif etype == "ColorPicker" then
-			local c = elem.Value; data[etype][label] = { color = { c.R * 255, c.G * 255, c.B * 255 } }
+			if typeof(val) == "Color3" then
+				data[etype][label] = { color = { math.floor(val.R * 255), math.floor(val.G * 255), math.floor(val.B * 255) } }
+			end
 		elseif etype == "Keybind" then
-			data[etype][label] = { keybind = elem.Value }
+			data[etype][label] = { keybind = tostring(val) }
 		elseif etype == "Dropdown" then
-			data[etype][label] = { value = elem.Value, list = elem._values or {} }
+			data[etype][label] = { value = tostring(val) }
 		elseif etype == "MultiDropdown" then
-			data[etype][label] = { value = elem.Value, list = elem._values or {} }
+			local clean = {}
+			if type(val) == "table" then
+				for _, v in pairs(val) do table.insert(clean, tostring(v)) end
+			end
+			data[etype][label] = { value = clean }
 		elseif etype == "TextBox" then
-			data[etype][label] = { text = elem.Value }
+			data[etype][label] = { text = tostring(val) }
 		elseif etype == "Slider" then
-			data[etype][label] = { value = elem.Value }
+			data[etype][label] = { value = tonumber(val) or 0 }
 		end
 	end
 	return HS:JSONEncode(data)
@@ -3622,7 +3630,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	valueLabel.AutomaticSize = Enum.AutomaticSize.X
 	valueLabel.Size = UDim2.new(0, 0, 1, 0)
 	valueLabel.BackgroundTransparency = 1
-	valueLabel.Text = tostring(defaultVal)
+		valueLabel.Text = cleanNum(defaultVal)
 	valueLabel.TextColor3 = window.theme.Accent
 	valueLabel.Font = Enum.Font.GothamSemibold
 	valueLabel.TextSize = 13
@@ -3752,7 +3760,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		valueBoxInput.Visible = false
 		valueLabel.Visible = true
 		local num = tonumber(valueBoxInput.Text)
-		if num then updateSlider(num) else valueLabel.Text = tostring(currentVal) end
+		if num then updateSlider(num) else valueLabel.Text = cleanNum(currentVal) end
 	end)
 	local elem = { ID = id, Value = currentVal, DefaultValue = defaultVal, SetValue = updateSlider, frame = row, DefaultHeight = 42, _display = nil }
 	function elem:setDisplay(mode) sliderDisplay = mode end
@@ -4542,12 +4550,7 @@ function UILib.Column:addGroup(title)
 	grp.BackgroundColor3 = window.theme.Item
 	grp.BorderSizePixel = 0
 	grp.Parent = self.frame
-	Instance.new("UICorner", grp).CornerRadius = UDim.new(0, 6)
 	grp.ClipsDescendants = true
-	local stroke = Instance.new("UIStroke", grp)
-	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	stroke.Color = window.theme.Border
-	stroke.Thickness = 1
 
 	local row = Instance.new("Frame")
 	row.Size = UDim2.new(1, 0, 0, 30)
@@ -4558,6 +4561,11 @@ function UILib.Column:addGroup(title)
 	)
 	row.BackgroundTransparency = 0
 	row.Parent = grp
+	Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
+	local rowStroke = Instance.new("UIStroke", row)
+	rowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	rowStroke.Color = window.theme.Border
+	rowStroke.Thickness = 1
 
 	local headerSep = Instance.new("Frame")
 	headerSep.Size = UDim2.new(1, 0, 0, 1)
