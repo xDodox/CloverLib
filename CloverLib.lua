@@ -4376,12 +4376,9 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	arrow.AnchorPoint = Vector2.new(1, 0.5)
 	arrow.Position = UDim2.new(1, -10, 0.5, 0)
 	arrow.BackgroundTransparency = 1
-	arrow.Image = ""
-	arrow.Text = "≡"
-	arrow.TextColor3 = window.theme.Accent
+	arrow.Image = "rbxassetid://6034818379"
+	arrow.ImageColor3 = window.theme.Accent
 	arrow.ScaleType = Enum.ScaleType.Fit
-	arrow.Font = Enum.Font.GothamBold
-	arrow.TextSize = 16
 	arrow.ZIndex = 12
 	arrow.Parent = dbtn
 	table.insert(window.accentObjects, arrow)
