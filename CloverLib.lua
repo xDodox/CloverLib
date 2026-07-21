@@ -200,6 +200,7 @@ local function makeTooltipSystem(sg, theme, connections)
 end
 
 function UILib:notify(message, notifType, duration)
+	if self._loadingConfig then return end
 	notifType = notifType or "info"
 	duration = duration or 3
 	if not self.notifications then self.notifications = {} end
@@ -627,7 +628,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 
 	local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
 	if vp.X < 800 then
-		self.size = Vector2.new(math.max(300, vp.X - 12), math.max(260, math.min(self.size.Y, vp.Y - 50)))
+		self.size = Vector2.new(math.max(300, vp.X - 12), math.max(260, math.min(self.size.Y, math.min(vp.Y - 30, 520))))
 	end
 	local win = Instance.new("Frame")
 	win.Size = UDim2.new(0, self.size.X, 0, self.size.Y)
@@ -681,7 +682,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	local function updateLayout()
 		local sw = getSidebarWidth()
 		local mobile = UIS.TouchEnabled
-		local showSidebar = not mobile and (not self.activeTab or self.activeTab.showSidebar ~= false)
+		local showSidebar = not self.activeTab or self.activeTab.showSidebar ~= false
 		if self.sidebar then
 			self.sidebar.Size = UDim2.new(0, mobile and 0 or sw, 1, -92)
 			self.sidebar.Visible = showSidebar
@@ -703,7 +704,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 			self.content.Size = UDim2.new(0, contentW, 1, -92)
 			self.content.Position = UDim2.new(0, offset, 0, 46)
 		end
-		if self.hamburgerBtn then self.hamburgerBtn.Visible = mobile and showSidebar end
+
+		if self.hamburgerBtn then self.hamburgerBtn.Visible = false end
 		if self.refreshTabWidths then self.refreshTabWidths() end
 	end
 	self.updateLayout = updateLayout
@@ -1201,6 +1203,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	navList.FillDirection = Enum.FillDirection.Horizontal
 	navList.HorizontalAlignment = Enum.HorizontalAlignment.Left
 	navList.VerticalAlignment = Enum.VerticalAlignment.Center
+	navList.SortOrder = Enum.SortOrder.LayoutOrder
 	navList.Padding = UDim.new(0, 0)
 
 	self.navTabCount = 0
@@ -1572,7 +1575,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 end
 
 function UILib:addWatermark(name)
-	local wm = Instance.new("Frame")
+	self._wmName = name
 	if self.watermark then
 		if self.wmDragConns then
 			for _, c in ipairs(self.wmDragConns) do pcall(function() c:Disconnect() end) end
@@ -1716,6 +1719,14 @@ function UILib:addWatermark(name)
 	end)
 	self.wmConn = connection
 	self.watermark = wm
+	local wmBorder = Instance.new("UIStroke")
+	wmBorder.Name = "Border"
+	wmBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	wmBorder.Color = self.theme.Accent
+	wmBorder.Thickness = 1
+	wmBorder.Transparency = 0.5
+	wmBorder.ZIndex = 202
+	wmBorder.Parent = wm
 	table.insert(self.accentObjects, sep)
 	table.insert(self.accentObjects, fpsLabel)
 	table.insert(self.accentObjects, pingLabel)
@@ -1759,9 +1770,11 @@ function UILib:buildUITab()
 		if self.versionPill then self.versionPill.Visible = v end
 	end, "Show version pill")
 
-	grp:toggle("Show Watermark", false, function(v)
+	grp:toggle("Show Watermark", self.watermark ~= nil, function(v)
 		if v then
-			self:addWatermark(self.title)
+			if not self.watermark then
+				self:addWatermark(self._wmName or self.title or "CloverHUB")
+			end
 		else
 			if self.wmConn then
 				self.wmConn:Disconnect(); self.wmConn = nil
@@ -1971,6 +1984,7 @@ function UILib:setVisible(visible)
 	if visible then
 		self.window.Visible = true
 		if self.watermark then self.watermark.Visible = true end
+		self.uiScale.Scale = 1
 		if self._animOverlay then
 			self._animOverlay.BackgroundTransparency = 0
 			TweenService:Create(self._animOverlay, TweenInfo.new(0.08), { BackgroundTransparency = 1 }):Play()
