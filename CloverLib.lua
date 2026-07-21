@@ -1865,6 +1865,11 @@ function UILib:buildUITab()
 				end
 			end
 		end
+		for _, sg in ipairs(self.window:GetDescendants()) do
+			if sg.Name == "SelectionBG" and sg:IsA("Frame") then
+				pcall(function() sg.BackgroundColor3 = self.theme.Accent end)
+			end
+		end
 	end
 
 	local function applyFullTheme(theme)
@@ -1927,24 +1932,18 @@ function UILib:buildUITab()
 		{ "Gold",     Color3.fromRGB(255, 180, 50), Color3.fromRGB(15, 12, 8), Color3.fromRGB(30, 26, 18), Color3.fromRGB(32, 28, 20), Color3.fromRGB(40, 34, 24), Color3.fromRGB(14, 10, 6), Color3.fromRGB(55, 45, 30) },
 		{ "Lime",     Color3.fromRGB(100, 255, 100), Color3.fromRGB(10, 15, 10), Color3.fromRGB(24, 30, 24), Color3.fromRGB(26, 32, 26), Color3.fromRGB(34, 40, 34), Color3.fromRGB(10, 14, 10), Color3.fromRGB(40, 50, 40) },
 		{ "Purple",   Color3.fromRGB(180, 100, 255), Color3.fromRGB(12, 8, 15), Color3.fromRGB(24, 18, 30), Color3.fromRGB(26, 20, 32), Color3.fromRGB(34, 26, 40), Color3.fromRGB(12, 8, 14), Color3.fromRGB(42, 30, 55) },
-		{ "Custom",   self.theme.Accent, self.theme.BG, self.theme.Panel, self.theme.Item, self.theme.ItemHov, self.theme.Track, self.theme.Border },
 	}
 	local themeNames = {}
 	for _, t in ipairs(THEMES) do themeNames[#themeNames + 1] = t[1] end
 
 	local themeGrp = uiL:addGroup("Theme")
 	local themeDropdown = themeGrp:dropdown("Preset", themeNames, "Default", function(val)
-		if val == "" or val == "Custom" then return end
+		if val == "" then return end
 		for _, t in ipairs(THEMES) do
 			if t[1] == val then applyFullTheme(t); break end
 		end
 	end, "Apply a pre-made color theme")
 	themeDropdown._noConfig = true
-
-	local function setToCustom()
-		themeDropdown.Value = "Custom"
-		pcall(function() themeDropdown.SetValue("Custom") end)
-	end
 
 	local _themeApplying = false
 	local _themePickerBoxes = {}
@@ -1963,7 +1962,6 @@ function UILib:buildUITab()
 	end
 
 	local function themeColorChanged()
-		setToCustom()
 		applyCurrentTheme()
 	end
 
