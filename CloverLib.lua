@@ -4376,7 +4376,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	arrow.AnchorPoint = Vector2.new(1, 0.5)
 	arrow.Position = UDim2.new(1, -10, 0.5, 0)
 	arrow.BackgroundTransparency = 1
-	arrow.Image = "rbxassetid://6034818379"
+	arrow.Image = window:lucide("align-justify") or "rbxassetid://6034818379"
 	arrow.ImageColor3 = window.theme.Accent
 	arrow.ScaleType = Enum.ScaleType.Fit
 	arrow.ZIndex = 12
@@ -5321,7 +5321,7 @@ function UILib.Column:addGroup(title)
 		arrow.AnchorPoint = Vector2.new(1, 0.5)
 		arrow.Position = UDim2.new(1, -10, 0.5, 0)
 		arrow.BackgroundTransparency = 1
-		arrow.Image = "rbxassetid://6034818379"
+		arrow.Image = window:lucide("align-justify") or "rbxassetid://6034818379"
 		arrow.ImageColor3 = window.theme.Accent
 		arrow.ScaleType = Enum.ScaleType.Fit
 		arrow.ZIndex = 12
