@@ -835,7 +835,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 			self.sidebar.Visible = showSidebar
 			for _, sub in ipairs(self.allSubTabs) do
 				if sub.btn then
-					sub.btn.Size = UDim2.new(1, -8, 0, 28)
 					sub.btn.Position = UDim2.new(0, 4, 0, 0)
 				end
 			end
@@ -3541,9 +3540,20 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	row.BackgroundTransparency = 1
 	row.BorderSizePixel = 0
 	row.Parent = items
+
+	local topRow = Instance.new("Frame")
+	topRow.Size = UDim2.new(1, 0, 0, 18)
+	topRow.Position = UDim2.new(0, 0, 0, 4)
+	topRow.BackgroundTransparency = 1
+	topRow.Parent = row
+	local topLayout = Instance.new("UIListLayout", topRow)
+	topLayout.FillDirection = Enum.FillDirection.Horizontal
+	topLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	topLayout.Padding = UDim.new(0, 6)
+
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, -70, 0, 16)
-	label.Position = UDim2.new(0, 4, 0, 4)
+	label.Size = UDim2.new(0, 0, 0, 16)
+	label.AutomaticSize = Enum.AutomaticSize.X
 	label.BackgroundTransparency = 1
 	label.Text = text
 	label.TextColor3 = window.theme.White
@@ -3552,17 +3562,15 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.TextWrapped = true
 	label.ZIndex = 3
-	label.Parent = row
+	label.Parent = topRow
 
 	local valueBox = Instance.new("Frame")
 	valueBox.AutomaticSize = Enum.AutomaticSize.X
 	valueBox.Size = UDim2.new(0, 0, 0, 18)
-	valueBox.AnchorPoint = Vector2.new(1, 0)
-	valueBox.Position = UDim2.new(1, -2, 0, 4)
 	valueBox.BackgroundColor3 = window.theme.Track
 	valueBox.BorderSizePixel = 0
 	valueBox.ZIndex = 3
-	valueBox.Parent = row
+	valueBox.Parent = topRow
 	Instance.new("UICorner", valueBox).CornerRadius = UDim.new(0, 4)
 	local valuePad = Instance.new("UIPadding", valueBox)
 	valuePad.PaddingLeft = UDim.new(0, 6)
@@ -4629,10 +4637,11 @@ function UILib.Column:addGroup(title)
 	function group:SetVisible(v, anim)
 		if not anim then
 			grp.Visible = v
+			if v and not groupCollapsed then items.Visible = true end
 			return
 		end
 		grp.ClipsDescendants = true
-		if v then grp.Visible = true end
+		if v then grp.Visible = true; if not groupCollapsed then items.Visible = true end end
 		local target = v and (itemLayout.AbsoluteContentSize.Y + 46) or 0
 		local tw = TweenService:Create(grp, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 			Size = UDim2.new(1, 0, 0, target)
