@@ -1353,7 +1353,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	navbar.Parent = win
 
 	local navTopLine = Instance.new("Frame")
-	navTopLine.Size = UDim2.new(1, 0, 0, 1)
+	navTopLine.Size = UDim2.new(1, 0, 0, 2)
 	navTopLine.Position = UDim2.new(0, 0, 1, -46)
 	navTopLine.BackgroundColor3 = self.theme.Accent
 	navTopLine.BorderSizePixel = 0
@@ -1970,14 +1970,14 @@ function UILib:buildUITab()
 				end
 			end
 		end
-		self:refreshAllUI()
-		self:refreshAllBorders(border)
+		refreshAllUI()
+		refreshAllBorders(border)
 		syncColorPickers()
 	end
 
 	local function applyCurrentTheme()
-		self:refreshAllUI()
-		self:refreshAllBorders(self.theme.Border)
+		refreshAllUI()
+		refreshAllBorders(self.theme.Border)
 	end
 
 	local function refreshAllBorders(b)
@@ -2105,11 +2105,14 @@ function UILib:buildUITab()
 
 	-- Hide custom color pickers until "Custom" is selected
 	local function showThemePickers(v)
-		pcall(function() accentPicker:SetVisible(v) end)
-		pcall(function() themeBGPicker:SetVisible(v) end)
-		pcall(function() themePanelPicker:SetVisible(v) end)
-		pcall(function() themeItemPicker:SetVisible(v) end)
-		pcall(function() themeBorderPicker:SetVisible(v) end)
+		for _, e in ipairs({ accentPicker, themeBGPicker, themePanelPicker, themeItemPicker, themeBorderPicker }) do
+			pcall(function()
+				if e and e.frame then
+					e.frame.Visible = v
+					e.frame.Size = UDim2.new(1, 0, 0, v and 32 or 0)
+				end
+			end)
+		end
 	end
 	showThemePickers(false)
 
