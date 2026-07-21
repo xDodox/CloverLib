@@ -2092,10 +2092,12 @@ function UILib:Destroy()
 		for _, c in ipairs(self.wmDragConns) do pcall(function() c:Disconnect() end) end
 		self.wmDragConns = nil
 	end
-	for frame, cons in pairs(_pickerCons) do
-		if not frame.Parent then
-			for _, c in ipairs(cons) do pcall(c.Disconnect, c) end
-			_pickerCons[frame] = nil
+	if _pickerCons then
+		for frame, cons in pairs(_pickerCons) do
+			if not frame.Parent then
+				for _, c in ipairs(cons) do pcall(c.Disconnect, c) end
+				_pickerCons[frame] = nil
+			end
 		end
 	end
 	if self.sg then self.sg:Destroy() end
@@ -2459,6 +2461,7 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 		self.window.Size = UDim2.new(0, finalW, 0, finalH)
 		self.originalPosition = self.window.Position
 		self.updateLayout()
+		task.defer(function() if self.updateLayout then self:updateLayout() end end)
 
 		if widthSlider and widthSlider.SetValue then
 			pcall(function() widthSlider:SetValue(finalW) end)
@@ -4938,7 +4941,7 @@ function UILib.Column:addGroup(title)
 			rightOffset = rightOffset + 18
 		end
 		if tooltip then
-			local tipIcon = Instance.new("ImageLabel")
+			local tipIcon = Instance.new("ImageButton")
 			local ti = window:lucide("info")
 			tipIcon.Size = UDim2.new(0, 14, 0, 14)
 			tipIcon.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
@@ -4947,6 +4950,7 @@ function UILib.Column:addGroup(title)
 			tipIcon.ImageColor3 = window.theme.GrayLt
 			tipIcon.ScaleType = Enum.ScaleType.Fit
 			tipIcon.ZIndex = 5
+			tipIcon.AutoButtonColor = false
 			tipIcon.Parent = r
 			attachTooltip(tipIcon, tooltip, window)
 			rightOffset = rightOffset + 16
