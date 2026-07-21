@@ -1945,12 +1945,14 @@ function UILib:buildUITab()
 	end
 
 	local _themeApplying = false
+	local _pickerCons = {}
 	local _themePickerBoxes = {}
 	local function syncColorPickers()
 		if _themeApplying then return end
 		_themeApplying = true
 		for _, entry in ipairs(_themePickerBoxes) do
-			local box, c = entry.box, entry.getColor()
+			local box = entry.getBox()
+			local c = entry.getColor()
 			if box and box.Parent and typeof(c) == "Color3" then
 				box.BackgroundColor3 = c
 			end
@@ -1988,11 +1990,11 @@ function UILib:buildUITab()
 		themeColorChanged()
 	end)
 
-	table.insert(_themePickerBoxes, { box = accentPicker.colorBox, getColor = function() return self.theme.Accent end })
-	table.insert(_themePickerBoxes, { box = themeBGPicker.colorBox, getColor = function() return self.theme.BG end })
-	table.insert(_themePickerBoxes, { box = themePanelPicker.colorBox, getColor = function() return self.theme.Panel end })
-	table.insert(_themePickerBoxes, { box = themeItemPicker.colorBox, getColor = function() return self.theme.ItemHov end })
-	table.insert(_themePickerBoxes, { box = themeBorderPicker.colorBox, getColor = function() return self.theme.Border end })
+	table.insert(_themePickerBoxes, { getBox = function() return accentPicker and accentPicker.colorBox end, getColor = function() return self.theme.Accent end })
+	table.insert(_themePickerBoxes, { getBox = function() return themeBGPicker and themeBGPicker.colorBox end, getColor = function() return self.theme.BG end })
+	table.insert(_themePickerBoxes, { getBox = function() return themePanelPicker and themePanelPicker.colorBox end, getColor = function() return self.theme.Panel end })
+	table.insert(_themePickerBoxes, { getBox = function() return themeItemPicker and themeItemPicker.colorBox end, getColor = function() return self.theme.ItemHov end })
+	table.insert(_themePickerBoxes, { getBox = function() return themeBorderPicker and themeBorderPicker.colorBox end, getColor = function() return self.theme.Border end })
 
 	local cfg = uiR:addGroup("Save Manager")
 	cfg:separator("Load")
@@ -3212,8 +3214,8 @@ function UILib.Tab:addSubTab(name)
 
 	local selGradient = Instance.new("Frame")
 	selGradient.Size = UDim2.new(1, 0, 1, 0)
-	selGradient.BackgroundColor3 = self.window.theme.Accent
-	selGradient.BackgroundTransparency = 0.7
+	selGradient.BackgroundColor3 = Color3.new(1, 1, 1)
+	selGradient.BackgroundTransparency = 0.95
 	selGradient.BorderSizePixel = 0
 	selGradient.Visible = false
 	selGradient.ZIndex = 4
@@ -3858,11 +3860,12 @@ local function createColorPicker(group, items, window, text, default, callback)
 		if pickerFrame then
 			local p = pickerFrame
 			pickerFrame = nil
-			local cons = p._PickerCons
+			local cons = _pickerCons[p]
 			if cons then
 				for _, c in ipairs(cons) do
 					pcall(c.Disconnect, c)
 				end
+				_pickerCons[p] = nil
 			end
 			local sc = p:FindFirstChildOfClass("UIScale")
 			if sc then
@@ -4185,7 +4188,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 				end
 			end
 		end)
-		if pickerFrame then pickerFrame._PickerCons = { inputChangedConn, inputEndedConn, inputBeganConn } end
+		if pickerFrame then _pickerCons[pickerFrame] = { inputChangedConn, inputEndedConn, inputBeganConn } end
 	end
 	colorBox.MouseButton1Click:Connect(openPicker)
 	return row, elem
@@ -4355,7 +4358,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 				local bar = Instance.new("Frame")
 				bar.Size = UDim2.new(0, 2, 0, 14)
 				bar.Position = UDim2.new(0, 0, 0.5, -7)
-				bar.BackgroundColor3 = window.theme.Accent
+				bar.BackgroundColor3 = window.theme.Border
 				bar.BorderSizePixel = 0
 				bar.Visible = isSel
 				bar.ZIndex = 53
@@ -5205,43 +5208,6 @@ function UILib.Column:addGroup(title)
 		expandStroke.Color = window.theme.Border
 		expandStroke.Thickness = 1
 
-		local SEARCH_H = 32
-		local searchRow = Instance.new("Frame")
-		searchRow.Size = UDim2.new(1, 0, 0, SEARCH_H)
-		searchRow.Position = UDim2.new(0, 0, 0, 0)
-		searchRow.BackgroundTransparency = 1
-		searchRow.BorderSizePixel = 0
-		searchRow.ZIndex = 52
-		searchRow.Visible = false
-		searchRow.Parent = expandPanel
-		local searchBox = Instance.new("TextBox")
-		searchBox.Size = UDim2.new(1, -16, 0, 22)
-		searchBox.Position = UDim2.new(0, 8, 0.5, -11)
-		searchBox.BackgroundColor3 = window.theme.Surface
-		searchBox.BorderSizePixel = 0
-		searchBox.PlaceholderText = "Search..."
-		searchBox.PlaceholderColor3 = window.theme.Gray
-		searchBox.Text = ""
-		searchBox.TextColor3 = window.theme.White
-		searchBox.Font = Enum.Font.GothamSemibold
-		searchBox.TextSize = 12
-		searchBox.ClearTextOnFocus = false
-		searchBox.ZIndex = 53
-		searchBox.Parent = searchRow
-		Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0, 4)
-		local searchStroke = Instance.new("UIStroke", searchBox)
-		searchStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		searchStroke.Color = window.theme.Border
-		searchStroke.Thickness = 1
-
-		local searchSep = Instance.new("Frame")
-		searchSep.Size = UDim2.new(1, 0, 0, 1)
-		searchSep.BackgroundColor3 = window.theme.Border
-		searchSep.BorderSizePixel = 0
-		searchSep.ZIndex = 52
-		searchSep.Visible = false
-		searchSep.Parent = expandPanel
-
 		local dlist = Instance.new("ScrollingFrame")
 		dlist.Size = UDim2.new(1, 0, 0, 0)
 		dlist.Position = UDim2.new(0, 0, 0, 0)
@@ -5292,10 +5258,8 @@ function UILib.Column:addGroup(title)
 			if noResultsLbl then noResultsLbl.Visible = query ~= "" and filteredCount == 0 end
 			local visH = math.max(filteredCount * 28 + 4, query ~= "" and filteredCount == 0 and 28 or 4)
 			dlist.CanvasSize = UDim2.new(0, 0, 0, visH)
-			local clampedListH = math.min(visH, 188)
-			local showSearch = #currentOptions >= 5
-			local searchExtra = showSearch and SEARCH_H or 0
-			local totalPanelH = searchExtra + clampedListH
+			local clampedListH = math.min(visH, 220)
+			local totalPanelH = clampedListH
 			if open then
 				dlist.Size = UDim2.new(1, 0, 0, clampedListH)
 				expandPanel.Size = UDim2.new(1, 0, 0, totalPanelH)
@@ -5303,9 +5267,6 @@ function UILib.Column:addGroup(title)
 				updateSize()
 			end
 		end
-		searchBox:GetPropertyChangedSignal("Text"):Connect(function()
-			applyFilter(searchBox.Text)
-		end)
 
 		local function closeDropdown()
 			open = false
@@ -5325,10 +5286,7 @@ function UILib.Column:addGroup(title)
 			}):Play()
 			tw.Completed:Connect(function()
 				expandPanel.Visible = false
-				searchRow.Visible = false
-				searchSep.Visible = false
 				dlist.Position = UDim2.new(0, 0, 0, 0)
-				searchBox.Text = ""
 				for _, child in ipairs(dlist:GetChildren()) do
 					if child:IsA("TextButton") then child.Visible = true end
 				end
@@ -5342,7 +5300,6 @@ function UILib.Column:addGroup(title)
 			checks = {}
 			backgrounds = {}
 			currentOptions = opts
-			searchBox.Text = ""
 			listH = #opts * 28 + 4
 			dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
 		dlist.ScrollBarThickness = listH > 220 and 2 or 0
@@ -5369,7 +5326,7 @@ function UILib.Column:addGroup(title)
 				local bar = Instance.new("Frame")
 				bar.Size = UDim2.new(0, 2, 0, 14)
 				bar.Position = UDim2.new(0, 0, 0.5, -7)
-				bar.BackgroundColor3 = window.theme.Accent
+				bar.BackgroundColor3 = window.theme.Border
 				bar.BorderSizePixel = 0
 				bar.Visible = isSelected
 				bar.ZIndex = 53
@@ -5457,28 +5414,15 @@ function UILib.Column:addGroup(title)
 				Rotation = open and 180 or 0
 			}):Play()
 			if open then
-				local showSearch = #currentOptions >= 5
-				local extraH = showSearch and SEARCH_H or 0
 				local clampedListH = getListMaxH()
-				local totalPanelH = extraH + clampedListH
+				local totalPanelH = clampedListH
 
 				dbtnCorner.CornerRadius = UDim.new(0, 4)
 				dbtnStroke.Color = window.theme.Border
 				expandCorner.CornerRadius = UDim.new(0, 0)
 
-				if showSearch then
-					searchRow.Visible = true
-					searchSep.Visible = true
-					searchSep.Position = UDim2.new(0, 0, 0, SEARCH_H)
-					dlist.Position = UDim2.new(0, 0, 0, SEARCH_H + 1)
-					dlist.Size = UDim2.new(1, 0, 0, clampedListH)
-					task.defer(function() searchBox:CaptureFocus() end)
-				else
-					searchRow.Visible = false
-					searchSep.Visible = false
-					dlist.Position = UDim2.new(0, 0, 0, 0)
-					dlist.Size = UDim2.new(1, 0, 0, clampedListH)
-				end
+				dlist.Position = UDim2.new(0, 0, 0, 0)
+				dlist.Size = UDim2.new(1, 0, 0, clampedListH)
 
 				expandPanel.Size = UDim2.new(1, 0, 0, 0)
 				expandPanel.Visible = true
@@ -5498,9 +5442,6 @@ function UILib.Column:addGroup(title)
 					Size = UDim2.new(1, 0, 0, rNewH)
 				}):Play()
 				task.delay(0.21, updateSize)
-				if showSearch then
-					task.defer(function() searchBox:CaptureFocus() end)
-				end
 			else
 				closeDropdown()
 			end
