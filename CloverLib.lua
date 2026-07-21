@@ -3650,9 +3650,9 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		if sliderDisplay == "k" then
 			if val >= 1000000 then return ("%.1fM"):format(val / 1000000)
 			elseif val >= 1000 then return ("%.1fk"):format(val / 1000)
-			else return tostring(val) end
+			else return cleanNum(val) end
 		end
-		return tostring(val)
+		return cleanNum(val)
 	end
 	local function updateSlider(val)
 		val = math.clamp(val, minVal, maxVal)
@@ -4315,7 +4315,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 				local bar = Instance.new("Frame")
 				bar.Size = UDim2.new(0, 2, 0, 14)
 				bar.Position = UDim2.new(0, 0, 0.5, -7)
-				bar.BackgroundColor3 = window.theme.Border
+				bar.BackgroundColor3 = window.theme.Accent
 				bar.BorderSizePixel = 0
 				bar.Visible = isSel
 				bar.ZIndex = 53
@@ -4948,7 +4948,7 @@ function UILib.Column:addGroup(title)
 			tipIcon.ScaleType = Enum.ScaleType.Fit
 			tipIcon.ZIndex = 5
 			tipIcon.Parent = r
-			attachTooltip(r, tooltip, window)
+			attachTooltip(tipIcon, tooltip, window)
 			rightOffset = rightOffset + 16
 		end
 		if settingsCallback then
@@ -5256,7 +5256,7 @@ function UILib.Column:addGroup(title)
 				local bar = Instance.new("Frame")
 				bar.Size = UDim2.new(0, 2, 0, 14)
 				bar.Position = UDim2.new(0, 0, 0.5, -7)
-				bar.BackgroundColor3 = window.theme.Border
+				bar.BackgroundColor3 = window.theme.Accent
 				bar.BorderSizePixel = 0
 				bar.Visible = isSelected
 				bar.ZIndex = 53
