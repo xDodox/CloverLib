@@ -1360,6 +1360,15 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	navTopLine.ZIndex = 61
 	navTopLine.Parent = win
 	self.navTopLine = navTopLine
+	local navBottomLine = Instance.new("Frame")
+	navBottomLine.Size = UDim2.new(1, 0, 0, 2)
+	navBottomLine.Position = UDim2.new(0, 0, 1, 0)
+	navBottomLine.BackgroundColor3 = self.theme.Accent
+	navBottomLine.AnchorPoint = Vector2.new(0, 1)
+	navBottomLine.BorderSizePixel = 0
+	navBottomLine.ZIndex = 61
+	navBottomLine.Parent = win
+	self.navBottomLine = navBottomLine
 	self.navbar = navbar
 	local navList = Instance.new("UIListLayout", navbar)
 	navList.FillDirection = Enum.FillDirection.Horizontal
@@ -1961,6 +1970,7 @@ function UILib:buildUITab()
 		if self.navbarBG then self.navbarBG.BackgroundColor3 = panel end
 		if self.navbarCover then self.navbarCover.BackgroundColor3 = panel end
 		if self.navTopLine then self.navTopLine.BackgroundColor3 = border end
+		if self.navBottomLine then self.navBottomLine.BackgroundColor3 = self.theme.Accent end
 		if self.sidebarEdge then self.sidebarEdge.BackgroundColor3 = border end
 		self:refreshAllUI()
 		self:refreshAllBorders(border)
@@ -1993,7 +2003,7 @@ function UILib:buildUITab()
 				for _, sub in pairs(tab.subtabs) do
 					if sub.selGradient and sub.selGradient.Visible then
 						sub.selGradient.BackgroundColor3 = self.theme.Accent
-						if sub.label then sub.label.TextColor3 = self.theme.Accent end
+						if sub.label then sub.label.TextColor3 = self.theme.White end
 					end
 				end
 			end
@@ -2054,6 +2064,7 @@ function UILib:buildUITab()
 		self.theme.Accent = c
 		self.theme.AccentD = Color3.new(c.r * 0.70, c.g * 0.70, c.b * 0.70)
 		self:updateAccent(c)
+		if self.navBottomLine then self.navBottomLine.BackgroundColor3 = c end
 		themeColorChanged()
 	end)
 	local themeBGPicker = themeGrp:colorpicker("Background", self.theme.BG, function(c)
@@ -3315,16 +3326,15 @@ function UILib.Tab:addSubTab(name)
 	selGradient.Visible = false
 	selGradient.ZIndex = 5
 	selGradient.Parent = btn
-	Instance.new("UICorner", selGradient).CornerRadius = UDim.new(0, 5)
 	local grad = Instance.new("UIGradient", selGradient)
 	grad.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-		ColorSequenceKeypoint.new(0.3, Color3.new(0.6, 0.6, 0.6)),
+		ColorSequenceKeypoint.new(0.25, Color3.new(0.5, 0.5, 0.5)),
 		ColorSequenceKeypoint.new(1, Color3.new(0, 0, 0))
 	})
 	grad.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0),
-		NumberSequenceKeypoint.new(0.4, 0.4),
+		NumberSequenceKeypoint.new(0, 0.35),
+		NumberSequenceKeypoint.new(0.15, 0.55),
 		NumberSequenceKeypoint.new(1, 1)
 	})
 	sub.selGradient = selGradient
@@ -3377,7 +3387,7 @@ function UILib.Tab:addSubTab(name)
 		if self.tab.underline then self.tab.underline.Visible = true end
 		for _, s in pairs(self.tab.subtabs) do s.btn.Visible = true end
 		self.window.activeTab = self.tab
-		self.label.TextColor3 = self.window.theme.Accent
+		self.label.TextColor3 = self.window.theme.White
 		if self.selGradient then self.selGradient.Visible = true end
 		self.page.Visible = true
 		self.tab.lastSub = self
@@ -3386,13 +3396,13 @@ function UILib.Tab:addSubTab(name)
 
 	btn.MouseEnter:Connect(function()
 		TweenService:Create(hov, TweenInfo.new(0.08), { BackgroundTransparency = 0 }):Play()
-		if label.TextColor3 ~= self.window.theme.Accent then
+		if label.TextColor3 ~= self.window.theme.White then
 			TweenService:Create(label, TweenInfo.new(0.08), { TextColor3 = self.window.theme.White }):Play()
 		end
 	end)
 	btn.MouseLeave:Connect(function()
 		TweenService:Create(hov, TweenInfo.new(0.08), { BackgroundTransparency = 1 }):Play()
-		if label.TextColor3 ~= self.window.theme.Accent then
+		if label.TextColor3 ~= self.window.theme.White then
 			TweenService:Create(label, TweenInfo.new(0.08), { TextColor3 = self.window.theme.Gray }):Play()
 		end
 	end)
@@ -4640,26 +4650,21 @@ function UILib.Column:addGroup(title)
 
 	local row = Instance.new("Frame")
 	row.Size = UDim2.new(1, 0, 0, 30)
-	row.BackgroundColor3 = window.theme.ItemHov
+	row.BackgroundColor3 = Color3.new(
+		math.min(1, window.theme.ItemHov.r * 1.15),
+		math.min(1, window.theme.ItemHov.g * 1.15),
+		math.min(1, window.theme.ItemHov.b * 1.15)
+	)
 	row.BackgroundTransparency = 0
 	row.Parent = grp
-	Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
 
 	local headerSep = Instance.new("Frame")
-	headerSep.Size = UDim2.new(1, -16, 0, 2)
-	headerSep.Position = UDim2.new(0, 8, 0, 30)
+	headerSep.Size = UDim2.new(1, 0, 0, 2)
+	headerSep.Position = UDim2.new(0, 0, 0, 30)
 	headerSep.BackgroundColor3 = window.theme.Accent
 	headerSep.BorderSizePixel = 0
 	headerSep.ZIndex = 4
 	headerSep.Parent = grp
-
-	local footerSep = Instance.new("Frame")
-	footerSep.Size = UDim2.new(1, -16, 0, 2)
-	footerSep.Position = UDim2.new(0, 8, 1, -2)
-	footerSep.BackgroundColor3 = window.theme.Accent
-	footerSep.BorderSizePixel = 0
-	footerSep.ZIndex = 4
-	footerSep.Parent = grp
 
 	local iconImg = Instance.new("ImageLabel")
 	iconImg.Size = UDim2.new(0, 16, 0, 16)
@@ -4699,7 +4704,7 @@ function UILib.Column:addGroup(title)
 	local padding = Instance.new("UIPadding", items)
 	padding.PaddingLeft = UDim.new(0, 8)
 	padding.PaddingRight = UDim.new(0, 8)
-	padding.PaddingTop = UDim.new(0, 6)
+	padding.PaddingTop = UDim.new(0, 10)
 	padding.PaddingBottom = UDim.new(0, 6)
 
 		local sizeUpdateScheduled = false
