@@ -2033,23 +2033,16 @@ function UILib:buildUITab()
 
 	local themeGrp = uiL:addGroup("Theme")
 	local themeDropdown = themeGrp:dropdown("Preset", themeNames, "Default", function(val)
-		if val == "Custom" then
-			if showThemePickers then showThemePickers(true) end
-			return
-		end
-		if showThemePickers then showThemePickers(false) end
-		if val == "" then return end
+		if val == "" or val == "Custom" then return end
 		for _, t in ipairs(THEMES) do
 			if t[1] == val then applyFullTheme(t); break end
 		end
 	end, "Apply a pre-made color theme")
 	themeDropdown._noConfig = true
 
-	local function themeColorChanged()
-		showThemePickers(true)
+	local function setToCustom()
 		themeDropdown.Value = "Custom"
 		pcall(function() themeDropdown.SetValue("Custom") end)
-		applyCurrentTheme()
 	end
 
 	local _themeApplying = false
@@ -2064,57 +2057,52 @@ function UILib:buildUITab()
 		_themeApplying = false
 	end
 
+	local function applyCurrentTheme()
+		self:updateAccent(self.theme.Accent)
+		if self.window then self.window.BackgroundColor3 = self.theme.BG end
+		if self.content then self.content.BackgroundColor3 = self.theme.BG end
+		if self.header then self.header.BackgroundColor3 = self.theme.Panel end
+		if self.headerCover then self.headerCover.BackgroundColor3 = self.theme.Panel end
+		if self.sidebar then self.sidebar.BackgroundColor3 = self.theme.Panel end
+		if self.navbar then self.navbar.BackgroundColor3 = self.theme.Panel end
+		if self.navbarBG then self.navbarBG.BackgroundColor3 = self.theme.Panel end
+		if self.navbarCover then self.navbarCover.BackgroundColor3 = self.theme.Panel end
+		if self.navTopLine then self.navTopLine.BackgroundColor3 = self.theme.Accent end
+		if self.sidebarEdge then self.sidebarEdge.BackgroundColor3 = self.theme.Border end
+		refreshAllUI()
+		refreshAllBorders(self.theme.Border)
+		syncColorPickers()
+	end
+
+	local function themeColorChanged()
+		setToCustom()
+		applyCurrentTheme()
+	end
+
 	local accentPicker = themeGrp:colorpicker("Accent", self.theme.Accent, function(c)
 		self.theme.Accent = c
 		self.theme.AccentD = Color3.new(c.r * 0.70, c.g * 0.70, c.b * 0.70)
-		self:updateAccent(c)
 		themeColorChanged()
 	end)
 	local themeBGPicker = themeGrp:colorpicker("Background", self.theme.BG, function(c)
 		self.theme.BG = c
 		self.theme.Base = c
-		if self.window then self.window.BackgroundColor3 = c end
-		if self.content then self.content.BackgroundColor3 = c end
 		themeColorChanged()
 	end)
 	local themePanelPicker = themeGrp:colorpicker("Panel", self.theme.Panel, function(c)
 		self.theme.Panel = c
 		self.theme.Surface = c
 		self.theme.Item = c
-		if self.header then self.header.BackgroundColor3 = c end
-		if self.headerCover then self.headerCover.BackgroundColor3 = c end
-		if self.sidebar then self.sidebar.BackgroundColor3 = c end
-		if self.navbar then self.navbar.BackgroundColor3 = c end
-		if self.navbarBG then self.navbarBG.BackgroundColor3 = c end
-		if self.navbarCover then self.navbarCover.BackgroundColor3 = c end
-		self:refreshAllUI()
 		themeColorChanged()
 	end)
 	local themeItemPicker = themeGrp:colorpicker("Item Hover", self.theme.ItemHov, function(c)
 		self.theme.ItemHov = c
-		self:refreshAllUI()
 		themeColorChanged()
 	end)
 	local themeBorderPicker = themeGrp:colorpicker("Border", self.theme.Border, function(c)
 		self.theme.Border = c
-		if self.navTopLine then self.navTopLine.BackgroundColor3 = c end
-		if self.sidebarEdge then self.sidebarEdge.BackgroundColor3 = c end
-		self:refreshAllBorders(c)
 		themeColorChanged()
 	end)
-
-	-- Hide custom color pickers until "Custom" is selected
-	local function showThemePickers(v)
-		for _, e in ipairs({ accentPicker, themeBGPicker, themePanelPicker, themeItemPicker, themeBorderPicker }) do
-			pcall(function()
-				if e and e.frame then
-					e.frame.Visible = v
-					e.frame.Size = UDim2.new(1, 0, 0, v and 32 or 0)
-				end
-			end)
-		end
-	end
-	showThemePickers(false)
 
 	local cfg = uiR:addGroup("Save Manager")
 	cfg:separator("Load")
