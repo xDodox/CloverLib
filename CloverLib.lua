@@ -1940,46 +1940,6 @@ function UILib:buildUITab()
 
 	-- Theme section on left column
 
-	local function applyFullTheme(theme)
-		local accent, bg, panel, item, itemHov, track, border = unpack(theme, 2)
-		self.theme.Accent = accent
-		self.theme.AccentD = Color3.new(accent.r * 0.70, accent.g * 0.70, accent.b * 0.70)
-		self.theme.BG = bg
-		self.theme.Base = bg
-		self.theme.Panel = panel
-		self.theme.Surface = panel
-		self.theme.Item = item
-		self.theme.ItemHov = itemHov
-		self.theme.Track = track
-		self.theme.Border = border
-		self:updateAccent(accent)
-		if self.window then self.window.BackgroundColor3 = bg end
-		if self.content then self.content.BackgroundColor3 = bg end
-		if self.header then self.header.BackgroundColor3 = panel end
-		if self.headerCover then self.headerCover.BackgroundColor3 = panel end
-		if self.sidebar then self.sidebar.BackgroundColor3 = panel end
-		if self.navbar then self.navbar.BackgroundColor3 = panel end
-		if self.navbarBG then self.navbarBG.BackgroundColor3 = panel end
-		if self.navbarCover then self.navbarCover.BackgroundColor3 = panel end
-		if self.navTopLine then self.navTopLine.BackgroundColor3 = accent end
-		if self.sidebarEdge then self.sidebarEdge.BackgroundColor3 = border end
-		for _, tab in ipairs(self.tabOrder or {}) do
-			if tab.subtabs then
-				for _, s in pairs(tab.subtabs) do
-					if s.selLine then s.selLine.BackgroundColor3 = accent end
-				end
-			end
-		end
-		refreshAllUI()
-		refreshAllBorders(border)
-		syncColorPickers()
-	end
-
-	local function applyCurrentTheme()
-		refreshAllUI()
-		refreshAllBorders(self.theme.Border)
-	end
-
 	local function refreshAllBorders(b)
 		for _, s in ipairs(self.window:GetDescendants()) do
 			if s:IsA("UIStroke") then pcall(function() s.Color = b end) end
@@ -2016,6 +1976,58 @@ function UILib:buildUITab()
 				end
 			end
 		end
+	end
+
+	local function applyFullTheme(theme)
+		local accent, bg, panel, item, itemHov, track, border = unpack(theme, 2)
+		self.theme.Accent = accent
+		self.theme.AccentD = Color3.new(accent.r * 0.70, accent.g * 0.70, accent.b * 0.70)
+		self.theme.BG = bg
+		self.theme.Base = bg
+		self.theme.Panel = panel
+		self.theme.Surface = panel
+		self.theme.Item = item
+		self.theme.ItemHov = itemHov
+		self.theme.Track = track
+		self.theme.Border = border
+		self:updateAccent(accent)
+		if self.window then self.window.BackgroundColor3 = bg end
+		if self.content then self.content.BackgroundColor3 = bg end
+		if self.header then self.header.BackgroundColor3 = panel end
+		if self.headerCover then self.headerCover.BackgroundColor3 = panel end
+		if self.sidebar then self.sidebar.BackgroundColor3 = panel end
+		if self.navbar then self.navbar.BackgroundColor3 = panel end
+		if self.navbarBG then self.navbarBG.BackgroundColor3 = panel end
+		if self.navbarCover then self.navbarCover.BackgroundColor3 = panel end
+		if self.navTopLine then self.navTopLine.BackgroundColor3 = accent end
+		if self.sidebarEdge then self.sidebarEdge.BackgroundColor3 = border end
+		for _, tab in ipairs(self.tabOrder or {}) do
+			if tab.subtabs then
+				for _, s in pairs(tab.subtabs) do
+					if s.selLine then s.selLine.BackgroundColor3 = accent end
+				end
+			end
+		end
+		refreshAllUI()
+		refreshAllBorders(border)
+		syncColorPickers()
+	end
+
+	local function applyCurrentTheme()
+		self:updateAccent(self.theme.Accent)
+		if self.window then self.window.BackgroundColor3 = self.theme.BG end
+		if self.content then self.content.BackgroundColor3 = self.theme.BG end
+		if self.header then self.header.BackgroundColor3 = self.theme.Panel end
+		if self.headerCover then self.headerCover.BackgroundColor3 = self.theme.Panel end
+		if self.sidebar then self.sidebar.BackgroundColor3 = self.theme.Panel end
+		if self.navbar then self.navbar.BackgroundColor3 = self.theme.Panel end
+		if self.navbarBG then self.navbarBG.BackgroundColor3 = self.theme.Panel end
+		if self.navbarCover then self.navbarCover.BackgroundColor3 = self.theme.Panel end
+		if self.navTopLine then self.navTopLine.BackgroundColor3 = self.theme.Accent end
+		if self.sidebarEdge then self.sidebarEdge.BackgroundColor3 = self.theme.Border end
+		refreshAllUI()
+		refreshAllBorders(self.theme.Border)
+		syncColorPickers()
 	end
 
 	local THEMES = {
@@ -2055,23 +2067,6 @@ function UILib:buildUITab()
 		pcall(function() if themeItemPicker then themeItemPicker:SetValue(self.theme.ItemHov) end end)
 		pcall(function() if themeBorderPicker then themeBorderPicker:SetValue(self.theme.Border) end end)
 		_themeApplying = false
-	end
-
-	local function applyCurrentTheme()
-		self:updateAccent(self.theme.Accent)
-		if self.window then self.window.BackgroundColor3 = self.theme.BG end
-		if self.content then self.content.BackgroundColor3 = self.theme.BG end
-		if self.header then self.header.BackgroundColor3 = self.theme.Panel end
-		if self.headerCover then self.headerCover.BackgroundColor3 = self.theme.Panel end
-		if self.sidebar then self.sidebar.BackgroundColor3 = self.theme.Panel end
-		if self.navbar then self.navbar.BackgroundColor3 = self.theme.Panel end
-		if self.navbarBG then self.navbarBG.BackgroundColor3 = self.theme.Panel end
-		if self.navbarCover then self.navbarCover.BackgroundColor3 = self.theme.Panel end
-		if self.navTopLine then self.navTopLine.BackgroundColor3 = self.theme.Accent end
-		if self.sidebarEdge then self.sidebarEdge.BackgroundColor3 = self.theme.Border end
-		refreshAllUI()
-		refreshAllBorders(self.theme.Border)
-		syncColorPickers()
 	end
 
 	local function themeColorChanged()
@@ -3339,9 +3334,9 @@ function UILib.Tab:addSubTab(name)
 	selGradient.Parent = btn
 	local grad = Instance.new("UIGradient", selGradient)
 	grad.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.8),
-		NumberSequenceKeypoint.new(0.4, 0.9),
-		NumberSequenceKeypoint.new(1, 1)
+		NumberSequenceKeypoint(0, 0.8),
+		NumberSequenceKeypoint(0.4, 0.9),
+		NumberSequenceKeypoint(1, 1)
 	})
 	sub.selGradient = selGradient
 
@@ -4380,9 +4375,12 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	arrow.AnchorPoint = Vector2.new(1, 0.5)
 	arrow.Position = UDim2.new(1, -10, 0.5, 0)
 	arrow.BackgroundTransparency = 1
-	arrow.Image = "rbxassetid://6034818379"
-	arrow.ImageColor3 = window.theme.Accent
+	arrow.Image = ""
+	arrow.Text = "≡"
+	arrow.TextColor3 = window.theme.Accent
 	arrow.ScaleType = Enum.ScaleType.Fit
+	arrow.Font = Enum.Font.GothamBold
+	arrow.TextSize = 16
 	arrow.ZIndex = 12
 	arrow.Parent = dbtn
 	table.insert(window.accentObjects, arrow)
@@ -4931,7 +4929,7 @@ function UILib.Column:addGroup(title)
 			toggleRow.Parent = container
 			local cbOuter = Instance.new("TextButton")
 			cbOuter.Size = UDim2.new(0, CB_SIZE, 0, CB_SIZE)
-			cbOuter.Position = UDim2.new(1, -CB_OFFSET, 0.5, -CB_SIZE/2)
+			cbOuter.Position = UDim2.new(0, 8, 0.5, -CB_SIZE/2)
 			cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.BG
 			cbOuter.BorderSizePixel = 0
 			cbOuter.AutoButtonColor = false
@@ -4965,8 +4963,8 @@ function UILib.Column:addGroup(title)
 			cbMark.ZIndex = 5
 			cbMark.Parent = cbOuter
 			local lbl = Instance.new("TextLabel")
-			lbl.Size = UDim2.new(1, -(CB_OFFSET + 12), 1, 0)
-			lbl.Position = UDim2.new(0, 4, 0, 0)
+			lbl.Size = UDim2.new(1, -42, 1, 0)
+			lbl.Position = UDim2.new(0, 34, 0, 0)
 			lbl.BackgroundTransparency = 1
 			lbl.Text = text
 			lbl.TextColor3 = window.theme.White
@@ -5062,7 +5060,7 @@ function UILib.Column:addGroup(title)
 		r.Parent = items
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0, CB_SIZE, 0, CB_SIZE)
-		cbOuter.Position = UDim2.new(1, -CB_OFFSET, 0.5, -CB_SIZE/2)
+		cbOuter.Position = UDim2.new(0, 8, 0.5, -CB_SIZE/2)
 		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.BG
 		cbOuter.BorderSizePixel = 0
 		cbOuter.AutoButtonColor = false
@@ -5096,8 +5094,8 @@ function UILib.Column:addGroup(title)
 		cbMark.ZIndex = 5
 		cbMark.Parent = cbOuter
 		local lbl = Instance.new("TextLabel")
-		lbl.Size = UDim2.new(1, -(CB_OFFSET + 12), 1, 0)
-		lbl.Position = UDim2.new(0, 4, 0, 0)
+		lbl.Size = UDim2.new(1, -42, 1, 0)
+		lbl.Position = UDim2.new(0, 34, 0, 0)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
@@ -5455,11 +5453,10 @@ function UILib.Column:addGroup(title)
 				bg.Name = "SelectionBG"
 				bg.Size = UDim2.new(1, 0, 1, 0)
 			bg.BackgroundColor3 = window.theme.AccentD
-			bg.BackgroundTransparency = isSelected and 0.5 or 1
+			bg.BackgroundTransparency = isSelected and 0.3 or 1
 				bg.BorderSizePixel = 0
 				bg.ZIndex = 50
 				bg.Parent = ob
-				Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 4)
 				table.insert(window.accentObjects, bg)
 				
 				local bar = Instance.new("Frame")
