@@ -1818,6 +1818,7 @@ function UILib:addWatermark(name)
 	nameLbl.Font = Enum.Font.GothamBold
 	nameLbl.TextSize = 11
 	nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+	nameLbl.TextYAlignment = Enum.TextYAlignment.Center
 	nameLbl.ZIndex = 201
 	nameLbl.LayoutOrder = 1
 	nameLbl.Parent = row
@@ -1960,8 +1961,15 @@ function UILib:buildUITab()
 		if self.navbar then self.navbar.BackgroundColor3 = panel end
 		if self.navbarBG then self.navbarBG.BackgroundColor3 = panel end
 		if self.navbarCover then self.navbarCover.BackgroundColor3 = panel end
-		if self.navTopLine then self.navTopLine.BackgroundColor3 = border end
+		if self.navTopLine then self.navTopLine.BackgroundColor3 = accent end
 		if self.sidebarEdge then self.sidebarEdge.BackgroundColor3 = border end
+		for _, tab in ipairs(self.tabOrder or {}) do
+			if tab.subtabs then
+				for _, s in pairs(tab.subtabs) do
+					if s.selLine then s.selLine.BackgroundColor3 = accent end
+				end
+			end
+		end
 		self:refreshAllUI()
 		self:refreshAllBorders(border)
 		syncColorPickers()
@@ -1992,9 +2000,9 @@ function UILib:buildUITab()
 			if tab.subtabs then
 				for _, sub in pairs(tab.subtabs) do
 					if sub.selGradient and sub.selGradient.Visible then
-						sub.selGradient.BackgroundColor3 = self.theme.Accent
 						if sub.label then sub.label.TextColor3 = self.theme.White end
 					end
+					if sub.selLine then sub.selLine.BackgroundColor3 = self.theme.Accent end
 				end
 			end
 			if tab.subtabOrder then
@@ -3323,7 +3331,7 @@ function UILib.Tab:addSubTab(name)
 	sub.hovFrame = hov
 
 	local selLine = Instance.new("Frame")
-	selLine.Size = UDim2.new(0, 2, 1, 0)
+	selLine.Size = UDim2.new(0, 3, 1, 0)
 	selLine.BackgroundColor3 = self.window.theme.Accent
 	selLine.BorderSizePixel = 0
 	selLine.Visible = false
@@ -3340,8 +3348,8 @@ function UILib.Tab:addSubTab(name)
 	selGradient.Parent = btn
 	local grad = Instance.new("UIGradient", selGradient)
 	grad.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.6),
-		NumberSequenceKeypoint.new(0.3, 0.75),
+		NumberSequenceKeypoint.new(0, 0.8),
+		NumberSequenceKeypoint.new(0.4, 0.9),
 		NumberSequenceKeypoint.new(1, 1)
 	})
 	sub.selGradient = selGradient
@@ -4651,14 +4659,15 @@ function UILib.Column:addGroup(title)
 	grp.BackgroundColor3 = window.theme.Item
 	grp.BorderSizePixel = 0
 	grp.Parent = self.frame
+	Instance.new("UICorner", grp).CornerRadius = UDim.new(0, 6)
+	grp.ClipsDescendants = true
 	local stroke = Instance.new("UIStroke", grp)
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Color = window.theme.Border
 	stroke.Thickness = 1
 
 	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, -6, 0, 30)
-	row.Position = UDim2.new(0, 3, 0, 0)
+	row.Size = UDim2.new(1, 0, 0, 30)
 	row.BackgroundColor3 = Color3.new(
 		math.min(1, window.theme.ItemHov.r * 1.15),
 		math.min(1, window.theme.ItemHov.g * 1.15),
@@ -4666,7 +4675,6 @@ function UILib.Column:addGroup(title)
 	)
 	row.BackgroundTransparency = 0
 	row.Parent = grp
-	Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
 
 	local headerSep = Instance.new("Frame")
 	headerSep.Size = UDim2.new(1, 0, 0, 1)
