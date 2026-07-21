@@ -486,6 +486,162 @@ function UILib:importConfigFromString(json)
 	self:notify("Imported " .. count .. " value(s)", "success")
 end
 
+-- ════════════════════════════════════════
+-- Structured Config — category-based JSON
+-- ════════════════════════════════════════
+function UILib:getElementLabel(elem)
+	if elem.frame then
+		for _, child in ipairs(elem.frame:GetChildren()) do
+			if child:IsA("TextLabel") and child.Visible and child.Text ~= "" then
+				return child.Text
+			end
+		end
+	end
+	return nil
+end
+
+function UILib:getElementType(elem)
+	if elem.IsToggle then return "Toggle" end
+	if elem.Mode == "keybind" then return "Keybind" end
+	if typeof(elem.Value) == "Color3" then return "ColorPicker" end
+	if type(elem.Value) == "number" and elem.DefaultHeight and elem._display ~= nil then return "Slider" end
+	if type(elem.Value) == "table" and not elem._display then return "MultiDropdown" end
+	if type(elem.Value) == "string" and elem._values then return "Dropdown" end
+	if type(elem.Value) == "string" and elem.DefaultHeight then return "TextBox" end
+	return nil
+end
+
+local function _configStructuredToJSON(self)
+	local data = { _version = 2, _timestamp = os.time() }
+	for id, elem in pairs(self.configs) do
+		if elem._noConfig or elem.Value == nil then continue end
+		local label = self:getElementLabel(elem) or id
+		local etype = self:getElementType(elem)
+		if not etype then continue end
+		if not data[etype] then data[etype] = {} end
+		if etype == "Toggle" then
+			data[etype][label] = { state = elem.Value }
+		elseif etype == "ColorPicker" then
+			local c = elem.Value; data[etype][label] = { color = { c.R * 255, c.G * 255, c.B * 255 } }
+		elseif etype == "Keybind" then
+			data[etype][label] = { keybind = elem.Value }
+		elseif etype == "Dropdown" then
+			data[etype][label] = { value = elem.Value, list = elem._values or {} }
+		elseif etype == "MultiDropdown" then
+			data[etype][label] = { value = elem.Value, list = elem._values or {} }
+		elseif etype == "TextBox" then
+			data[etype][label] = { text = elem.Value }
+		elseif etype == "Slider" then
+			data[etype][label] = { value = elem.Value }
+		end
+	end
+	return HS:JSONEncode(data)
+end
+
+local function _applyStructuredJSON(self, decoded)
+	local labelMap = {}
+	for id, elem in pairs(self.configs) do
+		local label = self:getElementLabel(elem)
+		if label and not elem._noConfig then labelMap[label] = elem end
+	end
+	local count = 0
+	self._loadingConfig = true
+	for etype, items in pairs(decoded) do
+		if type(items) ~= "table" then continue end
+		if etype:sub(1, 1) == "_" then continue end
+		for label, sdata in pairs(items) do
+			local elem = labelMap[label]
+			if not elem then continue end
+			pcall(function()
+				if etype == "Toggle" then
+					elem:SetValue(sdata.state); count = count + 1
+				elseif etype == "ColorPicker" and sdata.color then
+					elem:SetValue(Color3.fromRGB(sdata.color[1] or 0, sdata.color[2] or 0, sdata.color[3] or 0)); count = count + 1
+				elseif etype == "Keybind" then
+					elem:SetValue(sdata.keybind); count = count + 1
+				elseif etype == "Dropdown" then
+					elem:SetValue(sdata.value); count = count + 1
+				elseif etype == "MultiDropdown" and sdata.value then
+					elem:SetValue(sdata.value); count = count + 1
+				elseif etype == "TextBox" then
+					elem:SetValue(sdata.text); count = count + 1
+				elseif etype == "Slider" then
+					elem:SetValue(sdata.value); count = count + 1
+				end
+			end)
+		end
+	end
+	self._loadingConfig = nil
+	return count
+end
+
+function UILib:saveConfigStructured(name)
+	local json = _configStructuredToJSON(self)
+	local dir = "CloverHub/conigs/"
+	pcall(makefolder, "CloverHub/conigs")
+	local ok, err = pcall(writefile, dir .. name .. ".json", json)
+	if ok then self:notify("Saved: " .. name, "success", 2) else self:notify("Save failed: " .. tostring(err), "error", 3) end
+end
+
+function UILib:loadConfigStructured(name)
+	local path = "CloverHub/conigs/" .. name .. ".json"
+	local ok, content = pcall(readfile, path)
+	if not ok then self:notify("Not found: " .. name, "error", 3); return end
+	local decoded = HS:JSONDecode(content)
+	if type(decoded) ~= "table" then self:notify("Invalid config", "error", 3); return end
+	local count = _applyStructuredJSON(self, decoded)
+	self:notify("Loaded " .. count .. " value(s): " .. name, "success", 2)
+end
+
+function UILib:exportConfigStructured()
+	local json = _configStructuredToJSON(self)
+	pcall(setclipboard, json)
+	self:notify("Config copied to clipboard!", "success", 2)
+end
+
+function UILib:importConfigStructured(json)
+	local ok, decoded = pcall(HS.JSONDecode, HS, json)
+	if not ok or type(decoded) ~= "table" then self:notify("Invalid JSON", "error", 3); return end
+	local count = _applyStructuredJSON(self, decoded)
+	self:notify("Imported " .. count .. " value(s)", "success", 2)
+end
+
+function UILib:listConfigsStructured()
+	local list = {}
+	pcall(makefolder, "CloverHub/conigs")
+	local ok, files = pcall(listfiles, "CloverHub/conigs")
+	if ok and files then
+		for _, f in ipairs(files) do
+			local name = f:match("([^/\\]+)%.json$")
+			if name then table.insert(list, name) end
+		end
+	end
+	return list
+end
+
+function UILib:getAutoLoadConfig()
+	local ok, name = pcall(readfile, "CloverHub/conigs/_autoload.txt")
+	if ok and name and name ~= "" then return name end
+	return nil
+end
+
+function UILib:setAutoLoadConfig(name)
+	pcall(makefolder, "CloverHub/conigs")
+	pcall(writefile, "CloverHub/conigs/_autoload.txt", name or "")
+end
+
+function UILib:tryAutoLoad()
+	local name = self:getAutoLoadConfig()
+	if name then
+		task.wait(0.5)
+		local path = "CloverHub/conigs/" .. name .. ".json"
+		if isfile and isfile(path) then
+			self:loadConfigStructured(name)
+			self:notify("Auto-loaded: " .. name, "success", 3)
+		end
+	end
+end
+
 function UILib.new(opts)
 	opts = opts or {}
 	local theme = {}
@@ -1864,84 +2020,152 @@ function UILib:buildUITab()
 	end, "Apply a pre-made color theme")
 	if themeDropdown then themeDropdown._noConfig = true end
 
-	local cfg = uiR:addGroup("Configs")
-	local currentConfig = "default"
+	local cfg = uiR:addGroup("Save Manager")
+	cfg:label("Configs", self.theme.Accent)
 
-	local function getConfigList()
-		local list = self:listConfigs()
-		-- hide autosave from user-facing dropdown
-		for i = #list, 1, -1 do
-			if list[i] == "autosave" then table.remove(list, i) end
-		end
-		if #list == 0 then list = { "(no configs)" } end
+	local function getConfigListStructured()
+		local list = self:listConfigsStructured()
 		table.sort(list)
+		if #list == 0 then list = { "(no configs)" } end
 		return list
 	end
 
-	local nameElem = cfg:textbox("Config Name", "default", "", function(val)
-		currentConfig = (val ~= "" and val or "default")
-	end, "Name for save/load/delete")
-	nameElem._noConfig = true
+	local cfgDropdown = cfg:dropdown("", getConfigListStructured(), "", function(_)
+	end, "Select a config to load/delete", function() return getConfigListStructured() end)
+	cfgDropdown._noConfig = true
 
-	local loadElem = cfg:dropdown("Load Config", getConfigList(), "", function(val)
-		if val == "" or val == "(no configs)" then return end
-		currentConfig = val
-	end, "Select a saved config, then click Load Selected", function()
-		return getConfigList()
-	end)
-	loadElem._noConfig = true
-
-	local function refreshConfigDropdown(selectName)
-		local list = getConfigList()
-		loadElem:SetValues(list)
-
-		local keep = selectName or currentConfig
-		local exists = false
-		for _, v in ipairs(list) do
-			if v == keep then
-				exists = true; break
-			end
-		end
-		if exists then
-			loadElem.Value = keep
-			loadElem.SetValue(keep)
-		else
-			loadElem.SetValue(list[1] or "")
-		end
+	local function cfgRefreshDropdown()
+		local list = getConfigListStructured()
+		cfgDropdown._values = list
+		pcall(function() cfgDropdown:SetValues(list) end)
+		pcall(function() cfgDropdown:SetValues(list) end)
 	end
 
-	cfg:button("Save Config",
-		function()
-			if self.saveConfig then
-				self:saveConfig(nameElem.Value); refreshConfigDropdown(nameElem.Value)
+	cfg:button("Load Config", function()
+		local name = cfgDropdown.Value
+		if name == "(no configs)" or name == "" then self:notify("No config selected", "warning", 2); return end
+		self:loadConfigStructured(name)
+	end, nil, Enum.TextXAlignment.Center)
+	cfg:button("Delete Config", function()
+		local name = cfgDropdown.Value
+		if name == "(no configs)" or name == "" then return end
+		pcall(delfile, "CloverHub/conigs/" .. name .. ".json")
+		self:notify("Deleted: " .. name, "success", 2)
+		cfgRefreshDropdown()
+	end, nil, Enum.TextXAlignment.Center, Color3.fromRGB(255, 80, 80))
+
+	cfg:toggle("Set as Auto Load", false, function(v)
+		if v then
+			local name = cfgDropdown.Value
+			if name == "(no configs)" or name == "" then
+				self:notify("Select a config first", "warning", 2); return
 			end
-		end, nil, Enum.TextXAlignment.Center)
-	cfg:button("Load Selected",
-		function()
-			local name = loadElem.Value
-			if name and self.loadConfig and name ~= "" and name ~= "(no configs)" then
-				self:loadConfig(name)
-			end
-		end, nil, Enum.TextXAlignment.Center)
-	cfg:button("Delete Config",
-		function()
-			if self.deleteConfig then
-				self:deleteConfig(loadElem.Value); refreshConfigDropdown()
-			end
-		end, nil, Enum.TextXAlignment.Center)
-	cfg:separator("Share Config")
-	cfg:button("Copy Config to Clipboard",
-		function()
-			if self.exportConfigToString then
-				self:exportConfigToString()
-			end
-		end, "Exports all current settings as JSON string to your clipboard", Enum.TextXAlignment.Center)
-	local importElem = cfg:textbox("Import JSON", "", 'Paste config JSON here...', function(val)
-		if val and val ~= "" then
-			self:importConfigFromString(val)
+			self:setAutoLoadConfig(name)
+			self:notify("Auto-load: " .. name, "success", 2)
+		else
+			self:setAutoLoadConfig(nil)
+			self:notify("Auto-load off", "info", 2)
 		end
-	end, "Paste a config JSON string and press Enter to apply")
-	importElem._noConfig = true
+	end, "Auto-load this config on script start")
+
+	cfg:separator()
+
+	local cfgNameBox = cfg:textbox("Config Name", "", "Enter name...", function(_) end)
+	cfgNameBox._noConfig = true
+
+	cfg:button("Save Config", function()
+		local name = cfgNameBox.Value
+		if name == "" then self:notify("Enter a name", "warning", 2); return end
+		self:saveConfigStructured(name)
+		cfgRefreshDropdown()
+	end, nil, Enum.TextXAlignment.Center)
+	cfg:button("Export Settings", function()
+		self:exportConfigStructured()
+	end, nil, Enum.TextXAlignment.Center, Color3.fromRGB(100, 180, 255))
+	cfg:button("Import Settings", function()
+		local ok, json = pcall(function() return getclipboard() end)
+		if ok and json and json ~= "" and json:match("^%s*{") then
+			self:importConfigStructured(json)
+		else
+			self:notify("No valid JSON on clipboard", "warning", 2)
+		end
+	end, nil, Enum.TextXAlignment.Center, Color3.fromRGB(100, 255, 180))
+
+	cfg:separator("Share via Code")
+
+	cfg:button("Share Config", function()
+		self:shareConfigCode(self.configShareUrl or "https://cloverhub.fun")
+	end, "Upload config and get a short share code", Enum.TextXAlignment.Center, Color3.fromRGB(255, 200, 80))
+
+	local importCodeBox = cfg:textbox("Import Code", "", "e.g. FP4j7", function(val)
+		if val and val ~= "" and #val >= 3 then
+			self:importConfigCode(self.configShareUrl or "https://cloverhub.fun", val)
+			importCodeBox.SetValue("")
+		end
+	end, "Enter a share code and press Enter to import")
+	importCodeBox._noConfig = true
+end
+
+function UILib:shareConfigCode(baseUrl)
+	local json = _configStructuredToJSON(self)
+	local req = (syn and syn.request) or (http and http.request) or http_request
+	if req then
+		local ok, res = pcall(req, {
+			Url = baseUrl .. "/api/config/share",
+			Method = "POST",
+			Headers = { ["Content-Type"] = "application/json" },
+			Body = HS:JSONEncode({ json = json })
+		})
+		if ok and res and res.Body then
+			local data = HS:JSONDecode(res.Body)
+			if data and data.success and data.code then
+				pcall(setclipboard, data.code)
+				self:notify("Code copied: " .. data.code, "success", 4)
+			else
+				self:notify("Share failed: " .. tostring(data and data.message or "unknown"), "error", 3)
+			end
+			return
+		end
+	end
+	pcall(function()
+		local body = HS:PostAsync(baseUrl .. "/api/config/share", HS:JSONEncode({ json = json }), Enum.HttpContentType.ApplicationJson)
+		local data = HS:JSONDecode(body)
+		if data and data.success and data.code then
+			pcall(setclipboard, data.code)
+			self:notify("Code copied: " .. data.code, "success", 4)
+		else
+			self:notify("Share failed", "error", 3)
+		end
+	end)
+end
+
+function UILib:importConfigCode(baseUrl, code)
+	self:notify("Fetching config...", "info", 2)
+	local req = (syn and syn.request) or (http and http.request) or http_request
+	if req then
+		local ok, res = pcall(req, {
+			Url = baseUrl .. "/api/config/" .. code,
+			Method = "GET"
+		})
+		if ok and res and res.Body then
+			local data = HS:JSONDecode(res.Body)
+			if data and data.success and data.json then
+				self:importConfigStructured(data.json)
+			else
+				self:notify("Config not found: " .. code, "error", 3)
+			end
+			return
+		end
+	end
+	pcall(function()
+		local body = game:HttpGet(baseUrl .. "/api/config/" .. code)
+		local data = HS:JSONDecode(body)
+		if data and data.success and data.json then
+			self:importConfigStructured(data.json)
+		else
+			self:notify("Config not found: " .. code, "error", 3)
+		end
+	end)
 end
 
 function UILib:setTitle(text)
@@ -1982,25 +2206,17 @@ function UILib:setVisible(visible)
 	end
 
 	if visible then
+		self.uiScale.Scale = 0.85
 		self.window.Visible = true
 		if self.watermark then self.watermark.Visible = true end
-		self.uiScale.Scale = 1
-		if self._animOverlay then
-			self._animOverlay.BackgroundTransparency = 0
-			TweenService:Create(self._animOverlay, TweenInfo.new(0.08), { BackgroundTransparency = 1 }):Play()
-		end
+		TweenService:Create(self.uiScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 	else
 		if self.watermark then self.watermark.Visible = false end
-		if self._animOverlay then
-			self._animOverlay.BackgroundTransparency = 1
-			local t = TweenService:Create(self._animOverlay, TweenInfo.new(0.08), { BackgroundTransparency = 0 })
-			t:Play()
-			task.delay(0.08, function()
-				if not self.visibleTarget then self.window.Visible = false end
-			end)
-		else
-			self.window.Visible = false
-		end
+		local tw = TweenService:Create(self.uiScale, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0.85 })
+		tw:Play()
+		tw.Completed:Connect(function()
+			if not self.visibleTarget then self.window.Visible = false end
+		end)
 	end
 end
 
