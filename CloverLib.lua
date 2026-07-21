@@ -4968,8 +4968,9 @@ function UILib.Column:addGroup(title)
 			lbl.TextColor3 = window.theme.White
 			lbl.Font = Enum.Font.GothamSemibold
 			lbl.TextSize = 13
-			lbl.TextXAlignment = Enum.TextXAlignment.Left
-			lbl.ZIndex = 4
+		lbl.TextXAlignment = Enum.TextXAlignment.Left
+		lbl.TextYAlignment = Enum.TextYAlignment.Center
+		lbl.ZIndex = 4
 			lbl.Parent = toggleRow
 			local contentFrame = Instance.new("Frame")
 			contentFrame.Size = UDim2.new(1, 0, 0, 0)
@@ -5559,7 +5560,7 @@ function UILib.Column:addGroup(title)
 							if sBg then
 								local isSel = child:FindFirstChildOfClass("TextLabel") and
 									child:FindFirstChildOfClass("TextLabel").Text == opt
-								sBg.BackgroundTransparency = isSel and 0.5 or 1
+								sBg.BackgroundTransparency = isSel and 0.3 or 1
 								sBg.BackgroundColor3 = window.theme.AccentD
 							end
 						end
@@ -6289,10 +6290,18 @@ function UILib.Column:addGroup(title)
 		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(1, 0, 0, 28)
+		row.BackgroundTransparency = 1
+		row.Parent = r
+		local rowLayout = Instance.new("UIListLayout", row)
+		rowLayout.FillDirection = Enum.FillDirection.Horizontal
+		rowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+		rowLayout.Padding = UDim.new(0, 8)
+		rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(0, 0, 1, 0)
 		lbl.AutomaticSize = Enum.AutomaticSize.X
-		lbl.Position = UDim2.new(0, 4, 0, 0)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
@@ -6301,18 +6310,15 @@ function UILib.Column:addGroup(title)
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.TextYAlignment = Enum.TextYAlignment.Center
 		lbl.ZIndex = 3
-		lbl.Parent = r
+		lbl.LayoutOrder = 1
+		lbl.Parent = row
 		local box = Instance.new("TextBox")
-		box.Size = UDim2.new(0, 0, 1, 0)
-		box.AutomaticSize = Enum.AutomaticSize.X
-		box.Position = UDim2.new(1, -4, 0, 0)
-		box.AnchorPoint = Vector2.new(1, 0)
-		box.SizeConstraint = Enum.SizeConstraint.RelativeYY
+		box.Size = UDim2.new(1, 0, 0, 24)
 		box.BackgroundColor3 = window.theme.Track
-		box.ClipsDescendants = true
 		box.BorderSizePixel = 0
 		box.ZIndex = 3
-		box.Parent = r
+		box.LayoutOrder = 2
+		box.Parent = row
 		box.Text = default or ""
 		box.TextColor3 = window.theme.Accent
 		box.Font = Enum.Font.GothamSemibold
