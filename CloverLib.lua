@@ -74,6 +74,7 @@ local function ensureIcons()
 end
 
 function UILib.lucide(name)
+	if type(name) ~= "string" then return nil end
 	local icons = ensureIcons()
 	if icons and icons.assets then
 		return icons.assets["lucide-" .. name:lower()]
