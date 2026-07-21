@@ -4911,7 +4911,7 @@ function UILib.Column:addGroup(title)
 		return ng
 	end
 
-	function group:toggle(text, default, callback, tooltip, icon, expandable, contentFunc)
+	function group:toggle(text, default, callback, tooltip, icon, expandable, contentFunc, colorCallback, settingsCallback)
 		local id = generateID()
 		local TOGGLE_H = 36
 		local CB_SIZE = 22
@@ -5104,6 +5104,60 @@ function UILib.Column:addGroup(title)
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.ZIndex = 4
 		lbl.Parent = r
+		local rightIcons, rightOffset = {}, 4
+		if colorCallback then
+			local colorBtn = Instance.new("TextButton")
+			colorBtn.Size = UDim2.new(0, 16, 0, 16)
+			colorBtn.Position = UDim2.new(1, -(rightOffset + 16), 0.5, -8)
+			colorBtn.BackgroundColor3 = default or Color3.new(1, 1, 1)
+			colorBtn.BorderSizePixel = 0
+			colorBtn.Text = ""
+			colorBtn.AutoButtonColor = false
+			colorBtn.ZIndex = 5
+			colorBtn.Parent = r
+			Instance.new("UICorner", colorBtn).CornerRadius = UDim.new(1, 0)
+			colorBtn.MouseButton1Click:Connect(function()
+				colorCallback(colorBtn.BackgroundColor3)
+			end)
+			rightOffset = rightOffset + 18
+		end
+		if tooltip then
+			local tipIcon = Instance.new("ImageLabel")
+			local ti = window:lucide("info")
+			tipIcon.Size = UDim2.new(0, 14, 0, 14)
+			tipIcon.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
+			tipIcon.BackgroundTransparency = 1
+			tipIcon.Image = ti or ""
+			tipIcon.ImageColor3 = window.theme.GrayLt
+			tipIcon.ScaleType = Enum.ScaleType.Fit
+			tipIcon.ZIndex = 5
+			tipIcon.Parent = r
+			attachTooltip(r, tooltip, window)
+			rightOffset = rightOffset + 16
+		end
+		if settingsCallback then
+			local gearBtn = Instance.new("ImageLabel")
+			local gi = window:lucide("settings")
+			gearBtn.Size = UDim2.new(0, 14, 0, 14)
+			gearBtn.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
+			gearBtn.BackgroundTransparency = 1
+			gearBtn.Image = gi or ""
+			gearBtn.ImageColor3 = window.theme.GrayLt
+			gearBtn.ScaleType = Enum.ScaleType.Fit
+			gearBtn.ZIndex = 5
+			gearBtn.Parent = r
+			local gb = Instance.new("TextButton")
+			gb.Size = UDim2.new(1, 8, 1, 8)
+			gb.BackgroundTransparency = 1
+			gb.Text = ""
+			gb.ZIndex = 6
+			gb.Parent = gearBtn
+			gb.MouseButton1Click:Connect(function()
+				settingsCallback()
+			end)
+			rightOffset = rightOffset + 16
+		end
+		lbl.Size = UDim2.new(1, -(42 + rightOffset), 1, 0)
 		local state = default
 		local elem = { ID = id, Value = state, DefaultValue = default, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = TOGGLE_H }
 		elem.SetValue = function(val)
@@ -6232,27 +6286,30 @@ function UILib.Column:addGroup(title)
 	function group:textbox(text, default, placeholder, callback, tooltip)
 		local id = generateID()
 		local r = Instance.new("Frame")
-		r.Size = UDim2.new(1, 0, 0, 50)
+		r.Size = UDim2.new(1, 0, 0, 32)
 		r.AutomaticSize = Enum.AutomaticSize.Y
 		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
 		local lbl = Instance.new("TextLabel")
-		lbl.Size = UDim2.new(1, -48, 0, 18)
-		lbl.Position = UDim2.new(0, 4, 0, 3)
+		lbl.Size = UDim2.new(0, 0, 1, 0)
+		lbl.AutomaticSize = Enum.AutomaticSize.X
+		lbl.Position = UDim2.new(0, 4, 0, 0)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
 		lbl.Font = Enum.Font.GothamSemibold
 		lbl.TextSize = 12
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
-		lbl.TextWrapped = true
+		lbl.TextYAlignment = Enum.TextYAlignment.Center
 		lbl.ZIndex = 3
 		lbl.Parent = r
 		local box = Instance.new("TextBox")
-		box.Size = UDim2.new(1, 0, 0, 22)
-		box.AutomaticSize = Enum.AutomaticSize.Y
-		box.Position = UDim2.new(0, 0, 0, 26)
+		box.Size = UDim2.new(0, 0, 1, 0)
+		box.AutomaticSize = Enum.AutomaticSize.X
+		box.Position = UDim2.new(1, -4, 0, 0)
+		box.AnchorPoint = Vector2.new(1, 0)
+		box.SizeConstraint = Enum.SizeConstraint.RelativeYY
 		box.BackgroundColor3 = window.theme.Track
 		box.ClipsDescendants = true
 		box.BorderSizePixel = 0
@@ -6261,11 +6318,12 @@ function UILib.Column:addGroup(title)
 		box.Text = default or ""
 		box.TextColor3 = window.theme.Accent
 		box.Font = Enum.Font.GothamSemibold
-		box.TextSize = 13
+		box.TextSize = 12
 		box.ClearTextOnFocus = false
 		box.TextWrapped = true
 		box.PlaceholderText = placeholder or ""
 		box.PlaceholderColor3 = window.theme.Gray
+		box.TextXAlignment = Enum.TextXAlignment.Left
 		Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
 		local tbStroke = Instance.new("UIStroke", box)
 		tbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
