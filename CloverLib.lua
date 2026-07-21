@@ -10,9 +10,12 @@ UILib.SubTab.__index = UILib.SubTab
 UILib.Column = {}
 UILib.Column.__index = UILib.Column
 
+local _raw_cloneref = cloneref
 local function cloneref(ref)
-	local success, result = pcall(function() return cloneref(ref) end)
-	if success then return result end
+	if _raw_cloneref then
+		local ok, result = pcall(_raw_cloneref, ref)
+		if ok then return result end
+	end
 	return ref
 end
 local UIS = cloneref(game:GetService("UserInputService"))
@@ -74,7 +77,8 @@ local function ensureIcons()
 	return nil
 end
 
-function UILib.lucide(name)
+function UILib.lucide(nameOrSelf, maybeName)
+	local name = maybeName or nameOrSelf
 	if type(name) ~= "string" then return nil end
 	local icons = ensureIcons()
 	if icons and icons.assets then
@@ -238,7 +242,7 @@ function UILib:notify(message, notifType, duration)
 
 	local accentBar = Instance.new("Frame")
 	accentBar.Size = UDim2.new(0, 5, 1, 0)
-	accentBar.BackgroundColor3 = self.theme.Accent
+	accentBar.BackgroundColor3 = accentColor
 	accentBar.BorderSizePixel = 0
 	accentBar.ZIndex = 502
 	accentBar.Parent = notif
@@ -260,7 +264,7 @@ function UILib:notify(message, notifType, duration)
 	local progressBar = Instance.new("Frame")
 	progressBar.Size = UDim2.new(1, 0, 0, 2)
 	progressBar.Position = UDim2.new(0, 0, 1, -2)
-	progressBar.BackgroundColor3 = self.theme.Accent
+	progressBar.BackgroundColor3 = accentColor
 	progressBar.BackgroundTransparency = 0.65
 	progressBar.BorderSizePixel = 0
 	progressBar.ZIndex = 503
@@ -356,7 +360,8 @@ function UILib:loadConfig(name)
 		if self.configs and self.configs[id] and not self.configs[id]._noConfig then
 			if type(value) == "table" and value.__type == "Color3" then
 				local colorVal = Color3.new(value.r or 1, value.g or 0, value.b or 0)
-				pcall(self.configs[id].SetValue, colorVal, true)
+				local elem = self.configs[id]
+				pcall(function() elem:SetColor(colorVal) end)
 			else
 				local elem = self.configs[id]
 				if elem.SetValue then
@@ -474,9 +479,9 @@ function UILib:importConfigFromString(json)
 					if elem.frame then
 						local cbOuter = elem.frame:FindFirstChildOfClass("TextButton")
 						if cbOuter then
-							cbOuter.BackgroundColor3 = raw and window.theme.Accent or window.theme.BG
+							cbOuter.BackgroundColor3 = raw and self.theme.Accent or self.theme.BG
 							local st = cbOuter:FindFirstChildOfClass("UIStroke")
-							if st then st.Color = raw and window.theme.AccentD or window.theme.Border end
+							if st then st.Color = raw and self.theme.AccentD or self.theme.Border end
 							local mk = cbOuter:FindFirstChildOfClass("TextLabel")
 							if mk then mk.Text = raw and "X" or "" end
 						end
@@ -704,32 +709,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	self._dirty = false
 	self._autosaveConn = nil
 
-		local animConn
-	animConn = RunService.RenderStepped:Connect(function()
-		if not self.sg or not self.sg.Parent then
-			if animConn then animConn:Disconnect() end
-			return
-		end
-		local h = (tick() * 0.2) % 1
-		local p = (math.sin(tick() * 2) + 1) / 2
-		for elem, data in pairs(self.rainbowElements) do
-			local s = data.s or 1
-			local v = data.v or 1
-			local newCol = Color3.fromHSV(h, s, v)
-			elem.Value = newCol
-			if data.callback then data.callback(newCol) end
-			if data.colorBox then data.colorBox.BackgroundColor3 = newCol end
-		end
-		for elem, data in pairs(self.pulseElements) do
-			local h_, s, _ = Color3.toHSV(elem.Value)
-			local targetS = data.s or s
-			local newCol = Color3.fromHSV(h_, targetS, p)
-			elem.Value = newCol
-			if data.callback then data.callback(newCol) end
-			if data.colorBox then data.colorBox.BackgroundColor3 = newCol end
-		end
-	end)
-	table.insert(self.connections, animConn)
 	self.allSubTabs = {}
 	self.activePopups = {}
 
@@ -846,10 +825,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		return math.max(MIN_SIDEBAR_WIDTH, math.min(MAX_SIDEBAR_WIDTH, self.sidebarWidth))
 	end
 	self.getSidebarWidth = getSidebarWidth
-
-	local function getKeybindWidth()
-		return math.max(MIN_KEYBIND_WIDTH, math.min(MAX_KEYBIND_WIDTH, math.floor(self.size.X * 0.13)))
-	end
 
 	local function updateLayout()
 		local sw = getSidebarWidth()
@@ -1299,7 +1274,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		draggingSidebar = true
 	end)
 	local sDragConn = UIS.InputChanged:Connect(function(i)
-		if not draggingSidebar or i.UserInputType ~= Enum.UserInputType.MouseMovement then return end
+		if not draggingSidebar or (i.UserInputType ~= Enum.UserInputType.MouseMovement and i.UserInputType ~= Enum.UserInputType.Touch) then return end
 		local winAbsPos = win.AbsolutePosition
 		local newW = math.clamp(i.Position.X - winAbsPos.X, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH)
 		self.sidebarWidth = newW
@@ -1307,7 +1282,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		sidebarDrag.Position = UDim2.new(0, newW - 3, 0, 46)
 	end)
 	local sDragEnd = UIS.InputEnded:Connect(function(i)
-		if i.UserInputType == Enum.UserInputType.MouseButton1 then draggingSidebar = false end
+		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then draggingSidebar = false end
 	end)
 	table.insert(self.connections, sDragConn)
 	table.insert(self.connections, sDragEnd)
@@ -1402,7 +1377,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	do
 		local drag, dragStart, dragPos = false, nil, nil
 		header.InputBegan:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 then
+			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
 				drag = true
 				dragStart = i.Position
 				dragPos = win.Position
@@ -1410,7 +1385,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		end)
 			table.insert(self.connections,
 			UIS.InputChanged:Connect(function(i)
-				if drag and i.UserInputType == Enum.UserInputType.MouseMovement then
+				if drag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
 					local delta = i.Position - dragStart
 					win.Position = UDim2.new(dragPos.X.Scale, dragPos.X.Offset + delta.X, dragPos.Y.Scale,
 						dragPos.Y.Offset + delta.Y)
@@ -1419,7 +1394,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 				end
 			end))
 		table.insert(self.connections,
-			UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end end))
+			UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = false end end))
 	end
 
 		table.insert(self.connections,
@@ -1434,17 +1409,17 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		UIS.InputBegan:Connect(function(input, gpe)
 			if gpe then return end
 			if input.KeyCode == Enum.KeyCode.Escape then
-				for _, popup in ipairs(self.activePopups or {}) do
-					pcall(function() popup:Destroy() end)
-				end
-				self.activePopups = {}
-				if self.sidebarOverlay and self.sidebarOverlay.Visible then
+				local popups = self.activePopups or {}
+				if #popups > 0 then
+					local top = popups[#popups]
+					pcall(function() top:Destroy() end)
+					table.remove(popups, #popups)
+				elseif self.sidebarOverlay and self.sidebarOverlay.Visible then
 					self.sidebarOverlay.Visible = false
 					self.sidebar.Visible = false
 					self.sidebarEdge.Visible = false
 					self.mobileSidebarOpen = false
-				end
-				if self.headerSearchFrame and self.headerSearchFrame.Visible then
+				elseif self.headerSearchFrame and self.headerSearchFrame.Visible then
 					self.headerSearchFrame.Visible = false
 					self.headerSearchBox.Text = ""
 				end
@@ -1750,6 +1725,7 @@ function UILib:addWatermark(name)
 
 	local frameCount = 0
 	local lastTime = tick()
+	local lastPingUpdate = 0
 		local connection
 	connection = RunService.RenderStepped:Connect(function()
 		if not wm or not wm.Parent then
@@ -1763,10 +1739,13 @@ function UILib:addWatermark(name)
 			frameCount = 0
 			lastTime = now
 		end
-		local ping = LP:GetNetworkPing() * 1000
-		pingLabel.Text = " |  " .. math.floor(ping + 0.5) .. "ms "
-		local up = math.floor(workspace.DistributedGameTime)
-		uptimeLabel.Text = string.format(" |  %02d:%02d:%02d ", math.floor(up/3600), math.floor((up%3600)/60), up%60)
+		if now - lastPingUpdate >= 0.5 then
+			lastPingUpdate = now
+			local ping = LP:GetNetworkPing() * 1000
+			pingLabel.Text = " |  " .. math.floor(ping + 0.5) .. "ms "
+			local up = math.floor(workspace.DistributedGameTime)
+			uptimeLabel.Text = string.format(" |  %02d:%02d:%02d ", math.floor(up/3600), math.floor((up%3600)/60), up%60)
+		end
 	end)
 	self.wmConn = connection
 	self.watermark = wm
@@ -1824,7 +1803,11 @@ function UILib:buildUITab()
 		end
 	end, "Display FPS and ping")
 
-	grp:button("Unload", function() self:Destroy() end, "Cleanly remove the UI",
+	grp:button("Unload", function()
+		self:confirm("Are you sure you want to unload?", function(ok)
+			if ok then self:Destroy() end
+		end)
+	end, "Cleanly remove the UI",
 		Enum.TextXAlignment.Center, Color3.fromRGB(255, 80, 80))
 
 	-- Theme section on left column
@@ -1972,7 +1955,6 @@ function UILib:buildUITab()
 		local list = getConfigListStructured()
 		cfgDropdown._values = list
 		pcall(function() cfgDropdown:SetValues(list) end)
-		pcall(function() cfgDropdown:SetValues(list) end)
 	end
 
 	cfg:button("Load Config", function()
@@ -1988,7 +1970,8 @@ function UILib:buildUITab()
 		cfgRefreshDropdown()
 	end, nil, Enum.TextXAlignment.Center, Color3.fromRGB(255, 80, 80))
 
-	cfg:toggle("Set as Auto Load", false, function(v)
+	local hasAutoLoad = self:getAutoLoadConfig() ~= nil
+	cfg:toggle("Set as Auto Load", hasAutoLoad, function(v)
 		if v then
 			local name = cfgDropdown.Value
 			if name == "(no configs)" or name == "" then
@@ -2109,8 +2092,13 @@ function UILib:Destroy()
 		for _, c in ipairs(self.wmDragConns) do pcall(function() c:Disconnect() end) end
 		self.wmDragConns = nil
 	end
+	for frame, cons in pairs(_pickerCons) do
+		if not frame.Parent then
+			for _, c in ipairs(cons) do pcall(c.Disconnect, c) end
+			_pickerCons[frame] = nil
+		end
+	end
 	if self.sg then self.sg:Destroy() end
-    if self.mobileToggleButton then self.mobileToggleButton:Destroy() end
 	for i, w in ipairs(allWindows) do
 		if w == self then
 			table.remove(allWindows, i); break
@@ -3511,7 +3499,7 @@ function UILib.SubTab:addButton(text, callback, tooltip, color)
 	lbl.Parent = btn
 	btn.MouseButton1Click:Connect(callback)
 	if tooltip then attachTooltip(btn, tooltip, window) end
-	pcall(function() btn.remove = function() btn:Destroy(); updateSize() end end)
+	btn.remove = function() btn:Destroy() end
 	return btn
 end
 
@@ -3615,13 +3603,13 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	if numSteps > 1 and numSteps <= 50 then
 		for i = 0, numSteps do
 			local pct = i / numSteps
-			local tick = Instance.new("Frame")
-			tick.Size = UDim2.new(0, 1, 0, 6)
-			tick.Position = UDim2.new(pct, 0, 0.5, -3)
-			tick.BackgroundColor3 = window.theme.Border
-			tick.BorderSizePixel = 0
-			tick.ZIndex = 5
-			tick.Parent = track
+			local tickMark = Instance.new("Frame")
+				tickMark.Size = UDim2.new(0, 1, 0, 6)
+				tickMark.Position = UDim2.new(pct, 0, 0.5, -3)
+				tickMark.BackgroundColor3 = window.theme.Border
+				tickMark.BorderSizePixel = 0
+				tickMark.ZIndex = 5
+				tickMark.Parent = track
 		end
 	end
 
@@ -3690,11 +3678,11 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		apply(UIS:GetMouseLocation().X)
 	end)
 	local sliderInputConn = UIS.InputChanged:Connect(function(i)
-		if sliding and i.UserInputType == Enum.UserInputType.MouseMovement then
+		if sliding and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
 			apply(i.Position.X)
 		end
 	end)
-	local sliderEndConn = UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then sliding = false end end)
+	local sliderEndConn = UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then sliding = false end end)
 	table.insert(window.connections, sliderInputConn)
 	table.insert(window.connections, sliderEndConn)
 	valueLabel.InputBegan:Connect(function(input)
@@ -4105,14 +4093,14 @@ local function createColorPicker(group, items, window, text, default, callback)
 		end)
 
 		local inputChangedConn = UIS.InputChanged:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseMovement then
+			if i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch then
 				if alphaDragging then applyAlpha(i.Position.X) end
 				if hueDragging then updateHue(i.Position) end
 				if svDragging then updateSV(i.Position) end
 			end
 		end)
 		local inputEndedConn = UIS.InputEnded:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 then
+			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
 				alphaDragging, hueDragging, svDragging = false, false, false
 			end
 		end)
@@ -4652,9 +4640,7 @@ function UILib.Column:addGroup(title)
 
 	function group:setIcon(assetId)
 		if assetId then
-			local id = UILib.resolveIcon(assetId, function(url)
-				if iconImg and iconImg.Parent then iconImg.Image = url end
-			end)
+			local id = UILib.resolveIcon(assetId)
 			if not id then id = tostring(assetId) end
 			iconImg.Image = id
 			iconImg.Visible = true
@@ -5212,32 +5198,6 @@ function UILib.Column:addGroup(title)
 
 		local function getListMaxH() return math.min(listH, 220) end
 
-		local function applyFilter(query)
-			query = query:lower()
-			local filteredCount = 0
-			for _, child in ipairs(dlist:GetChildren()) do
-				if child:IsA("TextButton") then
-					local lbl2 = child:FindFirstChildOfClass("TextLabel")
-					if lbl2 then
-						local match = query == "" or lbl2.Text:lower():find(query, 1, true)
-						child.Visible = match ~= nil and match ~= false
-						if child.Visible then filteredCount = filteredCount + 1 end
-					end
-				end
-			end
-			if noResultsLbl then noResultsLbl.Visible = query ~= "" and filteredCount == 0 end
-			local visH = math.max(filteredCount * 28 + 4, query ~= "" and filteredCount == 0 and 28 or 4)
-			dlist.CanvasSize = UDim2.new(0, 0, 0, visH)
-			local clampedListH = math.min(visH, 220)
-			local totalPanelH = clampedListH
-			if open then
-				dlist.Size = UDim2.new(1, 0, 0, clampedListH)
-				expandPanel.Size = UDim2.new(1, 0, 0, totalPanelH)
-				r.Size = UDim2.new(1, 0, 0, 56 + totalPanelH)
-				updateSize()
-			end
-		end
-
 		local function closeDropdown()
 			open = false
 			window.tooltipSuppressed = false
@@ -5630,7 +5590,7 @@ function UILib.Column:addGroup(title)
 			end
 			f.ClipsDescendants = true
 			if v then f.Visible = true end
-			local target = v and f.AbsoluteContentSize.Y or 0
+			local target = v and (lbl.TextBounds.Y + 6) or 0
 			local tw = TweenService:Create(f, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 				Size = UDim2.new(1, 0, 0, target)
 			})
@@ -6246,7 +6206,7 @@ function UILib.Column:addGroup(title)
 				box.Text = tostring(current)
 			end
 		end
-		box.FocusLost:Connect(function(enter) if enter then validate() end end)
+		box.FocusLost:Connect(function() validate() end)
 		local elem = {
 			ID = id,
 			Value = current,
@@ -6334,13 +6294,13 @@ function UILib.Column:addGroup(title)
 		if numSteps > 1 and numSteps <= 50 then
 			for i = 0, numSteps do
 				local pct = i / numSteps
-				local tick = Instance.new("Frame")
-				tick.Size = UDim2.new(0, 1, 0, 6)
-				tick.Position = UDim2.new(pct, 0, 0.5, -3)
-				tick.BackgroundColor3 = window.theme.Border
-				tick.BorderSizePixel = 0
-				tick.ZIndex = 5
-				tick.Parent = track
+				local tickMark = Instance.new("Frame")
+				tickMark.Size = UDim2.new(0, 1, 0, 6)
+				tickMark.Position = UDim2.new(pct, 0, 0.5, -3)
+				tickMark.BackgroundColor3 = window.theme.Border
+				tickMark.BorderSizePixel = 0
+				tickMark.ZIndex = 5
+				tickMark.Parent = track
 			end
 		end
 
@@ -6426,11 +6386,11 @@ function UILib.Column:addGroup(title)
 			dragType = "right"
 		end)
 		local rsInputConn = UIS.InputChanged:Connect(function(i)
-			if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
+			if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
 				apply(i.Position.X, dragType)
 			end
 		end)
-		local rsEndConn = UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
+		local rsEndConn = UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging = false end end)
 		table.insert(window.connections, rsInputConn)
 		table.insert(window.connections, rsEndConn)
 		local elem = {
@@ -6503,7 +6463,7 @@ function UILib.Column:addGroup(title)
 			draggingSplit = true
 		end)
 		local splitInputConn = UIS.InputChanged:Connect(function(i)
-			if not draggingSplit or i.UserInputType ~= Enum.UserInputType.MouseMovement then return end
+			if not draggingSplit or (i.UserInputType ~= Enum.UserInputType.MouseMovement and i.UserInputType ~= Enum.UserInputType.Touch) then return end
 			local w = splitRow.AbsoluteSize.X
 			if w == 0 then return end
 			splitRatio = math.clamp((i.Position.X - splitRow.AbsolutePosition.X) / w, 0.15, 0.85)
@@ -6511,7 +6471,7 @@ function UILib.Column:addGroup(title)
 			updateSplitSize()
 		end)
 		local splitEndConn = UIS.InputEnded:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 then draggingSplit = false end
+			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then draggingSplit = false end
 		end)
 		table.insert(window.connections, splitInputConn)
 		table.insert(window.connections, splitEndConn)
