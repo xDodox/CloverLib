@@ -2620,7 +2620,7 @@ function UILib:confirm(message, onYes, onNo)
 		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 		local btnBdr = Instance.new("UIStroke", btn)
 		btnBdr.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		btnBdr.Color = self.theme.Accent
+		btnBdr.Color = self.theme.Border
 		btnBdr.Thickness = 1
 		btn.MouseButton1Click:Connect(function()
 			overlay:Destroy()
@@ -3571,6 +3571,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.TextWrapped = true
 	label.ZIndex = 3
+	label.LayoutOrder = 1
 	label.Parent = topRow
 
 	local valueBox = Instance.new("Frame")
@@ -3579,6 +3580,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	valueBox.BackgroundColor3 = window.theme.Track
 	valueBox.BorderSizePixel = 0
 	valueBox.ZIndex = 3
+	valueBox.LayoutOrder = 2
 	valueBox.Parent = topRow
 	Instance.new("UICorner", valueBox).CornerRadius = UDim.new(0, 4)
 	local valuePad = Instance.new("UIPadding", valueBox)
@@ -4523,7 +4525,7 @@ function UILib.Column:addGroup(title)
 
 		local sizeUpdateScheduled = false
 	local function updateSize()
-		if groupCollapsed then
+		if group._collapsed then
 			grp.Size = UDim2.new(1, 0, 0, 36)
 			items.Size = UDim2.new(1, 0, 0, 0)
 			return
@@ -4553,12 +4555,12 @@ function UILib.Column:addGroup(title)
 	collapseBtn.TextSize = 13
 	collapseBtn.ZIndex = 5
 	collapseBtn.Parent = row
-	local groupCollapsed = false
+	group._collapsed = false
 	collapseBtn.MouseButton1Click:Connect(function()
-		groupCollapsed = not groupCollapsed
-		collapseBtn.Text = groupCollapsed and "▶" or "▼"
+		group._collapsed = not group._collapsed
+		collapseBtn.Text = group._collapsed and "▶" or "▼"
 		grp.ClipsDescendants = true
-		if groupCollapsed then
+		if group._collapsed then
 			updateSize()
 			local tw = TweenService:Create(grp, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 				Size = UDim2.new(1, 0, 0, 36)
@@ -4583,11 +4585,11 @@ function UILib.Column:addGroup(title)
 	function group:SetVisible(v, anim)
 		if not anim then
 			grp.Visible = v
-			if v and not groupCollapsed then items.Visible = true end
+			if v and not group._collapsed then items.Visible = true end
 			return
 		end
 		grp.ClipsDescendants = true
-		if v then grp.Visible = true; if not groupCollapsed then items.Visible = true end end
+		if v then grp.Visible = true; if not group._collapsed then items.Visible = true end end
 		local target = v and (itemLayout.AbsoluteContentSize.Y + 46) or 0
 		local tw = TweenService:Create(grp, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 			Size = UDim2.new(1, 0, 0, target)
