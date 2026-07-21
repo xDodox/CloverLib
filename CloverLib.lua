@@ -502,7 +502,7 @@ end
 -- ════════════════════════════════════════
 function UILib:getElementLabel(elem)
 	if elem.frame then
-		for _, child in ipairs(elem.frame:GetChildren()) do
+		for _, child in ipairs(elem.frame:GetDescendants()) do
 			if child:IsA("TextLabel") and child.Visible and child.Text ~= "" then
 				return child.Text
 			end
@@ -3825,7 +3825,6 @@ local function createColorPicker(group, items, window, text, default, callback)
 	local function closePicker()
 		if pickerFrame then
 			local p = pickerFrame
-			pickerFrame = nil
 			local cons = _pickerCons[p]
 			if cons then
 				for _, c in ipairs(cons) do
@@ -4566,19 +4565,20 @@ function UILib.Column:addGroup(title)
 	collapseBtn.Parent = row
 	local function doCollapse()
 		grp.ClipsDescendants = true
-		updateSize()
 		local tw = TweenService:Create(grp, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			Size = UDim2.new(1, 0, 0, 36)
 		})
+		tw.Completed:Connect(function() updateSize() end)
 		tw:Play()
 	end
 
 	local function doExpand()
 		grp.ClipsDescendants = true
 		items.Visible = true
-		grp.Size = UDim2.new(1, 0, 0, 36)
+		items.Size = UDim2.new(1, 0, 0, 0)
 		task.wait()
 		local ih = itemLayout.AbsoluteContentSize.Y
+		if ih == 0 then ih = 36 end
 		items.Size = UDim2.new(1, 0, 0, ih + 8)
 		grp.Size = UDim2.new(1, 0, 0, 36)
 		TweenService:Create(grp, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
