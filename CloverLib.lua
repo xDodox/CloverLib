@@ -5760,7 +5760,8 @@ function UILib.Column:addGroup(title)
 			updateSize()
 		end
 		pcall(function() f.remove = function() f:Destroy(); updateSize() end end)
-		function f:SetVisible(v, anim)
+		local ref = { frame = f }
+		function ref:SetVisible(v, anim)
 			local h = text and 18 or 10
 			if not anim then
 				f.Visible = v
@@ -5776,7 +5777,8 @@ function UILib.Column:addGroup(title)
 			tw.Completed:Connect(function() if not v then f.Visible = false end; if group and group.updateSize then group.updateSize() end end)
 			tw:Play()
 		end
-		return f
+		ref.remove = function() f:Destroy(); updateSize() end
+		return ref
 	end
 
 	function group:button(text, callback, tooltip, align, color, style, bgColor, icon)
