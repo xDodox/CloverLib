@@ -1945,21 +1945,16 @@ function UILib:buildUITab()
 	end
 
 	local _themeApplying = false
+	local _themePickerBoxes = {}
 	local function syncColorPickers()
 		if _themeApplying then return end
 		_themeApplying = true
-		local function updatePicker(p, c)
-			if not p or not c or typeof(c) ~= "Color3" then return end
-			p.Value = c
-			if p.colorBox and p.colorBox.Parent then
-				p.colorBox.BackgroundColor3 = c
+		for _, entry in ipairs(_themePickerBoxes) do
+			local box, c = entry.box, entry.getColor()
+			if box and box.Parent and typeof(c) == "Color3" then
+				box.BackgroundColor3 = c
 			end
 		end
-		updatePicker(accentPicker, self.theme.Accent)
-		updatePicker(themeBGPicker, self.theme.BG)
-		updatePicker(themePanelPicker, self.theme.Panel)
-		updatePicker(themeItemPicker, self.theme.ItemHov)
-		updatePicker(themeBorderPicker, self.theme.Border)
 		_themeApplying = false
 	end
 
@@ -1992,6 +1987,12 @@ function UILib:buildUITab()
 		self.theme.Border = c
 		themeColorChanged()
 	end)
+
+	table.insert(_themePickerBoxes, { box = accentPicker.colorBox, getColor = function() return self.theme.Accent end })
+	table.insert(_themePickerBoxes, { box = themeBGPicker.colorBox, getColor = function() return self.theme.BG end })
+	table.insert(_themePickerBoxes, { box = themePanelPicker.colorBox, getColor = function() return self.theme.Panel end })
+	table.insert(_themePickerBoxes, { box = themeItemPicker.colorBox, getColor = function() return self.theme.ItemHov end })
+	table.insert(_themePickerBoxes, { box = themeBorderPicker.colorBox, getColor = function() return self.theme.Border end })
 
 	local cfg = uiR:addGroup("Save Manager")
 	cfg:separator("Load")
@@ -3857,7 +3858,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		if pickerFrame then
 			local p = pickerFrame
 			pickerFrame = nil
-			local cons = p:GetAttribute("PickerCons")
+			local cons = p._PickerCons
 			if cons then
 				for _, c in ipairs(cons) do
 					pcall(c.Disconnect, c)
@@ -4184,7 +4185,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 				end
 			end
 		end)
-		if pickerFrame then pickerFrame:SetAttribute("PickerCons", { inputChangedConn, inputEndedConn, inputBeganConn }) end
+		if pickerFrame then pickerFrame._PickerCons = { inputChangedConn, inputEndedConn, inputBeganConn } end
 	end
 	colorBox.MouseButton1Click:Connect(openPicker)
 	return row, elem
@@ -4271,7 +4272,6 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	arrow.ScaleType = Enum.ScaleType.Fit
 	arrow.ZIndex = 12
 	arrow.Parent = dbtn
-	table.insert(window.accentObjects, arrow)
 	table.insert(window.accentObjects, arrow)
 	local listH = #options * 28 + 8
 	local dlist = Instance.new("ScrollingFrame")
@@ -4808,7 +4808,7 @@ function UILib.Column:addGroup(title)
 		local CB_SIZE = 22
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0, CB_SIZE, 0, CB_SIZE)
-		cbOuter.Position = UDim2.new(0, -1, 0.5, -CB_SIZE/2)
+		cbOuter.Position = UDim2.new(0, 0, 0.5, -CB_SIZE/2)
 		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.BG
 		cbOuter.BorderSizePixel = 0
 		cbOuter.AutoButtonColor = false
@@ -5360,7 +5360,7 @@ function UILib.Column:addGroup(title)
 				bg.Name = "SelectionBG"
 				bg.Size = UDim2.new(1, 0, 1, 0)
 			bg.BackgroundColor3 = window.theme.ItemHov
-			bg.BackgroundTransparency = isSelected and 0.15 or 1
+			bg.BackgroundTransparency = isSelected and 0.5 or 1
 				bg.BorderSizePixel = 0
 				bg.ZIndex = 50
 				bg.Parent = ob
@@ -5414,7 +5414,7 @@ function UILib.Column:addGroup(title)
 							if sBg then
 								local isSel = child:FindFirstChildOfClass("TextLabel") and
 									child:FindFirstChildOfClass("TextLabel").Text == opt
-								sBg.BackgroundTransparency = isSel and 0.15 or 1
+								sBg.BackgroundTransparency = isSel and 0.5 or 1
 								sBg.BackgroundColor3 = window.theme.ItemHov
 							end
 						end
