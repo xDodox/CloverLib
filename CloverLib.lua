@@ -1972,6 +1972,14 @@ function UILib:buildUITab()
 					if sub.groups then
 						for _, gr in ipairs(sub.groups) do
 							if gr.frame then gr.frame.BackgroundColor3 = self.theme.Item end
+							if gr.headerRow then
+								gr.headerRow.BackgroundColor3 = Color3.new(
+									math.min(1, self.theme.ItemHov.r * 1.15),
+									math.min(1, self.theme.ItemHov.g * 1.15),
+									math.min(1, self.theme.ItemHov.b * 1.15)
+								)
+							end
+							if gr.headerSep then gr.headerSep.BackgroundColor3 = self.theme.Accent end
 						end
 					end
 				end
@@ -2062,11 +2070,11 @@ function UILib:buildUITab()
 	local function syncColorPickers()
 		if _themeApplying then return end
 		_themeApplying = true
-		pcall(function() if accentPicker then accentPicker:SetValue(self.theme.Accent) end end)
-		pcall(function() if themeBGPicker then themeBGPicker:SetValue(self.theme.BG) end end)
-		pcall(function() if themePanelPicker then themePanelPicker:SetValue(self.theme.Panel) end end)
-		pcall(function() if themeItemPicker then themeItemPicker:SetValue(self.theme.ItemHov) end end)
-		pcall(function() if themeBorderPicker then themeBorderPicker:SetValue(self.theme.Border) end end)
+		if accentPicker and typeof(self.theme.Accent) == "Color3" then pcall(function() accentPicker:SetValue(self.theme.Accent) end) end
+		if themeBGPicker and typeof(self.theme.BG) == "Color3" then pcall(function() themeBGPicker:SetValue(self.theme.BG) end) end
+		if themePanelPicker and typeof(self.theme.Panel) == "Color3" then pcall(function() themePanelPicker:SetValue(self.theme.Panel) end) end
+		if themeItemPicker and typeof(self.theme.ItemHov) == "Color3" then pcall(function() themeItemPicker:SetValue(self.theme.ItemHov) end) end
+		if themeBorderPicker and typeof(self.theme.Border) == "Color3" then pcall(function() themeBorderPicker:SetValue(self.theme.Border) end) end
 		_themeApplying = false
 	end
 
@@ -4765,6 +4773,8 @@ function UILib.Column:addGroup(title)
 	end)
 
 	group.frame = grp
+	group.headerRow = row
+	group.headerSep = headerSep
 	group.items = items
 	group.itemLayout = itemLayout
 	group.updateSize = deferredUpdateSize
@@ -4961,8 +4971,8 @@ function UILib.Column:addGroup(title)
 			cbMark.ZIndex = 5
 			cbMark.Parent = cbOuter
 			local lbl = Instance.new("TextLabel")
-			lbl.Size = UDim2.new(1, -42, 1, 0)
-			lbl.Position = UDim2.new(0, 34, 0, 0)
+			lbl.Size = UDim2.new(1, -46, 1, 0)
+			lbl.Position = UDim2.new(0, 38, 0, 0)
 			lbl.BackgroundTransparency = 1
 			lbl.Text = text
 			lbl.TextColor3 = window.theme.White
@@ -5093,8 +5103,8 @@ function UILib.Column:addGroup(title)
 		cbMark.ZIndex = 5
 		cbMark.Parent = cbOuter
 		local lbl = Instance.new("TextLabel")
-		lbl.Size = UDim2.new(1, -42, 1, 0)
-		lbl.Position = UDim2.new(0, 34, 0, 0)
+		lbl.Size = UDim2.new(1, -46, 1, 0)
+		lbl.Position = UDim2.new(0, 38, 0, 0)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
@@ -5156,7 +5166,7 @@ function UILib.Column:addGroup(title)
 			end)
 			rightOffset = rightOffset + 16
 		end
-		lbl.Size = UDim2.new(1, -(42 + rightOffset), 1, 0)
+		lbl.Size = UDim2.new(1, -(46 + rightOffset), 1, 0)
 		local state = default
 		local elem = { ID = id, Value = state, DefaultValue = default, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = TOGGLE_H }
 		elem.SetValue = function(val)
@@ -5506,7 +5516,7 @@ function UILib.Column:addGroup(title)
 				bg.Name = "SelectionBG"
 				bg.Size = UDim2.new(1, 0, 1, 0)
 			bg.BackgroundColor3 = window.theme.AccentD
-			bg.BackgroundTransparency = isSelected and 0.3 or 1
+			bg.BackgroundTransparency = isSelected and 0.6 or 1
 				bg.BorderSizePixel = 0
 				bg.ZIndex = 50
 				bg.Parent = ob
@@ -5560,7 +5570,7 @@ function UILib.Column:addGroup(title)
 							if sBg then
 								local isSel = child:FindFirstChildOfClass("TextLabel") and
 									child:FindFirstChildOfClass("TextLabel").Text == opt
-								sBg.BackgroundTransparency = isSel and 0.3 or 1
+								sBg.BackgroundTransparency = isSel and 0.6 or 1
 								sBg.BackgroundColor3 = window.theme.AccentD
 							end
 						end
@@ -6291,7 +6301,7 @@ function UILib.Column:addGroup(title)
 		r.Parent = items
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -4, 0, 16)
-		lbl.Position = UDim2.new(0, 4, 0, 2)
+		lbl.Position = UDim2.new(0, 4, 0, 3)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
@@ -6302,8 +6312,8 @@ function UILib.Column:addGroup(title)
 		lbl.ZIndex = 3
 		lbl.Parent = r
 		local box = Instance.new("TextBox")
-		box.Size = UDim2.new(1, 0, 0, 24)
-		box.Position = UDim2.new(0, 0, 0, 22)
+		box.Size = UDim2.new(1, 0, 0, 22)
+		box.Position = UDim2.new(0, 0, 0, 24)
 		box.BackgroundColor3 = window.theme.Track
 		box.BorderSizePixel = 0
 		box.ZIndex = 3
@@ -6311,12 +6321,11 @@ function UILib.Column:addGroup(title)
 		box.Text = default or ""
 		box.TextColor3 = window.theme.Accent
 		box.Font = Enum.Font.GothamSemibold
-		box.TextSize = 12
+		box.TextSize = 13
 		box.ClearTextOnFocus = false
 		box.TextWrapped = true
 		box.PlaceholderText = placeholder or ""
 		box.PlaceholderColor3 = window.theme.Gray
-		box.TextXAlignment = Enum.TextXAlignment.Left
 		Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
 		local tbStroke = Instance.new("UIStroke", box)
 		tbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
