@@ -111,7 +111,7 @@ local DEFAULT_THEME = {
 
 	White   = Color3.new(1, 1, 1),
 	Gray    = Color3.fromRGB(110, 110, 110),
-	GrayLt  = Color3.fromRGB(165, 165, 165),
+	GrayLt  = Color3.fromRGB(200, 200, 200),
 }
 
 local NOTIF_COLORS = {
@@ -1857,6 +1857,7 @@ function UILib:buildUITab()
 								)
 							end
 							if gr.headerSep then gr.headerSep.BackgroundColor3 = self.theme.Accent end
+						if gr.headerLabel then gr.headerLabel.TextColor3 = self.theme.White end
 						end
 					end
 				end
@@ -1947,11 +1948,22 @@ function UILib:buildUITab()
 	local function syncColorPickers()
 		if _themeApplying then return end
 		_themeApplying = true
-		if accentPicker and typeof(self.theme.Accent) == "Color3" then pcall(function() accentPicker:SetColor(self.theme.Accent) end) end
-		if themeBGPicker and typeof(self.theme.BG) == "Color3" then pcall(function() themeBGPicker:SetColor(self.theme.BG) end) end
-		if themePanelPicker and typeof(self.theme.Panel) == "Color3" then pcall(function() themePanelPicker:SetColor(self.theme.Panel) end) end
-		if themeItemPicker and typeof(self.theme.ItemHov) == "Color3" then pcall(function() themeItemPicker:SetColor(self.theme.ItemHov) end) end
-		if themeBorderPicker and typeof(self.theme.Border) == "Color3" then pcall(function() themeBorderPicker:SetColor(self.theme.Border) end) end
+		local pairs_to_update = {
+			{ picker = accentPicker, color = self.theme.Accent },
+			{ picker = themeBGPicker, color = self.theme.BG },
+			{ picker = themePanelPicker, color = self.theme.Panel },
+			{ picker = themeItemPicker, color = self.theme.ItemHov },
+			{ picker = themeBorderPicker, color = self.theme.Border },
+		}
+		for _, entry in ipairs(pairs_to_update) do
+			local p, c = entry.picker, entry.color
+			if p and typeof(c) == "Color3" then
+				pcall(function()
+					p.Value = c
+					if p.colorBox then p.colorBox.BackgroundColor3 = c end
+				end)
+			end
+		end
 		_themeApplying = false
 	end
 
@@ -3173,7 +3185,7 @@ function UILib.Tab:addSubTab(name)
 
 	local btn = Instance.new("TextButton")
 	table.insert(self.subtabOrder, sub)
-	btn.Size = UDim2.new(1, -8, 0, 38)
+	btn.Size = UDim2.new(1, -8, 0, 44)
 	btn.Position = UDim2.new(0, 4, 0, 0)
 	btn.BackgroundTransparency = 1
 	btn.Text = ""
@@ -3203,15 +3215,16 @@ function UILib.Tab:addSubTab(name)
 
 	local selGradient = Instance.new("Frame")
 	selGradient.Size = UDim2.new(1, 0, 1, 0)
-	selGradient.BackgroundColor3 = Color3.new(1, 1, 1)
+	selGradient.BackgroundColor3 = self.window.theme.Accent
+	selGradient.BackgroundTransparency = 0.7
 	selGradient.BorderSizePixel = 0
 	selGradient.Visible = false
 	selGradient.ZIndex = 4
 	selGradient.Parent = btn
 	local grad = Instance.new("UIGradient", selGradient)
 	grad.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.8),
-		NumberSequenceKeypoint.new(0.4, 0.9),
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.5, 0.5),
 		NumberSequenceKeypoint.new(1, 1)
 	})
 	sub.selGradient = selGradient
@@ -3533,9 +3546,9 @@ function UILib.SubTab:addButton(text, callback, tooltip, color)
 	lbl.Position = UDim2.new(0, 8, 0, 0)
 	lbl.BackgroundTransparency = 1
 	lbl.Text = text
-	lbl.TextColor3 = color or window.theme.White
-	lbl.Font = Enum.Font.GothamSemibold
-	lbl.TextSize = 13
+		lbl.TextColor3 = window.theme.GrayLt
+		lbl.Font = Enum.Font.GothamSemibold
+		lbl.TextSize = 13
 	lbl.TextXAlignment = Enum.TextXAlignment.Center
 	lbl.ZIndex = 4
 	lbl.Parent = btn
@@ -3781,7 +3794,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 	label.Position = UDim2.new(0, 4, 0, 0)
 	label.BackgroundTransparency = 1
 	label.Text = text
-	label.TextColor3 = window.theme.White
+	label.TextColor3 = window.theme.GrayLt
 	label.Font = Enum.Font.GothamSemibold
 	label.TextSize = 13
 	label.TextXAlignment = Enum.TextXAlignment.Left
@@ -4569,7 +4582,7 @@ function UILib.Column:addGroup(title)
 	label.Position = UDim2.new(0, 10, 0, 0)
 	label.BackgroundTransparency = 1
 	label.Text = title:upper()
-	label.TextColor3 = window.theme.GrayLt
+	label.TextColor3 = window.theme.White
 	label.Font = Enum.Font.GothamBold
 	label.TextSize = 12
 	label.TextXAlignment = Enum.TextXAlignment.Left
@@ -4648,6 +4661,7 @@ function UILib.Column:addGroup(title)
 	group.frame = grp
 	group.headerRow = row
 	group.headerSep = headerSep
+	group.headerLabel = label
 	group.items = items
 	group.itemLayout = itemLayout
 	group.updateSize = deferredUpdateSize
@@ -4797,7 +4811,7 @@ function UILib.Column:addGroup(title)
 		local CB_SIZE = 22
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0, CB_SIZE, 0, CB_SIZE)
-		cbOuter.Position = UDim2.new(0, 4, 0.5, -CB_SIZE/2)
+		cbOuter.Position = UDim2.new(0, 0, 0.5, -CB_SIZE/2)
 		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.BG
 		cbOuter.BorderSizePixel = 0
 		cbOuter.AutoButtonColor = false
@@ -4832,7 +4846,7 @@ function UILib.Column:addGroup(title)
 		cbMark.Parent = cbOuter
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -(46 + rightOffset), 1, 0)
-		lbl.Position = UDim2.new(0, 34, 0, 0)
+		lbl.Position = UDim2.new(0, 30, 0, 0)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
@@ -6153,13 +6167,13 @@ function UILib.Column:addGroup(title)
 		lbl.Position = UDim2.new(0, 4, 0, 0)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
-		lbl.TextColor3 = window.theme.White
-		lbl.Font = Enum.Font.GothamSemibold
-		lbl.TextSize = 13
-		lbl.TextXAlignment = Enum.TextXAlignment.Left
-		lbl.ZIndex = 4
+	lbl.TextColor3 = window.theme.GrayLt
+	lbl.Font = Enum.Font.GothamSemibold
+	lbl.TextSize = 13
+	lbl.TextXAlignment = Enum.TextXAlignment.Left
+	lbl.TextYAlignment = Enum.TextYAlignment.Center
+	lbl.ZIndex = 4
 		lbl.Parent = toggleRow
-
 		local contentFrame = Instance.new("Frame")
 		contentFrame.Size = UDim2.new(1, 0, 0, 0)
 		contentFrame.Position = UDim2.new(0, 0, 0, 34)
