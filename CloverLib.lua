@@ -22,6 +22,12 @@ local LP = Players.LocalPlayer
 local TweenService = cloneref(game:GetService("TweenService"))
 local RunService = cloneref(game:GetService("RunService"))
 
+local function cleanNum(n)
+	if type(n) ~= "number" then return tostring(n) end
+	local s = ("%.6f"):format(n):gsub("0+$", ""):gsub("%.$", "")
+	return s
+end
+
 local allWindows = {}
 
 local LUCIDE_ICONS = nil
@@ -1764,9 +1770,10 @@ function UILib:addWatermark(name)
 	rowPad.PaddingLeft = UDim.new(0, 8)
 	rowPad.PaddingRight = UDim.new(0, 8)
 	local watermarkScale = Instance.new("UIScale", wm)
-	watermarkScale.Scale = 1
+	watermarkScale.Scale = self._wmScale or 1
 	local function updateWatermarkSize(delta)
 		watermarkScale.Scale = math.clamp(watermarkScale.Scale + delta * 0.05, 0.5, 2)
+		self._wmScale = watermarkScale.Scale
 	end
 	wm.InputChanged:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseWheel then
@@ -1802,15 +1809,6 @@ function UILib:addWatermark(name)
 		self.wmDragConns = { wmDragMove, wmDragEnd }
 	end
 
-	local dot = Instance.new("Frame")
-	dot.Size = UDim2.new(0, 7, 0, 7)
-	dot.BackgroundColor3 = self.theme.Accent
-	dot.BorderSizePixel = 0
-	dot.ZIndex = 201
-	dot.LayoutOrder = 1
-	dot.Parent = row
-	Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
-
 	local nameLbl = Instance.new("TextLabel")
 	nameLbl.AutomaticSize = Enum.AutomaticSize.X
 	nameLbl.Size = UDim2.new(0, 0, 1, 0)
@@ -1821,14 +1819,14 @@ function UILib:addWatermark(name)
 	nameLbl.TextSize = 11
 	nameLbl.TextXAlignment = Enum.TextXAlignment.Left
 	nameLbl.ZIndex = 201
-	nameLbl.LayoutOrder = 2
+	nameLbl.LayoutOrder = 1
 	nameLbl.Parent = row
 
 	local fpsLabel = Instance.new("TextLabel")
 	fpsLabel.AutomaticSize = Enum.AutomaticSize.X
 	fpsLabel.Size = UDim2.new(0, 0, 1, 0)
 	fpsLabel.BackgroundTransparency = 1
-	fpsLabel.Text = " · 0 FPS"
+	fpsLabel.Text = " | 0 FPS"
 	fpsLabel.TextColor3 = self.theme.GrayLt
 	fpsLabel.Font = Enum.Font.GothamSemibold
 	fpsLabel.TextSize = 10
@@ -1840,13 +1838,25 @@ function UILib:addWatermark(name)
 	pingLabel.AutomaticSize = Enum.AutomaticSize.X
 	pingLabel.Size = UDim2.new(0, 0, 1, 0)
 	pingLabel.BackgroundTransparency = 1
-	pingLabel.Text = " · 0ms"
+	pingLabel.Text = " | 0ms"
 	pingLabel.TextColor3 = self.theme.GrayLt
 	pingLabel.Font = Enum.Font.GothamSemibold
 	pingLabel.TextSize = 10
 	pingLabel.ZIndex = 201
 	pingLabel.LayoutOrder = 4
 	pingLabel.Parent = row
+
+	local uptimeLabel = Instance.new("TextLabel")
+	uptimeLabel.AutomaticSize = Enum.AutomaticSize.X
+	uptimeLabel.Size = UDim2.new(0, 0, 1, 0)
+	uptimeLabel.BackgroundTransparency = 1
+	uptimeLabel.Text = " | 00:00:00"
+	uptimeLabel.TextColor3 = self.theme.GrayLt
+	uptimeLabel.Font = Enum.Font.GothamSemibold
+	uptimeLabel.TextSize = 10
+	uptimeLabel.ZIndex = 201
+	uptimeLabel.LayoutOrder = 5
+	uptimeLabel.Parent = row
 
 	local frameCount = 0
 	local lastTime = tick()
@@ -1859,16 +1869,17 @@ function UILib:addWatermark(name)
 		frameCount = frameCount + 1
 		local now = tick()
 		if now - lastTime >= 1 then
-			fpsLabel.Text = " · " .. math.floor(frameCount / (now - lastTime) + 0.5) .. " FPS"
+			fpsLabel.Text = " | " .. math.floor(frameCount / (now - lastTime) + 0.5) .. " FPS"
 			frameCount = 0
 			lastTime = now
 		end
 		local ping = LP:GetNetworkPing() * 1000
-		pingLabel.Text = " · " .. math.floor(ping + 0.5) .. "ms"
+		pingLabel.Text = " | " .. math.floor(ping + 0.5) .. "ms"
+		local up = math.floor(workspace.DistributedGameTime)
+		uptimeLabel.Text = string.format(" | %02d:%02d:%02d", math.floor(up/3600), math.floor((up%3600)/60), up%60)
 	end)
 	self.wmConn = connection
 	self.watermark = wm
-	table.insert(self.accentObjects, dot)
 	return wm
 end
 
@@ -1904,11 +1915,6 @@ function UILib:buildUITab()
 		self.toggleKey = Enum.KeyCode[name] or Enum.KeyCode.RightShift
 	end, "Set key to show/hide menu")
 
-	grp:toggle("Show Version", self.showVersion, function(v)
-		self.showVersion = v
-		if self.versionPill then self.versionPill.Visible = v end
-	end, "Show version pill")
-
 	grp:toggle("Show Watermark", self.watermark ~= nil, function(v)
 		if v then
 			if not self.watermark then
@@ -1932,24 +1938,15 @@ function UILib:buildUITab()
 		Enum.TextXAlignment.Center, Color3.fromRGB(255, 80, 80))
 
 	-- Theme section on left column
-	local THEMES = {
-		{ "Default",  Color3.fromRGB(0, 210, 135), Color3.fromRGB(10, 10, 10), Color3.fromRGB(24, 24, 24), Color3.fromRGB(24, 24, 24), Color3.fromRGB(32, 32, 32), Color3.fromRGB(10, 10, 10), Color3.fromRGB(42, 42, 42) },
-		{ "Midnight", Color3.fromRGB(100, 140, 255), Color3.fromRGB(8, 8, 12), Color3.fromRGB(18, 20, 28), Color3.fromRGB(20, 22, 30), Color3.fromRGB(26, 28, 38), Color3.fromRGB(10, 10, 14), Color3.fromRGB(35, 40, 55) },
-		{ "Blood",    Color3.fromRGB(220, 50, 50), Color3.fromRGB(12, 8, 8), Color3.fromRGB(28, 18, 18), Color3.fromRGB(28, 20, 20), Color3.fromRGB(38, 24, 24), Color3.fromRGB(14, 8, 8), Color3.fromRGB(50, 30, 30) },
-		{ "Ocean",    Color3.fromRGB(0, 180, 220), Color3.fromRGB(8, 12, 15), Color3.fromRGB(18, 24, 30), Color3.fromRGB(20, 26, 32), Color3.fromRGB(26, 32, 40), Color3.fromRGB(8, 10, 14), Color3.fromRGB(30, 42, 52) },
-		{ "Gold",     Color3.fromRGB(255, 180, 50), Color3.fromRGB(15, 12, 8), Color3.fromRGB(30, 26, 18), Color3.fromRGB(32, 28, 20), Color3.fromRGB(40, 34, 24), Color3.fromRGB(14, 10, 6), Color3.fromRGB(55, 45, 30) },
-		{ "Lime",     Color3.fromRGB(100, 255, 100), Color3.fromRGB(10, 15, 10), Color3.fromRGB(24, 30, 24), Color3.fromRGB(26, 32, 26), Color3.fromRGB(34, 40, 34), Color3.fromRGB(10, 14, 10), Color3.fromRGB(40, 50, 40) },
-		{ "Purple",   Color3.fromRGB(180, 100, 255), Color3.fromRGB(12, 8, 15), Color3.fromRGB(24, 18, 30), Color3.fromRGB(26, 20, 32), Color3.fromRGB(34, 26, 40), Color3.fromRGB(12, 8, 14), Color3.fromRGB(42, 30, 55) },
-	}
-	local themeNames = {}
-	for _, t in ipairs(THEMES) do themeNames[#themeNames + 1] = t[1] end
 
-	local function applyTheme(theme)
+	local function applyFullTheme(theme)
 		local accent, bg, panel, item, itemHov, track, border = unpack(theme, 2)
 		self.theme.Accent = accent
 		self.theme.AccentD = Color3.new(accent.r * 0.70, accent.g * 0.70, accent.b * 0.70)
 		self.theme.BG = bg
+		self.theme.Base = bg
 		self.theme.Panel = panel
+		self.theme.Surface = panel
 		self.theme.Item = item
 		self.theme.ItemHov = itemHov
 		self.theme.Track = track
@@ -1964,44 +1961,133 @@ function UILib:buildUITab()
 		if self.navbarBG then self.navbarBG.BackgroundColor3 = panel end
 		if self.navbarCover then self.navbarCover.BackgroundColor3 = panel end
 		if self.navTopLine then self.navTopLine.BackgroundColor3 = border end
-		-- Force update active subtab's selection line and label
+		if self.sidebarEdge then self.sidebarEdge.BackgroundColor3 = border end
+		self:refreshAllUI()
+		self:refreshAllBorders(border)
+		syncColorPickers()
+	end
+
+	local function applyCurrentTheme()
+		self:refreshAllUI()
+		self:refreshAllBorders(self.theme.Border)
+	end
+
+	local function refreshAllBorders(b)
+		for _, s in ipairs(self.window:GetDescendants()) do
+			if s:IsA("UIStroke") then pcall(function() s.Color = b end) end
+		end
+		for _, tab in ipairs(self.tabOrder or {}) do
+			if tab.tabLbl then pcall(function() tab.tabLbl.TextColor3 = self.theme.Gray end) end
+		end
+		if self.activeTab then
+			if self.activeTab.tabLbl then self.activeTab.tabLbl.TextColor3 = self.theme.White end
+			if self.activeTab.tabIcon and self.activeTab.tabIconId then
+				self.activeTab.tabIcon.ImageColor3 = self.theme.Accent
+			end
+		end
+	end
+
+	local function refreshAllUI()
 		for _, tab in ipairs(self.tabOrder or {}) do
 			if tab.subtabs then
 				for _, sub in pairs(tab.subtabs) do
-					if sub.selLine and sub.selLine.Visible then
-						sub.selLine.BackgroundColor3 = accent
-						if sub.label then sub.label.TextColor3 = accent end
+					if sub.selGradient and sub.selGradient.Visible then
+						sub.selGradient.BackgroundColor3 = self.theme.Accent
+						if sub.label then sub.label.TextColor3 = self.theme.Accent end
 					end
 				end
 			end
-		end
-		for _, tab in ipairs(self.tabOrder or {}) do
 			if tab.subtabOrder then
 				for _, sub in ipairs(tab.subtabOrder) do
-					if sub.hovFrame then sub.hovFrame.BackgroundColor3 = itemHov end
+					if sub.hovFrame then sub.hovFrame.BackgroundColor3 = self.theme.ItemHov end
 					if sub.groups then
 						for _, gr in ipairs(sub.groups) do
-							if gr.frame then gr.frame.BackgroundColor3 = item end
+							if gr.frame then gr.frame.BackgroundColor3 = self.theme.Item end
 						end
 					end
 				end
 			end
 		end
-		for _, s in ipairs(self.window:GetDescendants()) do
-			if s:IsA("UIStroke") then
-				pcall(function() s.Color = border end)
-			end
-		end
 	end
+
+	local THEMES = {
+		{ "Default",  Color3.fromRGB(0, 210, 135), Color3.fromRGB(10, 10, 10), Color3.fromRGB(24, 24, 24), Color3.fromRGB(24, 24, 24), Color3.fromRGB(32, 32, 32), Color3.fromRGB(10, 10, 10), Color3.fromRGB(42, 42, 42) },
+		{ "Midnight", Color3.fromRGB(100, 140, 255), Color3.fromRGB(8, 8, 12), Color3.fromRGB(18, 20, 28), Color3.fromRGB(20, 22, 30), Color3.fromRGB(26, 28, 38), Color3.fromRGB(10, 10, 14), Color3.fromRGB(35, 40, 55) },
+		{ "Blood",    Color3.fromRGB(220, 50, 50), Color3.fromRGB(12, 8, 8), Color3.fromRGB(28, 18, 18), Color3.fromRGB(28, 20, 20), Color3.fromRGB(38, 24, 24), Color3.fromRGB(14, 8, 8), Color3.fromRGB(50, 30, 30) },
+		{ "Ocean",    Color3.fromRGB(0, 180, 220), Color3.fromRGB(8, 12, 15), Color3.fromRGB(18, 24, 30), Color3.fromRGB(20, 26, 32), Color3.fromRGB(26, 32, 40), Color3.fromRGB(8, 10, 14), Color3.fromRGB(30, 42, 52) },
+		{ "Gold",     Color3.fromRGB(255, 180, 50), Color3.fromRGB(15, 12, 8), Color3.fromRGB(30, 26, 18), Color3.fromRGB(32, 28, 20), Color3.fromRGB(40, 34, 24), Color3.fromRGB(14, 10, 6), Color3.fromRGB(55, 45, 30) },
+		{ "Lime",     Color3.fromRGB(100, 255, 100), Color3.fromRGB(10, 15, 10), Color3.fromRGB(24, 30, 24), Color3.fromRGB(26, 32, 26), Color3.fromRGB(34, 40, 34), Color3.fromRGB(10, 14, 10), Color3.fromRGB(40, 50, 40) },
+		{ "Purple",   Color3.fromRGB(180, 100, 255), Color3.fromRGB(12, 8, 15), Color3.fromRGB(24, 18, 30), Color3.fromRGB(26, 20, 32), Color3.fromRGB(34, 26, 40), Color3.fromRGB(12, 8, 14), Color3.fromRGB(42, 30, 55) },
+		{ "Custom",   self.theme.Accent, self.theme.BG, self.theme.Panel, self.theme.Item, self.theme.ItemHov, self.theme.Track, self.theme.Border },
+	}
+	local themeNames = {}
+	for _, t in ipairs(THEMES) do themeNames[#themeNames + 1] = t[1] end
 
 	local themeGrp = uiL:addGroup("Theme")
 	local themeDropdown = themeGrp:dropdown("Preset", themeNames, "Default", function(val)
-		if val == "" then return end
+		if val == "" or val == "Custom" then return end
 		for _, t in ipairs(THEMES) do
-			if t[1] == val then applyTheme(t); break end
+			if t[1] == val then applyFullTheme(t); break end
 		end
 	end, "Apply a pre-made color theme")
-	if themeDropdown then themeDropdown._noConfig = true end
+	themeDropdown._noConfig = true
+
+	local function themeColorChanged()
+		themeDropdown.Value = "Custom"
+		pcall(function() themeDropdown.SetValue("Custom") end)
+		applyCurrentTheme()
+	end
+
+	local _themeApplying = false
+	local function syncColorPickers()
+		if _themeApplying then return end
+		_themeApplying = true
+		pcall(function() if accentPicker then accentPicker:SetValue(self.theme.Accent) end end)
+		pcall(function() if themeBGPicker then themeBGPicker:SetValue(self.theme.BG) end end)
+		pcall(function() if themePanelPicker then themePanelPicker:SetValue(self.theme.Panel) end end)
+		pcall(function() if themeItemPicker then themeItemPicker:SetValue(self.theme.ItemHov) end end)
+		pcall(function() if themeBorderPicker then themeBorderPicker:SetValue(self.theme.Border) end end)
+		_themeApplying = false
+	end
+
+	local accentPicker = themeGrp:colorpicker("Accent", self.theme.Accent, function(c)
+		self.theme.Accent = c
+		self.theme.AccentD = Color3.new(c.r * 0.70, c.g * 0.70, c.b * 0.70)
+		self:updateAccent(c)
+		themeColorChanged()
+	end)
+	local themeBGPicker = themeGrp:colorpicker("Background", self.theme.BG, function(c)
+		self.theme.BG = c
+		self.theme.Base = c
+		if self.window then self.window.BackgroundColor3 = c end
+		if self.content then self.content.BackgroundColor3 = c end
+		themeColorChanged()
+	end)
+	local themePanelPicker = themeGrp:colorpicker("Panel", self.theme.Panel, function(c)
+		self.theme.Panel = c
+		self.theme.Surface = c
+		self.theme.Item = c
+		if self.header then self.header.BackgroundColor3 = c end
+		if self.headerCover then self.headerCover.BackgroundColor3 = c end
+		if self.sidebar then self.sidebar.BackgroundColor3 = c end
+		if self.navbar then self.navbar.BackgroundColor3 = c end
+		if self.navbarBG then self.navbarBG.BackgroundColor3 = c end
+		if self.navbarCover then self.navbarCover.BackgroundColor3 = c end
+		self:refreshAllUI()
+		themeColorChanged()
+	end)
+	local themeItemPicker = themeGrp:colorpicker("Item Hover", self.theme.ItemHov, function(c)
+		self.theme.ItemHov = c
+		self:refreshAllUI()
+		themeColorChanged()
+	end)
+	local themeBorderPicker = themeGrp:colorpicker("Border", self.theme.Border, function(c)
+		self.theme.Border = c
+		if self.navTopLine then self.navTopLine.BackgroundColor3 = c end
+		if self.sidebarEdge then self.sidebarEdge.BackgroundColor3 = c end
+		self:refreshAllBorders(c)
+		themeColorChanged()
+	end)
 
 	local cfg = uiR:addGroup("Save Manager")
 	cfg:label("Configs", self.theme.Accent)
@@ -2051,7 +2137,7 @@ function UILib:buildUITab()
 		end
 	end, "Auto-load this config on script start")
 
-	cfg:separator()
+	cfg:separator("Create")
 
 	local cfgNameBox = cfg:textbox("Config Name", "", "Enter name...", function(_) end)
 	cfgNameBox._noConfig = true
@@ -2062,31 +2148,20 @@ function UILib:buildUITab()
 		self:saveConfigStructured(name)
 		cfgRefreshDropdown()
 	end, nil, Enum.TextXAlignment.Center)
+	cfg:separator("Share & Import")
+
 	cfg:button("Export Settings", function()
-		self:exportConfigStructured()
-	end, nil, Enum.TextXAlignment.Center, Color3.fromRGB(100, 180, 255))
-	cfg:button("Import Settings", function()
-		local ok, json = pcall(function() return getclipboard() end)
-		if ok and json and json ~= "" and json:match("^%s*{") then
-			self:importConfigStructured(json)
-		else
-			self:notify("No valid JSON on clipboard", "warning", 2)
-		end
-	end, nil, Enum.TextXAlignment.Center, Color3.fromRGB(100, 255, 180))
-
-	cfg:separator("Share via Code")
-
-	cfg:button("Share Config", function()
 		self:shareConfigCode(self.configShareUrl or "https://cloverhub.fun")
-	end, "Upload config and get a short share code", Enum.TextXAlignment.Center, Color3.fromRGB(255, 200, 80))
+	end, "Upload config and get a short share code", Enum.TextXAlignment.Center, Color3.fromRGB(100, 180, 255))
 
-	local importCodeBox = cfg:textbox("Import Code", "", "e.g. FP4j7", function(val)
-		if val and val ~= "" and #val >= 3 then
-			self:importConfigCode(self.configShareUrl or "https://cloverhub.fun", val)
-			importCodeBox.SetValue("")
-		end
-	end, "Enter a share code and press Enter to import")
+	local importCodeBox = cfg:textbox("Import Code", "", "e.g. FP4j7", function(_) end)
 	importCodeBox._noConfig = true
+
+	cfg:button("Import Settings", function()
+		local code = importCodeBox.Value
+		if not code or code == "" then self:notify("Enter a share code first", "warning", 2); return end
+		self:importConfigCode(self.configShareUrl or "https://cloverhub.fun", code)
+	end, "Fetch and apply config from share code", Enum.TextXAlignment.Center, Color3.fromRGB(100, 255, 180))
 end
 
 function UILib:shareConfigCode(baseUrl)
@@ -3129,7 +3204,7 @@ function UILib:addTab(name, options)
 			for _, sub in pairs(t.subtabs) do
 				sub.btn.Visible = false
 				sub.page.Visible = false
-				if sub.selLine then sub.selLine.Visible = false end
+				if sub.selGradient then sub.selGradient.Visible = false end
 				if sub.label then sub.label.TextColor3 = self.theme.Gray end
 			end
 		end
@@ -3160,7 +3235,7 @@ function UILib:addTab(name, options)
 			local target = tab.lastSub or tab.subtabs[tab.firstSub]
 			if target then target:select() end
 		end
-		self.sidebar.CanvasSize = UDim2.new(1, 0, 0, #tab.subtabOrder * 30 + 10)
+		self.sidebar.CanvasSize = UDim2.new(1, 0, 0, #tab.subtabOrder * 40 + 10)
 		self.activeTab = tab
 
 		local showSidebar = tab.showSidebar ~= false
@@ -3214,7 +3289,7 @@ function UILib.Tab:addSubTab(name)
 
 	local btn = Instance.new("TextButton")
 	table.insert(self.subtabOrder, sub)
-	btn.Size = UDim2.new(1, -8, 0, 28)
+	btn.Size = UDim2.new(1, -8, 0, 38)
 	btn.Position = UDim2.new(0, 4, 0, 0)
 	btn.BackgroundTransparency = 1
 	btn.Text = ""
@@ -3233,28 +3308,59 @@ function UILib.Tab:addSubTab(name)
 	Instance.new("UICorner", hov).CornerRadius = UDim.new(0, 5)
 	sub.hovFrame = hov
 
-	local selLine = Instance.new("Frame")
-	selLine.Size = UDim2.new(0, 3, 0, 12)
-	selLine.Position = UDim2.new(0, 0, 0.5, -6)
-	selLine.BackgroundColor3 = self.window.theme.Accent
-	selLine.BorderSizePixel = 0
-	selLine.Visible = false
-	selLine.ZIndex = 6
-	selLine.Parent = btn
-	Instance.new("UICorner", selLine).CornerRadius = UDim.new(0, 1.5)
-	table.insert(self.window.accentObjects, selLine)
+	local selGradient = Instance.new("Frame")
+	selGradient.Size = UDim2.new(0, 60, 1, 0)
+	selGradient.BackgroundColor3 = self.window.theme.Accent
+	selGradient.BorderSizePixel = 0
+	selGradient.Visible = false
+	selGradient.ZIndex = 5
+	selGradient.Parent = btn
+	Instance.new("UICorner", selGradient).CornerRadius = UDim.new(0, 5)
+	local grad = Instance.new("UIGradient", selGradient)
+	grad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
+		ColorSequenceKeypoint.new(0.3, Color3.new(0.6, 0.6, 0.6)),
+		ColorSequenceKeypoint.new(1, Color3.new(0, 0, 0))
+	})
+	grad.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.4, 0.4),
+		NumberSequenceKeypoint.new(1, 1)
+	})
+	sub.selGradient = selGradient
+
+	local textCol = Instance.new("Frame")
+	textCol.Size = UDim2.new(1, -16, 1, 0)
+	textCol.Position = UDim2.new(0, 12, 0, 0)
+	textCol.BackgroundTransparency = 1
+	textCol.ZIndex = 6
+	textCol.Parent = btn
 
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, -10, 1, 0)
-	label.Position = UDim2.new(0, 8, 0, 0)
+	label.Size = UDim2.new(1, 0, 0.55, 0)
+	label.Position = UDim2.new(0, 0, 0, 2)
 	label.BackgroundTransparency = 1
 	label.Text = name
 	label.TextColor3 = self.window.theme.Gray
 	label.Font = Enum.Font.GothamSemibold
-	label.TextSize = 11
+	label.TextSize = 12
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.ZIndex = 6
-	label.Parent = btn
+	label.Parent = textCol
+
+	local desc = Instance.new("TextLabel")
+	desc.Size = UDim2.new(1, 0, 0.45, 0)
+	desc.Position = UDim2.new(0, 0, 0.55, 0)
+	desc.BackgroundTransparency = 1
+	desc.Text = ""
+	desc.TextColor3 = self.window.theme.Gray
+	desc.Font = Enum.Font.GothamSemibold
+	desc.TextSize = 9
+	desc.TextXAlignment = Enum.TextXAlignment.Left
+	desc.TextWrapped = true
+	desc.ZIndex = 6
+	desc.Parent = textCol
+	sub.desc = desc
 
 	function sub:select()
 		for _, t in pairs(self.window.tabs) do
@@ -3263,7 +3369,7 @@ function UILib.Tab:addSubTab(name)
 			for _, s in pairs(t.subtabs) do
 				s.btn.Visible = false
 				s.page.Visible = false
-				s.selLine.Visible = false
+				if s.selGradient then s.selGradient.Visible = false end
 				s.label.TextColor3 = self.window.theme.Gray
 			end
 		end
@@ -3272,10 +3378,10 @@ function UILib.Tab:addSubTab(name)
 		for _, s in pairs(self.tab.subtabs) do s.btn.Visible = true end
 		self.window.activeTab = self.tab
 		self.label.TextColor3 = self.window.theme.Accent
-		self.selLine.Visible = true
+		if self.selGradient then self.selGradient.Visible = true end
 		self.page.Visible = true
 		self.tab.lastSub = self
-		self.window.sidebar.CanvasSize = UDim2.new(1, 0, 0, #self.tab.subtabOrder * 30 + 10)
+		self.window.sidebar.CanvasSize = UDim2.new(1, 0, 0, #self.tab.subtabOrder * 40 + 10)
 	end
 
 	btn.MouseEnter:Connect(function()
@@ -3312,7 +3418,6 @@ function UILib.Tab:addSubTab(name)
 	pagePadding.PaddingBottom = UDim.new(0, 12)
 	sub.btn = btn
 	sub.hov = hov
-	sub.selLine = selLine
 	sub.label = label
 	sub.page = page
 	sub.layout = layout
@@ -4535,8 +4640,26 @@ function UILib.Column:addGroup(title)
 
 	local row = Instance.new("Frame")
 	row.Size = UDim2.new(1, 0, 0, 30)
-	row.BackgroundTransparency = 1
+	row.BackgroundColor3 = window.theme.ItemHov
+	row.BackgroundTransparency = 0
 	row.Parent = grp
+	Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
+
+	local headerSep = Instance.new("Frame")
+	headerSep.Size = UDim2.new(1, -16, 0, 2)
+	headerSep.Position = UDim2.new(0, 8, 0, 30)
+	headerSep.BackgroundColor3 = window.theme.Accent
+	headerSep.BorderSizePixel = 0
+	headerSep.ZIndex = 4
+	headerSep.Parent = grp
+
+	local footerSep = Instance.new("Frame")
+	footerSep.Size = UDim2.new(1, -16, 0, 2)
+	footerSep.Position = UDim2.new(0, 8, 1, -2)
+	footerSep.BackgroundColor3 = window.theme.Accent
+	footerSep.BorderSizePixel = 0
+	footerSep.ZIndex = 4
+	footerSep.Parent = grp
 
 	local iconImg = Instance.new("ImageLabel")
 	iconImg.Size = UDim2.new(0, 16, 0, 16)
@@ -5051,9 +5174,9 @@ function UILib.Column:addGroup(title)
 		if mode == "k" then
 			if val >= 1000000 then return ("%.1fM"):format(val / 1000000)
 			elseif val >= 1000 then return ("%.1fk"):format(val / 1000)
-			else return tostring(val) end
+			else return cleanNum(val) end
 		end
-		return tostring(val)
+		return cleanNum(val)
 	end
 
 	function group:slider(text, minVal, maxVal, defaultVal, callback, step, tooltip, icon, display)
@@ -6099,6 +6222,7 @@ function UILib.Column:addGroup(title)
 		local id = generateID()
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, 50)
+		r.AutomaticSize = Enum.AutomaticSize.Y
 		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
@@ -6116,7 +6240,8 @@ function UILib.Column:addGroup(title)
 		lbl.Parent = r
 		local box = Instance.new("TextBox")
 		box.Size = UDim2.new(1, 0, 0, 22)
-		box.Position = UDim2.new(0, 0, 1, -26)
+		box.AutomaticSize = Enum.AutomaticSize.Y
+		box.Position = UDim2.new(0, 0, 0, 26)
 		box.BackgroundColor3 = window.theme.Track
 		box.ClipsDescendants = true
 		box.BorderSizePixel = 0
@@ -6127,6 +6252,7 @@ function UILib.Column:addGroup(title)
 		box.Font = Enum.Font.GothamSemibold
 		box.TextSize = 13
 		box.ClearTextOnFocus = false
+		box.TextWrapped = true
 		box.PlaceholderText = placeholder or ""
 		box.PlaceholderColor3 = window.theme.Gray
 		Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
