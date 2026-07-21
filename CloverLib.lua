@@ -2011,7 +2011,7 @@ function UILib:buildUITab()
 		end
 		refreshAllUI()
 		refreshAllBorders(border)
-		syncColorPickers()
+		if syncColorPickers then syncColorPickers() end
 	end
 
 	local function applyCurrentTheme()
@@ -2026,9 +2026,9 @@ function UILib:buildUITab()
 		if self.navbarCover then self.navbarCover.BackgroundColor3 = self.theme.Panel end
 		if self.navTopLine then self.navTopLine.BackgroundColor3 = self.theme.Accent end
 		if self.sidebarEdge then self.sidebarEdge.BackgroundColor3 = self.theme.Border end
-		refreshAllUI()
-		refreshAllBorders(self.theme.Border)
-		syncColorPickers()
+		if refreshAllUI then refreshAllUI() end
+		if refreshAllBorders then refreshAllBorders(self.theme.Border) end
+		if syncColorPickers then syncColorPickers() end
 	end
 
 	local THEMES = {
@@ -6285,40 +6285,29 @@ function UILib.Column:addGroup(title)
 	function group:textbox(text, default, placeholder, callback, tooltip)
 		local id = generateID()
 		local r = Instance.new("Frame")
-		r.Size = UDim2.new(1, 0, 0, 32)
-		r.AutomaticSize = Enum.AutomaticSize.Y
+		r.Size = UDim2.new(1, 0, 0, 50)
 		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
-		local row = Instance.new("Frame")
-		row.Size = UDim2.new(1, 0, 0, 28)
-		row.BackgroundTransparency = 1
-		row.Parent = r
-		local rowLayout = Instance.new("UIListLayout", row)
-		rowLayout.FillDirection = Enum.FillDirection.Horizontal
-		rowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-		rowLayout.Padding = UDim.new(0, 8)
-		rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		local lbl = Instance.new("TextLabel")
-		lbl.Size = UDim2.new(0, 0, 1, 0)
-		lbl.AutomaticSize = Enum.AutomaticSize.X
+		lbl.Size = UDim2.new(1, -4, 0, 16)
+		lbl.Position = UDim2.new(0, 4, 0, 2)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
 		lbl.Font = Enum.Font.GothamSemibold
 		lbl.TextSize = 12
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
-		lbl.TextYAlignment = Enum.TextYAlignment.Center
+		lbl.TextWrapped = true
 		lbl.ZIndex = 3
-		lbl.LayoutOrder = 1
-		lbl.Parent = row
+		lbl.Parent = r
 		local box = Instance.new("TextBox")
 		box.Size = UDim2.new(1, 0, 0, 24)
+		box.Position = UDim2.new(0, 0, 0, 22)
 		box.BackgroundColor3 = window.theme.Track
 		box.BorderSizePixel = 0
 		box.ZIndex = 3
-		box.LayoutOrder = 2
-		box.Parent = row
+		box.Parent = r
 		box.Text = default or ""
 		box.TextColor3 = window.theme.Accent
 		box.Font = Enum.Font.GothamSemibold
