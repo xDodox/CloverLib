@@ -1945,16 +1945,16 @@ function UILib:buildUITab()
 	end
 
 	local _themeApplying = false
-	local _pickerCons = {}
 	local _themePickerBoxes = {}
 	local function syncColorPickers()
 		if _themeApplying then return end
 		_themeApplying = true
 		for _, entry in ipairs(_themePickerBoxes) do
-			local box = entry.getBox()
-			local c = entry.getColor()
-			if box and box.Parent and typeof(c) == "Color3" then
-				box.BackgroundColor3 = c
+			local p, c = entry.picker, entry.getColor()
+			if p and typeof(c) == "Color3" then
+				pcall(function()
+					p:SetColor(c)
+				end)
 			end
 		end
 		_themeApplying = false
@@ -1990,11 +1990,11 @@ function UILib:buildUITab()
 		themeColorChanged()
 	end)
 
-	table.insert(_themePickerBoxes, { getBox = function() return accentPicker and accentPicker.colorBox end, getColor = function() return self.theme.Accent end })
-	table.insert(_themePickerBoxes, { getBox = function() return themeBGPicker and themeBGPicker.colorBox end, getColor = function() return self.theme.BG end })
-	table.insert(_themePickerBoxes, { getBox = function() return themePanelPicker and themePanelPicker.colorBox end, getColor = function() return self.theme.Panel end })
-	table.insert(_themePickerBoxes, { getBox = function() return themeItemPicker and themeItemPicker.colorBox end, getColor = function() return self.theme.ItemHov end })
-	table.insert(_themePickerBoxes, { getBox = function() return themeBorderPicker and themeBorderPicker.colorBox end, getColor = function() return self.theme.Border end })
+	table.insert(_themePickerBoxes, { picker = accentPicker, getColor = function() return self.theme.Accent end })
+	table.insert(_themePickerBoxes, { picker = themeBGPicker, getColor = function() return self.theme.BG end })
+	table.insert(_themePickerBoxes, { picker = themePanelPicker, getColor = function() return self.theme.Panel end })
+	table.insert(_themePickerBoxes, { picker = themeItemPicker, getColor = function() return self.theme.ItemHov end })
+	table.insert(_themePickerBoxes, { picker = themeBorderPicker, getColor = function() return self.theme.Border end })
 
 	local cfg = uiR:addGroup("Save Manager")
 	cfg:separator("Load")
@@ -3780,6 +3780,8 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	window.configs[id] = finalizeElement(elem, window, group)
 	return row, elem
 end
+
+local _pickerCons = {}
 
 local function createColorPicker(group, items, window, text, default, callback)
 	local id = generateID()
