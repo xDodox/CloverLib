@@ -121,8 +121,6 @@ local NOTIF_COLORS = {
 	warning = Color3.fromRGB(255, 180, 50),
 }
 
-local contextMenuConnections = {}
-
 local function makeTooltipSystem(sg, theme, connections)
 	local tooltipFrame                                  = Instance.new("Frame")
 	tooltipFrame.BackgroundColor3                       = theme.Panel
@@ -584,14 +582,14 @@ end
 
 function UILib:saveConfigStructured(name)
 	local json = _configStructuredToJSON(self)
-	local dir = "CloverHub/conigs/"
-	pcall(makefolder, "CloverHub/conigs")
+	local dir = "CloverHub/configs/"
+	pcall(makefolder, "CloverHub/configs")
 	local ok, err = pcall(writefile, dir .. name .. ".json", json)
 	if ok then self:notify("Saved: " .. name, "success", 2) else self:notify("Save failed: " .. tostring(err), "error", 3) end
 end
 
 function UILib:loadConfigStructured(name)
-	local path = "CloverHub/conigs/" .. name .. ".json"
+	local path = "CloverHub/configs/" .. name .. ".json"
 	local ok, content = pcall(readfile, path)
 	if not ok then self:notify("Not found: " .. name, "error", 3); return end
 	local decoded = HS:JSONDecode(content)
@@ -615,8 +613,8 @@ end
 
 function UILib:listConfigsStructured()
 	local list = {}
-	pcall(makefolder, "CloverHub/conigs")
-	local ok, files = pcall(listfiles, "CloverHub/conigs")
+	pcall(makefolder, "CloverHub/configs")
+	local ok, files = pcall(listfiles, "CloverHub/configs")
 	if ok and files then
 		for _, f in ipairs(files) do
 			local name = f:match("([^/\\]+)%.json$")
@@ -627,21 +625,21 @@ function UILib:listConfigsStructured()
 end
 
 function UILib:getAutoLoadConfig()
-	local ok, name = pcall(readfile, "CloverHub/conigs/_autoload.txt")
+	local ok, name = pcall(readfile, "CloverHub/configs/_autoload.txt")
 	if ok and name and name ~= "" then return name end
 	return nil
 end
 
 function UILib:setAutoLoadConfig(name)
-	pcall(makefolder, "CloverHub/conigs")
-	pcall(writefile, "CloverHub/conigs/_autoload.txt", name or "")
+	pcall(makefolder, "CloverHub/configs")
+	pcall(writefile, "CloverHub/configs/_autoload.txt", name or "")
 end
 
 function UILib:tryAutoLoad()
 	local name = self:getAutoLoadConfig()
 	if name then
 		task.wait(0.5)
-		local path = "CloverHub/conigs/" .. name .. ".json"
+		local path = "CloverHub/configs/" .. name .. ".json"
 		if isfile and isfile(path) then
 			self:loadConfigStructured(name)
 			self:notify("Auto-loaded: " .. name, "success", 3)
@@ -1194,15 +1192,21 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 						local contentMatch = false
 						if not nameMatch and sub.groups then
 							for _, g in ipairs(sub.groups) do
+								if contentMatch then break end
 								local gTitle = g.frame and g.frame:FindFirstChildOfClass("TextLabel")
 								if gTitle and gTitle.Text:lower():find(query, 1, true) then contentMatch = true; break end
-								if not contentMatch and g.items then
+								if g.items then
 									for _, c in ipairs(g.items:GetDescendants()) do
-										if (c:IsA("TextLabel") or c:IsA("TextButton")) and c.Text:lower():find(query, 1, true) then
-											contentMatch = true; break
+										if c:IsA("TextLabel") or c:IsA("TextButton") then
+											if c.Text and c.Text:lower():find(query, 1, true) then
+												contentMatch = true; break
+											end
+										elseif c:IsA("TextBox") then
+											if (c.Text and c.Text:lower():find(query, 1, true)) or (c.PlaceholderText and c.PlaceholderText:lower():find(query, 1, true)) then
+												contentMatch = true; break
+											end
 										end
 									end
-									if contentMatch then break end
 								end
 							end
 						end
@@ -1429,9 +1433,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 					self.sidebarEdge.Visible = false
 					self.mobileSidebarOpen = false
 				end
-				if self.contextMenuFrame and self.contextMenuFrame.Visible then
-					pcall(self.closeContextMenu)
-				end
 				if self.headerSearchFrame and self.headerSearchFrame.Visible then
 					self.headerSearchFrame.Visible = false
 					self.headerSearchBox.Text = ""
@@ -1573,130 +1574,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 
 	if includeUITab ~= false then
 		self.includeUITab = true
-	end
-
-	local ctxMenu = Instance.new("TextButton")
-	ctxMenu.Size = UDim2.new(0, 180, 0, 0)
-	ctxMenu.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-	ctxMenu.BackgroundTransparency = 0
-	ctxMenu.BorderSizePixel = 0
-	ctxMenu.Text = ""
-	ctxMenu.AutoButtonColor = false
-	ctxMenu.Visible = false
-	ctxMenu.ZIndex = 900
-	ctxMenu.Parent = self.sg
-	Instance.new("UICorner", ctxMenu).CornerRadius = UDim.new(0, 7)
-	local ctxStroke = Instance.new("UIStroke", ctxMenu)
-	ctxStroke.Color = self.theme.Border
-	ctxStroke.Thickness = 1
-	ctxStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-
-	local ctxLayout = Instance.new("UIListLayout", ctxMenu)
-	ctxLayout.Padding = UDim.new(0, 2)
-	ctxLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
-	ctxLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-		if ctxMenu.Visible then
-			ctxMenu.Size = UDim2.new(0, 180, 0, ctxLayout.AbsoluteContentSize.Y + 12)
-		end
-	end)
-
-	local ctxPadding = Instance.new("UIPadding", ctxMenu)
-	ctxPadding.PaddingTop = UDim.new(0, 6)
-	ctxPadding.PaddingBottom = UDim.new(0, 6)
-	ctxPadding.PaddingLeft = UDim.new(0, 6)
-	ctxPadding.PaddingRight = UDim.new(0, 6)
-	self.contextMenuFrame = ctxMenu
-	self.contextMenu = ctxMenu
-	self.contextMenuLayout = ctxLayout
-
-	local ctxBackdrop = nil
-	local function closeContextMenu()
-		ctxMenu.Visible = false
-		if ctxBackdrop then
-			pcall(function() ctxBackdrop:Destroy() end)
-			ctxBackdrop = nil
-		end
-		for _, c in ipairs(contextMenuConnections) do pcall(c.Disconnect, c) end
-		contextMenuConnections = {}
-		for _, child in ipairs(ctxMenu:GetChildren()) do
-			if not child:IsA("UIListLayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") and not child:IsA("UIStroke") then
-				pcall(function() child:Destroy() end)
-			end
-		end
-	end
-	self.closeContextMenu = closeContextMenu
-
-	local function addContextMenuItem(text, callback, accent, layoutOrder)
-		local btn = Instance.new("TextButton")
-		btn.Size = UDim2.new(1, 0, 0, 28)
-		btn.BackgroundTransparency = 1
-		btn.Text = ""
-		btn.ZIndex = 901
-		btn.Parent = ctxMenu
-		if layoutOrder then btn.LayoutOrder = layoutOrder end
-		
-		local hov = Instance.new("Frame")
-		hov.Size = UDim2.new(1, 0, 1, 0)
-		hov.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-		hov.BorderSizePixel = 0
-		hov.BackgroundTransparency = 1
-		hov.ZIndex = 901
-		hov.Parent = btn
-		Instance.new("UICorner", hov).CornerRadius = UDim.new(0, 5)
-		
-		local lbl = Instance.new("TextLabel")
-		lbl.Size = UDim2.new(1, -12, 1, 0)
-		lbl.Position = UDim2.new(0, 10, 0, 0)
-		lbl.BackgroundTransparency = 1
-		lbl.Text = text
-		local normalColor = accent and self.theme.Accent or Color3.fromRGB(200, 200, 200)
-		local hoverColor = accent and self.theme.Accent or Color3.fromRGB(255, 255, 255)
-		lbl.TextColor3 = normalColor
-		lbl.Font = Enum.Font.GothamSemibold
-		lbl.TextSize = 11
-		lbl.TextXAlignment = Enum.TextXAlignment.Left
-		lbl.ZIndex = 902
-		lbl.Parent = btn
-		
-		btn.MouseEnter:Connect(function()
-			TweenService:Create(hov, TweenInfo.new(0.08, Enum.EasingStyle.Quad), { BackgroundTransparency = 0 }):Play()
-			TweenService:Create(lbl, TweenInfo.new(0.08, Enum.EasingStyle.Quad), { TextColor3 = hoverColor }):Play()
-		end)
-		btn.MouseLeave:Connect(function()
-			TweenService:Create(hov, TweenInfo.new(0.08, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play()
-			TweenService:Create(lbl, TweenInfo.new(0.08, Enum.EasingStyle.Quad), { TextColor3 = normalColor }):Play()
-		end)
-		
-		btn.MouseButton1Click:Connect(function()
-			if callback then callback() end
-			closeContextMenu()
-		end)
-		return lbl
-	end
-	
-	local function addCtxSeparator(layoutOrder)
-		local sepWrapper = Instance.new("Frame")
-		sepWrapper.Size = UDim2.new(1, 0, 0, 5)
-		sepWrapper.BackgroundTransparency = 1
-		sepWrapper.ZIndex = 901
-		sepWrapper.Parent = ctxMenu
-		if layoutOrder then sepWrapper.LayoutOrder = layoutOrder end
-
-		local sepLine = Instance.new("Frame")
-		sepLine.Size = UDim2.new(1, -12, 0, 1)
-		sepLine.Position = UDim2.new(0, 6, 0.5, 0)
-		sepLine.AnchorPoint = Vector2.new(0, 0.5)
-		sepLine.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-		sepLine.BackgroundTransparency = 0.5
-		sepLine.BorderSizePixel = 0
-		sepLine.ZIndex = 902
-		sepLine.Parent = sepWrapper
-	end
-	self.addContextMenuItem = addContextMenuItem
-
-	function self:showContextMenu(pos, elemConfig)
-		-- context menu removed
 	end
 
 	table.insert(self.connections, UIS.InputBegan:Connect(function(input, gpe)
@@ -2137,7 +2014,7 @@ function UILib:buildUITab()
 	cfg:button("Delete Config", function()
 		local name = cfgDropdown.Value
 		if name == "(no configs)" or name == "" then return end
-		pcall(delfile, "CloverHub/conigs/" .. name .. ".json")
+		pcall(delfile, "CloverHub/configs/" .. name .. ".json")
 		self:notify("Deleted: " .. name, "success", 2)
 		cfgRefreshDropdown()
 	end, nil, Enum.TextXAlignment.Center, Color3.fromRGB(255, 80, 80))
@@ -2275,12 +2152,6 @@ end
 function UILib:setVisible(visible)
 	if visible == self.visibleTarget then return end
 	self.visibleTarget = visible
-
-	if not visible then
-		if self.closeContextMenu then
-			pcall(self.closeContextMenu)
-		end
-	end
 
 	if visible then
 		self.uiScale.Scale = 0.85
@@ -2451,10 +2322,6 @@ end
 function UILib:alert(title, message, buttonText, callback)
 	if type(buttonText) == "function" then callback, buttonText = buttonText, "OK" end
 	self:showDialog({ title = title, message = message, buttons = { buttonText or "OK" }, callbacks = { callback } })
-end
-
-function UILib:confirm(message, callback)
-	self:showDialog({ title = "Confirm", message = message, buttons = { "Cancel", "Confirm" }, callbacks = { function() callback(false) end, function() callback(true) end } })
 end
 
 function UILib:prompt(label, default, callback)
@@ -4919,11 +4786,70 @@ function UILib.Column:addGroup(title)
 		return ng
 	end
 
+	local function createToggleCheckbox(parent, default, window, text, rightOffset)
+		rightOffset = rightOffset or 4
+		local CB_SIZE = 22
+		local cbOuter = Instance.new("TextButton")
+		cbOuter.Size = UDim2.new(0, CB_SIZE, 0, CB_SIZE)
+		cbOuter.Position = UDim2.new(0, 8, 0.5, -CB_SIZE/2)
+		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.BG
+		cbOuter.BorderSizePixel = 0
+		cbOuter.AutoButtonColor = false
+		cbOuter.ZIndex = 4
+		cbOuter.Text = ""
+		cbOuter.Parent = parent
+		local cbOverlay = Instance.new("Frame")
+		cbOverlay.Size = UDim2.fromScale(1, 1)
+		cbOverlay.BackgroundColor3 = Color3.new(0, 0, 0)
+		cbOverlay.BackgroundTransparency = 0.7
+		cbOverlay.BorderSizePixel = 0
+		cbOverlay.Visible = false
+		cbOverlay.ZIndex = 10
+		cbOverlay.Parent = cbOuter
+		cbOverlay.BackgroundTransparency = 1
+		cbOuter.MouseButton1Down:Connect(function() TweenService:Create(cbOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 0.7 }):Play(); cbOverlay.Visible = true end)
+		cbOuter.MouseButton1Up:Connect(function() TweenService:Create(cbOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play(); task.delay(0.06, function() cbOverlay.Visible = false end) end)
+		cbOuter.MouseLeave:Connect(function() TweenService:Create(cbOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play(); task.delay(0.06, function() cbOverlay.Visible = false end) end)
+		Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
+		local cbStroke = Instance.new("UIStroke", cbOuter)
+		cbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		cbStroke.Color = default and window.theme.AccentD or window.theme.Border
+		cbStroke.Thickness = 1
+		local cbMark = Instance.new("TextLabel")
+		cbMark.Size = UDim2.new(1, 0, 1, 0)
+		cbMark.BackgroundTransparency = 1
+		cbMark.Text = default and "X" or ""
+		cbMark.TextColor3 = Color3.fromRGB(10, 10, 10)
+		cbMark.Font = Enum.Font.GothamBold
+		cbMark.TextSize = 14
+		cbMark.ZIndex = 5
+		cbMark.Parent = cbOuter
+		local lbl = Instance.new("TextLabel")
+		lbl.Size = UDim2.new(1, -(46 + rightOffset), 1, 0)
+		lbl.Position = UDim2.new(0, 38, 0, 0)
+		lbl.BackgroundTransparency = 1
+		lbl.Text = text
+		lbl.TextColor3 = window.theme.White
+		lbl.Font = Enum.Font.GothamSemibold
+		lbl.TextSize = 13
+		lbl.TextXAlignment = Enum.TextXAlignment.Left
+		lbl.TextYAlignment = Enum.TextYAlignment.Center
+		lbl.ZIndex = 4
+		lbl.Parent = parent
+		return cbOuter, cbStroke, cbMark, lbl
+	end
+
+	local function updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
+		TweenService:Create(cbOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+			BackgroundColor3 = state and window.theme.Accent or window.theme.BG
+		}):Play()
+		cbStroke.Color = state and window.theme.AccentD or window.theme.Border
+		cbMark.Text = state and "X" or ""
+	end
+
 	function group:toggle(text, default, callback, tooltip, icon, expandable, contentFunc, colorCallback, settingsCallback)
 		local id = generateID()
 		local TOGGLE_H = 36
-		local CB_SIZE = 22
-		local CB_OFFSET = 26
 		if expandable then
 			local container = Instance.new("Frame")
 			container.Size = UDim2.new(1, 0, 0, TOGGLE_H)
@@ -4935,53 +4861,8 @@ function UILib.Column:addGroup(title)
 			toggleRow.BackgroundTransparency = 1
 			toggleRow.ZIndex = 3
 			toggleRow.Parent = container
-			local cbOuter = Instance.new("TextButton")
-			cbOuter.Size = UDim2.new(0, CB_SIZE, 0, CB_SIZE)
-			cbOuter.Position = UDim2.new(0, 8, 0.5, -CB_SIZE/2)
-			cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.BG
-			cbOuter.BorderSizePixel = 0
-			cbOuter.AutoButtonColor = false
-			cbOuter.ZIndex = 4
-			cbOuter.Text = ""
-			cbOuter.Parent = toggleRow
-			local cbOverlay = Instance.new("Frame")
-			cbOverlay.Size = UDim2.fromScale(1, 1)
-			cbOverlay.BackgroundColor3 = Color3.new(0, 0, 0)
-			cbOverlay.BackgroundTransparency = 0.7
-			cbOverlay.BorderSizePixel = 0
-			cbOverlay.Visible = false
-			cbOverlay.ZIndex = 10
-			cbOverlay.Parent = cbOuter
-			cbOverlay.BackgroundTransparency = 1
-			cbOuter.MouseButton1Down:Connect(function() TweenService:Create(cbOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 0.7 }):Play(); cbOverlay.Visible = true end)
-			cbOuter.MouseButton1Up:Connect(function() TweenService:Create(cbOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play(); task.delay(0.06, function() cbOverlay.Visible = false end) end)
-			cbOuter.MouseLeave:Connect(function() TweenService:Create(cbOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play(); task.delay(0.06, function() cbOverlay.Visible = false end) end)
-			Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
-			local cbStroke = Instance.new("UIStroke", cbOuter)
-			cbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-			cbStroke.Color = default and window.theme.AccentD or window.theme.Border
-			cbStroke.Thickness = 1
-			local cbMark = Instance.new("TextLabel")
-			cbMark.Size = UDim2.new(1, 0, 1, 0)
-			cbMark.BackgroundTransparency = 1
-			cbMark.Text = default and "X" or ""
-			cbMark.TextColor3 = Color3.fromRGB(10, 10, 10)
-			cbMark.Font = Enum.Font.GothamBold
-			cbMark.TextSize = 14
-			cbMark.ZIndex = 5
-			cbMark.Parent = cbOuter
-			local lbl = Instance.new("TextLabel")
+			local cbOuter, cbStroke, cbMark, lbl = createToggleCheckbox(toggleRow, default, window, text, 4)
 			lbl.Size = UDim2.new(1, -46, 1, 0)
-			lbl.Position = UDim2.new(0, 38, 0, 0)
-			lbl.BackgroundTransparency = 1
-			lbl.Text = text
-			lbl.TextColor3 = window.theme.White
-			lbl.Font = Enum.Font.GothamSemibold
-			lbl.TextSize = 13
-		lbl.TextXAlignment = Enum.TextXAlignment.Left
-		lbl.TextYAlignment = Enum.TextYAlignment.Center
-		lbl.ZIndex = 4
-			lbl.Parent = toggleRow
 			local contentFrame = Instance.new("Frame")
 			contentFrame.Size = UDim2.new(1, 0, 0, 0)
 			contentFrame.Position = UDim2.new(0, 0, 0, TOGGLE_H)
@@ -5004,11 +4885,7 @@ function UILib.Column:addGroup(title)
 			elem.SetValue = function(val)
 				state = val
 				elem.Value = state
-				TweenService:Create(cbOuter, TweenInfo.new(0.12, Enum.EasingStyle.Quart), {
-					BackgroundColor3 = state and window.theme.Accent or window.theme.BG
-				}):Play()
-				cbStroke.Color = state and window.theme.AccentD or window.theme.Border
-				cbMark.Text = state and "X" or ""
+				updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
 				local targetH = TOGGLE_H + (state and contentLayout.AbsoluteContentSize.Y or 0)
 				TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 					Size = UDim2.new(1, 0, 0, targetH)
@@ -5067,52 +4944,6 @@ function UILib.Column:addGroup(title)
 		r.BorderSizePixel = 0
 		r.ZIndex = 3
 		r.Parent = items
-		local cbOuter = Instance.new("TextButton")
-		cbOuter.Size = UDim2.new(0, CB_SIZE, 0, CB_SIZE)
-		cbOuter.Position = UDim2.new(0, 8, 0.5, -CB_SIZE/2)
-		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.BG
-		cbOuter.BorderSizePixel = 0
-		cbOuter.AutoButtonColor = false
-		cbOuter.ZIndex = 4
-		cbOuter.Text = ""
-		cbOuter.Parent = r
-		local cbOverlay = Instance.new("Frame")
-		cbOverlay.Size = UDim2.fromScale(1, 1)
-		cbOverlay.BackgroundColor3 = Color3.new(0, 0, 0)
-		cbOverlay.BackgroundTransparency = 0.7
-		cbOverlay.BorderSizePixel = 0
-		cbOverlay.Visible = false
-		cbOverlay.ZIndex = 10
-		cbOverlay.Parent = cbOuter
-		cbOverlay.BackgroundTransparency = 1
-		cbOuter.MouseButton1Down:Connect(function() TweenService:Create(cbOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 0.7 }):Play(); cbOverlay.Visible = true end)
-		cbOuter.MouseButton1Up:Connect(function() TweenService:Create(cbOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play(); task.delay(0.06, function() cbOverlay.Visible = false end) end)
-		cbOuter.MouseLeave:Connect(function() TweenService:Create(cbOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play(); task.delay(0.06, function() cbOverlay.Visible = false end) end)
-		Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
-		local cbStroke = Instance.new("UIStroke", cbOuter)
-		cbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		cbStroke.Color = default and window.theme.AccentD or window.theme.Border
-		cbStroke.Thickness = 1
-		local cbMark = Instance.new("TextLabel")
-		cbMark.Size = UDim2.new(1, 0, 1, 0)
-		cbMark.BackgroundTransparency = 1
-		cbMark.Text = default and "X" or ""
-		cbMark.TextColor3 = Color3.fromRGB(10, 10, 10)
-		cbMark.Font = Enum.Font.GothamBold
-		cbMark.TextSize = 14
-		cbMark.ZIndex = 5
-		cbMark.Parent = cbOuter
-		local lbl = Instance.new("TextLabel")
-		lbl.Size = UDim2.new(1, -46, 1, 0)
-		lbl.Position = UDim2.new(0, 38, 0, 0)
-		lbl.BackgroundTransparency = 1
-		lbl.Text = text
-		lbl.TextColor3 = window.theme.White
-		lbl.Font = Enum.Font.GothamSemibold
-		lbl.TextSize = 13
-		lbl.TextXAlignment = Enum.TextXAlignment.Left
-		lbl.ZIndex = 4
-		lbl.Parent = r
 		local rightIcons, rightOffset = {}, 4
 		if colorCallback then
 			local colorBtn = Instance.new("TextButton")
@@ -5166,17 +4997,13 @@ function UILib.Column:addGroup(title)
 			end)
 			rightOffset = rightOffset + 16
 		end
-		lbl.Size = UDim2.new(1, -(46 + rightOffset), 1, 0)
+		local cbOuter, cbStroke, cbMark, lbl = createToggleCheckbox(r, default, window, text, rightOffset)
 		local state = default
 		local elem = { ID = id, Value = state, DefaultValue = default, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = TOGGLE_H }
 		elem.SetValue = function(val)
 			state = val
 			elem.Value = state
-			TweenService:Create(cbOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
-				BackgroundColor3 = state and window.theme.Accent or window.theme.BG
-			}):Play()
-			cbStroke.Color = state and window.theme.AccentD or window.theme.Border
-			cbMark.Text = state and "X" or ""
+			updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
 			if callback then callback(state) end
 			if window.configs[id] then window.configs[id].Value = state end
 		end
@@ -5866,6 +5693,22 @@ function UILib.Column:addGroup(title)
 		function ref:setColor(c) lbl.TextColor3 = c end
 
 		ref.remove = function() f:Destroy(); updateSize() end
+		function ref:SetVisible(v, anim)
+			if not anim then
+				f.Visible = v
+				f.Size = UDim2.new(1, 0, 0, v and 0 or 0)
+				if group and group.updateSize then group.updateSize() end
+				return
+			end
+			f.ClipsDescendants = true
+			if v then f.Visible = true end
+			local target = v and f.AbsoluteContentSize.Y or 0
+			local tw = TweenService:Create(f, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Size = UDim2.new(1, 0, 0, target)
+			})
+			tw.Completed:Connect(function() if not v then f.Visible = false end; if group and group.updateSize then group.updateSize() end end)
+			tw:Play()
+		end
 		return ref
 	end
 
@@ -5911,6 +5754,22 @@ function UILib.Column:addGroup(title)
 			updateSize()
 		end
 		pcall(function() f.remove = function() f:Destroy(); updateSize() end end)
+		function f:SetVisible(v, anim)
+			local h = text and 18 or 10
+			if not anim then
+				f.Visible = v
+				f.Size = UDim2.new(1, 0, 0, v and h or 0)
+				if group and group.updateSize then group.updateSize() end
+				return
+			end
+			f.ClipsDescendants = true
+			if v then f.Visible = true end
+			local tw = TweenService:Create(f, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Size = UDim2.new(1, 0, 0, v and h or 0)
+			})
+			tw.Completed:Connect(function() if not v then f.Visible = false end; if group and group.updateSize then group.updateSize() end end)
+			tw:Play()
+		end
 		return f
 	end
 
@@ -6076,6 +5935,21 @@ function UILib.Column:addGroup(title)
 			if tooltip then attachTooltip(r, tooltip, window) end
 			updateSize()
 			ref.remove = function() r:Destroy(); updateSize() end
+			function ref:SetVisible(v, anim)
+				if not anim then
+					r.Visible = v
+					r.Size = UDim2.new(1, 0, 0, v and 42 or 0)
+					if group and group.updateSize then group.updateSize() end
+					return
+				end
+				r.ClipsDescendants = true
+				if v then r.Visible = true end
+				local tw = TweenService:Create(r, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+					Size = UDim2.new(1, 0, 0, v and 42 or 0)
+				})
+				tw.Completed:Connect(function() if not v then r.Visible = false end; if group and group.updateSize then group.updateSize() end end)
+				tw:Play()
+			end
 			return ref
 	end
 
@@ -6107,6 +5981,22 @@ function UILib.Column:addGroup(title)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		ref.remove = function() r:Destroy(); updateSize() end
+		function ref:SetVisible(v, anim)
+			local h = height + 8
+			if not anim then
+				r.Visible = v
+				r.Size = UDim2.new(1, 0, 0, v and h or 0)
+				if group and group.updateSize then group.updateSize() end
+				return
+			end
+			r.ClipsDescendants = true
+			if v then r.Visible = true end
+			local tw = TweenService:Create(r, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Size = UDim2.new(1, 0, 0, v and h or 0)
+			})
+			tw.Completed:Connect(function() if not v then r.Visible = false end; if group and group.updateSize then group.updateSize() end end)
+			tw:Play()
+		end
 		return ref
 	end
 
@@ -6200,6 +6090,22 @@ function UILib.Column:addGroup(title)
 			if tooltip then attachTooltip(r, tooltip, window) end
 			updateSize()
 			ref.remove = function() r:Destroy(); updateSize() end
+			function ref:SetVisible(v, anim)
+				local h = position == "inline" and 24 or 28
+				if not anim then
+					r.Visible = v
+					r.Size = UDim2.new(1, 0, 0, v and h or 0)
+					if group and group.updateSize then group.updateSize() end
+					return
+				end
+				r.ClipsDescendants = true
+				if v then r.Visible = true end
+				local tw = TweenService:Create(r, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+					Size = UDim2.new(1, 0, 0, v and h or 0)
+				})
+				tw.Completed:Connect(function() if not v then r.Visible = false end; if group and group.updateSize then group.updateSize() end end)
+				tw:Play()
+			end
 			return ref
 		end
 	end
