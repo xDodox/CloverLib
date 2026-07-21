@@ -25,10 +25,11 @@ local RunService = cloneref(game:GetService("RunService"))
 local function cleanNum(n)
 	if type(n) ~= "number" then return tostring(n) end
 	if n == math.floor(n) then return tostring(math.floor(n)) end
-	return tostring(math.floor(n * 10000 + 0.5) / 10000)
+	return string.format("%.4g", n)
 end
 
 local allWindows = {}
+local _configLoading = false
 
 local LUCIDE_ICONS = nil
 
@@ -559,6 +560,7 @@ local function _applyStructuredJSON(self, decoded)
 	end
 	local count = 0
 	self._loadingConfig = true
+	_configLoading = true
 	for etype, items in pairs(decoded) do
 		if type(items) ~= "table" then continue end
 		if etype:sub(1, 1) == "_" then continue end
@@ -585,6 +587,7 @@ local function _applyStructuredJSON(self, decoded)
 		end
 	end
 	self._loadingConfig = nil
+	_configLoading = false
 	return count
 end
 
@@ -3588,7 +3591,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	valueBoxInput.AutomaticSize = Enum.AutomaticSize.X
 	valueBoxInput.Size = UDim2.new(0, 0, 1, 0)
 	valueBoxInput.BackgroundTransparency = 1
-	valueBoxInput.Text = tostring(defaultVal)
+	valueBoxInput.Text = cleanNum(defaultVal)
 	valueBoxInput.TextColor3 = window.theme.Accent
 	valueBoxInput.Font = Enum.Font.GothamSemibold
 	valueBoxInput.TextSize = 12
@@ -3671,7 +3674,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		fill.Size = UDim2.new(rel, 0, 1, 0)
 		if sliderHandle then sliderHandle.Position = UDim2.new(rel, rel > 0.01 and -4 or 0, 0, 0) end
 		valueLabel.Text = formatVal(val)
-		valueBoxInput.Text = tostring(val)
+		valueBoxInput.Text = cleanNum(val)
 		if callback then callback(val) end
 		window.configs[id].Value = val
 	end
@@ -3699,7 +3702,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 			valueLabel.Visible = false
 			valueBoxInput.Visible = true
 			valueBoxInput:CaptureFocus()
-			valueBoxInput.Text = tostring(currentVal)
+			valueBoxInput.Text = cleanNum(currentVal)
 			valueBoxInput.TextColor3 = window.theme.Accent
 		end
 	end)
@@ -4506,7 +4509,12 @@ function UILib.Column:addGroup(title)
 	grp.BackgroundColor3 = window.theme.Item
 	grp.BorderSizePixel = 0
 	grp.Parent = self.frame
+	Instance.new("UICorner", grp).CornerRadius = UDim.new(0, 6)
 	grp.ClipsDescendants = true
+	local grpStroke = Instance.new("UIStroke", grp)
+	grpStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	grpStroke.Color = window.theme.Border
+	grpStroke.Thickness = 1
 
 	local row = Instance.new("Frame")
 	row.Size = UDim2.new(1, 0, 0, 30)
@@ -4518,19 +4526,6 @@ function UILib.Column:addGroup(title)
 	row.BackgroundTransparency = 0
 	row.Parent = grp
 	Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
-	local rowStroke = Instance.new("UIStroke", row)
-	rowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	rowStroke.Color = window.theme.Border
-	rowStroke.Thickness = 1
-
-	local rowBottomCover = Instance.new("Frame")
-	rowBottomCover.Size = UDim2.new(1, 0, 0, 6)
-	rowBottomCover.Position = UDim2.new(0, 0, 1, -6)
-	rowBottomCover.BackgroundColor3 = row.BackgroundColor3
-	rowBottomCover.BackgroundTransparency = 0
-	rowBottomCover.BorderSizePixel = 0
-	rowBottomCover.ZIndex = 2
-	rowBottomCover.Parent = row
 
 	local headerSep = Instance.new("Frame")
 	headerSep.Size = UDim2.new(1, 0, 0, 1)
@@ -4886,7 +4881,7 @@ function UILib.Column:addGroup(title)
 					Size = UDim2.new(1, 0, 0, targetH)
 				}):Play()
 				task.delay(0.21, updateSize)
-				if callback then callback(state) end
+				if callback and not _configLoading then callback(state) end
 				if window.configs[id] then window.configs[id].Value = state end
 			end
 		function elem:SetVisible(v, anim)
@@ -4999,7 +4994,7 @@ function UILib.Column:addGroup(title)
 			state = val
 			elem.Value = state
 			updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
-			if callback then callback(state) end
+			if callback and not _configLoading then callback(state) end
 			if window.configs[id] then window.configs[id].Value = state end
 		end
 		function elem:SetVisible(v, anim)
@@ -5039,9 +5034,9 @@ function UILib.Column:addGroup(title)
 		local origSetValue = elem.SetValue
 		local lastConfirm = 0
 		elem.SetValue = function(val, _silent)
-			if (window._loadingConfig or (_silent)) and val and elem._confirmMessage then
+			if (window._loadingConfig or (_configLoading) or (_silent)) and val and elem._confirmMessage then
 				origSetValue(val)
-				if callback then callback(val) end
+				if callback and not _configLoading then callback(val) end
 				return
 			end
 			if val and elem._confirmMessage and not _silent then
@@ -5058,7 +5053,7 @@ function UILib.Column:addGroup(title)
 				end)
 			else
 				origSetValue(val)
-				if callback then callback(val) end
+				if callback and not _configLoading then callback(val) end
 			end
 		end
 		function elem:setConfirmMessage(msg) elem._confirmMessage = msg end
