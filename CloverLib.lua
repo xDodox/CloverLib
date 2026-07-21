@@ -1948,22 +1948,18 @@ function UILib:buildUITab()
 	local function syncColorPickers()
 		if _themeApplying then return end
 		_themeApplying = true
-		local pairs_to_update = {
-			{ picker = accentPicker, color = self.theme.Accent },
-			{ picker = themeBGPicker, color = self.theme.BG },
-			{ picker = themePanelPicker, color = self.theme.Panel },
-			{ picker = themeItemPicker, color = self.theme.ItemHov },
-			{ picker = themeBorderPicker, color = self.theme.Border },
-		}
-		for _, entry in ipairs(pairs_to_update) do
-			local p, c = entry.picker, entry.color
-			if p and typeof(c) == "Color3" then
-				pcall(function()
-					p.Value = c
-					if p.colorBox then p.colorBox.BackgroundColor3 = c end
-				end)
+		local function updatePicker(p, c)
+			if not p or not c or typeof(c) ~= "Color3" then return end
+			p.Value = c
+			if p.colorBox and p.colorBox.Parent then
+				p.colorBox.BackgroundColor3 = c
 			end
 		end
+		updatePicker(accentPicker, self.theme.Accent)
+		updatePicker(themeBGPicker, self.theme.BG)
+		updatePicker(themePanelPicker, self.theme.Panel)
+		updatePicker(themeItemPicker, self.theme.ItemHov)
+		updatePicker(themeBorderPicker, self.theme.Border)
 		_themeApplying = false
 	end
 
@@ -4276,6 +4272,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	arrow.ZIndex = 12
 	arrow.Parent = dbtn
 	table.insert(window.accentObjects, arrow)
+	table.insert(window.accentObjects, arrow)
 	local listH = #options * 28 + 8
 	local dlist = Instance.new("ScrollingFrame")
 	dlist.Size = UDim2.new(1, 0, 0, math.min(listH, 220))
@@ -4811,7 +4808,7 @@ function UILib.Column:addGroup(title)
 		local CB_SIZE = 22
 		local cbOuter = Instance.new("TextButton")
 		cbOuter.Size = UDim2.new(0, CB_SIZE, 0, CB_SIZE)
-		cbOuter.Position = UDim2.new(0, 0, 0.5, -CB_SIZE/2)
+		cbOuter.Position = UDim2.new(0, -1, 0.5, -CB_SIZE/2)
 		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.BG
 		cbOuter.BorderSizePixel = 0
 		cbOuter.AutoButtonColor = false
@@ -4846,7 +4843,7 @@ function UILib.Column:addGroup(title)
 		cbMark.Parent = cbOuter
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -(46 + rightOffset), 1, 0)
-		lbl.Position = UDim2.new(0, 30, 0, 0)
+		lbl.Position = UDim2.new(0, 29, 0, 0)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
@@ -5362,8 +5359,8 @@ function UILib.Column:addGroup(title)
 				local bg = Instance.new("Frame")
 				bg.Name = "SelectionBG"
 				bg.Size = UDim2.new(1, 0, 1, 0)
-			bg.BackgroundColor3 = Color3.new(window.theme.Accent.r * 0.25, window.theme.Accent.g * 0.25, window.theme.Accent.b * 0.25)
-			bg.BackgroundTransparency = isSelected and 0.3 or 1
+			bg.BackgroundColor3 = window.theme.ItemHov
+			bg.BackgroundTransparency = isSelected and 0.15 or 1
 				bg.BorderSizePixel = 0
 				bg.ZIndex = 50
 				bg.Parent = ob
@@ -5417,8 +5414,8 @@ function UILib.Column:addGroup(title)
 							if sBg then
 								local isSel = child:FindFirstChildOfClass("TextLabel") and
 									child:FindFirstChildOfClass("TextLabel").Text == opt
-								sBg.BackgroundTransparency = isSel and 0.3 or 1
-								sBg.BackgroundColor3 = Color3.new(window.theme.Accent.r * 0.25, window.theme.Accent.g * 0.25, window.theme.Accent.b * 0.25)
+								sBg.BackgroundTransparency = isSel and 0.15 or 1
+								sBg.BackgroundColor3 = window.theme.ItemHov
 							end
 						end
 					end
