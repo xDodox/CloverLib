@@ -2617,6 +2617,10 @@ function UILib:confirm(message, onYes, onNo)
 		btn.ZIndex = 803
 		btn.Parent = btnRow
 		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+		local btnBdr = Instance.new("UIStroke", btn)
+		btnBdr.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		btnBdr.Color = self.theme.Accent
+		btnBdr.Thickness = 1
 		btn.MouseButton1Click:Connect(function()
 			overlay:Destroy()
 			modal:Destroy()
@@ -3898,7 +3902,12 @@ local function createColorPicker(group, items, window, text, default, callback)
 
 		local satValSquare, satValKnob, hueSlider, hueKnob, hexBox, alphaKnob, alphaValLbl
 		local hueDragging, svDragging = false, false
-		local h_, s_, v_ = Color3.toHSV(current)
+		local h_, s_, v_
+		if typeof(current) == "Color3" then
+			h_, s_, v_ = Color3.toHSV(current)
+		else
+			h_, s_, v_ = 0, 1, 1
+		end
 
 		local function update()
 			local h = hueKnob.Position.X.Scale
@@ -4617,10 +4626,10 @@ function UILib.Column:addGroup(title)
 		collapseBtn.Text = groupCollapsed and "▶" or "▼"
 		grp.ClipsDescendants = true
 		if groupCollapsed then
+			updateSize()
 			local tw = TweenService:Create(grp, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 				Size = UDim2.new(1, 0, 0, 36)
 			})
-			tw.Completed:Connect(function() items.Visible = false end)
 			tw:Play()
 		else
 			items.Visible = true
