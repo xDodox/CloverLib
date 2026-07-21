@@ -1853,7 +1853,7 @@ function UILib:buildUITab()
 								)
 							end
 							if gr.headerSep then gr.headerSep.BackgroundColor3 = self.theme.Accent end
-						if gr.headerLabel then gr.headerLabel.TextColor3 = self.theme.White end
+						if gr.headerLabel then gr.headerLabel.TextColor3 = self.theme.GrayLt end
 						end
 					end
 				end
@@ -2002,7 +2002,10 @@ function UILib:buildUITab()
 		self:shareConfigCode(self.configShareUrl or "https://cloverhub.fun")
 	end, "Upload config and get a short share code", Enum.TextXAlignment.Center, Color3.fromRGB(100, 180, 255))
 
-	local importCodeBox = cfg:textbox("Import Code", "", "e.g. FP4j7", function(_) end)
+	local randomCode = ""
+	for i = 1, 6 do randomCode = randomCode .. string.char(math.random(65, 70)) .. string.char(math.random(48, 57)) end
+	if #randomCode > 6 then randomCode = randomCode:sub(1, 6) end
+	local importCodeBox = cfg:textbox("Import Code", "", "e.g. " .. randomCode, function(_) end)
 	importCodeBox._noConfig = true
 
 	cfg:button("Import Settings", function()
@@ -4403,9 +4406,6 @@ local function createMultiDropdown(group, items, window, text, options, default,
 		open = not open
 		window.tooltipSuppressed = open
 		if window.tooltip then window.tooltip.hide() end
-		TweenService:Create(arrow, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
-			Rotation = open and 180 or 0
-		}):Play()
 		if open then
 			multiDbtnCorner.CornerRadius = UDim.new(0, 0)
 			multiBridge.Visible = true
@@ -4543,7 +4543,7 @@ function UILib.Column:addGroup(title)
 	label.Position = UDim2.new(0, 10, 0, 0)
 	label.BackgroundTransparency = 1
 	label.Text = title:upper()
-	label.TextColor3 = window.theme.White
+	label.TextColor3 = window.theme.GrayLt
 	label.Font = Enum.Font.GothamBold
 	label.TextSize = 12
 	label.TextXAlignment = Enum.TextXAlignment.Left
@@ -5205,7 +5205,6 @@ function UILib.Column:addGroup(title)
 		local function closeDropdown()
 			open = false
 			window.tooltipSuppressed = false
-			TweenService:Create(arrow, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Rotation = 0 }):Play()
 
 			dbtnCorner.CornerRadius = UDim.new(0, 4)
 			dbtnStroke.Color = window.theme.Border
@@ -5344,9 +5343,6 @@ function UILib.Column:addGroup(title)
 			open = not open
 			window.tooltipSuppressed = open
 			if window.tooltip then window.tooltip.hide() end
-			TweenService:Create(arrow, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
-				Rotation = open and 180 or 0
-			}):Play()
 			if open then
 				local clampedListH = getListMaxH()
 				local totalPanelH = clampedListH
