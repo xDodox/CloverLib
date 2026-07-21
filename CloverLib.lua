@@ -1994,6 +1994,7 @@ function UILib:buildUITab()
 		if name == "" then self:notify("Enter a name", "warning", 2); return end
 		self:saveConfigStructured(name)
 		cfgRefreshDropdown()
+		task.defer(function() pcall(function() cfgDropdown:SetValue(name) end) end)
 	end, nil, Enum.TextXAlignment.Center)
 	cfg:separator("Share & Import")
 
@@ -3784,19 +3785,14 @@ local function createColorPicker(group, items, window, text, default, callback)
 	stroke.Color = window.theme.Border
 	stroke.Thickness = 1
 	local current = default or Color3.new(1, 0, 0)
-	local currentAlpha = 0
-	local elem = { ID = id, Value = current, Alpha = currentAlpha }
-	local currentMode = "Solid"
+	local elem = { ID = id, Value = current }
 	local pickerFrame = nil
 
-	elem.SetValue = function(val, alpha)
+	elem.SetValue = function(val)
 		current = val
-		currentAlpha = alpha or currentAlpha
 		elem.Value = val
-		elem.Alpha = currentAlpha
 		colorBox.BackgroundColor3 = val
-		colorBox.BackgroundTransparency = currentAlpha
-		if callback then callback(val, currentAlpha) end
+		if callback then callback(val) end
 	end
 	function elem:SetColor(val)
 		current = val
@@ -3858,7 +3854,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		local pickerJustOpened = true
 		task.delay(0.1, function() pickerJustOpened = false end)
 
-		local pickerW, pickerH = 240, 260
+		local pickerW, pickerH = 240, 210
 		pickerFrame = Instance.new("Frame")
 		pickerFrame.Size = UDim2.new(0, pickerW, 0, pickerH)
 		pickerFrame.BackgroundColor3 = window.theme.Surface
@@ -3900,7 +3896,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		TweenService:Create(pickerScale, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
 			{ Scale = 1 }):Play()
 
-		local satValSquare, satValKnob, hueSlider, hueKnob, hexBox, alphaKnob, alphaValLbl
+		local satValSquare, satValKnob, hueSlider, hueKnob, hexBox
 		local hueDragging, svDragging = false, false
 		local h_, s_, v_
 		if typeof(current) == "Color3" then
@@ -3917,10 +3913,8 @@ local function createColorPicker(group, items, window, text, default, callback)
 			elem.Value = current
 			satValSquare.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
 			colorBox.BackgroundColor3 = current
-			colorBox.BackgroundTransparency = currentAlpha
 			hexBox.Text = "#" .. current:ToHex()
-			if alphaValLbl then alphaValLbl.Text = "Transparency: " .. math.floor(currentAlpha * 100 + 0.5) .. "%" end
-			if callback then callback(current, currentAlpha) end
+			if callback then callback(current) end
 		end
 
 		local function updateHue(pos)
@@ -4026,61 +4020,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		Instance.new("UICorner", hueKnob).CornerRadius = UDim.new(1, 0)
 		Instance.new("UIStroke", hueKnob).Thickness = 1.5
 
-		local alphaHeaderY = slidersY + 12 + 8
-		alphaValLbl = Instance.new("TextLabel")
-		alphaValLbl.Size = UDim2.new(1, -PAD * 2, 0, 14)
-		alphaValLbl.Position = UDim2.new(0, PAD, 0, alphaHeaderY)
-		alphaValLbl.BackgroundTransparency = 1
-		alphaValLbl.Text = "Transparency: " .. math.floor((1 - elem.Alpha) * 100 + 0.5) .. "%"
-		alphaValLbl.TextColor3 = window.theme.GrayLt
-		alphaValLbl.Font = Enum.Font.GothamSemibold
-		alphaValLbl.TextSize = 10
-		alphaValLbl.TextXAlignment = Enum.TextXAlignment.Left
-		alphaValLbl.ZIndex = 2001
-		alphaValLbl.Parent = pickerFrame
-
-		local alphaSliderY = alphaHeaderY + 14 + 3
-		local alphaTrack = Instance.new("Frame")
-		alphaTrack.Size = UDim2.new(1, -PAD * 2, 0, 12)
-		alphaTrack.Position = UDim2.new(0, PAD, 0, alphaSliderY)
-		alphaTrack.BorderSizePixel = 0
-		alphaTrack.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-		alphaTrack.ZIndex = 2001
-		alphaTrack.Parent = pickerFrame
-		Instance.new("UICorner", alphaTrack).CornerRadius = UDim.new(0, 6)
-		local alphaColorBar = Instance.new("Frame")
-		alphaColorBar.Size = UDim2.new(1, 0, 1, 0)
-		alphaColorBar.BackgroundTransparency = 0
-		alphaColorBar.BorderSizePixel = 0
-		alphaColorBar.ZIndex = 2001
-		alphaColorBar.Parent = alphaTrack
-		Instance.new("UICorner", alphaColorBar).CornerRadius = UDim.new(0, 6)
-		local alphaGrad = Instance.new("UIGradient", alphaColorBar)
-		alphaGrad.Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0),
-			NumberSequenceKeypoint.new(1, 1),
-		})
-
-		alphaKnob = Instance.new("Frame")
-		alphaKnob.Size = UDim2.new(0, 14, 0, 14)
-		alphaKnob.Position = UDim2.new(1 - elem.Alpha, -7, 0.5, -7)
-		alphaKnob.BackgroundColor3 = Color3.new(1, 1, 1)
-		alphaKnob.ZIndex = 2003
-		alphaKnob.Parent = alphaTrack
-		Instance.new("UICorner", alphaKnob).CornerRadius = UDim.new(1, 0)
-		Instance.new("UIStroke", alphaKnob).Thickness = 1.5
-
-		local function applyAlpha(posX)
-			local rel = math.clamp((posX - alphaTrack.AbsolutePosition.X) / alphaTrack.AbsoluteSize.X, 0, 1)
-			alphaKnob.Position = UDim2.new(rel, -7, 0.5, -7)
-			currentAlpha = rel
-			elem.Alpha = rel
-			colorBox.BackgroundTransparency = rel
-			alphaValLbl.Text = "Transparency: " .. math.floor(rel * 100 + 0.5) .. "%"
-			if callback then callback(current, currentAlpha) end
-		end
-
-		local hexY = alphaSliderY + 12 + 10
+		local hexY = slidersY + 12 + 10
 		hexBox = Instance.new("TextBox")
 		hexBox.Size = UDim2.new(1, -PAD * 2, 0, 26)
 		hexBox.Position = UDim2.new(0, PAD, 0, hexY)
@@ -4100,12 +4040,6 @@ local function createColorPicker(group, items, window, text, default, callback)
 		hbStroke.Thickness = 1
 
 		local alphaDragging = false
-		alphaTrack.InputBegan:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 then
-				alphaDragging = true
-				applyAlpha(i.Position.X)
-			end
-		end)
 		hueSlider.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1 then
 				hueDragging = true
@@ -4121,14 +4055,13 @@ local function createColorPicker(group, items, window, text, default, callback)
 
 		local inputChangedConn = UIS.InputChanged:Connect(function(i)
 			if i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch then
-				if alphaDragging then applyAlpha(i.Position.X) end
 				if hueDragging then updateHue(i.Position) end
 				if svDragging then updateSV(i.Position) end
 			end
 		end)
 		local inputEndedConn = UIS.InputEnded:Connect(function(i)
 			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-				alphaDragging, hueDragging, svDragging = false, false, false
+				hueDragging, svDragging = false, false
 			end
 		end)
 		table.insert(window.connections, inputChangedConn)
