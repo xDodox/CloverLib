@@ -2612,6 +2612,7 @@ function UILib:confirm(message, onYes, onNo)
 		btn.Font = Enum.Font.GothamBold
 		btn.TextSize = 13
 		btn.ZIndex = 803
+		btn.AutoButtonColor = false
 		btn.Parent = btnRow
 		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 		local btnBdr = Instance.new("UIStroke", btn)
@@ -3847,7 +3848,8 @@ local function createColorPicker(group, items, window, text, default, callback)
 	end
 
 	local function openPicker()
-		if pickerFrame or window._openingPicker then return end
+		if pickerFrame and pickerFrame.Parent then return end
+		if window._openingPicker then return end
 		window._openingPicker = true
 		task.delay(0.15, function() window._openingPicker = nil end)
 		local pickerJustOpened = true
@@ -3860,6 +3862,14 @@ local function createColorPicker(group, items, window, text, default, callback)
 		pickerFrame.BorderSizePixel = 0
 		pickerFrame.ZIndex = 2000
 		pickerFrame.Parent = window.sg
+		pickerFrame.Destroying:Connect(function()
+			local cons = _pickerCons[pickerFrame]
+			if cons then
+				for _, c in ipairs(cons) do pcall(c.Disconnect, c) end
+				_pickerCons[pickerFrame] = nil
+			end
+			pickerFrame = nil
+		end)
 		table.insert(window.activePopups, pickerFrame)
 
 		local blocker = Instance.new("TextButton", pickerFrame)
@@ -4554,24 +4564,33 @@ function UILib.Column:addGroup(title)
 	collapseBtn.TextSize = 13
 	collapseBtn.ZIndex = 5
 	collapseBtn.Parent = row
+	local function doCollapse()
+		grp.ClipsDescendants = true
+		updateSize()
+		local tw = TweenService:Create(grp, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = UDim2.new(1, 0, 0, 36)
+		})
+		tw:Play()
+	end
+
+	local function doExpand()
+		grp.ClipsDescendants = true
+		items.Visible = true
+		grp.Size = UDim2.new(1, 0, 0, 36)
+		task.wait()
+		local ih = itemLayout.AbsoluteContentSize.Y
+		items.Size = UDim2.new(1, 0, 0, ih + 8)
+		grp.Size = UDim2.new(1, 0, 0, 36)
+		TweenService:Create(grp, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = UDim2.new(1, 0, 0, ih + 46)
+		}):Play()
+	end
+
 	group._collapsed = false
 	collapseBtn.MouseButton1Click:Connect(function()
 		group._collapsed = not group._collapsed
 		collapseBtn.Text = group._collapsed and "▶" or "▼"
-		grp.ClipsDescendants = true
-		if group._collapsed then
-			updateSize()
-			local tw = TweenService:Create(grp, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Size = UDim2.new(1, 0, 0, 36)
-			})
-			tw:Play()
-		else
-			items.Visible = true
-			local ih = itemLayout.AbsoluteContentSize.Y
-			TweenService:Create(grp, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Size = UDim2.new(1, 0, 0, ih + 46)
-			}):Play()
-		end
+		if group._collapsed then doCollapse() else doExpand() end
 	end)
 
 	group.frame = grp
