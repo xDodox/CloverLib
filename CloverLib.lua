@@ -1740,21 +1740,15 @@ function UILib:addWatermark(name)
 	end
 	local wm = Instance.new("Frame")
 	wm.AutomaticSize = Enum.AutomaticSize.X
-	wm.Size = UDim2.new(0, 0, 0, 30)
+	wm.Size = UDim2.new(0, 0, 0, 22)
 	wm.Position = UDim2.new(1, -10, 0, 10)
 	wm.AnchorPoint = Vector2.new(1, 0)
 	wm.BackgroundColor3 = self.theme.Panel
+	wm.BackgroundTransparency = 0.15
 	wm.BorderSizePixel = 0
 	wm.Parent = self.sg
 	wm.ZIndex = 200
-	Instance.new("UICorner", wm).CornerRadius = UDim.new(0, 6)
-	local sep = Instance.new("Frame")
-	sep.Size = UDim2.new(1, -16, 0, 1)
-	sep.Position = UDim2.new(0, 8, 1, -4)
-	sep.BackgroundColor3 = self.theme.Accent
-	sep.BorderSizePixel = 0
-	sep.ZIndex = 201
-	sep.Parent = wm
+	Instance.new("UICorner", wm).CornerRadius = UDim.new(0, 14)
 	local row = Instance.new("Frame")
 	row.AutomaticSize = Enum.AutomaticSize.X
 	row.Size = UDim2.new(0, 0, 1, 0)
@@ -1764,11 +1758,11 @@ function UILib:addWatermark(name)
 	local rowLayout = Instance.new("UIListLayout", row)
 	rowLayout.FillDirection = Enum.FillDirection.Horizontal
 	rowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-	rowLayout.Padding = UDim.new(0, 6)
+	rowLayout.Padding = UDim.new(0, 5)
 	rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	local rowPad = Instance.new("UIPadding", row)
-	rowPad.PaddingLeft = UDim.new(0, 10)
-	rowPad.PaddingRight = UDim.new(0, 10)
+	rowPad.PaddingLeft = UDim.new(0, 8)
+	rowPad.PaddingRight = UDim.new(0, 8)
 	local watermarkScale = Instance.new("UIScale", wm)
 	watermarkScale.Scale = 1
 	local function updateWatermarkSize(delta)
@@ -1807,6 +1801,16 @@ function UILib:addWatermark(name)
 		-- store so they can be cleaned up when watermark is toggled off
 		self.wmDragConns = { wmDragMove, wmDragEnd }
 	end
+
+	local dot = Instance.new("Frame")
+	dot.Size = UDim2.new(0, 7, 0, 7)
+	dot.BackgroundColor3 = self.theme.Accent
+	dot.BorderSizePixel = 0
+	dot.ZIndex = 201
+	dot.LayoutOrder = 1
+	dot.Parent = row
+	Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+
 	local nameLbl = Instance.new("TextLabel")
 	nameLbl.AutomaticSize = Enum.AutomaticSize.X
 	nameLbl.Size = UDim2.new(0, 0, 1, 0)
@@ -1814,47 +1818,36 @@ function UILib:addWatermark(name)
 	nameLbl.Text = name
 	nameLbl.TextColor3 = self.theme.White
 	nameLbl.Font = Enum.Font.GothamBold
-	nameLbl.TextSize = 12
+	nameLbl.TextSize = 11
 	nameLbl.TextXAlignment = Enum.TextXAlignment.Left
 	nameLbl.ZIndex = 201
-	nameLbl.LayoutOrder = 1
+	nameLbl.LayoutOrder = 2
 	nameLbl.Parent = row
-	local divider = Instance.new("Frame")
-	divider.Size = UDim2.new(0, 1, 0, 14)
-	divider.BackgroundColor3 = self.theme.Border
-	divider.BorderSizePixel = 0
-	divider.ZIndex = 201
-	divider.LayoutOrder = 2
-	divider.Parent = row
+
 	local fpsLabel = Instance.new("TextLabel")
 	fpsLabel.AutomaticSize = Enum.AutomaticSize.X
 	fpsLabel.Size = UDim2.new(0, 0, 1, 0)
 	fpsLabel.BackgroundTransparency = 1
-	fpsLabel.Text = "FPS: 0"
-	fpsLabel.TextColor3 = self.theme.Accent
+	fpsLabel.Text = " · 0 FPS"
+	fpsLabel.TextColor3 = self.theme.GrayLt
 	fpsLabel.Font = Enum.Font.GothamSemibold
 	fpsLabel.TextSize = 10
 	fpsLabel.ZIndex = 201
 	fpsLabel.LayoutOrder = 3
 	fpsLabel.Parent = row
-	local pingDivider = Instance.new("Frame")
-	pingDivider.Size = UDim2.new(0, 1, 0, 14)
-	pingDivider.BackgroundColor3 = self.theme.Border
-	pingDivider.BorderSizePixel = 0
-	pingDivider.ZIndex = 201
-	pingDivider.LayoutOrder = 4
-	pingDivider.Parent = row
+
 	local pingLabel = Instance.new("TextLabel")
 	pingLabel.AutomaticSize = Enum.AutomaticSize.X
 	pingLabel.Size = UDim2.new(0, 0, 1, 0)
 	pingLabel.BackgroundTransparency = 1
-	pingLabel.Text = "Ping: 0ms"
-	pingLabel.TextColor3 = self.theme.Accent
+	pingLabel.Text = " · 0ms"
+	pingLabel.TextColor3 = self.theme.GrayLt
 	pingLabel.Font = Enum.Font.GothamSemibold
 	pingLabel.TextSize = 10
 	pingLabel.ZIndex = 201
-	pingLabel.LayoutOrder = 5
+	pingLabel.LayoutOrder = 4
 	pingLabel.Parent = row
+
 	local frameCount = 0
 	local lastTime = tick()
 		local connection
@@ -1866,26 +1859,16 @@ function UILib:addWatermark(name)
 		frameCount = frameCount + 1
 		local now = tick()
 		if now - lastTime >= 1 then
-			fpsLabel.Text = "FPS: " .. math.floor(frameCount / (now - lastTime) + 0.5)
+			fpsLabel.Text = " · " .. math.floor(frameCount / (now - lastTime) + 0.5) .. " FPS"
 			frameCount = 0
 			lastTime = now
 		end
 		local ping = LP:GetNetworkPing() * 1000
-		pingLabel.Text = "Ping: " .. math.floor(ping + 0.5) .. "ms"
+		pingLabel.Text = " · " .. math.floor(ping + 0.5) .. "ms"
 	end)
 	self.wmConn = connection
 	self.watermark = wm
-	local wmBorder = Instance.new("UIStroke")
-	wmBorder.Name = "Border"
-	wmBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	wmBorder.Color = self.theme.Accent
-	wmBorder.Thickness = 1
-	wmBorder.Transparency = 0.5
-	wmBorder.ZIndex = 202
-	wmBorder.Parent = wm
-	table.insert(self.accentObjects, sep)
-	table.insert(self.accentObjects, fpsLabel)
-	table.insert(self.accentObjects, pingLabel)
+	table.insert(self.accentObjects, dot)
 	return wm
 end
 
@@ -2209,6 +2192,9 @@ function UILib:setVisible(visible)
 		self.uiScale.Scale = 0.85
 		self.window.Visible = true
 		if self.watermark then self.watermark.Visible = true end
+		if self._animOverlay then
+			TweenService:Create(self._animOverlay, TweenInfo.new(0.25, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play()
+		end
 		TweenService:Create(self.uiScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 	else
 		if self.watermark then self.watermark.Visible = false end
