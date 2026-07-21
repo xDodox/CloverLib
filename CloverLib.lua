@@ -2265,10 +2265,6 @@ function UILib:showDialog(opts)
 		btnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		btnStroke.Color = self.theme.Border
 		btnStroke.Thickness = 1
-		btn.MouseEnter:Connect(function() TweenService:Create(btn, TweenInfo.new(0.1), { BackgroundColor3 = Color3.fromRGB(45, 45, 45) }):Play() end)
-		btn.MouseLeave:Connect(function() TweenService:Create(btn, TweenInfo.new(0.1), { BackgroundColor3 = Color3.fromRGB(18, 18, 18) }):Play() end)
-		btn.MouseButton1Down:Connect(function() TweenService:Create(btn, TweenInfo.new(0.05), { BackgroundColor3 = Color3.fromRGB(55, 55, 55) }):Play() end)
-		btn.MouseButton1Up:Connect(function() TweenService:Create(btn, TweenInfo.new(0.05), { BackgroundColor3 = Color3.fromRGB(28, 28, 28) }):Play() end)
 		btn.MouseButton1Click:Connect(function()
 			local cb = callbacks[i]
 			if cb then
@@ -3559,6 +3555,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	topLayout.FillDirection = Enum.FillDirection.Horizontal
 	topLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 	topLayout.Padding = UDim.new(0, 6)
+	topLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(0, 0, 0, 16)
@@ -3856,7 +3853,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		local pickerJustOpened = true
 		task.delay(0.1, function() pickerJustOpened = false end)
 
-		local pickerW, pickerH = 240, 210
+		local pickerW, pickerH = 240, 230
 		pickerFrame = Instance.new("Frame")
 		pickerFrame.Size = UDim2.new(0, pickerW, 0, pickerH)
 		pickerFrame.BackgroundColor3 = window.theme.Surface
@@ -4528,8 +4525,10 @@ function UILib.Column:addGroup(title)
 		if group._collapsed then
 			grp.Size = UDim2.new(1, 0, 0, 36)
 			items.Size = UDim2.new(1, 0, 0, 0)
+			items.Visible = false
 			return
 		end
+		items.Visible = true
 		local ih = itemLayout.AbsoluteContentSize.Y
 		local targetH = ih + 46
 		items.Size = UDim2.new(1, 0, 0, ih + 8)
