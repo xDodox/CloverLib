@@ -1764,7 +1764,7 @@ function UILib:addWatermark(name)
 	local rowLayout = Instance.new("UIListLayout", row)
 	rowLayout.FillDirection = Enum.FillDirection.Horizontal
 	rowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-	rowLayout.Padding = UDim.new(0, 5)
+	rowLayout.Padding = UDim.new(0, 8)
 	rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	local rowPad = Instance.new("UIPadding", row)
 	rowPad.PaddingLeft = UDim.new(0, 8)
@@ -1826,7 +1826,7 @@ function UILib:addWatermark(name)
 	fpsLabel.AutomaticSize = Enum.AutomaticSize.X
 	fpsLabel.Size = UDim2.new(0, 0, 1, 0)
 	fpsLabel.BackgroundTransparency = 1
-	fpsLabel.Text = " | 0 FPS"
+	fpsLabel.Text = "| 0 FPS"
 	fpsLabel.TextColor3 = self.theme.GrayLt
 	fpsLabel.Font = Enum.Font.GothamSemibold
 	fpsLabel.TextSize = 10
@@ -1838,7 +1838,7 @@ function UILib:addWatermark(name)
 	pingLabel.AutomaticSize = Enum.AutomaticSize.X
 	pingLabel.Size = UDim2.new(0, 0, 1, 0)
 	pingLabel.BackgroundTransparency = 1
-	pingLabel.Text = " | 0ms"
+	pingLabel.Text = "| 0ms"
 	pingLabel.TextColor3 = self.theme.GrayLt
 	pingLabel.Font = Enum.Font.GothamSemibold
 	pingLabel.TextSize = 10
@@ -1850,7 +1850,7 @@ function UILib:addWatermark(name)
 	uptimeLabel.AutomaticSize = Enum.AutomaticSize.X
 	uptimeLabel.Size = UDim2.new(0, 0, 1, 0)
 	uptimeLabel.BackgroundTransparency = 1
-	uptimeLabel.Text = " | 00:00:00"
+	uptimeLabel.Text = "| 00:00:00"
 	uptimeLabel.TextColor3 = self.theme.GrayLt
 	uptimeLabel.Font = Enum.Font.GothamSemibold
 	uptimeLabel.TextSize = 10
@@ -1869,14 +1869,14 @@ function UILib:addWatermark(name)
 		frameCount = frameCount + 1
 		local now = tick()
 		if now - lastTime >= 1 then
-			fpsLabel.Text = " | " .. math.floor(frameCount / (now - lastTime) + 0.5) .. " FPS"
+			fpsLabel.Text = "| " .. math.floor(frameCount / (now - lastTime) + 0.5) .. " FPS"
 			frameCount = 0
 			lastTime = now
 		end
 		local ping = LP:GetNetworkPing() * 1000
-		pingLabel.Text = " | " .. math.floor(ping + 0.5) .. "ms"
+		pingLabel.Text = "| " .. math.floor(ping + 0.5) .. "ms"
 		local up = math.floor(workspace.DistributedGameTime)
-		uptimeLabel.Text = string.format(" | %02d:%02d:%02d", math.floor(up/3600), math.floor((up%3600)/60), up%60)
+		uptimeLabel.Text = string.format("| %02d:%02d:%02d", math.floor(up/3600), math.floor((up%3600)/60), up%60)
 	end)
 	self.wmConn = connection
 	self.watermark = wm
@@ -2026,10 +2026,10 @@ function UILib:buildUITab()
 	local themeGrp = uiL:addGroup("Theme")
 	local themeDropdown = themeGrp:dropdown("Preset", themeNames, "Default", function(val)
 		if val == "Custom" then
-			showThemePickers(true)
+			if showThemePickers then showThemePickers(true) end
 			return
 		end
-		showThemePickers(false)
+		if showThemePickers then showThemePickers(false) end
 		if val == "" then return end
 		for _, t in ipairs(THEMES) do
 			if t[1] == val then applyFullTheme(t); break end
@@ -3324,7 +3324,7 @@ function UILib.Tab:addSubTab(name)
 
 	local selLine = Instance.new("Frame")
 	selLine.Size = UDim2.new(0, 2, 1, 0)
-	selLine.BackgroundColor3 = Color3.new(1, 1, 1)
+	selLine.BackgroundColor3 = self.window.theme.Accent
 	selLine.BorderSizePixel = 0
 	selLine.Visible = false
 	selLine.ZIndex = 7
@@ -3332,17 +3332,17 @@ function UILib.Tab:addSubTab(name)
 	sub.selLine = selLine
 
 	local selGradient = Instance.new("Frame")
-	selGradient.Size = UDim2.new(0, 80, 1, 0)
+	selGradient.Size = UDim2.new(1, 0, 1, 0)
 	selGradient.BackgroundColor3 = Color3.new(1, 1, 1)
 	selGradient.BorderSizePixel = 0
 	selGradient.Visible = false
-	selGradient.ZIndex = 5
+	selGradient.ZIndex = 4
 	selGradient.Parent = btn
 	local grad = Instance.new("UIGradient", selGradient)
 	grad.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.2),
-		NumberSequenceKeypoint.new(0.3, 0.5),
-		NumberSequenceKeypoint.new(1, 0.8)
+		NumberSequenceKeypoint.new(0, 0.6),
+		NumberSequenceKeypoint.new(0.3, 0.75),
+		NumberSequenceKeypoint.new(1, 1)
 	})
 	sub.selGradient = selGradient
 
@@ -4651,15 +4651,14 @@ function UILib.Column:addGroup(title)
 	grp.BackgroundColor3 = window.theme.Item
 	grp.BorderSizePixel = 0
 	grp.Parent = self.frame
-	Instance.new("UICorner", grp).CornerRadius = UDim.new(0, 6)
-	grp.ClipsDescendants = true
 	local stroke = Instance.new("UIStroke", grp)
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Color = window.theme.Border
 	stroke.Thickness = 1
 
 	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, 0, 0, 30)
+	row.Size = UDim2.new(1, -6, 0, 30)
+	row.Position = UDim2.new(0, 3, 0, 0)
 	row.BackgroundColor3 = Color3.new(
 		math.min(1, window.theme.ItemHov.r * 1.15),
 		math.min(1, window.theme.ItemHov.g * 1.15),
@@ -4667,9 +4666,10 @@ function UILib.Column:addGroup(title)
 	)
 	row.BackgroundTransparency = 0
 	row.Parent = grp
+	Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
 
 	local headerSep = Instance.new("Frame")
-	headerSep.Size = UDim2.new(1, 0, 0, 2)
+	headerSep.Size = UDim2.new(1, 0, 0, 1)
 	headerSep.Position = UDim2.new(0, 0, 0, 30)
 	headerSep.BackgroundColor3 = window.theme.Accent
 	headerSep.BorderSizePixel = 0
