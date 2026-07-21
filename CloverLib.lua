@@ -1827,7 +1827,7 @@ function UILib:addWatermark(name)
 	fpsLabel.AutomaticSize = Enum.AutomaticSize.X
 	fpsLabel.Size = UDim2.new(0, 0, 1, 0)
 	fpsLabel.BackgroundTransparency = 1
-	fpsLabel.Text = "  |  0 FPS"
+	fpsLabel.Text = " |  0 FPS "
 	fpsLabel.TextColor3 = self.theme.GrayLt
 	fpsLabel.Font = Enum.Font.GothamSemibold
 	fpsLabel.TextSize = 10
@@ -1839,7 +1839,7 @@ function UILib:addWatermark(name)
 	pingLabel.AutomaticSize = Enum.AutomaticSize.X
 	pingLabel.Size = UDim2.new(0, 0, 1, 0)
 	pingLabel.BackgroundTransparency = 1
-	pingLabel.Text = "  |  0ms"
+	pingLabel.Text = " |  0ms "
 	pingLabel.TextColor3 = self.theme.GrayLt
 	pingLabel.Font = Enum.Font.GothamSemibold
 	pingLabel.TextSize = 10
@@ -1851,7 +1851,7 @@ function UILib:addWatermark(name)
 	uptimeLabel.AutomaticSize = Enum.AutomaticSize.X
 	uptimeLabel.Size = UDim2.new(0, 0, 1, 0)
 	uptimeLabel.BackgroundTransparency = 1
-	uptimeLabel.Text = "  |  00:00:00"
+	uptimeLabel.Text = " |  00:00:00 "
 	uptimeLabel.TextColor3 = self.theme.GrayLt
 	uptimeLabel.Font = Enum.Font.GothamSemibold
 	uptimeLabel.TextSize = 10
@@ -1870,14 +1870,14 @@ function UILib:addWatermark(name)
 		frameCount = frameCount + 1
 		local now = tick()
 		if now - lastTime >= 1 then
-			fpsLabel.Text = "  |  " .. math.floor(frameCount / (now - lastTime) + 0.5) .. " FPS"
+			fpsLabel.Text = " |  " .. math.floor(frameCount / (now - lastTime) + 0.5) .. " FPS "
 			frameCount = 0
 			lastTime = now
 		end
 		local ping = LP:GetNetworkPing() * 1000
-		pingLabel.Text = "  |  " .. math.floor(ping + 0.5) .. "ms"
+		pingLabel.Text = " |  " .. math.floor(ping + 0.5) .. "ms "
 		local up = math.floor(workspace.DistributedGameTime)
-		uptimeLabel.Text = string.format("  |  %02d:%02d:%02d", math.floor(up/3600), math.floor((up%3600)/60), up%60)
+		uptimeLabel.Text = string.format(" |  %02d:%02d:%02d ", math.floor(up/3600), math.floor((up%3600)/60), up%60)
 	end)
 	self.wmConn = connection
 	self.watermark = wm
