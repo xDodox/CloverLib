@@ -1912,7 +1912,6 @@ function UILib:buildUITab()
 		end
 		refreshAllUI()
 		refreshAllBorders(border)
-		if syncColorPickers then syncColorPickers() end
 	end
 
 	local function applyCurrentTheme()
@@ -1929,7 +1928,6 @@ function UILib:buildUITab()
 		if self.sidebarEdge then self.sidebarEdge.BackgroundColor3 = self.theme.Border end
 		if refreshAllUI then refreshAllUI() end
 		if refreshAllBorders then refreshAllBorders(self.theme.Border) end
-		if syncColorPickers then syncColorPickers() end
 	end
 
 	local THEMES = {
@@ -1952,57 +1950,6 @@ function UILib:buildUITab()
 		end
 	end, "Apply a pre-made color theme")
 	themeDropdown._noConfig = true
-
-	local _themeApplying = false
-	local _themePickerBoxes = {}
-	local function syncColorPickers()
-		if _themeApplying then return end
-		_themeApplying = true
-		for _, entry in ipairs(_themePickerBoxes) do
-			local p, c = entry.picker, entry.getColor()
-			if p and typeof(c) == "Color3" then
-				pcall(function()
-					p:SetColor(c)
-				end)
-			end
-		end
-		_themeApplying = false
-	end
-
-	local function themeColorChanged()
-		applyCurrentTheme()
-	end
-
-	local accentPicker = themeGrp:colorpicker("Accent", self.theme.Accent, function(c)
-		self.theme.Accent = c
-		self.theme.AccentD = Color3.new(c.r * 0.70, c.g * 0.70, c.b * 0.70)
-		themeColorChanged()
-	end)
-	local themeBGPicker = themeGrp:colorpicker("Background", self.theme.BG, function(c)
-		self.theme.BG = c
-		self.theme.Base = c
-		themeColorChanged()
-	end)
-	local themePanelPicker = themeGrp:colorpicker("Panel", self.theme.Panel, function(c)
-		self.theme.Panel = c
-		self.theme.Surface = c
-		self.theme.Item = c
-		themeColorChanged()
-	end)
-	local themeItemPicker = themeGrp:colorpicker("Item Hover", self.theme.ItemHov, function(c)
-		self.theme.ItemHov = c
-		themeColorChanged()
-	end)
-	local themeBorderPicker = themeGrp:colorpicker("Border", self.theme.Border, function(c)
-		self.theme.Border = c
-		themeColorChanged()
-	end)
-
-	table.insert(_themePickerBoxes, { picker = accentPicker, getColor = function() return self.theme.Accent end })
-	table.insert(_themePickerBoxes, { picker = themeBGPicker, getColor = function() return self.theme.BG end })
-	table.insert(_themePickerBoxes, { picker = themePanelPicker, getColor = function() return self.theme.Panel end })
-	table.insert(_themePickerBoxes, { picker = themeItemPicker, getColor = function() return self.theme.ItemHov end })
-	table.insert(_themePickerBoxes, { picker = themeBorderPicker, getColor = function() return self.theme.Border end })
 
 	local cfg = uiR:addGroup("Save Manager")
 	cfg:separator("Load")
@@ -4358,12 +4305,21 @@ local function createMultiDropdown(group, items, window, text, options, default,
 				local isSel = selected[opt] and true or false
 				local ob = Instance.new("TextButton")
 				ob.Size = UDim2.new(1, 0, 0, 28)
-				ob.BackgroundColor3 = isSel and Color3.new(window.theme.Accent.r * 0.15, window.theme.Accent.g * 0.15, window.theme.Accent.b * 0.15) or window.theme.Base
-				ob.BackgroundTransparency = 0
+				ob.BackgroundTransparency = 1
 				ob.AutoButtonColor = false
 				ob.Text = ""
 				ob.ZIndex = 51
 				ob.Parent = dlist
+
+				local bg = Instance.new("Frame")
+				bg.Name = "SelectionBG"
+				bg.Size = UDim2.new(1, 0, 1, 0)
+				bg.BackgroundColor3 = window.theme.Accent
+				bg.BackgroundTransparency = isSel and 0.8 or 1
+				bg.BorderSizePixel = 0
+				bg.ZIndex = 50
+				bg.Parent = ob
+				table.insert(window.accentObjects, bg)
 
 				local bar = Instance.new("Frame")
 				bar.Size = UDim2.new(0, 2, 0, 14)
@@ -4390,13 +4346,13 @@ local function createMultiDropdown(group, items, window, text, options, default,
 				checks[opt] = ol
 				ob.MouseEnter:Connect(function()
 					if not selected[opt] then
-						TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = Color3.fromRGB(32, 32, 32) }):Play()
+						TweenService:Create(bg, TweenInfo.new(0.08), { BackgroundTransparency = 0.85 }):Play()
 						ol.TextColor3 = window.theme.GrayLt
 					end
 				end)
 				ob.MouseLeave:Connect(function()
 					if not selected[opt] then
-						TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = window.theme.Base }):Play()
+						TweenService:Create(bg, TweenInfo.new(0.08), { BackgroundTransparency = 1 }):Play()
 						ol.TextColor3 = window.theme.Gray
 					end
 				end)
@@ -4404,15 +4360,15 @@ local function createMultiDropdown(group, items, window, text, options, default,
 					if selected[opt] then
 						selected[opt] = nil
 						bar.Visible = false
+						bg.BackgroundTransparency = 1
 						ol.TextColor3 = window.theme.Gray
 						ol.Font = Enum.Font.GothamSemibold
-						TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = window.theme.Base }):Play()
 					else
 						selected[opt] = true
 						bar.Visible = true
+						bg.BackgroundTransparency = 0.8
 						ol.TextColor3 = window.theme.White
 						ol.Font = Enum.Font.GothamBold
-						TweenService:Create(ob, TweenInfo.new(0.08), { BackgroundColor3 = Color3.new(window.theme.Accent.r * 0.15, window.theme.Accent.g * 0.15, window.theme.Accent.b * 0.15) }):Play()
 					end
 					local keys = {}
 					for k, _ in pairs(selected) do table.insert(keys, k) end
@@ -4566,6 +4522,15 @@ function UILib.Column:addGroup(title)
 	rowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	rowStroke.Color = window.theme.Border
 	rowStroke.Thickness = 1
+
+	local rowBottomCover = Instance.new("Frame")
+	rowBottomCover.Size = UDim2.new(1, 0, 0, 6)
+	rowBottomCover.Position = UDim2.new(0, 0, 1, -6)
+	rowBottomCover.BackgroundColor3 = row.BackgroundColor3
+	rowBottomCover.BackgroundTransparency = 0
+	rowBottomCover.BorderSizePixel = 0
+	rowBottomCover.ZIndex = 2
+	rowBottomCover.Parent = row
 
 	local headerSep = Instance.new("Frame")
 	headerSep.Size = UDim2.new(1, 0, 0, 1)
