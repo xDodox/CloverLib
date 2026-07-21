@@ -1820,7 +1820,9 @@ function UILib:buildUITab()
 
 	local function refreshAllBorders(b)
 		for _, s in ipairs(self.window:GetDescendants()) do
-			if s:IsA("UIStroke") then pcall(function() s.Color = b end) end
+			if s:IsA("UIStroke") and s.Parent and s.Parent.Name ~= "WindowStrokeFrame" then
+				pcall(function() s.Color = b end)
+			end
 		end
 		for _, tab in ipairs(self.tabOrder or {}) do
 			if tab.tabLbl then pcall(function() tab.tabLbl.TextColor3 = self.theme.Gray end) end
@@ -5318,8 +5320,8 @@ function UILib.Column:addGroup(title)
 				local bg = Instance.new("Frame")
 				bg.Name = "SelectionBG"
 				bg.Size = UDim2.new(1, 0, 1, 0)
-			bg.BackgroundColor3 = window.theme.ItemHov
-			bg.BackgroundTransparency = isSelected and 0.5 or 1
+			bg.BackgroundColor3 = window.theme.Accent
+			bg.BackgroundTransparency = isSelected and 0.8 or 1
 				bg.BorderSizePixel = 0
 				bg.ZIndex = 50
 				bg.Parent = ob
@@ -5373,8 +5375,8 @@ function UILib.Column:addGroup(title)
 							if sBg then
 								local isSel = child:FindFirstChildOfClass("TextLabel") and
 									child:FindFirstChildOfClass("TextLabel").Text == opt
-								sBg.BackgroundTransparency = isSel and 0.5 or 1
-								sBg.BackgroundColor3 = window.theme.ItemHov
+								sBg.BackgroundTransparency = isSel and 0.8 or 1
+								sBg.BackgroundColor3 = window.theme.Accent
 							end
 						end
 					end
