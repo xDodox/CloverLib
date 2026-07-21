@@ -2260,6 +2260,10 @@ function UILib:showDialog(opts)
 		btn.AutoButtonColor = false
 		btn.Parent = btnRow
 		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+		local btnStroke = Instance.new("UIStroke", btn)
+		btnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		btnStroke.Color = self.theme.Border
+		btnStroke.Thickness = 1
 		btn.MouseEnter:Connect(function() TweenService:Create(btn, TweenInfo.new(0.1), { BackgroundColor3 = Color3.fromRGB(45, 45, 45) }):Play() end)
 		btn.MouseLeave:Connect(function() TweenService:Create(btn, TweenInfo.new(0.1), { BackgroundColor3 = Color3.fromRGB(18, 18, 18) }):Play() end)
 		btn.MouseButton1Down:Connect(function() TweenService:Create(btn, TweenInfo.new(0.05), { BackgroundColor3 = Color3.fromRGB(55, 55, 55) }):Play() end)
@@ -4879,7 +4883,7 @@ function UILib.Column:addGroup(title)
 					Size = UDim2.new(1, 0, 0, targetH)
 				}):Play()
 				task.delay(0.21, updateSize)
-				if callback and not _configLoading then callback(state) end
+				if callback then callback(state) end
 				if window.configs[id] then window.configs[id].Value = state end
 			end
 		function elem:SetVisible(v, anim)
@@ -4993,7 +4997,7 @@ function UILib.Column:addGroup(title)
 			state = val
 			elem.Value = state
 			updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
-			if callback and not _configLoading then callback(state) end
+			if callback then callback(state) end
 			if window.configs[id] then window.configs[id].Value = state end
 		end
 		function elem:SetVisible(v, anim)
