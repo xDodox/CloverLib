@@ -560,7 +560,9 @@ UILib.Parser = {
 			return { type = "Slider", label = label, value = tonumber(elem.Value) or 0 }
 		end,
 		Load = function(data, elem)
+			print("[clover] SLDR raw:", type(data.value), data.value)
 			local v = type(data.value) == "table" and data.value[1] or data.value
+			print("[clover] SLDR final:", type(v), v)
 			elem:SetValue(tonumber(v) or 0)
 		end,
 	},
@@ -594,10 +596,12 @@ UILib.Parser = {
 		end,
 		Load = function(data, elem)
 			if data.color then
+				print("[clover] CP raw:", type(data.color[1]), data.color[1], data.color[2], data.color[3])
 				local c = data.color
 				local r = tonumber(type(c[1]) == "table" and c[1][1] or c[1]) or 0
 				local g = tonumber(type(c[2]) == "table" and c[2][1] or c[2]) or 0
 				local b = tonumber(type(c[3]) == "table" and c[3][1] or c[3]) or 0
+				print("[clover] CP final:", r, g, b)
 				elem:SetValue(Color3.fromRGB(r, g, b))
 			end
 		end,
