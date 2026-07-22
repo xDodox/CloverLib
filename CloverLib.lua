@@ -552,7 +552,6 @@ UILib.Parser = {
 			return { type = "Toggle", label = label, value = elem.Value == true }
 		end,
 		Load = function(data, elem)
-			print("[clover] TOGGLE load", elem.label, "->", data.value)
 			elem:SetValue(data.value)
 		end,
 	},
@@ -923,8 +922,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	win.Selectable = false
 	win.AnchorPoint = Vector2.new(0.5, 0.5)
 	win.ClipsDescendants = true
+	win.Visible = false
 	self.uiScale = Instance.new("UIScale", win)
-	self.uiScale.Scale = 0.8
 	Instance.new("UICorner", win).CornerRadius = UDim.new(0, 10)
 	self.window = win
 
@@ -1020,8 +1019,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 
 	local function updateScaling()
 		local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
-		local s = math.min(vp.X / self.size.X, (vp.Y - 40) / self.size.Y, 1)
-		uiScale.Scale = s
+		self._targetScale = math.min(vp.X / self.size.X, (vp.Y - 40) / self.size.Y, 1)
+		if self.visibleTarget ~= false then uiScale.Scale = self._targetScale end
 	end
 	table.insert(self.connections,
 		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScaling))
@@ -1722,9 +1721,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		task.defer(function()
 			if self.includeUITab and not self.uiTabCreated then
 				self.uiTabCreated = true
-				self:buildUITab()
+		self:buildUITab()
 			end
-		self.uiScale.Scale = 0
 		self:setVisible(true)
 	end)
 
@@ -2252,18 +2250,15 @@ function UILib:setVisible(visible)
 	self.visibleTarget = visible
 
 	if visible then
-		self.uiScale.Scale = 0.85
 		self.window.Visible = true
 		if self._animOverlay then
-			TweenService:Create(self._animOverlay, TweenInfo.new(0.25, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play()
+			TweenService:Create(self._animOverlay, TweenInfo.new(0.2, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play()
 		end
-		TweenService:Create(self.uiScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		TweenService:Create(self.uiScale, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Scale = self._targetScale }):Play()
 	else
-		local tw = TweenService:Create(self.uiScale, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0.85 })
-		tw:Play()
-		tw.Completed:Connect(function()
-			if not self.visibleTarget then self.window.Visible = false end
-		end)
+		self.uiScale.Scale = self._targetScale
+		TweenService:Create(self.uiScale, TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.In), { Scale = 0 }):Play()
+		task.delay(0.16, function() if not self.visibleTarget then self.window.Visible = false end end)
 	end
 end
 
@@ -5097,6 +5092,7 @@ function UILib.Column:addGroup(title)
 		local state = default
 		local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = TOGGLE_H }
 		elem.SetValue = function(val)
+			print("[clover] TOG SetValue:", text, state, "->", val)
 			state = val
 			elem.Value = state
 			updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
