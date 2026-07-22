@@ -1971,6 +1971,7 @@ function UILib:buildUITab()
 
 	local hasAutoLoad = self:getAutoLoadConfig() ~= nil
 	cfg:toggle("Set as Auto Load", hasAutoLoad, function(v)
+		if _configLoading then return end
 		if v then
 			local name = cfgDropdown.Value
 			if name == "(no configs)" or name == "" then
@@ -1994,7 +1995,7 @@ function UILib:buildUITab()
 		if name == "" then self:notify("Enter a name", "warning", 2); return end
 		self:saveConfigStructured(name)
 		cfgRefreshDropdown()
-		task.defer(function() pcall(function() cfgDropdown:SetValue(name) end) end)
+		cfgDropdown:SetValue(name)
 	end, nil, Enum.TextXAlignment.Center)
 	cfg:separator("Share & Import")
 
