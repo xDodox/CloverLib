@@ -2089,7 +2089,7 @@ function UILib:buildUITab()
 	local cfgNameBox = cfg:textbox("Config Name", "", "Enter name...", function(_) end)
 
 	cfg:button("Save Config", function()
-		local name = cfgNameBox.Value
+		local name = tostring(cfgNameBox.Value or "")
 		if name == "" then self:notify("Enter a name", "warning", 2); return end
 		self:saveConfigStructured(name)
 		cfgRefreshDropdown()
@@ -5465,6 +5465,7 @@ function UILib.Column:addGroup(title)
 			_values = options,
 			Refresh = refresh,
 			SetValue = function(val)
+				if type(val) ~= "string" then val = tostring(val) end
 				currentSelection = val
 				selLbl.Text = val
 				for o, lbl2 in pairs(checks) do
@@ -5621,7 +5622,7 @@ function UILib.Column:addGroup(title)
 				end
 			end)
 		end)
-		local elem = { ID = id, Value = currentName, label = text, SetValue = function(val) kbtn.Text = val end }
+		local elem = { ID = id, Value = currentName, label = text, SetValue = function(val) kbtn.Text = type(val) == "string" and val or tostring(val) end }
 		window.configs[id] = finalizeElement(elem, window, group)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
