@@ -681,10 +681,8 @@ local function _applyStructuredJSON(self, decoded)
 			if not elem then continue end
 			local parser = UILib.Parser[obj.type]
 			if parser then
-				task.spawn(function()
-					pcall(function() parser.Load(obj, elem) end)
-					count = count + 1
-				end)
+				local ok = pcall(parser.Load, obj, elem)
+				if ok then count = count + 1 end
 			end
 		end
 	else
@@ -699,10 +697,8 @@ local function _applyStructuredJSON(self, decoded)
 				if not elem then continue end
 				local legacyField = legacyTypes[etype] or etype:lower()
 				local obj = { type = etype, label = label, value = sdata[legacyField], color = sdata.color }
-				task.spawn(function()
-					pcall(function() parser.Load(obj, elem) end)
-					count = count + 1
-				end)
+				local ok = pcall(parser.Load, obj, elem)
+				if ok then count = count + 1 end
 			end
 		end
 	end
@@ -2086,13 +2082,13 @@ function UILib:buildUITab()
 	end
 
 	cfg:button("Load Config", function()
-		local name = cfgDropdown.Value
-		if name == "(no configs)" or name == "" then self:notify("No config selected", "warning", 2); return end
+		local name = tostring(cfgDropdown.Value)
+		if name == "(no configs)" or name == "" or name:sub(1, 6) == "table:" then self:notify("No config selected", "warning", 2); return end
 		self:loadConfigStructured(name)
 	end, nil, Enum.TextXAlignment.Center)
 	cfg:button("Delete Config", function()
-		local name = cfgDropdown.Value
-		if name == "(no configs)" or name == "" then return end
+		local name = tostring(cfgDropdown.Value)
+		if name == "(no configs)" or name == "" or name:sub(1, 6) == "table:" then return end
 		pcall(delfile, self:getConfigDir() .. name .. ".json")
 		self:notify("Deleted: " .. name, "success", 2)
 		cfgRefreshDropdown()
@@ -2118,7 +2114,8 @@ function UILib:buildUITab()
 	local cfgNameBox = cfg:textbox("Config Name", "", "Enter name...", function(_) end)
 
 	cfg:button("Save Config", function()
-		local name = tostring(cfgNameBox.Value or "")
+		local nameBox = cfgNameBox.frame and cfgNameBox.frame:FindFirstChildOfClass("TextBox")
+		local name = (nameBox and nameBox.Text and nameBox.Text ~= "" and nameBox.Text) or ""
 		if name == "" then self:notify("Enter a name", "warning", 2); return end
 		self:saveConfigStructured(name)
 		cfgRefreshDropdown()
