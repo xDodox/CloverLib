@@ -515,7 +515,7 @@ function UILib:getElementType(elem)
 	if elem.IsToggle then return "Toggle" end
 	if elem.Mode == "keybind" then return "Keybind" end
 	if typeof(elem.Value) == "Color3" then return "ColorPicker" end
-	if type(elem.Value) == "number" and elem.DefaultHeight and elem._display ~= nil then return "Slider" end
+	if type(elem.Value) == "number" and elem.DefaultHeight then return "Slider" end
 	if type(elem.Value) == "table" and not elem._display then return "MultiDropdown" end
 	if type(elem.Value) == "string" and elem._values then return "Dropdown" end
 	if type(elem.Value) == "string" and elem.DefaultHeight then return "TextBox" end
@@ -5356,6 +5356,7 @@ function UILib.Column:addGroup(title)
 			ID = id,
 			Value = currentSelection,
 			DefaultValue = default,
+			_values = options,
 			Refresh = refresh,
 			SetValue = function(val)
 				currentSelection = val
@@ -6113,6 +6114,7 @@ function UILib.Column:addGroup(title)
 			ID = id,
 			Value = current,
 			DefaultValue = default or "",
+			DefaultHeight = 50,
 			SetValue = function(val)
 				current = val
 				box.Text = val
