@@ -633,31 +633,43 @@ UILib.Parser = {
 
 local function _buildLabelMap(self)
 	local map = {}
+	local total = 0
+	local skipped = 0
 	for id, elem in pairs(self.configs) do
 		local label = self:getElementLabel(elem)
-		if label and not elem._noConfig and not (self.configIgnore and self.configIgnore[label]) then
+		local isIgnored = self.configIgnore and self.configIgnore[label]
+		if label and not elem._noConfig and not isIgnored then
 			map[label] = elem
+			total = total + 1
+		elseif isIgnored then
+			skipped = skipped + 1
 		end
 	end
+	warn("[CloverLib] labelMap:", total, "elements,", skipped, "ignored")
 	return map
 end
 
 local function _configStructuredToJSON(self)
 	local data = { _version = 3, _timestamp = os.time(), objects = {} }
+	local skipped = { nilVal = 0, noType = 0, ignored = 0, saved = 0 }
 	for id, elem in pairs(self.configs) do
 		if elem._noConfig then continue end
 		local val = elem.Value
-		if val == nil then continue end
+		if val == nil then skipped.nilVal = skipped.nilVal + 1; continue end
 		local label = self:getElementLabel(elem) or id
-		if self.configIgnore and self.configIgnore[label] then continue end
+		if self.configIgnore and self.configIgnore[label] then skipped.ignored = skipped.ignored + 1; continue end
 		local etype = self:getElementType(elem)
-		if not etype then continue end
+		if not etype then skipped.noType = skipped.noType + 1; continue end
 		local parser = UILib.Parser[etype]
 		if parser then
 			local obj = parser.Save(label, elem)
-			if obj then table.insert(data.objects, obj) end
+			if obj then
+				table.insert(data.objects, obj)
+				skipped.saved = skipped.saved + 1
+			end
 		end
 	end
+	warn("[CloverLib] Save:", skipped.saved, "objects, nilValue:", skipped.nilVal, "noType:", skipped.noType, "ignored:", skipped.ignored)
 	return HS:JSONEncode(data)
 end
 
@@ -670,11 +682,11 @@ local function _applyStructuredJSON(self, decoded)
 	if decoded.objects then
 		for _, obj in ipairs(decoded.objects) do
 			local elem = labelMap[obj.label]
-			if not elem then continue end
+			if not elem then warn("[CloverLib] Load: label not found:", obj.label, obj.type); continue end
 			local parser = UILib.Parser[obj.type]
-			if parser then
-				local ok = pcall(parser.Load, obj, elem)
-				if ok then count = count + 1 end
+			if not parser then warn("[CloverLib] Load: no parser for type:", obj.type); continue end
+			local ok, err = pcall(parser.Load, obj, elem)
+			if ok then count = count + 1 else warn("[CloverLib] Load failed:", obj.type, obj.label, err) end
 			end
 		end
 	else
@@ -2066,7 +2078,7 @@ function UILib:buildUITab()
 
 	local selectedCfg = ""
 	local cfgDropdown = cfg:dropdown("", getConfigListStructured(), "", function(v)
-		if v and v ~= "" then selectedCfg = v end
+		if type(v) == "string" and v ~= "" then selectedCfg = v end
 	end, "Select a config to load/delete", function() return getConfigListStructured() end, nil, "ui_cfgdropdown")
 
 	local function cfgRefreshDropdown()
@@ -5489,7 +5501,7 @@ function UILib.Column:addGroup(title)
 			_values = options,
 			Refresh = refresh,
 			SetValue = function(val)
-				if type(val) ~= "string" then val = tostring(val) end
+				if type(val) ~= "string" then warn("[CloverLib] WARNING: SetValue received non-string:", type(val), val); return end
 				currentSelection = val
 				selLbl.Text = val
 				for o, lbl2 in pairs(checks) do
