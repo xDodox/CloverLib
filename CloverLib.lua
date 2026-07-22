@@ -552,6 +552,7 @@ UILib.Parser = {
 			return { type = "Toggle", label = label, value = elem.Value == true }
 		end,
 		Load = function(data, elem)
+			print("[clover] TOGGLE load", elem.label, "->", data.value)
 			elem:SetValue(data.value)
 		end,
 	},
@@ -599,7 +600,10 @@ UILib.Parser = {
 				local r = tonumber(type(c[1]) == "table" and c[1][1] or c[1]) or 0
 				local g = tonumber(type(c[2]) == "table" and c[2][1] or c[2]) or 0
 				local b = tonumber(type(c[3]) == "table" and c[3][1] or c[3]) or 0
-				pcall(function() elem:SetValue(Color3.new(r / 255, g / 255, b / 255)) end)
+				local newC = nil
+				pcall(function() newC = Color3.fromRGB(r, g, b) end)
+				if not newC then pcall(function() newC = Color3.new(r / 255, g / 255, b / 255) end) end
+				if newC then elem:SetValue(newC) end
 			end
 		end,
 	},
@@ -5498,7 +5502,7 @@ function UILib.Column:addGroup(title)
 			_values = options,
 			Refresh = refresh,
 		SetValue = function(val)
-				if type(val) ~= "string" then print("[CloverLib] WARNING: SetValue received non-string:", type(val), val); return end
+				if type(val) ~= "string" then return end
 				currentSelection = val
 				selLbl.Text = val
 			for o, lbl2 in pairs(checks) do
