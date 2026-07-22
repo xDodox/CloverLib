@@ -3666,7 +3666,7 @@ end
 	return elem
 end
 
-local function createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step)
+local function createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step, cfgId)
 	step = step or 1
 	local id = generateID()
 	local row = Instance.new("Frame")
@@ -3851,7 +3851,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		local num = tonumber(valueBoxInput.Text)
 		if num then updateSlider(num) else valueLabel.Text = cleanNum(currentVal) end
 	end)
-	local elem = { ID = id, Value = currentVal, DefaultValue = defaultVal, label = text, SetValue = updateSlider, frame = row, DefaultHeight = 42, _display = nil }
+	local elem = { ID = id, Value = currentVal, DefaultValue = defaultVal, label = cfgId or text, SetValue = updateSlider, frame = row, DefaultHeight = 42, _display = nil }
 	function elem:setDisplay(mode) sliderDisplay = mode end
 	function elem:SetVisible(v, anim)
 		if not anim then
@@ -3880,7 +3880,7 @@ end
 
 local _pickerCons = {}
 
-local function createColorPicker(group, items, window, text, default, callback)
+local function createColorPicker(group, items, window, text, default, callback, cfgId)
 	local id = generateID()
 	local row = Instance.new("Frame")
 	row.Size = UDim2.new(1, 0, 0, 32)
@@ -3913,7 +3913,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 	stroke.Color = window.theme.Border
 	stroke.Thickness = 1
 	local current = default or Color3.new(1, 0, 0)
-	local elem = { ID = id, Value = current, label = text }
+	local elem = { ID = id, Value = current, label = cfgId or text }
 	local pickerFrame = nil
 
 	elem.SetValue = function(val)
@@ -4264,7 +4264,7 @@ local function buildDropdownRefreshBtn(row, window, refreshCallback)
 	return refreshBtn
 end
 
-local function createMultiDropdown(group, items, window, text, options, default, callback, refreshCallback)
+local function createMultiDropdown(group, items, window, text, options, default, callback, refreshCallback, cfgId)
 	local id = generateID()
 	local row = Instance.new("Frame")
 	row.Size = UDim2.new(1, 0, 0, 56)
@@ -4526,7 +4526,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	local elem = {
 		ID = id,
 		Value = selected,
-		label = text,
+		label = cfgId or text,
 		frame = row,
 		DefaultHeight = 56,
 		SetValue = function(t)
@@ -4931,7 +4931,7 @@ function UILib.Column:addGroup(title)
 		cbMark.Text = state and "X" or ""
 	end
 
-	function group:toggle(text, default, callback, tooltip, icon, expandable, contentFunc, colorCallback, settingsCallback)
+	function group:toggle(text, default, callback, tooltip, icon, expandable, contentFunc, colorCallback, settingsCallback, cfgId)
 		assert(text ~= nil and text ~= "", "Toggle - Missing text")
 		local id = generateID()
 		local TOGGLE_H = 36
@@ -4966,7 +4966,7 @@ function UILib.Column:addGroup(title)
 			contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
 			local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 			if contentFunc then contentFunc(nestedGroup) end
-			local elem = { ID = id, Value = state, DefaultValue = default, label = text, IsToggle = true, Mode = "toggle", frame = container, DefaultHeight = TOGGLE_H }
+			local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, IsToggle = true, Mode = "toggle", frame = container, DefaultHeight = TOGGLE_H }
 			elem.SetValue = function(val)
 				state = val
 				elem.Value = state
@@ -5085,7 +5085,7 @@ function UILib.Column:addGroup(title)
 		end
 		local cbOuter, cbStroke, cbMark, lbl = createToggleCheckbox(r, default, window, text, rightOffset)
 		local state = default
-		local elem = { ID = id, Value = state, DefaultValue = default, label = text, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = TOGGLE_H }
+		local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = TOGGLE_H }
 		elem.SetValue = function(val)
 			state = val
 			elem.Value = state
@@ -5167,15 +5167,15 @@ function UILib.Column:addGroup(title)
 		return cleanNum(val)
 	end
 
-	function group:slider(text, minVal, maxVal, defaultVal, callback, step, tooltip, icon, display)
-		local r, elem = createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step)
+	function group:slider(text, minVal, maxVal, defaultVal, callback, step, tooltip, icon, display, cfgId)
+		local r, elem = createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step, cfgId)
 		if display then elem:setDisplay(display) end
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		return elem
 	end
 
-	function group:dropdown(text, options, default, callback, tooltip, refreshCallback, icon)
+	function group:dropdown(text, options, default, callback, tooltip, refreshCallback, icon, cfgId)
 		assert(text ~= nil, "Dropdown - Missing text")
 		local id = generateID()
 		local r = Instance.new("Frame")
@@ -5488,7 +5488,7 @@ function UILib.Column:addGroup(title)
 			ID = id,
 			Value = currentSelection,
 			DefaultValue = default,
-			label = text,
+			label = cfgId or text,
 			_values = options,
 			Refresh = refresh,
 			SetValue = function(val)
@@ -5537,7 +5537,7 @@ function UILib.Column:addGroup(title)
 		return elem
 	end
 
-	function group:keybind(text, currentName, onChange, tooltip)
+	function group:keybind(text, currentName, onChange, tooltip, cfgId)
 		assert(text ~= nil and text ~= "", "Keybind - Missing text")
 		local id = generateID()
 		local r = Instance.new("Frame")
@@ -5650,7 +5650,7 @@ function UILib.Column:addGroup(title)
 				end
 			end)
 		end)
-		local elem = { ID = id, Value = currentName, label = text, _mode = "keybind" }
+		local elem = { ID = id, Value = currentName, label = cfgId or text, _mode = "keybind" }
 		function elem:SetValue(val)
 			kbtn.Text = type(val) == "string" and val or tostring(val)
 			window.configs[id].Value = val
@@ -6186,23 +6186,23 @@ function UILib.Column:addGroup(title)
 		return container
 	end
 
-	function group:colorpicker(text, default, callback, tooltip, icon)
+	function group:colorpicker(text, default, callback, tooltip, icon, cfgId)
 		assert(text ~= nil and text ~= "", "ColorPicker - Missing text")
-		local r, elem = createColorPicker(group, items, window, text, default, callback)
+		local r, elem = createColorPicker(group, items, window, text, default, callback, cfgId)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		return elem
 	end
 
-	function group:multidropdown(text, options, default, callback, tooltip, refreshCallback)
+	function group:multidropdown(text, options, default, callback, tooltip, refreshCallback, cfgId)
 		assert(text ~= nil and text ~= "", "MultiDropdown - Missing text")
-		local r, elem = createMultiDropdown(group, items, window, text, options, default, callback, refreshCallback)
+		local r, elem = createMultiDropdown(group, items, window, text, options, default, callback, refreshCallback, cfgId)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		return elem
 	end
 
-	function group:textbox(text, default, placeholder, callback, tooltip)
+	function group:textbox(text, default, placeholder, callback, tooltip, cfgId)
 		assert(text ~= nil and text ~= "", "Textbox - Missing text")
 		local id = generateID()
 		local r = Instance.new("Frame")
@@ -6253,7 +6253,7 @@ function UILib.Column:addGroup(title)
 			ID = id,
 			Value = current,
 			DefaultValue = default or "",
-			label = text,
+			label = cfgId or text,
 			DefaultHeight = 50,
 			SetValue = function(val)
 				current = val
@@ -6270,7 +6270,7 @@ function UILib.Column:addGroup(title)
 		return elem
 	end
 
-	function group:numberbox(text, default, min, max, callback, tooltip)
+	function group:numberbox(text, default, min, max, callback, tooltip, cfgId)
 		assert(text ~= nil and text ~= "", "Numberbox - Missing text")
 		min = min or -math.huge
 		max = max or math.huge
@@ -6329,7 +6329,7 @@ function UILib.Column:addGroup(title)
 			ID = id,
 			Value = current,
 			DefaultValue = default or 0,
-			label = text,
+			label = cfgId or text,
 			_isNumber = true,
 			DefaultHeight = 50,
 			SetValue = function(val)
@@ -6348,7 +6348,7 @@ function UILib.Column:addGroup(title)
 		return elem
 	end
 
-	function group:rangeslider(text, minVal, maxVal, defaultMin, defaultMax, callback, step, tooltip)
+	function group:rangeslider(text, minVal, maxVal, defaultMin, defaultMax, callback, step, tooltip, cfgId)
 		assert(text ~= nil and text ~= "", "RangeSlider - Missing text")
 		local id = generateID()
 		step = step or 1
@@ -6519,7 +6519,7 @@ function UILib.Column:addGroup(title)
 			ID = id,
 			Value = { currentMin, currentMax },
 			DefaultValue = { roundToStep(defaultMin), roundToStep(defaultMax) },
-			label = text,
+			label = cfgId or text,
 			_isRange = true,
 			SetValue = function(
 				t)
