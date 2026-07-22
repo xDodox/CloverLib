@@ -3816,6 +3816,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		return cleanNum(val)
 	end
 	local function updateSlider(val)
+		print("[clover] updateSlider got:", type(val), val)
 		val = math.clamp(val, minVal, maxVal)
 		val = roundToStep(val)
 		currentVal = val
