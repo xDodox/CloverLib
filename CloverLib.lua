@@ -696,7 +696,7 @@ local function _applyStructuredJSON(self, decoded)
 		end
 		if #misses > 0 then pcall(writefile, self:getConfigDir() .. "_debug_load.txt", table.concat(misses, "\n")) end
 	else
-		local legacyTypes = { Toggle = "state", Slider = "value", Dropdown = "value", MultiDropdown = "value", TextBox = "text", Keybind = "keybind" }
+		local legacyTypes = { Toggle = "state", Slider = "value", Dropdown = "value", MultiDropdown = "value", ColorPicker = "color", TextBox = "text", Keybind = "keybind" }
 		for etype, items in pairs(decoded) do
 			if type(items) ~= "table" then continue end
 			if etype:sub(1, 1) == "_" then continue end
@@ -4173,7 +4173,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 		hexBox.Position = UDim2.new(0, PAD, 0, hexY)
 		hexBox.BackgroundColor3 = window.theme.Track
 		hexBox.BorderSizePixel = 0
-		hexBox.Text = "#" .. current:ToHex()
+		hexBox.Text = "#" .. (typeof(current) == "Color3" and current:ToHex() or "FFFFFF")
 		hexBox.TextColor3 = window.theme.White
 		hexBox.Font = Enum.Font.GothamSemibold
 		hexBox.TextSize = 12
