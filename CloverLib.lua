@@ -665,18 +665,21 @@ end
 local function _applyStructuredJSON(self, decoded)
 	local labelMap = _buildLabelMap(self)
 	local count = 0
+	local misses = {}
 	self._loadingConfig = true
 	_configLoading = true
 
 	if decoded.objects then
 		for _, obj in ipairs(decoded.objects) do
 			local elem = labelMap[obj.label]
-			if not elem then continue end
+			if not elem then print("[clover] MISS:", obj.label); continue end
 			local parser = UILib.Parser[obj.type]
-			if not parser then continue end
-			local ok = pcall(parser.Load, obj, elem)
-			if ok then count = count + 1 end
+			if not parser then print("[clover] NO PARSER:", obj.type); continue end
+			local ok, err = pcall(parser.Load, obj, elem)
+			if ok then count = count + 1 else print("[clover] FAIL:", obj.type, obj.label, err) end
 		end
+		print("[clover] Loaded", count, "/", #decoded.objects)
+		if #misses > 0 then pcall(writefile, self:getConfigDir() .. "_debug_load.txt", table.concat(misses, "\n")) end
 	else
 		local legacyTypes = { Toggle = "state", Slider = "value", Dropdown = "value", MultiDropdown = "value", TextBox = "text", Keybind = "keybind" }
 		for etype, items in pairs(decoded) do
