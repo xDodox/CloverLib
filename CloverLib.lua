@@ -2068,13 +2068,12 @@ function UILib:buildUITab()
 	local function getConfigListStructured()
 		local list = self:listConfigsStructured()
 		table.sort(list)
-		if #list == 0 then list = { "(no configs)" } end
 		return list
 	end
 
 	local selectedCfg = ""
 	local cfgDropdown = cfg:dropdown("", getConfigListStructured(), "", function(v)
-		if v and v ~= "(no configs)" then selectedCfg = v end
+		if v and v ~= "" then selectedCfg = v end
 	end, "Select a config to load/delete", function() return getConfigListStructured() end)
 
 	local function cfgRefreshDropdown()
@@ -2087,11 +2086,11 @@ function UILib:buildUITab()
 	end
 
 	cfg:button("Load Config", function()
-		if selectedCfg == "" or selectedCfg == "(no configs)" then self:notify("No config selected", "warning", 2); return end
+		if selectedCfg == "" then self:notify("No config selected", "warning", 2); return end
 		self:loadConfigStructured(selectedCfg)
 	end, nil, Enum.TextXAlignment.Center)
 	cfg:button("Delete Config", function()
-		if selectedCfg == "" or selectedCfg == "(no configs)" then return end
+		if selectedCfg == "" then return end
 		pcall(delfile, self:getConfigDir() .. selectedCfg .. ".json")
 		self:notify("Deleted: " .. selectedCfg, "success", 2)
 		selectedCfg = ""
@@ -2102,7 +2101,7 @@ function UILib:buildUITab()
 	local autoLoadToggle = cfg:toggle("Set as Auto Load", hasAutoLoad, function(v)
 		if _configLoading then return end
 		if v then
-			if selectedCfg == "" or selectedCfg == "(no configs)" then
+			if selectedCfg == "" then
 				self:notify("Select a config first", "warning", 2); return
 			end
 			self:setAutoLoadConfig(selectedCfg)
@@ -3271,7 +3270,7 @@ function UILib.Tab:addSubTab(name, description)
 
 	local btn = Instance.new("TextButton")
 	table.insert(self.subtabOrder, sub)
-	btn.Size = UDim2.new(1, -8, 0, description and 62 or 44)
+	btn.Size = UDim2.new(1, -8, 0, 36)
 	btn.Position = UDim2.new(0, 4, 0, 0)
 	btn.BackgroundTransparency = 1
 	btn.Text = ""
@@ -3344,6 +3343,7 @@ function UILib.Tab:addSubTab(name, description)
 	desc.TextSize = 8
 	desc.TextXAlignment = Enum.TextXAlignment.Left
 	desc.TextWrapped = true
+	desc.TextTruncate = Enum.TextTruncate.AtEnd
 	desc.ZIndex = 6
 	desc.Parent = textCol
 	sub.desc = desc
