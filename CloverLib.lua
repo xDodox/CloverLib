@@ -3242,7 +3242,7 @@ function UILib.Tab:addSubTab(name, description)
 
 	local btn = Instance.new("TextButton")
 	table.insert(self.subtabOrder, sub)
-	btn.Size = UDim2.new(1, -8, 0, 44)
+	btn.Size = UDim2.new(1, -8, 0, description and 56 or 44)
 	btn.Position = UDim2.new(0, 4, 0, 0)
 	btn.BackgroundTransparency = 1
 	btn.Text = ""
