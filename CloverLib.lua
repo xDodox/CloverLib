@@ -560,7 +560,8 @@ UILib.Parser = {
 			return { type = "Slider", label = label, value = tonumber(elem.Value) or 0 }
 		end,
 		Load = function(data, elem)
-			elem:SetValue(data.value)
+			local v = type(data.value) == "table" and data.value[1] or data.value
+			elem:SetValue(tonumber(v) or 0)
 		end,
 	},
 	Dropdown = {
@@ -593,7 +594,11 @@ UILib.Parser = {
 		end,
 		Load = function(data, elem)
 			if data.color then
-				elem:SetValue(Color3.fromRGB(data.color[1] or 0, data.color[2] or 0, data.color[3] or 0))
+				local c = data.color
+				local r = tonumber(type(c[1]) == "table" and c[1][1] or c[1]) or 0
+				local g = tonumber(type(c[2]) == "table" and c[2][1] or c[2]) or 0
+				local b = tonumber(type(c[3]) == "table" and c[3][1] or c[3]) or 0
+				elem:SetValue(Color3.fromRGB(r, g, b))
 			end
 		end,
 	},
@@ -618,7 +623,8 @@ UILib.Parser = {
 			return { type = "NumberBox", label = label, value = tonumber(elem.Value) or 0 }
 		end,
 		Load = function(data, elem)
-			elem:SetValue(data.value)
+			local v = type(data.value) == "table" and data.value[1] or data.value
+			elem:SetValue(tonumber(v) or 0)
 		end,
 	},
 	RangeSlider = {
