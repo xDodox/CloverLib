@@ -414,8 +414,32 @@ function UILib:listConfigs()
 	return configs
 end
 
-function UILib:exportConfigToString()
-	return self:exportConfigStructured()
+function UILib:exportConfigToString(useStructured)
+	if useStructured then
+		return self:exportConfigStructured()
+	end
+	local data = {}
+	if not self.configs then return nil end
+	for id, elem in pairs(self.configs) do
+		if elem.Value ~= nil and not elem._noConfig then
+			local label = self:getElementLabel(elem) or ""
+			if typeof(elem.Value) == "Color3" then
+				data[id] = {value = {__type = "Color3", r = elem.Value.r, g = elem.Value.g, b = elem.Value.b}, _label = label}
+			elseif typeof(elem.Value) == "EnumItem" then
+				data[id] = {value = elem.Value.Name, _label = label}
+			else
+				data[id] = {value = elem.Value, _label = label}
+			end
+		end
+	end
+	local json = HS:JSONEncode(data)
+	local success = pcall(setclipboard, json)
+	if success then
+		self:notify("Config copied to clipboard!", "success")
+	else
+		self:notify("Clipboard not supported on this executor", "error")
+	end
+	return json
 end
 
 function UILib:importConfigFromString(json)
