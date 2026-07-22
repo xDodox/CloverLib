@@ -586,7 +586,11 @@ UILib.Parser = {
 			return { type = "MultiDropdown", label = label, value = clean }
 		end,
 		Load = function(data, elem)
-			if data.value then elem:SetValue(data.value) end
+			if data.value then
+				local v = data.value
+				if type(v) == "table" and #v > 0 and type(v[1]) == "table" then v = v[1] end
+				elem:SetValue(v)
+			end
 		end,
 	},
 	ColorPicker = {
@@ -625,7 +629,9 @@ UILib.Parser = {
 			return { type = "TextBox", label = label, value = tostring(elem.Value) }
 		end,
 		Load = function(data, elem)
-			elem:SetValue(data.value)
+			local v = data.value
+			if type(v) == "table" then v = v[1] end
+			elem:SetValue(tostring(v or ""))
 		end,
 	},
 	NumberBox = {
@@ -640,10 +646,13 @@ UILib.Parser = {
 	RangeSlider = {
 		Save = function(label, elem)
 			local v = elem.Value
-			return { type = "RangeSlider", label = label, min = tonumber(v[1]) or 0, max = tonumber(v[2]) or 0 }
+			local a, b = tonumber(type(v[1]) == "table" and v[1][1] or v[1]) or 0, tonumber(type(v[2]) == "table" and v[2][1] or v[2]) or 0
+			return { type = "RangeSlider", label = label, min = a, max = b }
 		end,
 		Load = function(data, elem)
-			elem:SetValue({ data.min or 0, data.max or 0 })
+			local lo = tonumber(type(data.min) == "table" and data.min[1] or data.min) or 0
+			local hi = tonumber(type(data.max) == "table" and data.max[1] or data.max) or 0
+			elem:SetValue({ lo, hi })
 		end,
 	},
 }
