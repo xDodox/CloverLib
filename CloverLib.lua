@@ -415,34 +415,7 @@ function UILib:listConfigs()
 end
 
 function UILib:exportConfigToString()
-	local data = {}
-	if not self.configs then return nil end
-	for id, elem in pairs(self.configs) do
-		if elem.Value ~= nil and not elem._noConfig then
-			local label = ""
-			if elem.frame then
-				for _, child in ipairs(elem.frame:GetChildren()) do
-					if child:IsA("TextLabel") and child.Text and child.Text ~= "" then
-						label = child.Text
-						break
-					end
-				end
-			end
-			if typeof(elem.Value) == "Color3" then
-				data[id] = {value = {__type = "Color3", r = elem.Value.r, g = elem.Value.g, b = elem.Value.b}, _label = label}
-			else
-				data[id] = {value = elem.Value, _label = label}
-			end
-		end
-	end
-	local json = HS:JSONEncode(data)
-	local success = pcall(setclipboard, json)
-	if success then
-		self:notify("Config copied to clipboard!", "success")
-	else
-		self:notify("Clipboard not supported on this executor", "error")
-	end
-	return json
+	return self:exportConfigStructured()
 end
 
 function UILib:importConfigFromString(json)
@@ -452,42 +425,24 @@ function UILib:importConfigFromString(json)
 		self:notify("Invalid config data", "error")
 		return
 	end
+	if data._version == 2 then
+		local count = _applyStructuredJSON(self, data)
+		self:notify("Imported " .. count .. " value(s)", "success")
+		return
+	end
 	local count = 0
 	self._loadingConfig = true
 	for id, value in pairs(data) do
 		if self.configs and self.configs[id] and not self.configs[id]._noConfig then
-			local raw
-			if type(value) == "table" and value.value ~= nil then
-				raw = value.value
-			else
-				raw = value
-			end
+			local raw = (type(value) == "table" and value.value ~= nil) and value.value or value
 			if type(raw) == "table" and raw.__type == "Color3" then
 				local colorVal = Color3.new(raw.r or 1, raw.g or 0, raw.b or 0)
 				local elem = self.configs[id]
-				if elem._confirmMessage then
-					elem.Value = colorVal
-					local colorBox = elem.frame and elem.frame:FindFirstChild("Frame", true)
-					if colorBox and colorBox:IsA("Frame") then colorBox.BackgroundColor3 = colorVal end
-				else
-					pcall(elem.SetValue, colorVal, true)
-				end
+				if elem.SetColor then pcall(elem.SetColor, elem, colorVal) else pcall(elem.SetValue, elem, colorVal) end
 			else
 				local elem = self.configs[id]
-				if elem._confirmMessage then
-					elem.Value = raw
-					if elem.frame then
-						local cbOuter = elem.frame:FindFirstChildOfClass("TextButton")
-						if cbOuter then
-							cbOuter.BackgroundColor3 = raw and self.theme.Accent or self.theme.BG
-							local st = cbOuter:FindFirstChildOfClass("UIStroke")
-							if st then st.Color = raw and self.theme.AccentD or self.theme.Border end
-							local mk = cbOuter:FindFirstChildOfClass("TextLabel")
-							if mk then mk.Text = raw and "X" or "" end
-						end
-					end
-				else
-					pcall(elem.SetValue, raw, true)
+				if elem and elem.SetValue then
+					pcall(elem.SetValue, elem, raw)
 				end
 			end
 			count = count + 1
@@ -501,9 +456,21 @@ end
 -- Structured Config — category-based JSON
 -- ════════════════════════════════════════
 function UILib:getElementLabel(elem)
+	if elem.Flag and elem.Flag ~= "" then
+		return elem.Flag
+	end
+	if elem.Title and elem.Title ~= "" then
+		return elem.Title
+	end
+	if elem.Text and elem.Text ~= "" then
+		return elem.Text
+	end
+	if elem.ID and elem.ID ~= "" then
+		return elem.ID
+	end
 	if elem.frame then
 		for _, child in ipairs(elem.frame:GetDescendants()) do
-			if child:IsA("TextLabel") and child.Visible and child.Text ~= "" then
+			if child:IsA("TextLabel") and child.Visible and child.Text and child.Text ~= "" then
 				return child.Text
 			end
 		end
@@ -513,13 +480,26 @@ end
 
 function UILib:getElementType(elem)
 	if elem.IsToggle then return "Toggle" end
-	if elem.Mode == "keybind" then return "Keybind" end
-	if typeof(elem.Value) == "Color3" then return "ColorPicker" end
-	if type(elem.Value) == "number" and elem.DefaultHeight then return "Slider" end
+	if elem.Mode == "keybind" or elem.IsKeybind then return "Keybind" end
+	if typeof(elem.Value) == "Color3" or elem.IsColorPicker then return "ColorPicker" end
+	if type(elem.Value) == "table" and #elem.Value == 2 and type(elem.Value[1]) == "number" and type(elem.Value[2]) == "number" then return "RangeSlider" end
 	if type(elem.Value) == "table" and not elem._display then return "MultiDropdown" end
+	if type(elem.Value) == "number" then return "Slider" end
 	if type(elem.Value) == "string" and elem._values then return "Dropdown" end
-	if type(elem.Value) == "string" and elem.DefaultHeight then return "TextBox" end
+	if type(elem.Value) == "string" then return "TextBox" end
 	return nil
+end
+
+local function parseKeybind(val)
+	if not val then return Enum.KeyCode.Unknown end
+	if typeof(val) == "EnumItem" then return val end
+	if type(val) == "string" then
+		local cleanName = val:gsub("^Enum%.KeyCode%.", "")
+		if Enum.KeyCode[cleanName] then
+			return Enum.KeyCode[cleanName]
+		end
+	end
+	return Enum.KeyCode.Unknown
 end
 
 local function _configStructuredToJSON(self)
@@ -528,7 +508,7 @@ local function _configStructuredToJSON(self)
 		if elem._noConfig then continue end
 		local val = elem.Value
 		if val == nil then continue end
-		local label = self:getElementLabel(elem) or id
+		local label = self:getElementLabel(elem) or tostring(id)
 		local etype = self:getElementType(elem)
 		if not etype then continue end
 		if not data[etype] then data[etype] = {} end
@@ -539,7 +519,8 @@ local function _configStructuredToJSON(self)
 				data[etype][label] = { color = { math.floor(val.R * 255), math.floor(val.G * 255), math.floor(val.B * 255) } }
 			end
 		elseif etype == "Keybind" then
-			data[etype][label] = { keybind = tostring(val) }
+			local keyStr = typeof(val) == "EnumItem" and val.Name or tostring(val):gsub("^Enum%.KeyCode%.", "")
+			data[etype][label] = { keybind = keyStr }
 		elseif etype == "Dropdown" then
 			data[etype][label] = { value = tostring(val) }
 		elseif etype == "MultiDropdown" then
@@ -548,6 +529,10 @@ local function _configStructuredToJSON(self)
 				for _, v in pairs(val) do table.insert(clean, tostring(v)) end
 			end
 			data[etype][label] = { value = clean }
+		elseif etype == "RangeSlider" then
+			if type(val) == "table" then
+				data[etype][label] = { min = tonumber(val[1]) or 0, max = tonumber(val[2]) or 0 }
+			end
 		elseif etype == "TextBox" then
 			data[etype][label] = { text = tostring(val) }
 		elseif etype == "Slider" then
@@ -562,6 +547,7 @@ local function _applyStructuredJSON(self, decoded)
 	for id, elem in pairs(self.configs) do
 		local label = self:getElementLabel(elem)
 		if label and not elem._noConfig then labelMap[label] = elem end
+		if tostring(id) ~= "" then labelMap[tostring(id)] = elem end
 	end
 	local count = 0
 	self._loadingConfig = true
@@ -573,20 +559,26 @@ local function _applyStructuredJSON(self, decoded)
 			local elem = labelMap[label]
 			if not elem then continue end
 			pcall(function()
-				if etype == "Toggle" then
-					elem:SetValue(sdata.state); count = count + 1
-				elseif etype == "ColorPicker" and sdata.color then
-					elem:SetValue(Color3.fromRGB(sdata.color[1] or 0, sdata.color[2] or 0, sdata.color[3] or 0)); count = count + 1
-				elseif etype == "Keybind" then
-					elem:SetValue(sdata.keybind); count = count + 1
-				elseif etype == "Dropdown" then
-					elem:SetValue(sdata.value); count = count + 1
-				elseif etype == "MultiDropdown" and sdata.value then
-					elem:SetValue(sdata.value); count = count + 1
-				elseif etype == "TextBox" then
-					elem:SetValue(sdata.text); count = count + 1
-				elseif etype == "Slider" then
-					elem:SetValue(sdata.value); count = count + 1
+				if elem.SetValue then
+					if etype == "Toggle" and sdata.state ~= nil then
+						elem:SetValue(sdata.state); count = count + 1
+					elseif etype == "ColorPicker" and sdata.color then
+						local c = Color3.fromRGB(sdata.color[1] or 0, sdata.color[2] or 0, sdata.color[3] or 0)
+						if elem.SetColor then elem:SetColor(c) else elem:SetValue(c) end
+						count = count + 1
+					elseif etype == "Keybind" and sdata.keybind then
+						elem:SetValue(parseKeybind(sdata.keybind)); count = count + 1
+					elseif etype == "Dropdown" and sdata.value ~= nil then
+						elem:SetValue(sdata.value); count = count + 1
+					elseif etype == "MultiDropdown" and sdata.value then
+						elem:SetValue(sdata.value); count = count + 1
+					elseif etype == "RangeSlider" and sdata.min ~= nil and sdata.max ~= nil then
+						elem:SetValue({ sdata.min, sdata.max }); count = count + 1
+					elseif etype == "TextBox" and sdata.text ~= nil then
+						elem:SetValue(sdata.text); count = count + 1
+					elseif etype == "Slider" and sdata.value ~= nil then
+						elem:SetValue(sdata.value); count = count + 1
+					end
 				end
 			end)
 		end
@@ -596,16 +588,24 @@ local function _applyStructuredJSON(self, decoded)
 	return count
 end
 
+function UILib:getConfigDir()
+	local gameName = (game and game.Name and game.Name ~= "" and game.Name) or "Unknown"
+	gameName = gameName:gsub("[^%w%s%-_]", ""):gsub("%s+", "_"):sub(1, 40)
+	local dir = "CloverHub/configs/" .. gameName .. "/"
+	pcall(makefolder, "CloverHub/configs")
+	pcall(makefolder, dir)
+	return dir
+end
+
 function UILib:saveConfigStructured(name)
 	local json = _configStructuredToJSON(self)
-	local dir = "CloverHub/configs/"
-	pcall(makefolder, "CloverHub/configs")
+	local dir = self:getConfigDir()
 	local ok, err = pcall(writefile, dir .. name .. ".json", json)
 	if ok then self:notify("Saved: " .. name, "success", 2) else self:notify("Save failed: " .. tostring(err), "error", 3) end
 end
 
 function UILib:loadConfigStructured(name)
-	local path = "CloverHub/configs/" .. name .. ".json"
+	local path = self:getConfigDir() .. name .. ".json"
 	local ok, content = pcall(readfile, path)
 	if not ok then self:notify("Not found: " .. name, "error", 3); return end
 	local decoded = HS:JSONDecode(content)
@@ -629,8 +629,8 @@ end
 
 function UILib:listConfigsStructured()
 	local list = {}
-	pcall(makefolder, "CloverHub/configs")
-	local ok, files = pcall(listfiles, "CloverHub/configs")
+	local dir = self:getConfigDir()
+	local ok, files = pcall(listfiles, dir)
 	if ok and files then
 		for _, f in ipairs(files) do
 			local name = f:match("([^/\\]+)%.json$")
@@ -641,21 +641,21 @@ function UILib:listConfigsStructured()
 end
 
 function UILib:getAutoLoadConfig()
-	local ok, name = pcall(readfile, "CloverHub/configs/_autoload.txt")
+	local ok, name = pcall(readfile, self:getConfigDir() .. "_autoload.txt")
 	if ok and name and name ~= "" then return name end
 	return nil
 end
 
 function UILib:setAutoLoadConfig(name)
-	pcall(makefolder, "CloverHub/configs")
-	pcall(writefile, "CloverHub/configs/_autoload.txt", name or "")
+	pcall(makefolder, self:getConfigDir())
+	pcall(writefile, self:getConfigDir() .. "_autoload.txt", name or "")
 end
 
 function UILib:tryAutoLoad()
 	local name = self:getAutoLoadConfig()
 	if name then
 		task.wait(0.5)
-		local path = "CloverHub/configs/" .. name .. ".json"
+		local path = self:getConfigDir() .. name .. ".json"
 		if isfile and isfile(path) then
 			self:loadConfigStructured(name)
 			self:notify("Auto-loaded: " .. name, "success", 3)
@@ -1964,7 +1964,7 @@ function UILib:buildUITab()
 	cfg:button("Delete Config", function()
 		local name = cfgDropdown.Value
 		if name == "(no configs)" or name == "" then return end
-		pcall(delfile, "CloverHub/configs/" .. name .. ".json")
+		pcall(delfile, self:getConfigDir() .. name .. ".json")
 		self:notify("Deleted: " .. name, "success", 2)
 		cfgRefreshDropdown()
 	end, nil, Enum.TextXAlignment.Center, Color3.fromRGB(255, 80, 80))
