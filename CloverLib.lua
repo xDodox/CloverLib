@@ -552,7 +552,9 @@ UILib.Parser = {
 			return { type = "Toggle", label = label, value = elem.Value == true }
 		end,
 		Load = function(data, elem)
-			elem:SetValue(data.value)
+			local v = data.value
+			if type(v) == "table" then v = v[1] end
+			elem:SetValue(not not v)
 		end,
 	},
 	Slider = {
@@ -570,7 +572,9 @@ UILib.Parser = {
 			return { type = "Dropdown", label = label, value = tostring(elem.Value) }
 		end,
 		Load = function(data, elem)
-			elem:SetValue(data.value)
+			local v = data.value
+			if type(v) == "table" then v = v[1] end
+			elem:SetValue(tostring(v or ""))
 		end,
 	},
 	MultiDropdown = {
@@ -611,7 +615,9 @@ UILib.Parser = {
 			return { type = "Keybind", label = label, value = tostring(elem.Value) }
 		end,
 		Load = function(data, elem)
-			elem:SetValue(data.value)
+			local v = data.value
+			if type(v) == "table" then v = v[1] end
+			elem:SetValue(tostring(v or ""))
 		end,
 	},
 	TextBox = {
@@ -4054,7 +4060,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 			elem.Value = current
 			satValSquare.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
 			colorBox.BackgroundColor3 = current
-			hexBox.Text = "#" .. current:ToHex()
+		hexBox.Text = "#" .. (typeof(current) == "Color3" and current:ToHex() or "FFFFFF")
 			window:SafeCallback(callback, current)
 		end
 
@@ -5092,7 +5098,6 @@ function UILib.Column:addGroup(title)
 		local state = default
 		local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = TOGGLE_H }
 		elem.SetValue = function(val)
-			print("[clover] TOG SetValue:", text, state, "->", val)
 			state = val
 			elem.Value = state
 			updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
