@@ -3144,7 +3144,7 @@ function UILib:selectTab(n)
 	end
 end
 
-function UILib.Tab:addSubTab(name)
+function UILib.Tab:addSubTab(name, desc)
 	local sub = setmetatable({}, UILib.SubTab)
 	sub.name = name
 	sub.tab = self
@@ -3220,7 +3220,7 @@ function UILib.Tab:addSubTab(name)
 	desc.Size = UDim2.new(1, 0, 0.45, 0)
 	desc.Position = UDim2.new(0, 0, 0.55, 0)
 	desc.BackgroundTransparency = 1
-	desc.Text = ""
+	desc.Text = desc or ""
 	desc.TextColor3 = self.window.theme.Gray
 	desc.Font = Enum.Font.GothamSemibold
 	desc.TextSize = 9
