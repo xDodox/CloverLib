@@ -414,19 +414,22 @@ function UILib:listConfigs()
 	return configs
 end
 
-function UILib:exportConfigToString(useStructured)
-	if useStructured then
-		return self:exportConfigStructured()
-	end
+function UILib:exportConfigToString()
 	local data = {}
 	if not self.configs then return nil end
 	for id, elem in pairs(self.configs) do
 		if elem.Value ~= nil and not elem._noConfig then
-			local label = self:getElementLabel(elem) or ""
+			local label = ""
+			if elem.frame then
+				for _, child in ipairs(elem.frame:GetChildren()) do
+					if child:IsA("TextLabel") and child.Text and child.Text ~= "" then
+						label = child.Text
+						break
+					end
+				end
+			end
 			if typeof(elem.Value) == "Color3" then
 				data[id] = {value = {__type = "Color3", r = elem.Value.r, g = elem.Value.g, b = elem.Value.b}, _label = label}
-			elseif typeof(elem.Value) == "EnumItem" then
-				data[id] = {value = elem.Value.Name, _label = label}
 			else
 				data[id] = {value = elem.Value, _label = label}
 			end
@@ -449,24 +452,42 @@ function UILib:importConfigFromString(json)
 		self:notify("Invalid config data", "error")
 		return
 	end
-	if data._version == 2 then
-		local count = _applyStructuredJSON(self, data)
-		self:notify("Imported " .. count .. " value(s)", "success")
-		return
-	end
 	local count = 0
 	self._loadingConfig = true
 	for id, value in pairs(data) do
 		if self.configs and self.configs[id] and not self.configs[id]._noConfig then
-			local raw = (type(value) == "table" and value.value ~= nil) and value.value or value
+			local raw
+			if type(value) == "table" and value.value ~= nil then
+				raw = value.value
+			else
+				raw = value
+			end
 			if type(raw) == "table" and raw.__type == "Color3" then
 				local colorVal = Color3.new(raw.r or 1, raw.g or 0, raw.b or 0)
 				local elem = self.configs[id]
-				if elem.SetColor then pcall(elem.SetColor, elem, colorVal) else pcall(elem.SetValue, elem, colorVal) end
+				if elem._confirmMessage then
+					elem.Value = colorVal
+					local colorBox = elem.frame and elem.frame:FindFirstChild("Frame", true)
+					if colorBox and colorBox:IsA("Frame") then colorBox.BackgroundColor3 = colorVal end
+				else
+					pcall(elem.SetValue, colorVal, true)
+				end
 			else
 				local elem = self.configs[id]
-				if elem and elem.SetValue then
-					pcall(elem.SetValue, elem, raw)
+				if elem._confirmMessage then
+					elem.Value = raw
+					if elem.frame then
+						local cbOuter = elem.frame:FindFirstChildOfClass("TextButton")
+						if cbOuter then
+							cbOuter.BackgroundColor3 = raw and self.theme.Accent or self.theme.BG
+							local st = cbOuter:FindFirstChildOfClass("UIStroke")
+							if st then st.Color = raw and self.theme.AccentD or self.theme.Border end
+							local mk = cbOuter:FindFirstChildOfClass("TextLabel")
+							if mk then mk.Text = raw and "X" or "" end
+						end
+					end
+				else
+					pcall(elem.SetValue, raw, true)
 				end
 			end
 			count = count + 1
@@ -480,50 +501,74 @@ end
 -- Structured Config — category-based JSON
 -- ════════════════════════════════════════
 function UILib:getElementLabel(elem)
-	if elem.Flag and elem.Flag ~= "" then
-		return elem.Flag
+	if not elem.frame then return nil end
+
+	-- Helper: returns true if text looks like a value display (number, "10 / 100", "5 - 20", "75%")
+	local function isValueText(t)
+		if t == nil or t == "" then return true end
+		if tonumber(t) then return true end
+		if t:match("^%-?%d+%.?%d*%s*[/%-]%s*%-?%d+%.?%d*$") then return true end -- "5 - 20" or "5 / 20"
+		if t:match("^%-?%d+%.?%d*%%$") then return true end -- "75%"
+		if t == "..." then return true end
+		return false
 	end
-	if elem.Title and elem.Title ~= "" then
-		return elem.Title
-	end
-	if elem.Text and elem.Text ~= "" then
-		return elem.Text
-	end
-	if elem.ID and elem.ID ~= "" then
-		return elem.ID
-	end
-	if elem.frame then
-		for _, child in ipairs(elem.frame:GetDescendants()) do
-			if child:IsA("TextLabel") and child.Visible and child.Text and child.Text ~= "" then
-				return child.Text
-			end
+
+	-- Pass 1: direct children only, strict (left-aligned, left-side position)
+	for _, child in ipairs(elem.frame:GetChildren()) do
+		if child:IsA("TextLabel")
+			and child.Visible
+			and not isValueText(child.Text)
+			and child.TextXAlignment == Enum.TextXAlignment.Left
+			and child.Position.X.Scale < 0.5
+		then
+			return child.Text
 		end
 	end
+
+	-- Pass 2: all descendants, skip value-like labels
+	-- (needed for sliders whose title sits inside a topRow Frame)
+	for _, child in ipairs(elem.frame:GetDescendants()) do
+		if child:IsA("TextLabel")
+			and child.Visible
+			and not isValueText(child.Text)
+			and child.TextXAlignment == Enum.TextXAlignment.Left
+		then
+			return child.Text
+		end
+	end
+
 	return nil
 end
 
 function UILib:getElementType(elem)
 	if elem.IsToggle then return "Toggle" end
-	if elem.Mode == "keybind" or elem.IsKeybind then return "Keybind" end
-	if typeof(elem.Value) == "Color3" or elem.IsColorPicker then return "ColorPicker" end
-	if type(elem.Value) == "table" and #elem.Value == 2 and type(elem.Value[1]) == "number" and type(elem.Value[2]) == "number" then return "RangeSlider" end
+	if elem.Mode == "keybind" then return "Keybind" end
+	if typeof(elem.Value) == "Color3" then return "ColorPicker" end
+	-- RangeSlider: Value is a table of exactly 2 numbers
+	if type(elem.Value) == "table" and #elem.Value == 2
+		and type(elem.Value[1]) == "number" and type(elem.Value[2]) == "number" then
+		return "RangeSlider"
+	end
+	-- MultiDropdown: table value without _display flag
 	if type(elem.Value) == "table" and not elem._display then return "MultiDropdown" end
+	-- Slider: numeric value
 	if type(elem.Value) == "number" then return "Slider" end
+	-- Dropdown: string value with _values list
 	if type(elem.Value) == "string" and elem._values then return "Dropdown" end
+	-- TextBox: any remaining string value
 	if type(elem.Value) == "string" then return "TextBox" end
 	return nil
 end
 
-local function parseKeybind(val)
-	if not val then return Enum.KeyCode.Unknown end
-	if typeof(val) == "EnumItem" then return val end
-	if type(val) == "string" then
-		local cleanName = val:gsub("^Enum%.KeyCode%.", "")
-		if Enum.KeyCode[cleanName] then
-			return Enum.KeyCode[cleanName]
-		end
-	end
-	return Enum.KeyCode.Unknown
+local function parseKeybind(valStr)
+	if not valStr or valStr == "" then return nil end
+	-- Strip full enum path if present: "Enum.KeyCode.E" -> "E"
+	local name = tostring(valStr):match("KeyCode%.(.+)$") or tostring(valStr)
+	local special = { RMB = true, LMB = true, MMB = true }
+	if special[name] then return name end -- leave as string for mouse buttons
+	local ok, kc = pcall(function() return Enum.KeyCode[name] end)
+	if ok and kc then return kc end
+	return valStr
 end
 
 local function _configStructuredToJSON(self)
@@ -543,7 +588,8 @@ local function _configStructuredToJSON(self)
 				data[etype][label] = { color = { math.floor(val.R * 255), math.floor(val.G * 255), math.floor(val.B * 255) } }
 			end
 		elseif etype == "Keybind" then
-			local keyStr = typeof(val) == "EnumItem" and val.Name or tostring(val):gsub("^Enum%.KeyCode%.", "")
+			-- Store the human-readable name (e.g. "E", "RMB")
+			local keyStr = typeof(val) == "EnumItem" and val.Name or tostring(val):match("KeyCode%.(.+)$") or tostring(val)
 			data[etype][label] = { keybind = keyStr }
 		elseif etype == "Dropdown" then
 			data[etype][label] = { value = tostring(val) }
@@ -554,9 +600,7 @@ local function _configStructuredToJSON(self)
 			end
 			data[etype][label] = { value = clean }
 		elseif etype == "RangeSlider" then
-			if type(val) == "table" then
-				data[etype][label] = { min = tonumber(val[1]) or 0, max = tonumber(val[2]) or 0 }
-			end
+			data[etype][label] = { min = tonumber(val[1]) or 0, max = tonumber(val[2]) or 0 }
 		elseif etype == "TextBox" then
 			data[etype][label] = { text = tostring(val) }
 		elseif etype == "Slider" then
@@ -571,7 +615,6 @@ local function _applyStructuredJSON(self, decoded)
 	for id, elem in pairs(self.configs) do
 		local label = self:getElementLabel(elem)
 		if label and not elem._noConfig then labelMap[label] = elem end
-		if tostring(id) ~= "" then labelMap[tostring(id)] = elem end
 	end
 	local count = 0
 	self._loadingConfig = true
@@ -583,26 +626,23 @@ local function _applyStructuredJSON(self, decoded)
 			local elem = labelMap[label]
 			if not elem then continue end
 			pcall(function()
-				if elem.SetValue then
-					if etype == "Toggle" and sdata.state ~= nil then
-						elem:SetValue(sdata.state); count = count + 1
-					elseif etype == "ColorPicker" and sdata.color then
-						local c = Color3.fromRGB(sdata.color[1] or 0, sdata.color[2] or 0, sdata.color[3] or 0)
-						if elem.SetColor then elem:SetColor(c) else elem:SetValue(c) end
-						count = count + 1
-					elseif etype == "Keybind" and sdata.keybind then
-						elem:SetValue(parseKeybind(sdata.keybind)); count = count + 1
-					elseif etype == "Dropdown" and sdata.value ~= nil then
-						elem:SetValue(sdata.value); count = count + 1
-					elseif etype == "MultiDropdown" and sdata.value then
-						elem:SetValue(sdata.value); count = count + 1
-					elseif etype == "RangeSlider" and sdata.min ~= nil and sdata.max ~= nil then
-						elem:SetValue({ sdata.min, sdata.max }); count = count + 1
-					elseif etype == "TextBox" and sdata.text ~= nil then
-						elem:SetValue(sdata.text); count = count + 1
-					elseif etype == "Slider" and sdata.value ~= nil then
-						elem:SetValue(sdata.value); count = count + 1
-					end
+				if etype == "Toggle" then
+					elem:SetValue(sdata.state); count = count + 1
+				elseif etype == "ColorPicker" and sdata.color then
+					elem:SetValue(Color3.fromRGB(sdata.color[1] or 0, sdata.color[2] or 0, sdata.color[3] or 0)); count = count + 1
+				elseif etype == "Keybind" and sdata.keybind then
+					-- Parse string back into KeyCode (or leave as string for mouse buttons)
+					elem:SetValue(parseKeybind(sdata.keybind)); count = count + 1
+				elseif etype == "Dropdown" and sdata.value ~= nil then
+					elem:SetValue(sdata.value); count = count + 1
+				elseif etype == "MultiDropdown" and sdata.value then
+					elem:SetValue(sdata.value); count = count + 1
+				elseif etype == "RangeSlider" and sdata.min ~= nil and sdata.max ~= nil then
+					elem:SetValue({ sdata.min, sdata.max }); count = count + 1
+				elseif etype == "TextBox" and sdata.text ~= nil then
+					elem:SetValue(sdata.text); count = count + 1
+				elseif etype == "Slider" and sdata.value ~= nil then
+					elem:SetValue(sdata.value); count = count + 1
 				end
 			end)
 		end
@@ -5384,6 +5424,12 @@ function UILib.Column:addGroup(title)
 			_values = options,
 			Refresh = refresh,
 			SetValue = function(val)
+				-- Always coerce to string to prevent "string expected, got table" errors
+				if type(val) == "table" then
+					val = tostring(val[1] or "")
+				else
+					val = tostring(val or "")
+				end
 				currentSelection = val
 				selLbl.Text = val
 				for o, lbl2 in pairs(checks) do
@@ -5392,6 +5438,7 @@ function UILib.Column:addGroup(title)
 					lbl2.Font = sel and Enum.Font.GothamBold or Enum.Font.GothamSemibold
 				end
 				for o, b in pairs(backgrounds) do b.Visible = (o == val) end
+				window.configs[id].Value = val
 				if callback then callback(val) end
 			end,
 			SetValues = function(self, newOpts)
@@ -5543,7 +5590,17 @@ function UILib.Column:addGroup(title)
 				end
 			end)
 		end)
-		local elem = { ID = id, Value = currentName, SetValue = function(val) kbtn.Text = val end }
+		local elem = { ID = id, Value = currentName, Mode = "keybind", SetValue = function(val)
+			local displayStr
+			if typeof(val) == "EnumItem" then
+				displayStr = val.Name
+			else
+				displayStr = tostring(val):match("KeyCode%.(.+)$") or tostring(val)
+			end
+			currentName = displayStr
+			kbtn.Text = displayStr
+			window.configs[id].Value = displayStr
+		end }
 		window.configs[id] = finalizeElement(elem, window, group)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
