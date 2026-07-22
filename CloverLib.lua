@@ -629,14 +629,6 @@ UILib.Parser = {
 			elem:SetValue({ data.min or 0, data.max or 0 })
 		end,
 	},
-	Keybind = {
-		Save = function(label, elem)
-			return { type = "Keybind", label = label, value = tostring(elem.Value) }
-		end,
-		Load = function(data, elem)
-			elem:SetValue(data.value)
-		end,
-	},
 }
 
 local function _buildLabelMap(self)
@@ -1892,14 +1884,14 @@ function UILib:buildUITab()
 		self.size = Vector2.new(val, self.size.Y)
 		self.window.Size = UDim2.new(0, val, 0, self.size.Y)
 		self.updateLayout()
-	end, 10, "Adjust the width of the menu")
+	end, 10, "Adjust the width of the menu", nil, nil, "ui_width")
 	widthSlider.frame.Visible = false
 
 	local heightSlider = grp:slider("Window Height", 350, 800, self.size.Y, function(val)
 		self.size = Vector2.new(self.size.X, val)
 		self.window.Size = UDim2.new(0, self.size.X, 0, val)
 		self.updateLayout()
-	end, 10, "Adjust the height of the menu")
+	end, 10, "Adjust the height of the menu", nil, nil, "ui_height")
 	heightSlider.frame.Visible = false
 
 	grp:button("Resize Mode", function()
@@ -1908,7 +1900,7 @@ function UILib:buildUITab()
 
 	grp:keybind("Toggle Key", "RightShift", function(_, name)
 		self.toggleKey = Enum.KeyCode[name] or Enum.KeyCode.RightShift
-	end, "Set key to show/hide menu")
+	end, "Set key to show/hide menu", "ui_togglekey")
 
 	grp:toggle("Show Watermark", self.watermark ~= nil, function(v)
 		if v then
@@ -1927,7 +1919,7 @@ function UILib:buildUITab()
 				self.watermark:Destroy(); self.watermark = nil
 			end
 		end
-	end, "Display FPS and ping")
+	end, "Display FPS and ping", nil, nil, nil, nil, nil, "ui_watermark")
 
 	grp:button("Unload", function()
 		self:confirm("Are you sure you want to unload?", function(ok)
@@ -2060,7 +2052,8 @@ function UILib:buildUITab()
 		for _, t in ipairs(THEMES) do
 			if t[1] == val then applyFullTheme(t); break end
 		end
-	end, "Apply a pre-made color theme")
+	end, "Apply a pre-made color theme", nil, nil, "ui_theme")
+
 
 	local cfg = uiR:addGroup("Save Manager")
 	cfg:separator("Load")
@@ -2074,7 +2067,7 @@ function UILib:buildUITab()
 	local selectedCfg = ""
 	local cfgDropdown = cfg:dropdown("", getConfigListStructured(), "", function(v)
 		if v and v ~= "" then selectedCfg = v end
-	end, "Select a config to load/delete", function() return getConfigListStructured() end)
+	end, "Select a config to load/delete", function() return getConfigListStructured() end, nil, "ui_cfgdropdown")
 
 	local function cfgRefreshDropdown()
 		local list = getConfigListStructured()
@@ -2110,10 +2103,10 @@ function UILib:buildUITab()
 			self:setAutoLoadConfig(nil)
 			self:notify("Auto-load off", "info", 2)
 		end
-	end, "Auto-load this config on script start")
+	end, "Auto-load this config on script start", nil, nil, nil, nil, nil, "ui_autoload")
 	cfg:separator("Create")
 
-	local cfgNameBox = cfg:textbox("Config Name", "", "Enter name...", function(_) end)
+	local cfgNameBox = cfg:textbox("Config Name", "", "Enter name...", function(_) end, nil, "ui_cfgname")
 
 	cfg:button("Save Config", function()
 		local nameBox = cfgNameBox.frame and cfgNameBox.frame:FindFirstChildOfClass("TextBox")
@@ -2132,15 +2125,16 @@ function UILib:buildUITab()
 	local randomCode = ""
 	for i = 1, 6 do randomCode = randomCode .. string.char(math.random(65, 70)) .. string.char(math.random(48, 57)) end
 	if #randomCode > 6 then randomCode = randomCode:sub(1, 6) end
-	local importCodeBox = cfg:textbox("Import Code", "", "e.g. " .. randomCode, function(_) end)
+	local importCodeBox = cfg:textbox("Import Code", "", "e.g. " .. randomCode, function(_) end, nil, "ui_importcode")
 
 	cfg:button("Import Settings", function()
-		local code = importCodeBox.Value
-		if not code or code == "" then self:notify("Enter a share code first", "warning", 2); return end
+		local codeBox = importCodeBox.frame and importCodeBox.frame:FindFirstChildOfClass("TextBox")
+		local code = (codeBox and codeBox.Text and codeBox.Text ~= "" and codeBox.Text) or ""
+		if code == "" then self:notify("Enter a share code first", "warning", 2); return end
 		self:importConfigCode(self.configShareUrl or "https://cloverhub.fun", code)
 	end, "Fetch and apply config from share code", Enum.TextXAlignment.Center, Color3.fromRGB(100, 255, 180))
 
-	self:ignoreConfig("Preset", "", "Set as Auto Load", "Config Name", "Import Code", "Window Width", "Window Height", "Show Watermark", "Toggle Key")
+	self:ignoreConfig("ui_width", "ui_height", "ui_togglekey", "ui_watermark", "ui_theme", "ui_cfgdropdown", "ui_autoload", "ui_cfgname", "ui_importcode")
 	self:tryAutoLoad()
 end
 
@@ -5135,7 +5129,7 @@ function UILib.Column:addGroup(title)
 		elem.SetValue = function(val, _silent)
 			if (window._loadingConfig or (_configLoading) or (_silent)) and val and elem._confirmMessage then
 				origSetValue(val)
-				if callback and not _configLoading then callback(val) end
+				window:SafeCallback(callback, val)
 				return
 			end
 			if val and elem._confirmMessage and not _silent then
@@ -5152,7 +5146,7 @@ function UILib.Column:addGroup(title)
 				end)
 			else
 				origSetValue(val)
-				if callback and not _configLoading then callback(val) end
+				window:SafeCallback(callback, val)
 			end
 		end
 		function elem:setConfirmMessage(msg) elem._confirmMessage = msg end
