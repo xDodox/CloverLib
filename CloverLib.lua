@@ -632,45 +632,33 @@ UILib.Parser = {
 	},
 }
 
-local function _buildLabelMap(self)
+	local function _buildLabelMap(self)
 	local map = {}
-	local total = 0
-	local skipped = 0
 	for id, elem in pairs(self.configs) do
 		local label = self:getElementLabel(elem)
-		local isIgnored = self.configIgnore and self.configIgnore[label]
-		if label and not elem._noConfig and not isIgnored then
+		if label and not elem._noConfig and not (self.configIgnore and self.configIgnore[label]) then
 			map[label] = elem
-			total = total + 1
-		elseif isIgnored then
-			skipped = skipped + 1
 		end
 	end
-	print("[CloverLib] labelMap:", total, "elements,", skipped, "ignored")
 	return map
 end
 
 local function _configStructuredToJSON(self)
 	local data = { _version = 3, _timestamp = os.time(), objects = {} }
-	local skipped = { nilVal = 0, noType = 0, ignored = 0, saved = 0 }
 	for id, elem in pairs(self.configs) do
 		if elem._noConfig then continue end
 		local val = elem.Value
-		if val == nil then skipped.nilVal = skipped.nilVal + 1; continue end
+		if val == nil then continue end
 		local label = self:getElementLabel(elem) or id
-		if self.configIgnore and self.configIgnore[label] then skipped.ignored = skipped.ignored + 1; continue end
+		if self.configIgnore and self.configIgnore[label] then continue end
 		local etype = self:getElementType(elem)
-		if not etype then skipped.noType = skipped.noType + 1; continue end
+		if not etype then continue end
 		local parser = UILib.Parser[etype]
 		if parser then
 			local obj = parser.Save(label, elem)
-			if obj then
-				table.insert(data.objects, obj)
-				skipped.saved = skipped.saved + 1
-			end
+			if obj then table.insert(data.objects, obj) end
 		end
 	end
-	print("[CloverLib] Save:", skipped.saved, "objects, nilValue:", skipped.nilVal, "noType:", skipped.noType, "ignored:", skipped.ignored)
 	return HS:JSONEncode(data)
 end
 
@@ -683,12 +671,11 @@ local function _applyStructuredJSON(self, decoded)
 	if decoded.objects then
 		for _, obj in ipairs(decoded.objects) do
 			local elem = labelMap[obj.label]
-			if not elem then print("[CloverLib] Load: label not found:", obj.label, obj.type); continue end
+			if not elem then continue end
 			local parser = UILib.Parser[obj.type]
-			if not parser then print("[CloverLib] Load: no parser for type:", obj.type); continue end
-			local ok, err = pcall(parser.Load, obj, elem)
-			if ok then count = count + 1 else print("[CloverLib] Load failed:", obj.type, obj.label, err) end
-			end
+			if not parser then continue end
+			local ok = pcall(parser.Load, obj, elem)
+			if ok then count = count + 1 end
 		end
 	else
 		local legacyTypes = { Toggle = "state", Slider = "value", Dropdown = "value", MultiDropdown = "value", TextBox = "text", Keybind = "keybind" }
@@ -5501,19 +5488,19 @@ function UILib.Column:addGroup(title)
 			label = cfgId or text,
 			_values = options,
 			Refresh = refresh,
-			SetValue = function(val)
+		SetValue = function(val)
 				if type(val) ~= "string" then print("[CloverLib] WARNING: SetValue received non-string:", type(val), val); return end
 				currentSelection = val
 				selLbl.Text = val
-				for o, lbl2 in pairs(checks) do
-					local sel = (o == val)
-					lbl2.TextColor3 = sel and window.theme.White or window.theme.Gray
-					lbl2.Font = sel and Enum.Font.GothamBold or Enum.Font.GothamSemibold
-				end
-				for o, b in pairs(backgrounds) do b.Visible = (o == val) end
-				window:SafeCallback(callback, val)
-				window.configs[id].Value = val
-			end,
+			for o, lbl2 in pairs(checks) do
+				local sel = (o == val)
+				lbl2.TextColor3 = sel and window.theme.White or window.theme.Gray
+				lbl2.Font = sel and Enum.Font.GothamBold or Enum.Font.GothamSemibold
+			end
+			for o, b in pairs(backgrounds) do b.Visible = (o == val) end
+			window:SafeCallback(callback, val)
+			window.configs[id].Value = val
+		end,
 			SetValues = function(self, newOpts)
 				closeDropdown()
 				local prevSelection = currentSelection
