@@ -2072,25 +2072,29 @@ function UILib:buildUITab()
 		return list
 	end
 
-	local cfgDropdown = cfg:dropdown("", getConfigListStructured(), "", function(_)
+	local selectedCfg = ""
+	local cfgDropdown = cfg:dropdown("", getConfigListStructured(), "", function(v)
+		if v and v ~= "(no configs)" then selectedCfg = v end
 	end, "Select a config to load/delete", function() return getConfigListStructured() end)
 
 	local function cfgRefreshDropdown()
 		local list = getConfigListStructured()
 		cfgDropdown._values = list
-		pcall(function() cfgDropdown:SetValues(list) end)
+		pcall(function()
+			cfgDropdown:SetValues(list)
+			cfgDropdown:SetValue(selectedCfg)
+		end)
 	end
 
 	cfg:button("Load Config", function()
-		local name = tostring(cfgDropdown.Value)
-		if name == "(no configs)" or name == "" or name:sub(1, 6) == "table:" then self:notify("No config selected", "warning", 2); return end
-		self:loadConfigStructured(name)
+		if selectedCfg == "" or selectedCfg == "(no configs)" then self:notify("No config selected", "warning", 2); return end
+		self:loadConfigStructured(selectedCfg)
 	end, nil, Enum.TextXAlignment.Center)
 	cfg:button("Delete Config", function()
-		local name = tostring(cfgDropdown.Value)
-		if name == "(no configs)" or name == "" or name:sub(1, 6) == "table:" then return end
-		pcall(delfile, self:getConfigDir() .. name .. ".json")
-		self:notify("Deleted: " .. name, "success", 2)
+		if selectedCfg == "" or selectedCfg == "(no configs)" then return end
+		pcall(delfile, self:getConfigDir() .. selectedCfg .. ".json")
+		self:notify("Deleted: " .. selectedCfg, "success", 2)
+		selectedCfg = ""
 		cfgRefreshDropdown()
 	end, nil, Enum.TextXAlignment.Center, Color3.fromRGB(255, 80, 80))
 
@@ -2098,12 +2102,11 @@ function UILib:buildUITab()
 	local autoLoadToggle = cfg:toggle("Set as Auto Load", hasAutoLoad, function(v)
 		if _configLoading then return end
 		if v then
-			local name = cfgDropdown.Value
-			if name == "(no configs)" or name == "" then
+			if selectedCfg == "" or selectedCfg == "(no configs)" then
 				self:notify("Select a config first", "warning", 2); return
 			end
-			self:setAutoLoadConfig(name)
-			self:notify("Auto-load: " .. name, "success", 2)
+			self:setAutoLoadConfig(selectedCfg)
+			self:notify("Auto-load: " .. selectedCfg, "success", 2)
 		else
 			self:setAutoLoadConfig(nil)
 			self:notify("Auto-load off", "info", 2)
@@ -2118,8 +2121,8 @@ function UILib:buildUITab()
 		local name = (nameBox and nameBox.Text and nameBox.Text ~= "" and nameBox.Text) or ""
 		if name == "" then self:notify("Enter a name", "warning", 2); return end
 		self:saveConfigStructured(name)
+		selectedCfg = name
 		cfgRefreshDropdown()
-		cfgDropdown:SetValue(name)
 	end, nil, Enum.TextXAlignment.Center)
 	cfg:separator("Share & Import")
 
