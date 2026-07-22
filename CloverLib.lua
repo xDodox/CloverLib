@@ -100,6 +100,17 @@ function UILib.resolveIcon(icon)
 	return s
 end
 
+function UILib:SafeCallback(fn, ...)
+	if not fn then return end
+	local ok, err = pcall(fn, ...)
+	if not ok then
+		warn("[CloverLib] Callback error:", err)
+		if self and self.notify then
+			self:notify("Script error — check console", "error", 5)
+		end
+	end
+end
+
 local DEFAULT_THEME = {
 
 	Accent  = Color3.fromRGB(0, 210, 135),
@@ -501,12 +512,20 @@ end
 -- Structured Config — category-based JSON
 -- ════════════════════════════════════════
 function UILib:getElementLabel(elem)
+	if elem.label then return elem.label end
+	if elem._label then return elem._label end
 	if elem.frame then
+		local best = nil
 		for _, child in ipairs(elem.frame:GetDescendants()) do
 			if child:IsA("TextLabel") and child.Visible and child.Text ~= "" then
-				return child.Text
+				local t = child.Text
+				if tonumber(t) then continue end
+				if #t <= 2 then continue end
+				if t == "None" then continue end
+				if not best or child.TextSize > best.TextSize then best = child end
 			end
 		end
+		if best then elem._label = best.Text; return elem._label end
 	end
 	return nil
 end
@@ -522,78 +541,153 @@ function UILib:getElementType(elem)
 	return nil
 end
 
+UILib.Parser = {
+	Toggle = {
+		Save = function(label, elem)
+			return { type = "Toggle", label = label, value = elem.Value == true }
+		end,
+		Load = function(data, elem)
+			elem:SetValue(data.value)
+		end,
+	},
+	Slider = {
+		Save = function(label, elem)
+			return { type = "Slider", label = label, value = tonumber(elem.Value) or 0 }
+		end,
+		Load = function(data, elem)
+			elem:SetValue(data.value)
+		end,
+	},
+	Dropdown = {
+		Save = function(label, elem)
+			return { type = "Dropdown", label = label, value = tostring(elem.Value) }
+		end,
+		Load = function(data, elem)
+			elem:SetValue(data.value)
+		end,
+	},
+	MultiDropdown = {
+		Save = function(label, elem)
+			local clean = {}
+			if type(elem.Value) == "table" then
+				for _, v in pairs(elem.Value) do table.insert(clean, tostring(v)) end
+			end
+			return { type = "MultiDropdown", label = label, value = clean }
+		end,
+		Load = function(data, elem)
+			if data.value then elem:SetValue(data.value) end
+		end,
+	},
+	ColorPicker = {
+		Save = function(label, elem)
+			local val = elem.Value
+			if typeof(val) == "Color3" then
+				return { type = "ColorPicker", label = label, color = { math.floor(val.R * 255), math.floor(val.G * 255), math.floor(val.B * 255) } }
+			end
+			return nil
+		end,
+		Load = function(data, elem)
+			if data.color then
+				elem:SetValue(Color3.fromRGB(data.color[1] or 0, data.color[2] or 0, data.color[3] or 0))
+			end
+		end,
+	},
+	Keybind = {
+		Save = function(label, elem)
+			return { type = "Keybind", label = label, value = tostring(elem.Value) }
+		end,
+		Load = function(data, elem)
+			elem:SetValue(data.value)
+		end,
+	},
+	TextBox = {
+		Save = function(label, elem)
+			return { type = "TextBox", label = label, value = tostring(elem.Value) }
+		end,
+		Load = function(data, elem)
+			elem:SetValue(data.value)
+		end,
+	},
+}
+
+local function _buildLabelMap(self)
+	local map = {}
+	for id, elem in pairs(self.configs) do
+		local label = self:getElementLabel(elem)
+		if label and not elem._noConfig and not (self.configIgnore and self.configIgnore[label]) then
+			map[label] = elem
+		end
+	end
+	return map
+end
+
 local function _configStructuredToJSON(self)
-	local data = { _version = 2, _timestamp = os.time() }
+	local data = { _version = 3, _timestamp = os.time(), objects = {} }
 	for id, elem in pairs(self.configs) do
 		if elem._noConfig then continue end
 		local val = elem.Value
 		if val == nil then continue end
 		local label = self:getElementLabel(elem) or id
+		if self.configIgnore and self.configIgnore[label] then continue end
 		local etype = self:getElementType(elem)
 		if not etype then continue end
-		if not data[etype] then data[etype] = {} end
-		if etype == "Toggle" then
-			data[etype][label] = { state = val == true }
-		elseif etype == "ColorPicker" then
-			if typeof(val) == "Color3" then
-				data[etype][label] = { color = { math.floor(val.R * 255), math.floor(val.G * 255), math.floor(val.B * 255) } }
-			end
-		elseif etype == "Keybind" then
-			data[etype][label] = { keybind = tostring(val) }
-		elseif etype == "Dropdown" then
-			data[etype][label] = { value = tostring(val) }
-		elseif etype == "MultiDropdown" then
-			local clean = {}
-			if type(val) == "table" then
-				for _, v in pairs(val) do table.insert(clean, tostring(v)) end
-			end
-			data[etype][label] = { value = clean }
-		elseif etype == "TextBox" then
-			data[etype][label] = { text = tostring(val) }
-		elseif etype == "Slider" then
-			data[etype][label] = { value = tonumber(val) or 0 }
+		local parser = UILib.Parser[etype]
+		if parser then
+			local obj = parser.Save(label, elem)
+			if obj then table.insert(data.objects, obj) end
 		end
 	end
 	return HS:JSONEncode(data)
 end
 
 local function _applyStructuredJSON(self, decoded)
-	local labelMap = {}
-	for id, elem in pairs(self.configs) do
-		local label = self:getElementLabel(elem)
-		if label and not elem._noConfig then labelMap[label] = elem end
-	end
+	local labelMap = _buildLabelMap(self)
 	local count = 0
 	self._loadingConfig = true
 	_configLoading = true
-	for etype, items in pairs(decoded) do
-		if type(items) ~= "table" then continue end
-		if etype:sub(1, 1) == "_" then continue end
-		for label, sdata in pairs(items) do
-			local elem = labelMap[label]
+
+	if decoded.objects then
+		for _, obj in ipairs(decoded.objects) do
+			local elem = labelMap[obj.label]
 			if not elem then continue end
-			pcall(function()
-				if etype == "Toggle" then
-					elem:SetValue(sdata.state); count = count + 1
-				elseif etype == "ColorPicker" and sdata.color then
-					elem:SetValue(Color3.fromRGB(sdata.color[1] or 0, sdata.color[2] or 0, sdata.color[3] or 0)); count = count + 1
-				elseif etype == "Keybind" then
-					elem:SetValue(sdata.keybind); count = count + 1
-				elseif etype == "Dropdown" then
-					elem:SetValue(sdata.value); count = count + 1
-				elseif etype == "MultiDropdown" and sdata.value then
-					elem:SetValue(sdata.value); count = count + 1
-				elseif etype == "TextBox" then
-					elem:SetValue(sdata.text); count = count + 1
-				elseif etype == "Slider" then
-					elem:SetValue(sdata.value); count = count + 1
-				end
-			end)
+			local parser = UILib.Parser[obj.type]
+			if parser then
+				task.spawn(function()
+					pcall(function() parser.Load(obj, elem) end)
+					count = count + 1
+				end)
+			end
+		end
+	else
+		local legacyTypes = { Toggle = "state", Slider = "value", Dropdown = "value", MultiDropdown = "value", TextBox = "text", Keybind = "keybind" }
+		for etype, items in pairs(decoded) do
+			if type(items) ~= "table" then continue end
+			if etype:sub(1, 1) == "_" then continue end
+			local parser = UILib.Parser[etype]
+			if not parser then continue end
+			for label, sdata in pairs(items) do
+				local elem = labelMap[label]
+				if not elem then continue end
+				local legacyField = legacyTypes[etype] or etype:lower()
+				local obj = { type = etype, label = label, value = sdata[legacyField], color = sdata.color }
+				task.spawn(function()
+					pcall(function() parser.Load(obj, elem) end)
+					count = count + 1
+				end)
+			end
 		end
 	end
+
 	self._loadingConfig = nil
 	_configLoading = false
 	return count
+end
+
+function UILib:ignoreConfig(...)
+	if not self.configIgnore then self.configIgnore = {} end
+	for i = 1, select("#", ...) do
+		self.configIgnore[select(i, ...)] = true
+	end
 end
 
 function UILib:getConfigDir()
@@ -1660,21 +1754,21 @@ function UILib:addWatermark(name)
 	do
 		local drag, dragStart, dragPos = false, nil, nil
 		dragBtn.InputBegan:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 then
+			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
 				drag = true
 				dragStart = i.Position
 				dragPos = wm.Position
 			end
 		end)
 		local wmDragMove = UIS.InputChanged:Connect(function(i)
-			if drag and i.UserInputType == Enum.UserInputType.MouseMovement then
+			if drag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
 				local delta = i.Position - dragStart
 				wm.Position = UDim2.new(dragPos.X.Scale, dragPos.X.Offset + delta.X, dragPos.Y.Scale,
 					dragPos.Y.Offset + delta.Y)
 			end
 		end)
 		local wmDragEnd = UIS.InputEnded:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end
+			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = false end
 		end)
 		-- store so they can be cleaned up when watermark is toggled off
 		self.wmDragConns = { wmDragMove, wmDragEnd }
@@ -1942,7 +2036,6 @@ function UILib:buildUITab()
 			if t[1] == val then applyFullTheme(t); break end
 		end
 	end, "Apply a pre-made color theme")
-	themeDropdown._noConfig = true
 
 	local cfg = uiR:addGroup("Save Manager")
 	cfg:separator("Load")
@@ -1956,7 +2049,6 @@ function UILib:buildUITab()
 
 	local cfgDropdown = cfg:dropdown("", getConfigListStructured(), "", function(_)
 	end, "Select a config to load/delete", function() return getConfigListStructured() end)
-	cfgDropdown._noConfig = true
 
 	local function cfgRefreshDropdown()
 		local list = getConfigListStructured()
@@ -1992,12 +2084,9 @@ function UILib:buildUITab()
 			self:notify("Auto-load off", "info", 2)
 		end
 	end, "Auto-load this config on script start")
-	autoLoadToggle._noConfig = true
-
 	cfg:separator("Create")
 
 	local cfgNameBox = cfg:textbox("Config Name", "", "Enter name...", function(_) end)
-	cfgNameBox._noConfig = true
 
 	cfg:button("Save Config", function()
 		local name = cfgNameBox.Value
@@ -2016,7 +2105,6 @@ function UILib:buildUITab()
 	for i = 1, 6 do randomCode = randomCode .. string.char(math.random(65, 70)) .. string.char(math.random(48, 57)) end
 	if #randomCode > 6 then randomCode = randomCode:sub(1, 6) end
 	local importCodeBox = cfg:textbox("Import Code", "", "e.g. " .. randomCode, function(_) end)
-	importCodeBox._noConfig = true
 
 	cfg:button("Import Settings", function()
 		local code = importCodeBox.Value
@@ -2024,6 +2112,7 @@ function UILib:buildUITab()
 		self:importConfigCode(self.configShareUrl or "https://cloverhub.fun", code)
 	end, "Fetch and apply config from share code", Enum.TextXAlignment.Center, Color3.fromRGB(100, 255, 180))
 
+	self:ignoreConfig("Preset", "", "Set as Auto Load", "Config Name", "Import Code", "Window Width", "Window Height", "Show Watermark", "Toggle Key")
 	self:tryAutoLoad()
 end
 
@@ -2634,7 +2723,7 @@ function UILib:confirm(message, onYes, onNo)
 		btn.MouseButton1Click:Connect(function()
 			overlay:Destroy()
 			modal:Destroy()
-			if callback then callback() end
+			self:SafeCallback(callback)
 		end)
 	end
 
@@ -2747,20 +2836,20 @@ function UILib:newMiniWindow(title, width, posX, posY)
 	do
 		local drag, dragStart, dragPos = false, nil, nil
 		header.InputBegan:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 then
+			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
 				drag = true
 				dragStart = i.Position
 				dragPos = frame.Position
 			end
 		end)
 		local dc = UIS.InputChanged:Connect(function(i)
-			if drag and i.UserInputType == Enum.UserInputType.MouseMovement then
+			if drag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
 				local delta = i.Position - dragStart
 				frame.Position = UDim2.new(dragPos.X.Scale, dragPos.X.Offset + delta.X, dragPos.Y.Scale,
 					dragPos.Y.Offset + delta.Y)
 			end
 		end)
-		local de = UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end end)
+		local de = UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = false end end)
 		table.insert(mini.connections, dc)
 		table.insert(mini.connections, de)
 	end
@@ -3144,7 +3233,7 @@ function UILib:selectTab(n)
 	end
 end
 
-function UILib.Tab:addSubTab(name, desc)
+function UILib.Tab:addSubTab(name, description)
 	local sub = setmetatable({}, UILib.SubTab)
 	sub.name = name
 	sub.tab = self
@@ -3220,7 +3309,7 @@ function UILib.Tab:addSubTab(name, desc)
 	desc.Size = UDim2.new(1, 0, 0.45, 0)
 	desc.Position = UDim2.new(0, 0, 0.55, 0)
 	desc.BackgroundTransparency = 1
-	desc.Text = desc or ""
+	desc.Text = description or ""
 	desc.TextColor3 = self.window.theme.Gray
 	desc.Font = Enum.Font.GothamSemibold
 	desc.TextSize = 9
@@ -3341,7 +3430,7 @@ local function attachTooltip(element, text, window)
 	end)
 	element.MouseLeave:Connect(function() tt.hide() end)
 	element.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then tt.hide() end
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then tt.hide() end
 	end)
 end
 
@@ -3451,13 +3540,14 @@ function UILib.SubTab:addInput(labelText, default, placeholder, callback, toolti
 	local current = default or ""
 	box.FocusLost:Connect(function(enter)
 			current = box.Text
-			if callback then callback(current) end
+			window:SafeCallback(callback, current)
 	end)
 	if tooltip then attachTooltip(r, tooltip, window) end
 	local elem = {
 		ID = id,
 		Value = current,
 		DefaultValue = default or "",
+		label = labelText,
 		frame = r,
 		DefaultHeight = 52,
 		SetValue = function(val)
@@ -3698,7 +3788,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		if sliderHandle then sliderHandle.Position = UDim2.new(rel, rel > 0.01 and -4 or 0, 0, 0) end
 		valueLabel.Text = formatVal(val)
 		valueBoxInput.Text = cleanNum(val)
-		if callback then callback(val) end
+		window:SafeCallback(callback, val)
 		window.configs[id].Value = val
 	end
 		local function apply(mx)
@@ -3721,7 +3811,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	table.insert(window.connections, sliderInputConn)
 	table.insert(window.connections, sliderEndConn)
 	valueLabel.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			valueLabel.Visible = false
 			valueBoxInput.Visible = true
 			valueBoxInput:CaptureFocus()
@@ -3735,7 +3825,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		local num = tonumber(valueBoxInput.Text)
 		if num then updateSlider(num) else valueLabel.Text = cleanNum(currentVal) end
 	end)
-	local elem = { ID = id, Value = currentVal, DefaultValue = defaultVal, SetValue = updateSlider, frame = row, DefaultHeight = 42, _display = nil }
+	local elem = { ID = id, Value = currentVal, DefaultValue = defaultVal, label = text, SetValue = updateSlider, frame = row, DefaultHeight = 42, _display = nil }
 	function elem:setDisplay(mode) sliderDisplay = mode end
 	function elem:SetVisible(v, anim)
 		if not anim then
@@ -3797,14 +3887,14 @@ local function createColorPicker(group, items, window, text, default, callback)
 	stroke.Color = window.theme.Border
 	stroke.Thickness = 1
 	local current = default or Color3.new(1, 0, 0)
-	local elem = { ID = id, Value = current }
+	local elem = { ID = id, Value = current, label = text }
 	local pickerFrame = nil
 
 	elem.SetValue = function(val)
 		current = val
 		elem.Value = val
 		colorBox.BackgroundColor3 = val
-		if callback then callback(val) end
+		window:SafeCallback(callback, val)
 	end
 	function elem:SetColor(val)
 		current = val
@@ -3934,7 +4024,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 			satValSquare.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
 			colorBox.BackgroundColor3 = current
 			hexBox.Text = "#" .. current:ToHex()
-			if callback then callback(current) end
+			window:SafeCallback(callback, current)
 		end
 
 		local function updateHue(pos)
@@ -4061,13 +4151,13 @@ local function createColorPicker(group, items, window, text, default, callback)
 
 		local alphaDragging = false
 		hueSlider.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 				hueDragging = true
 				updateHue(input.Position)
 			end
 		end)
 		satValSquare.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 				svDragging = true
 				updateSV(input.Position)
 			end
@@ -4101,7 +4191,7 @@ local function createColorPicker(group, items, window, text, default, callback)
 		local inputBeganConn
 		inputBeganConn = UIS.InputBegan:Connect(function(input)
 			if pickerJustOpened then return end
-			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 				local pos = UIS:GetMouseLocation()
 				if not pickerFrame or not pickerFrame.Parent then
 					inputBeganConn:Disconnect()
@@ -4349,7 +4439,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 					else
 						selLbl.Text = s
 					end
-					if callback then callback(keys) end
+					window:SafeCallback(callback, keys)
 					window.configs[id].Value = keys
 				end)
 			end
@@ -4410,6 +4500,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	local elem = {
 		ID = id,
 		Value = selected,
+		label = text,
 		frame = row,
 		DefaultHeight = 56,
 		SetValue = function(t)
@@ -4429,7 +4520,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 			else
 				selLbl.Text = s
 			end
-			if callback then callback(keys) end
+			window:SafeCallback(callback, keys)
 		end
 	}
 	function elem:SetVisible(v, anim)
@@ -4814,6 +4905,7 @@ function UILib.Column:addGroup(title)
 	end
 
 	function group:toggle(text, default, callback, tooltip, icon, expandable, contentFunc, colorCallback, settingsCallback)
+		assert(text ~= nil and text ~= "", "Toggle - Missing text")
 		local id = generateID()
 		local TOGGLE_H = 36
 		if expandable then
@@ -4847,7 +4939,7 @@ function UILib.Column:addGroup(title)
 			contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
 			local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 			if contentFunc then contentFunc(nestedGroup) end
-			local elem = { ID = id, Value = state, DefaultValue = default, IsToggle = true, Mode = "toggle", frame = container, DefaultHeight = TOGGLE_H }
+			local elem = { ID = id, Value = state, DefaultValue = default, label = text, IsToggle = true, Mode = "toggle", frame = container, DefaultHeight = TOGGLE_H }
 			elem.SetValue = function(val)
 				state = val
 				elem.Value = state
@@ -4857,7 +4949,7 @@ function UILib.Column:addGroup(title)
 					Size = UDim2.new(1, 0, 0, targetH)
 				}):Play()
 				task.delay(0.21, updateSize)
-				if callback then callback(state) end
+				window:SafeCallback(callback, state)
 				if window.configs[id] then window.configs[id].Value = state end
 			end
 		function elem:SetVisible(v, anim)
@@ -4966,12 +5058,12 @@ function UILib.Column:addGroup(title)
 		end
 		local cbOuter, cbStroke, cbMark, lbl = createToggleCheckbox(r, default, window, text, rightOffset)
 		local state = default
-		local elem = { ID = id, Value = state, DefaultValue = default, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = TOGGLE_H }
+		local elem = { ID = id, Value = state, DefaultValue = default, label = text, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = TOGGLE_H }
 		elem.SetValue = function(val)
 			state = val
 			elem.Value = state
 			updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
-			if callback then callback(state) end
+			window:SafeCallback(callback, state)
 			if window.configs[id] then window.configs[id].Value = state end
 		end
 		function elem:SetVisible(v, anim)
@@ -5023,7 +5115,7 @@ function UILib.Column:addGroup(title)
 					if ok then
 						lastConfirm = tick()
 						origSetValue(true)
-						if callback then callback(true) end
+						window:SafeCallback(callback, true)
 					else
 						origSetValue(false)
 					end
@@ -5057,6 +5149,7 @@ function UILib.Column:addGroup(title)
 	end
 
 	function group:dropdown(text, options, default, callback, tooltip, refreshCallback, icon)
+		assert(text ~= nil, "Dropdown - Missing text")
 		local id = generateID()
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, 56)
@@ -5296,7 +5389,7 @@ function UILib.Column:addGroup(title)
 							end
 						end
 					end
-					if callback then callback(opt) end
+					window:SafeCallback(callback, opt)
 					window.configs[id].Value = opt
 					closeDropdown()
 				end)
@@ -5319,7 +5412,7 @@ function UILib.Column:addGroup(title)
 					if not exists then
 						currentSelection = newOpts[1] or ""
 						selLbl.Text = currentSelection
-						if callback then callback(currentSelection) end
+						window:SafeCallback(callback, currentSelection)
 					end
 				end
 			end
@@ -5368,6 +5461,7 @@ function UILib.Column:addGroup(title)
 			ID = id,
 			Value = currentSelection,
 			DefaultValue = default,
+			label = text,
 			_values = options,
 			Refresh = refresh,
 			SetValue = function(val)
@@ -5379,22 +5473,18 @@ function UILib.Column:addGroup(title)
 					lbl2.Font = sel and Enum.Font.GothamBold or Enum.Font.GothamSemibold
 				end
 				for o, b in pairs(backgrounds) do b.Visible = (o == val) end
-				if callback then callback(val) end
+				window:SafeCallback(callback, val)
 			end,
 			SetValues = function(self, newOpts)
 				closeDropdown()
-				buildOptions(newOpts)
-				local exists = false
+				local prevSelection = currentSelection
+				currentSelection = ""
 				for _, o in ipairs(newOpts) do
-					if o == currentSelection then
-						exists = true
-						break
-					end
+					if o == prevSelection then currentSelection = o; break end
 				end
-				if not exists then
-					currentSelection = newOpts[1] or ""
-					selLbl.Text = currentSelection
-				end
+				if currentSelection == "" then currentSelection = newOpts[1] or "" end
+				buildOptions(newOpts)
+				selLbl.Text = currentSelection
 			end
 		}
 		window.configs[id] = finalizeElement(elem, window, group)
@@ -5405,7 +5495,7 @@ function UILib.Column:addGroup(title)
 				dbtn.MouseEnter:Connect(function() if not open then tt.start(tooltip, dbtn) end end)
 				dbtn.MouseLeave:Connect(function() tt.hide() end)
 				dbtn.InputBegan:Connect(function(inp)
-					if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+					if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
 						tt
 							.hide()
 					end
@@ -5419,6 +5509,7 @@ function UILib.Column:addGroup(title)
 	end
 
 	function group:keybind(text, currentName, onChange, tooltip)
+		assert(text ~= nil and text ~= "", "Keybind - Missing text")
 		local id = generateID()
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, 34)
@@ -5488,7 +5579,7 @@ function UILib.Column:addGroup(title)
 			kbtn.BackgroundTransparency = 0
 			local con
 			con = UIS.InputBegan:Connect(function(i)
-				if skipNext and i.UserInputType == Enum.UserInputType.MouseButton1 then
+				if skipNext and (i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch) then
 					skipNext = false
 					return
 				end
@@ -5514,11 +5605,11 @@ function UILib.Column:addGroup(title)
 					kbtn.TextColor3 = window.theme.GrayLt
 					onChange(Enum.UserInputType.MouseButton2, "RMB")
 					window.configs[id].Value = "RMB"
-				elseif u == Enum.UserInputType.MouseButton1 then
-					kbtn.Text = "LMB"
+				elseif u == Enum.UserInputType.MouseButton1 or u == Enum.UserInputType.Touch then
+					kbtn.Text = u == Enum.UserInputType.Touch and "Touch" or "LMB"
 					kbtn.TextColor3 = window.theme.GrayLt
-					onChange(Enum.UserInputType.MouseButton1, "LMB")
-					window.configs[id].Value = "LMB"
+					onChange(u, u == Enum.UserInputType.Touch and "Touch" or "LMB")
+					window.configs[id].Value = u == Enum.UserInputType.Touch and "Touch" or "LMB"
 				elseif u == Enum.UserInputType.MouseButton3 then
 					kbtn.Text = "MMB"
 					kbtn.TextColor3 = window.theme.GrayLt
@@ -5530,7 +5621,7 @@ function UILib.Column:addGroup(title)
 				end
 			end)
 		end)
-		local elem = { ID = id, Value = currentName, SetValue = function(val) kbtn.Text = val end }
+		local elem = { ID = id, Value = currentName, label = text, SetValue = function(val) kbtn.Text = val end }
 		window.configs[id] = finalizeElement(elem, window, group)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
@@ -6063,6 +6154,7 @@ function UILib.Column:addGroup(title)
 	end
 
 	function group:colorpicker(text, default, callback, tooltip, icon)
+		assert(text ~= nil and text ~= "", "ColorPicker - Missing text")
 		local r, elem = createColorPicker(group, items, window, text, default, callback)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
@@ -6070,6 +6162,7 @@ function UILib.Column:addGroup(title)
 	end
 
 	function group:multidropdown(text, options, default, callback, tooltip, refreshCallback)
+		assert(text ~= nil and text ~= "", "MultiDropdown - Missing text")
 		local r, elem = createMultiDropdown(group, items, window, text, options, default, callback, refreshCallback)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
@@ -6077,6 +6170,7 @@ function UILib.Column:addGroup(title)
 	end
 
 	function group:textbox(text, default, placeholder, callback, tooltip)
+		assert(text ~= nil and text ~= "", "Textbox - Missing text")
 		local id = generateID()
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, 50)
@@ -6119,18 +6213,19 @@ function UILib.Column:addGroup(title)
 		local current = default or ""
 		box.FocusLost:Connect(function(enter)
 				current = box.Text
-				if callback then callback(current) end
+				window:SafeCallback(callback, current)
 				window.configs[id].Value = current
 		end)
 		local elem = {
 			ID = id,
 			Value = current,
 			DefaultValue = default or "",
+			label = text,
 			DefaultHeight = 50,
 			SetValue = function(val)
 				current = val
 				box.Text = val
-				if callback then callback(val) end
+				window:SafeCallback(callback, val)
 				window.configs[id].Value = val
 			end
 		}
@@ -6143,6 +6238,7 @@ function UILib.Column:addGroup(title)
 	end
 
 	function group:numberbox(text, default, min, max, callback, tooltip)
+		assert(text ~= nil and text ~= "", "Numberbox - Missing text")
 		min = min or -math.huge
 		max = max or math.huge
 		local id = generateID()
@@ -6189,7 +6285,7 @@ function UILib.Column:addGroup(title)
 				num = math.clamp(num, min, max)
 				current = num
 				box.Text = tostring(num)
-				if callback then callback(num) end
+				window:SafeCallback(callback, num)
 				window.configs[id].Value = num
 			else
 				box.Text = tostring(current)
@@ -6200,11 +6296,12 @@ function UILib.Column:addGroup(title)
 			ID = id,
 			Value = current,
 			DefaultValue = default or 0,
+			label = text,
 			SetValue = function(val)
 				val = math.clamp(val, min, max)
 				current = val
 				box.Text = tostring(val)
-				if callback then callback(val) end
+				window:SafeCallback(callback, val)
 				window.configs[id].Value = val
 			end
 		}
@@ -6217,6 +6314,7 @@ function UILib.Column:addGroup(title)
 	end
 
 	function group:rangeslider(text, minVal, maxVal, defaultMin, defaultMax, callback, step, tooltip)
+		assert(text ~= nil and text ~= "", "RangeSlider - Missing text")
 		local id = generateID()
 		step = step or 1
 		local pctMin, pctMax = 0, 1
@@ -6363,7 +6461,7 @@ function UILib.Column:addGroup(title)
 				currentMax = val
 			end
 			updateDisplay()
-			if callback then callback(currentMin, currentMax) end
+			window:SafeCallback(callback, currentMin, currentMax)
 			window.configs[id].Value = { currentMin, currentMax }
 		end
 		hitLeft.MouseButton1Down:Connect(function()
@@ -6386,10 +6484,11 @@ function UILib.Column:addGroup(title)
 			ID = id,
 			Value = { currentMin, currentMax },
 			DefaultValue = { roundToStep(defaultMin), roundToStep(defaultMax) },
+			label = text,
 			SetValue = function(
 				t)
 				currentMin, currentMax = roundToStep(t[1]), roundToStep(t[2]); updateDisplay()
-				if callback then callback(currentMin, currentMax) end
+				window:SafeCallback(callback, currentMin, currentMax)
 				window.configs[id].Value = { currentMin, currentMax }
 			end
 		}
