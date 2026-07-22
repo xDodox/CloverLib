@@ -1,6 +1,8 @@
 local UILib = {}
 UILib.__index = UILib
 
+local _warn = warn or print
+
 UILib.Tab = {}
 UILib.Tab.__index = UILib.Tab
 
@@ -104,7 +106,7 @@ function UILib:SafeCallback(fn, ...)
 	if not fn then return end
 	local ok, err = pcall(fn, ...)
 	if not ok then
-		warn("[CloverLib] Callback error:", err)
+		_warn("[CloverLib] Callback error:", err)
 		if self and self.notify then
 			self:notify("Script error — check console", "error", 5)
 		end
@@ -645,7 +647,7 @@ local function _buildLabelMap(self)
 			skipped = skipped + 1
 		end
 	end
-	warn("[CloverLib] labelMap:", total, "elements,", skipped, "ignored")
+	_warn("[CloverLib] labelMap:", total, "elements,", skipped, "ignored")
 	return map
 end
 
@@ -669,7 +671,7 @@ local function _configStructuredToJSON(self)
 			end
 		end
 	end
-	warn("[CloverLib] Save:", skipped.saved, "objects, nilValue:", skipped.nilVal, "noType:", skipped.noType, "ignored:", skipped.ignored)
+	_warn("[CloverLib] Save:", skipped.saved, "objects, nilValue:", skipped.nilVal, "noType:", skipped.noType, "ignored:", skipped.ignored)
 	return HS:JSONEncode(data)
 end
 
@@ -682,11 +684,11 @@ local function _applyStructuredJSON(self, decoded)
 	if decoded.objects then
 		for _, obj in ipairs(decoded.objects) do
 			local elem = labelMap[obj.label]
-			if not elem then warn("[CloverLib] Load: label not found:", obj.label, obj.type); continue end
+			if not elem then _warn("[CloverLib] Load: label not found:", obj.label, obj.type); continue end
 			local parser = UILib.Parser[obj.type]
-			if not parser then warn("[CloverLib] Load: no parser for type:", obj.type); continue end
+			if not parser then _warn("[CloverLib] Load: no parser for type:", obj.type); continue end
 			local ok, err = pcall(parser.Load, obj, elem)
-			if ok then count = count + 1 else warn("[CloverLib] Load failed:", obj.type, obj.label, err) end
+			if ok then count = count + 1 else _warn("[CloverLib] Load failed:", obj.type, obj.label, err) end
 			end
 		end
 	else
@@ -5501,7 +5503,7 @@ function UILib.Column:addGroup(title)
 			_values = options,
 			Refresh = refresh,
 			SetValue = function(val)
-				if type(val) ~= "string" then warn("[CloverLib] WARNING: SetValue received non-string:", type(val), val); return end
+				if type(val) ~= "string" then _warn("[CloverLib] WARNING: SetValue received non-string:", type(val), val); return end
 				currentSelection = val
 				selLbl.Text = val
 				for o, lbl2 in pairs(checks) do
