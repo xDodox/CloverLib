@@ -554,7 +554,9 @@ UILib.Parser = {
 		Load = function(data, elem)
 			local v = data.value
 			if type(v) == "table" then v = v[1] end
-			elem:SetValue(not not v)
+			v = tostring(v or "")
+			print("[clover] DD Load:", data.label, "->", v)
+			elem:SetValue(v)
 		end,
 	},
 	Slider = {
@@ -607,10 +609,7 @@ UILib.Parser = {
 				local r = tonumber(type(c[1]) == "table" and c[1][1] or c[1]) or 0
 				local g = tonumber(type(c[2]) == "table" and c[2][1] or c[2]) or 0
 				local b = tonumber(type(c[3]) == "table" and c[3][1] or c[3]) or 0
-				local newC = nil
-				pcall(function() newC = Color3.fromRGB(r, g, b) end)
-				if not newC then pcall(function() newC = Color3.new(r / 255, g / 255, b / 255) end) end
-				if newC then elem:SetValue(newC) end
+				elem:SetValue(Color3.new(r / 255, g / 255, b / 255))
 			end
 		end,
 	},
@@ -4944,9 +4943,13 @@ function UILib.Column:addGroup(title)
 	end
 
 	local function updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
-		TweenService:Create(cbOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
-			BackgroundColor3 = state and window.theme.Accent or window.theme.BG
-		}):Play()
+		if _configLoading then
+			cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.BG
+		else
+			TweenService:Create(cbOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+				BackgroundColor3 = state and window.theme.Accent or window.theme.BG
+			}):Play()
+		end
 		cbStroke.Color = state and window.theme.AccentD or window.theme.Border
 		cbMark.Text = state and "X" or ""
 	end
