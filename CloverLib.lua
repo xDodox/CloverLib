@@ -532,9 +532,13 @@ end
 
 function UILib:getElementType(elem)
 	if elem.IsToggle then return "Toggle" end
-	if elem.Mode == "keybind" then return "Keybind" end
+	if elem._mode == "keybind" then return "Keybind" end
 	if typeof(elem.Value) == "Color3" then return "ColorPicker" end
-	if type(elem.Value) == "number" and elem.DefaultHeight then return "Slider" end
+	if elem._isRange then return "RangeSlider" end
+	if type(elem.Value) == "number" and elem.DefaultHeight and elem._isSlider ~= false then
+		if elem._isNumber then return "NumberBox" end
+		return "Slider"
+	end
 	if type(elem.Value) == "table" and not elem._display then return "MultiDropdown" end
 	if type(elem.Value) == "string" and elem._values then return "Dropdown" end
 	if type(elem.Value) == "string" and elem.DefaultHeight then return "TextBox" end
@@ -603,6 +607,31 @@ UILib.Parser = {
 	TextBox = {
 		Save = function(label, elem)
 			return { type = "TextBox", label = label, value = tostring(elem.Value) }
+		end,
+		Load = function(data, elem)
+			elem:SetValue(data.value)
+		end,
+	},
+	NumberBox = {
+		Save = function(label, elem)
+			return { type = "NumberBox", label = label, value = tonumber(elem.Value) or 0 }
+		end,
+		Load = function(data, elem)
+			elem:SetValue(data.value)
+		end,
+	},
+	RangeSlider = {
+		Save = function(label, elem)
+			local v = elem.Value
+			return { type = "RangeSlider", label = label, min = tonumber(v[1]) or 0, max = tonumber(v[2]) or 0 }
+		end,
+		Load = function(data, elem)
+			elem:SetValue({ data.min or 0, data.max or 0 })
+		end,
+	},
+	Keybind = {
+		Save = function(label, elem)
+			return { type = "Keybind", label = label, value = tostring(elem.Value) }
 		end,
 		Load = function(data, elem)
 			elem:SetValue(data.value)
@@ -4521,6 +4550,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 				selLbl.Text = s
 			end
 			window:SafeCallback(callback, keys)
+			window.configs[id].Value = selected
 		end
 	}
 	function elem:SetVisible(v, anim)
@@ -5475,6 +5505,7 @@ function UILib.Column:addGroup(title)
 				end
 				for o, b in pairs(backgrounds) do b.Visible = (o == val) end
 				window:SafeCallback(callback, val)
+				window.configs[id].Value = val
 			end,
 			SetValues = function(self, newOpts)
 				closeDropdown()
@@ -5622,7 +5653,11 @@ function UILib.Column:addGroup(title)
 				end
 			end)
 		end)
-		local elem = { ID = id, Value = currentName, label = text, SetValue = function(val) kbtn.Text = type(val) == "string" and val or tostring(val) end }
+		local elem = { ID = id, Value = currentName, label = text, _mode = "keybind" }
+		function elem:SetValue(val)
+			kbtn.Text = type(val) == "string" and val or tostring(val)
+			window.configs[id].Value = val
+		end
 		window.configs[id] = finalizeElement(elem, window, group)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
@@ -6298,6 +6333,8 @@ function UILib.Column:addGroup(title)
 			Value = current,
 			DefaultValue = default or 0,
 			label = text,
+			_isNumber = true,
+			DefaultHeight = 50,
 			SetValue = function(val)
 				val = math.clamp(val, min, max)
 				current = val
@@ -6486,6 +6523,7 @@ function UILib.Column:addGroup(title)
 			Value = { currentMin, currentMax },
 			DefaultValue = { roundToStep(defaultMin), roundToStep(defaultMax) },
 			label = text,
+			_isRange = true,
 			SetValue = function(
 				t)
 				currentMin, currentMax = roundToStep(t[1]), roundToStep(t[2]); updateDisplay()
