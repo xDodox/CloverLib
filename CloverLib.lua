@@ -560,10 +560,9 @@ UILib.Parser = {
 			return { type = "Slider", label = label, value = tonumber(elem.Value) or 0 }
 		end,
 		Load = function(data, elem)
-			print("[clover] SLDR raw:", type(data.value), data.value)
-			local v = type(data.value) == "table" and data.value[1] or data.value
-			print("[clover] SLDR final:", type(v), v)
-			elem:SetValue(tonumber(v) or 0)
+			local v = data.value
+			local n = tonumber(type(v) == "table" and v[1] or v) or 0
+			pcall(elem.SetValue, n)
 		end,
 	},
 	Dropdown = {
@@ -596,13 +595,11 @@ UILib.Parser = {
 		end,
 		Load = function(data, elem)
 			if data.color then
-				print("[clover] CP raw:", type(data.color[1]), data.color[1], data.color[2], data.color[3])
 				local c = data.color
 				local r = tonumber(type(c[1]) == "table" and c[1][1] or c[1]) or 0
 				local g = tonumber(type(c[2]) == "table" and c[2][1] or c[2]) or 0
 				local b = tonumber(type(c[3]) == "table" and c[3][1] or c[3]) or 0
-				print("[clover] CP final:", r, g, b)
-				elem:SetValue(Color3.fromRGB(r, g, b))
+				pcall(function() elem:SetValue(Color3.new(r / 255, g / 255, b / 255)) end)
 			end
 		end,
 	},
@@ -682,13 +679,12 @@ local function _applyStructuredJSON(self, decoded)
 	if decoded.objects then
 		for _, obj in ipairs(decoded.objects) do
 			local elem = labelMap[obj.label]
-			if not elem then print("[clover] MISS:", obj.label); continue end
+			if not elem then continue end
 			local parser = UILib.Parser[obj.type]
-			if not parser then print("[clover] NO PARSER:", obj.type); continue end
-			local ok, err = pcall(parser.Load, obj, elem)
-			if ok then count = count + 1 else print("[clover] FAIL:", obj.type, obj.label, err) end
+			if not parser then continue end
+			pcall(parser.Load, obj, elem)
+			count = count + 1
 		end
-		print("[clover] Loaded", count, "/", #decoded.objects)
 		if #misses > 0 then pcall(writefile, self:getConfigDir() .. "_debug_load.txt", table.concat(misses, "\n")) end
 	else
 		local legacyTypes = { Toggle = "state", Slider = "value", Dropdown = "value", MultiDropdown = "value", TextBox = "text", Keybind = "keybind" }
@@ -3816,7 +3812,6 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		return cleanNum(val)
 	end
 	local function updateSlider(val)
-		print("[clover] updateSlider got:", type(val), val)
 		val = math.clamp(val, minVal, maxVal)
 		val = roundToStep(val)
 		currentVal = val
