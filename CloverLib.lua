@@ -3268,7 +3268,7 @@ function UILib.Tab:addSubTab(name, description)
 
 	local btn = Instance.new("TextButton")
 	table.insert(self.subtabOrder, sub)
-	btn.Size = UDim2.new(1, -8, 0, description and 56 or 44)
+	btn.Size = UDim2.new(1, -8, 0, description and 62 or 44)
 	btn.Position = UDim2.new(0, 4, 0, 0)
 	btn.BackgroundTransparency = 1
 	btn.Text = ""
@@ -3332,13 +3332,13 @@ function UILib.Tab:addSubTab(name, description)
 	label.Parent = textCol
 
 	local desc = Instance.new("TextLabel")
-	desc.Size = UDim2.new(1, 0, 0.45, 0)
+	desc.Size = UDim2.new(1, 0, description and 0.5 or 0.45, 0)
 	desc.Position = UDim2.new(0, 0, 0.55, 0)
 	desc.BackgroundTransparency = 1
 	desc.Text = description or ""
 	desc.TextColor3 = self.window.theme.Gray
 	desc.Font = Enum.Font.GothamSemibold
-	desc.TextSize = 9
+	desc.TextSize = 8
 	desc.TextXAlignment = Enum.TextXAlignment.Left
 	desc.TextWrapped = true
 	desc.ZIndex = 6
@@ -5512,8 +5512,10 @@ function UILib.Column:addGroup(title)
 					if o == prevSelection then currentSelection = o; break end
 				end
 				if currentSelection == "" then currentSelection = newOpts[1] or "" end
+				if type(currentSelection) ~= "string" then currentSelection = "" end
 				buildOptions(newOpts)
 				selLbl.Text = currentSelection
+				window.configs[id].Value = currentSelection
 			end
 		}
 		window.configs[id] = finalizeElement(elem, window, group)
