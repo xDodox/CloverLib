@@ -5017,31 +5017,32 @@ function UILib.Column:addGroup(title)
 
 		local ng = buildNestedGroup(scroll, updateSize)
 		builder(ng)
-		task.wait(0.05)
+		task.wait(0.03)
 		updateSize()
 
 		local anchorAbs = anchorElement.AbsolutePosition
 		local anchorSize = anchorElement.AbsoluteSize
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
+		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 		local pad = 4
-		local tx = anchorAbs.X
+		local tx = math.clamp(anchorAbs.X, pad, screenW - popup.Size.X.Offset - pad)
 		local ty = anchorAbs.Y + anchorSize.Y + pad
-		if ty + popup.AbsoluteSize.Y > screenH - pad then
-			ty = anchorAbs.Y - popup.AbsoluteSize.Y - pad
+		if ty + popup.Size.Y.Offset > screenH - pad then
+			ty = anchorAbs.Y - popup.Size.Y.Offset - pad
 		end
-		popup.Position = UDim2.new(0, tx, 0, math.max(pad, ty))
+		ty = math.max(pad, ty)
+		popup.Position = UDim2.new(0, tx, 0, ty)
+		local popupW, popupH = popup.Size.X.Offset, popup.Size.Y.Offset
 
 		self._activePanel = popup
 		local conn
 		conn = UIS.InputBegan:Connect(function(input)
 			if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
 			local mp = UIS:GetMouseLocation()
-			local ap = popup.AbsolutePosition
-			local as = popup.AbsoluteSize
+			if mp.X >= tx and mp.X <= tx + popupW and mp.Y >= ty and mp.Y <= ty + popupH then return end
 			local bp = anchorElement.AbsolutePosition
 			local bs2 = anchorElement.AbsoluteSize
 			if mp.X >= bp.X and mp.X <= bp.X + bs2.X and mp.Y >= bp.Y and mp.Y <= bp.Y + bs2.Y then return end
-			if mp.X >= ap.X and mp.X <= ap.X + as.X and mp.Y >= ap.Y and mp.Y <= ap.Y + as.Y then return end
 			popup:Destroy()
 			conn:Disconnect()
 			self._activePanel = nil
