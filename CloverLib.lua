@@ -554,9 +554,12 @@ UILib.Parser = {
 		Load = function(data, elem)
 			local v = data.value
 			if type(v) == "table" then v = v[1] end
-			warn("[CL-DEBUG]   Toggle.Load v:", v, "type:", type(v))
+			warn("[CL-DEBUG]   Toggle.Load v:", v, "type:", type(v), "v==false:", v == false, "v==true:", v == true)
 			if type(v) == "boolean" then
-				elem:SetValue(v)
+				-- explicitly capture local for SetValue call
+				local pass = v
+				warn("[CL-DEBUG]   Toggle.Load calling SetValue with pass:", pass, "type:", type(pass), "elem IS table:", type(elem) == "table")
+				elem:SetValue(pass)
 			else
 				elem:SetValue(tostring(v or ""))
 			end
@@ -713,9 +716,12 @@ local function _applyStructuredJSON(self, decoded)
 				continue
 			end
 			local rawVal = obj.value
-			warn("[CL-DEBUG] LOADING", obj.type, "|", obj.label, "| rawVal:", rawVal, "| type:", type(rawVal))
+			local elemID = elem.ID or "noid"
+			warn("[CL-DEBUG] LOADING", obj.type, "|", obj.label, "| elemID:", elemID, "| rawVal:", rawVal, "| type:", type(rawVal), "| parserLoad:", tostring(parser.Load))
+			if obj.type == "Toggle" then
+				warn("[CL-DEBUG]   Toggle BEFORE load - elem.Value:", elem.Value, "type:", type(elem.Value), "SetValue:", tostring(elem.SetValue))
+			end
 			pcall(parser.Load, obj, elem)
-			count = count + 1
 			warn("[CL-DEBUG]   -> elem.Value after load:", elem.Value, "| type:", type(elem.Value))
 		end
 		if #misses > 0 then pcall(writefile, self:getConfigDir() .. "_debug_load.txt", table.concat(misses, "\n")) end
@@ -5018,7 +5024,9 @@ function UILib.Column:addGroup(title)
 			local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 			if contentFunc then contentFunc(nestedGroup) end
 			local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, IsToggle = true, Mode = "toggle", frame = container, DefaultHeight = TOGGLE_H }
-			elem.SetValue = function(val)
+			elem.SetValue = function(...)
+				local val = select(1, ...)
+				warn("[CL-DEBUG]     ExToggle.SetValue label:", elem.label, "nargs:", select("#", ...), "val:", val, "type:", type(val))
 				state = val
 				elem.Value = state
 				updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
@@ -5137,8 +5145,9 @@ function UILib.Column:addGroup(title)
 		local cbOuter, cbStroke, cbMark, lbl = createToggleCheckbox(r, default, window, text, rightOffset)
 		local state = default
 		local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = TOGGLE_H }
-		elem.SetValue = function(val)
-			warn("[CL-DEBUG]     Toggle.SetValue label:", elem.label, "val:", val, "type:", type(val))
+		elem.SetValue = function(...)
+			local val = select(1, ...)
+			warn("[CL-DEBUG]     Toggle.SetValue label:", elem.label, "nargs:", select("#", ...), "val:", val, "type:", type(val), "self_is_elem:", select(1, ...) == elem)
 			state = val
 			elem.Value = state
 			updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
