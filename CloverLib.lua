@@ -3785,7 +3785,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	valueBoxInput.ZIndex = 5
 	valueBoxInput.Parent = valueBox
 	Instance.new("UICorner", valueBoxInput).CornerRadius = UDim.new(0, 4)
-	if settingsCallback then
+	if type(settingsCallback) == "function" then
 		local gearBtn = Instance.new("ImageLabel")
 		local gi = window:lucide("settings")
 		gearBtn.Size = UDim2.new(0, 14, 0, 14)
@@ -3803,7 +3803,9 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		gb.ZIndex = 6
 		gb.Parent = gearBtn
 		gb.MouseButton1Click:Connect(function()
-			settingsCallback(gearBtn)
+			if type(settingsCallback) == "function" then
+				settingsCallback(gearBtn)
+			end
 		end)
 	end
 	local track = Instance.new("Frame")
@@ -3956,7 +3958,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 	row.BorderSizePixel = 0
 	row.Parent = items
 	local rightOffset = 0
-	if settingsCallback then
+	if type(settingsCallback) == "function" then
 		local gearBtn = Instance.new("ImageLabel")
 		local gi = window:lucide("settings")
 		gearBtn.Size = UDim2.new(0, 14, 0, 14)
@@ -3974,7 +3976,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 		gb.ZIndex = 6
 		gb.Parent = gearBtn
 		gb.MouseButton1Click:Connect(function()
-			settingsCallback()
+			settingsCallback(gearBtn)
 		end)
 		rightOffset = rightOffset + 16
 	end
@@ -4974,6 +4976,7 @@ function UILib.Column:addGroup(title)
 			self._activePanel:Destroy()
 			self._activePanel = nil
 		end
+		anchorElement = anchorElement or self.window
 		local popup = Instance.new("Frame")
 		popup.BackgroundColor3 = self.theme.Surface
 		popup.BorderSizePixel = 0
@@ -4987,8 +4990,8 @@ function UILib.Column:addGroup(title)
 		ps.Transparency = 0.2
 
 		local scroll = Instance.new("ScrollingFrame")
-		scroll.Size = UDim2.new(1, -8, 1, -8)
-		scroll.Position = UDim2.new(0, 4, 0, 4)
+		scroll.Size = UDim2.new(1, -16, 1, -16)
+		scroll.Position = UDim2.new(0, 8, 0, 8)
 		scroll.BackgroundTransparency = 1
 		scroll.BorderSizePixel = 0
 		scroll.ScrollBarThickness = 2
@@ -5226,22 +5229,7 @@ function UILib.Column:addGroup(title)
 			end)
 			rightOffset = rightOffset + 18
 		end
-		if tooltip then
-			local tipIcon = Instance.new("ImageButton")
-			local ti = window:lucide("info")
-			tipIcon.Size = UDim2.new(0, 14, 0, 14)
-			tipIcon.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
-			tipIcon.BackgroundTransparency = 1
-			tipIcon.Image = ti or ""
-			tipIcon.ImageColor3 = window.theme.GrayLt
-			tipIcon.ScaleType = Enum.ScaleType.Fit
-			tipIcon.ZIndex = 5
-			tipIcon.AutoButtonColor = false
-			tipIcon.Parent = r
-			attachTooltip(tipIcon, tooltip, window)
-			rightOffset = rightOffset + 16
-		end
-		if settingsCallback then
+		if type(settingsCallback) == "function" then
 			local gearBtn = Instance.new("ImageLabel")
 			local gi = window:lucide("settings")
 			gearBtn.Size = UDim2.new(0, 14, 0, 14)
@@ -5259,8 +5247,25 @@ function UILib.Column:addGroup(title)
 			gb.ZIndex = 6
 			gb.Parent = gearBtn
 			gb.MouseButton1Click:Connect(function()
-				settingsCallback()
+				if type(settingsCallback) == "function" then
+					settingsCallback(gearBtn)
+				end
 			end)
+			rightOffset = rightOffset + 16
+		end
+		if tooltip then
+			local tipIcon = Instance.new("ImageButton")
+			local ti = window:lucide("info")
+			tipIcon.Size = UDim2.new(0, 14, 0, 14)
+			tipIcon.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
+			tipIcon.BackgroundTransparency = 1
+			tipIcon.Image = ti or ""
+			tipIcon.ImageColor3 = window.theme.GrayLt
+			tipIcon.ScaleType = Enum.ScaleType.Fit
+			tipIcon.ZIndex = 5
+			tipIcon.AutoButtonColor = false
+			tipIcon.Parent = r
+			attachTooltip(tipIcon, tooltip, window)
 			rightOffset = rightOffset + 16
 		end
 		local cbOuter, cbStroke, cbMark, lbl = createToggleCheckbox(r, default, window, text, rightOffset)
@@ -5383,7 +5388,7 @@ function UILib.Column:addGroup(title)
 
 		local refreshBtn = buildDropdownRefreshBtn(r, window, refreshCallback)
 
-		if settingsCallback then
+		if type(settingsCallback) == "function" then
 			local gearBtn = Instance.new("ImageLabel")
 			local gi = window:lucide("settings")
 			gearBtn.Size = UDim2.new(0, 14, 0, 14)
