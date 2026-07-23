@@ -554,7 +554,12 @@ UILib.Parser = {
 		Load = function(data, elem)
 			local v = data.value
 			if type(v) == "table" then v = v[1] end
-			elem:SetValue(tostring(v or ""))
+			warn("[CL-DEBUG]   Toggle.Load v:", v, "type:", type(v))
+			if type(v) == "boolean" then
+				elem:SetValue(v)
+			else
+				elem:SetValue(tostring(v or ""))
+			end
 		end,
 	},
 	Slider = {
@@ -574,6 +579,7 @@ UILib.Parser = {
 		Load = function(data, elem)
 			local v = data.value
 			if type(v) == "table" then v = v[1] end
+			warn("[CL-DEBUG]   Dropdown.Load setting:", tostring(v or ""))
 			elem:SetValue(tostring(v or ""))
 		end,
 	},
@@ -607,7 +613,10 @@ UILib.Parser = {
 				local r = tonumber(type(c[1]) == "table" and c[1][1] or c[1]) or 0
 				local g = tonumber(type(c[2]) == "table" and c[2][1] or c[2]) or 0
 				local b = tonumber(type(c[3]) == "table" and c[3][1] or c[3]) or 0
+				warn("[CL-DEBUG]   ColorPicker.Load r:", r, "g:", g, "b:", b)
 				elem:SetValue(Color3.new(r / 255, g / 255, b / 255))
+			else
+				warn("[CL-DEBUG]   ColorPicker.Load data.color is nil!")
 			end
 		end,
 	},
@@ -694,11 +703,20 @@ local function _applyStructuredJSON(self, decoded)
 	if decoded.objects then
 		for _, obj in ipairs(decoded.objects) do
 			local elem = labelMap[obj.label]
-			if not elem then continue end
+			if not elem then
+				warn("[CL-DEBUG] MISS labelMap:", obj.label, "type:", obj.type)
+				continue
+			end
 			local parser = UILib.Parser[obj.type]
-			if not parser then continue end
+			if not parser then
+				warn("[CL-DEBUG] MISS parser:", obj.type, "label:", obj.label)
+				continue
+			end
+			local rawVal = obj.value
+			warn("[CL-DEBUG] LOADING", obj.type, "|", obj.label, "| rawVal:", rawVal, "| type:", type(rawVal))
 			pcall(parser.Load, obj, elem)
 			count = count + 1
+			warn("[CL-DEBUG]   -> elem.Value after load:", elem.Value, "| type:", type(elem.Value))
 		end
 		if #misses > 0 then pcall(writefile, self:getConfigDir() .. "_debug_load.txt", table.concat(misses, "\n")) end
 	else
@@ -722,15 +740,22 @@ local function _applyStructuredJSON(self, decoded)
 	self._loadingConfig = nil
 	_configLoading = false
 	task.wait(0.05)
+	warn("[CL-DEBUG] === POST-LOAD FIXUP (after 0.05s delay) ===")
+	_configLoading = true
+	self._loadingConfig = true
 	for id, elem in pairs(self.configs) do
 		local label = self:getElementLabel(elem)
 		if label and not (self.configIgnore and self.configIgnore[label]) and not elem._noConfig then
 			local etype = self:getElementType(elem)
-			if etype == "Toggle" then
+			if etype == "Toggle" or etype == "Dropdown" or etype == "ColorPicker" then
+				warn("[CL-DEBUG]   fixup", etype, "|", label, "| re-set to:", elem.Value, "| type:", type(elem.Value))
 				pcall(elem.SetValue, elem.Value)
 			end
 		end
 	end
+	_configLoading = false
+	self._loadingConfig = nil
+	warn("[CL-DEBUG] === FIXUP DONE ===")
 	return count
 end
 
@@ -3944,6 +3969,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 	local pickerFrame = nil
 
 	elem.SetValue = function(val)
+		warn("[CL-DEBUG]     ColorPicker.SetValue label:", elem.label, "R:", val.R, "G:", val.G, "B:", val.B)
 		current = val
 		elem.Value = val
 		colorBox.BackgroundColor3 = val
@@ -5112,6 +5138,7 @@ function UILib.Column:addGroup(title)
 		local state = default
 		local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = TOGGLE_H }
 		elem.SetValue = function(val)
+			warn("[CL-DEBUG]     Toggle.SetValue label:", elem.label, "val:", val, "type:", type(val))
 			state = val
 			elem.Value = state
 			updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
@@ -5517,6 +5544,7 @@ function UILib.Column:addGroup(title)
 			_values = options,
 			Refresh = refresh,
 		SetValue = function(val)
+				warn("[CL-DEBUG]     Dropdown.SetValue label:", elem.label, "val:", val, "in checks:", checks[val] ~= nil)
 				if type(val) ~= "string" then return end
 				currentSelection = val
 				selLbl.Text = val
