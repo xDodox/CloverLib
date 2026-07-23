@@ -3497,19 +3497,11 @@ local function generateID() elemCounter = elemCounter + 1; return "elem_" .. ele
 local function attachTooltip(element, text, window)
 	if not text or not window or not window.tooltip then return end
 	local tt = window.tooltip
-	local showing = false
-	element.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			if window.tooltipSuppressed then return end
-			if showing then
-				tt.hide(); showing = false; tooltipActiveElement = nil
-			else
-				tt.show(text, element); showing = true
-				tooltipActiveElement = nil
-				task.delay(4, function() if showing then tt.hide(); showing = false end end)
-			end
-		end
+	element.MouseEnter:Connect(function()
+		if window.tooltipSuppressed then return end
+		tt.show(text, element)
 	end)
+	element.MouseLeave:Connect(function() tt.hide() end)
 end
 
 function UILib.SubTab:addParagraph(ptitle, text)
@@ -4124,19 +4116,19 @@ local function createColorPicker(group, items, window, text, default, callback, 
 		local pad = 5
 		local boxAbs = colorBox.AbsolutePosition
 		local boxSize = colorBox.AbsoluteSize
-		local targetX = boxAbs.X + (boxSize.X / 2) - (pickerW / 2)
+		local targetX = boxAbs.X + boxSize.X - pickerW
 		if not boxAbs or boxAbs.X < 1 then
 			local winAbsPos = window.window.AbsolutePosition or Vector2.new(200, 200)
 			local winAbsSize = window.window.AbsoluteSize or Vector2.new(500, 400)
 			targetX = winAbsPos.X + winAbsSize.X - pickerW - 40
 		end
 		targetX = math.clamp(targetX, pad, screenW - pickerW - pad)
-		local targetY = boxAbs.Y + boxSize.Y + 2
+		local targetY = boxAbs.Y + boxSize.Y + 6
 		if not boxAbs or boxAbs.Y < 1 then
 			local winAbsPos = window.window.AbsolutePosition or Vector2.new(200, 200)
-			targetY = winAbsPos.Y + 60
+			targetY = winAbsPos.Y + 80
 		end
-		if targetY + pickerH > screenH - pad then targetY = boxAbs.Y - pickerH - 2 end
+		if targetY + pickerH > screenH - pad then targetY = boxAbs.Y - pickerH - 6 end
 		targetY = math.clamp(targetY, pad, screenH - pickerH - pad)
 		pickerFrame.Position = UDim2.new(0, targetX, 0, targetY)
 
@@ -5002,7 +4994,7 @@ function UILib.Column:addGroup(title)
 		local popup = Instance.new("Frame")
 		popup.BackgroundColor3 = self.theme.Surface
 		popup.BorderSizePixel = 0
-		popup.ZIndex = 9998
+		popup.ZIndex = 9997
 		popup.ClipsDescendants = false
 		popup.Position = UDim2.new(0, -1000, 0, -1000)
 		popup.Visible = false
@@ -5015,10 +5007,17 @@ function UILib.Column:addGroup(title)
 		ps.Thickness = 1.5
 		ps.Transparency = 0.2
 
-		Instance.new("UIPadding", popup).PaddingLeft = UDim.new(0, 12)
-		Instance.new("UIPadding", popup).PaddingRight = UDim.new(0, 12)
-		Instance.new("UIPadding", popup).PaddingTop = UDim.new(0, 10)
-		Instance.new("UIPadding", popup).PaddingBottom = UDim.new(0, 10)
+		local blocker = Instance.new("TextButton", popup)
+		blocker.Size = UDim2.new(1, 40, 1, 40)
+		blocker.Position = UDim2.new(0, -20, 0, -20)
+		blocker.BackgroundTransparency = 1
+		blocker.Text = ""
+		blocker.ZIndex = 0
+
+		Instance.new("UIPadding", popup).PaddingLeft = UDim.new(0, 10)
+		Instance.new("UIPadding", popup).PaddingRight = UDim.new(0, 10)
+		Instance.new("UIPadding", popup).PaddingTop = UDim.new(0, 8)
+		Instance.new("UIPadding", popup).PaddingBottom = UDim.new(0, 8)
 
 		local layout = Instance.new("UIListLayout", popup)
 		layout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -5065,7 +5064,7 @@ function UILib.Column:addGroup(title)
 			local mp = UIS:GetMouseLocation()
 			local d = self._panels[cacheKey]
 			if not d then conn:Disconnect(); return end
-			if mp.X >= d.tx - 4 and mp.X <= d.tx + d.pw + 4 and mp.Y >= d.ty - 4 and mp.Y <= d.ty + d.ph + 4 then return end
+			if mp.X >= d.tx - 24 and mp.X <= d.tx + d.pw + 24 and mp.Y >= d.ty - 24 and mp.Y <= d.ty + d.ph + 24 then return end
 			local bp = d.anchor.AbsolutePosition
 			local bs = d.anchor.AbsoluteSize
 			if bp and bs and mp.X >= bp.X - 4 and mp.X <= bp.X + bs.X + 4 and mp.Y >= bp.Y - 4 and mp.Y <= bp.Y + bs.Y + 4 then return end
@@ -5278,23 +5277,7 @@ function UILib.Column:addGroup(title)
 			rightOffset = rightOffset + 16
 		end
 		if tooltip then
-			local tipIcon = Instance.new("ImageLabel")
-			local ti = window:lucide("info")
-			tipIcon.Size = UDim2.new(0, 14, 0, 14)
-			tipIcon.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
-			tipIcon.BackgroundTransparency = 1
-			tipIcon.Image = ti or ""
-			tipIcon.ImageColor3 = window.theme.GrayLt
-			tipIcon.ScaleType = Enum.ScaleType.Fit
-			tipIcon.ZIndex = 5
-			tipIcon.Parent = r
-			local tb = Instance.new("TextButton")
-			tb.Size = UDim2.new(1, 0, 1, 0)
-			tb.BackgroundTransparency = 1
-			tb.Text = ""
-			tb.ZIndex = 6
-			tb.Parent = tipIcon
-			attachTooltip(tb, tooltip, window)
+			attachTooltip(r, tooltip, window)
 			rightOffset = rightOffset + 16
 		end
 		local cbOuter, cbStroke, cbMark, lbl = createToggleCheckbox(r, default, window, text, rightOffset)
