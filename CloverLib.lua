@@ -554,12 +554,8 @@ UILib.Parser = {
 		Load = function(data, elem)
 			local v = data.value
 			if type(v) == "table" then v = v[1] end
-			warn("[CL-DEBUG]   Toggle.Load v:", v, "type:", type(v), "v==false:", v == false, "v==true:", v == true)
 			if type(v) == "boolean" then
-				-- explicitly capture local for SetValue call
-				local pass = v
-				warn("[CL-DEBUG]   Toggle.Load calling SetValue with pass:", pass, "type:", type(pass), "elem IS table:", type(elem) == "table")
-				elem.SetValue(pass)
+				elem.SetValue(v)
 			else
 				elem.SetValue(tostring(v or ""))
 			end
@@ -582,7 +578,6 @@ UILib.Parser = {
 		Load = function(data, elem)
 			local v = data.value
 			if type(v) == "table" then v = v[1] end
-			warn("[CL-DEBUG]   Dropdown.Load setting:", tostring(v or ""))
 			elem.SetValue(tostring(v or ""))
 		end,
 	},
@@ -590,7 +585,13 @@ UILib.Parser = {
 		Save = function(label, elem)
 			local clean = {}
 			if type(elem.Value) == "table" then
-				for _, v in pairs(elem.Value) do table.insert(clean, tostring(v)) end
+				for k, v in pairs(elem.Value) do
+					if type(k) == "number" then
+						table.insert(clean, tostring(v))
+					else
+						table.insert(clean, tostring(k))
+					end
+				end
 			end
 			return { type = "MultiDropdown", label = label, value = clean }
 		end,
@@ -616,10 +617,7 @@ UILib.Parser = {
 				local r = tonumber(type(c[1]) == "table" and c[1][1] or c[1]) or 0
 				local g = tonumber(type(c[2]) == "table" and c[2][1] or c[2]) or 0
 				local b = tonumber(type(c[3]) == "table" and c[3][1] or c[3]) or 0
-				warn("[CL-DEBUG]   ColorPicker.Load r:", r, "g:", g, "b:", b)
 				elem.SetValue(Color3.new(r / 255, g / 255, b / 255))
-			else
-				warn("[CL-DEBUG]   ColorPicker.Load data.color is nil!")
 			end
 		end,
 	},
@@ -706,23 +704,11 @@ local function _applyStructuredJSON(self, decoded)
 	if decoded.objects then
 		for _, obj in ipairs(decoded.objects) do
 			local elem = labelMap[obj.label]
-			if not elem then
-				warn("[CL-DEBUG] MISS labelMap:", obj.label, "type:", obj.type)
-				continue
-			end
+			if not elem then continue end
 			local parser = UILib.Parser[obj.type]
-			if not parser then
-				warn("[CL-DEBUG] MISS parser:", obj.type, "label:", obj.label)
-				continue
-			end
-			local rawVal = obj.value
-			local elemID = elem.ID or "noid"
-			warn("[CL-DEBUG] LOADING", obj.type, "|", obj.label, "| elemID:", elemID, "| rawVal:", rawVal, "| type:", type(rawVal), "| parserLoad:", tostring(parser.Load))
-			if obj.type == "Toggle" then
-				warn("[CL-DEBUG]   Toggle BEFORE load - elem.Value:", elem.Value, "type:", type(elem.Value), "SetValue:", tostring(elem.SetValue))
-			end
+			if not parser then continue end
 			pcall(parser.Load, obj, elem)
-			warn("[CL-DEBUG]   -> elem.Value after load:", elem.Value, "| type:", type(elem.Value))
+			count = count + 1
 		end
 		if #misses > 0 then pcall(writefile, self:getConfigDir() .. "_debug_load.txt", table.concat(misses, "\n")) end
 	else
@@ -746,7 +732,6 @@ local function _applyStructuredJSON(self, decoded)
 	self._loadingConfig = nil
 	_configLoading = false
 	task.wait(0.05)
-	warn("[CL-DEBUG] === POST-LOAD FIXUP (after 0.05s delay) ===")
 	_configLoading = true
 	self._loadingConfig = true
 	for id, elem in pairs(self.configs) do
@@ -754,14 +739,12 @@ local function _applyStructuredJSON(self, decoded)
 		if label and not (self.configIgnore and self.configIgnore[label]) and not elem._noConfig then
 			local etype = self:getElementType(elem)
 			if etype == "Toggle" or etype == "Dropdown" or etype == "ColorPicker" then
-				warn("[CL-DEBUG]   fixup", etype, "|", label, "| re-set to:", elem.Value, "| type:", type(elem.Value))
 				pcall(elem.SetValue, elem.Value)
 			end
 		end
 	end
 	_configLoading = false
 	self._loadingConfig = nil
-	warn("[CL-DEBUG] === FIXUP DONE ===")
 	return count
 end
 
@@ -3600,6 +3583,7 @@ function UILib.SubTab:addInput(labelText, default, placeholder, callback, toolti
 	lbl.Font = Enum.Font.GothamSemibold
 	lbl.TextSize = 12
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
+	lbl.TextWrapped = true
 	lbl.ZIndex = 3
 	lbl.Parent = r
 	local box = Instance.new("TextBox")
@@ -3975,7 +3959,6 @@ local function createColorPicker(group, items, window, text, default, callback, 
 	local pickerFrame = nil
 
 	elem.SetValue = function(val)
-		warn("[CL-DEBUG]     ColorPicker.SetValue label:", elem.label, "R:", val.R, "G:", val.G, "B:", val.B)
 		current = val
 		elem.Value = val
 		colorBox.BackgroundColor3 = val
@@ -4341,7 +4324,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	label.Font = Enum.Font.GothamSemibold
 	label.TextSize = 12
 	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.TextWrapped = false
+	label.TextWrapped = true
 	label.ZIndex = 11
 	label.Parent = row
 
@@ -4528,7 +4511,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 						selLbl.Text = s
 					end
 					window:SafeCallback(callback, keys)
-					window.configs[id].Value = keys
+					window.configs[id].Value = selected
 				end)
 			end
 			listH = #filtered * 28 + 8
@@ -4985,6 +4968,7 @@ function UILib.Column:addGroup(title)
 		lbl.Font = Enum.Font.GothamSemibold
 		lbl.TextSize = 13
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
+		lbl.TextWrapped = true
 		lbl.TextYAlignment = Enum.TextYAlignment.Center
 		lbl.ZIndex = 4
 		lbl.Parent = parent
@@ -5033,9 +5017,7 @@ function UILib.Column:addGroup(title)
 			local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 			if contentFunc then contentFunc(nestedGroup) end
 			local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, IsToggle = true, Mode = "toggle", frame = container, DefaultHeight = TOGGLE_H }
-			elem.SetValue = function(...)
-				local val = select(1, ...)
-				warn("[CL-DEBUG]     ExToggle.SetValue label:", elem.label, "nargs:", select("#", ...), "val:", val, "type:", type(val))
+			elem.SetValue = function(val)
 				state = val
 				elem.Value = state
 				updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
@@ -5154,9 +5136,7 @@ function UILib.Column:addGroup(title)
 		local cbOuter, cbStroke, cbMark, lbl = createToggleCheckbox(r, default, window, text, rightOffset)
 		local state = default
 		local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = TOGGLE_H }
-		elem.SetValue = function(...)
-			local val = select(1, ...)
-			warn("[CL-DEBUG]     Toggle.SetValue label:", elem.label, "nargs:", select("#", ...), "val:", val, "type:", type(val), "self_is_elem:", select(1, ...) == elem)
+		elem.SetValue = function(val)
 			state = val
 			elem.Value = state
 			updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
@@ -5265,7 +5245,7 @@ function UILib.Column:addGroup(title)
 		lbl.Font = Enum.Font.GothamSemibold
 		lbl.TextSize = 12
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
-		lbl.TextWrapped = false
+		lbl.TextWrapped = true
 		lbl.ZIndex = 11
 		lbl.Parent = r
 
