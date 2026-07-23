@@ -3789,12 +3789,12 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		local gearBtn = Instance.new("ImageLabel")
 		local gi = window:lucide("settings")
 		gearBtn.Size = UDim2.new(0, 14, 0, 14)
+		gearBtn.Position = UDim2.new(1, -18, 0.5, -7)
 		gearBtn.BackgroundTransparency = 1
 		gearBtn.Image = gi or ""
 		gearBtn.ImageColor3 = window.theme.GrayLt
 		gearBtn.ScaleType = Enum.ScaleType.Fit
 		gearBtn.ZIndex = 5
-		gearBtn.LayoutOrder = 3
 		gearBtn.Parent = topRow
 		local gb = Instance.new("TextButton")
 		gb.Size = UDim2.new(1, 8, 1, 8)
@@ -4110,21 +4110,14 @@ local function createColorPicker(group, items, window, text, default, callback, 
 
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
-		local boxAbs = colorBox.AbsolutePosition
-		local boxSize = colorBox.AbsoluteSize
-		local pad = 6
-		local targetX = boxAbs.X + (boxSize.X / 2) - (pickerW / 2)
-		if targetX < pad or boxAbs.X < 1 then
-			local winAbsPos = window.window.AbsolutePosition
-			local winAbsSize = window.window.AbsoluteSize
-			targetX = winAbsPos.X + winAbsSize.X - pickerW - pad
+		local winAbsPos = window.window.AbsolutePosition
+		local winAbsSize = window.window.AbsoluteSize
+		local targetX = winAbsPos.X + winAbsSize.X + pad
+		if targetX + pickerW > screenW - pad then
+			targetX = winAbsPos.X - pickerW - pad
 		end
-		targetX = math.clamp(targetX, pad, screenW - pickerW - pad)
-		local targetY = boxAbs.Y + boxSize.Y + pad
-		if targetY + pickerH > screenH - pad or boxAbs.Y < 1 then
-			targetY = boxAbs.Y - pickerH - pad
-		end
-		targetY = math.clamp(targetY, pad, screenH - pickerH - pad)
+		targetX = math.max(pad, math.min(targetX + 20, screenW - pickerW - pad))
+		local targetY = math.clamp(winAbsPos.Y + 20, pad, screenH - pickerH - pad)
 		pickerFrame.Position = UDim2.new(0, targetX, 0, targetY)
 
 		TweenService:Create(pickerScale, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
@@ -5022,6 +5015,10 @@ function UILib.Column:addGroup(title)
 
 		local anchorAbs = anchorElement.AbsolutePosition
 		local anchorSize = anchorElement.AbsoluteSize
+		if not anchorAbs or anchorAbs.X < 1 then
+			anchorAbs = self.window.AbsolutePosition
+			anchorSize = self.window.AbsoluteSize
+		end
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 		local pad = 4
