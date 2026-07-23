@@ -185,8 +185,8 @@ local function makeTooltipSystem(sg, theme, connections)
 		local ePos = element.AbsolutePosition or Vector2.new(200, 200)
 		local eSize = element.AbsoluteSize or Vector2.new(14, 14)
 		local targetX = ePos.X + eSize.X / 2 - tipW / 2
-		local targetY = ePos.Y - tipH - 6
-		if targetY < 8 then targetY = ePos.Y + eSize.Y + 8 end
+		local targetY = ePos.Y + eSize.Y + 4
+		if targetY + tipH > screenHeight - 8 then targetY = ePos.Y - tipH - 4 end
 		targetX = math.clamp(targetX, 8, screenWidth - tipW - 8)
 		targetY = math.clamp(targetY, 8, screenHeight - tipH - 8)
 		tooltipFrame.Position = UDim2.new(0, targetX, 0, targetY)
@@ -4110,7 +4110,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 			targetX = wa.X + ws.X - pickerW - 30
 		end
 		targetX = math.clamp(targetX, pad, screenW - pickerW - pad)
-		local targetY = boxAbs.Y + boxSize.Y + 35
+		local targetY = boxAbs.Y + boxSize.Y + 40
 		if not boxAbs or boxAbs.Y < 1 then
 			local wa = window.window.AbsolutePosition or Vector2.new(200, 200)
 			targetY = wa.Y + 120
@@ -4982,7 +4982,7 @@ function UILib.Column:addGroup(title)
 				local pw = data.popup.AbsoluteSize.X
 				local ph = data.popup.AbsoluteSize.Y
 				if pw < 10 then pw, ph = 240, 100 end
-				local tx = math.clamp(a.X + 20, 4, sw - pw - 4)
+				local tx = math.clamp(a.X + 15, 4, sw - pw - 4)
 				local ty = a.Y + 55
 				if ty + ph > sh - 4 then ty = a.Y - ph - 4 end
 				ty = math.max(4, ty)
@@ -5248,7 +5248,7 @@ function UILib.Column:addGroup(title)
 			if tooltip then
 				local tipIcon = Instance.new("ImageLabel")
 				tipIcon.Size = UDim2.new(0, 14, 0, 14)
-				tipIcon.Position = UDim2.new(1, -18, 0.5, -7)
+				tipIcon.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
 				tipIcon.BackgroundTransparency = 1
 				tipIcon.Image = window:lucide("info") or ""
 				tipIcon.ImageColor3 = window.theme.GrayLt
@@ -5385,7 +5385,7 @@ function UILib.Column:addGroup(title)
 		if tooltip then
 			local tipIcon = Instance.new("ImageLabel")
 			tipIcon.Size = UDim2.new(0, 14, 0, 14)
-			tipIcon.Position = UDim2.new(1, -18, 0.5, -7)
+			tipIcon.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
 			tipIcon.BackgroundTransparency = 1
 			tipIcon.Image = window:lucide("info") or ""
 			tipIcon.ImageColor3 = window.theme.GrayLt
@@ -6507,7 +6507,7 @@ function UILib.Column:addGroup(title)
 		if tooltip then
 			local tipIcon = Instance.new("ImageLabel")
 			tipIcon.Size = UDim2.new(0, 14, 0, 14)
-			tipIcon.Position = UDim2.new(1, -18, 0.5, -7)
+			tipIcon.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
 			tipIcon.BackgroundTransparency = 1
 			tipIcon.Image = window:lucide("info") or ""
 			tipIcon.ImageColor3 = window.theme.GrayLt
