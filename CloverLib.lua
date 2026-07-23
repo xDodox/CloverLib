@@ -554,9 +554,7 @@ UILib.Parser = {
 		Load = function(data, elem)
 			local v = data.value
 			if type(v) == "table" then v = v[1] end
-			v = tostring(v or "")
-			print("[clover] DD Load:", data.label, "->", v)
-			elem:SetValue(v)
+			elem:SetValue(tostring(v or ""))
 		end,
 	},
 	Slider = {
@@ -723,6 +721,16 @@ local function _applyStructuredJSON(self, decoded)
 
 	self._loadingConfig = nil
 	_configLoading = false
+	task.wait(0.05)
+	for id, elem in pairs(self.configs) do
+		local label = self:getElementLabel(elem)
+		if label and not (self.configIgnore and self.configIgnore[label]) and not elem._noConfig then
+			local etype = self:getElementType(elem)
+			if etype == "Toggle" then
+				pcall(elem.SetValue, elem.Value)
+			end
+		end
+	end
 	return count
 end
 
@@ -4943,13 +4951,7 @@ function UILib.Column:addGroup(title)
 	end
 
 	local function updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
-		if _configLoading then
-			cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.BG
-		else
-			TweenService:Create(cbOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
-				BackgroundColor3 = state and window.theme.Accent or window.theme.BG
-			}):Play()
-		end
+		cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.BG
 		cbStroke.Color = state and window.theme.AccentD or window.theme.Border
 		cbMark.Text = state and "X" or ""
 	end
