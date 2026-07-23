@@ -205,21 +205,7 @@ local function makeTooltipSystem(sg, theme, connections)
 		showTooltip(text, element)
 	end
 
-	table.insert(connections, UIS.InputChanged:Connect(function(input)
-		if input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
-		if not tooltipActiveElement or not tooltipFrame.Visible then return end
-		local ok, ap  = pcall(function() return tooltipActiveElement.AbsolutePosition end)
-		local ok2, as = pcall(function() return tooltipActiveElement.AbsoluteSize end)
-		if not ok or not ok2 then
-			hideTooltip(); return
-		end
-		local mp = UIS:GetMouseLocation()
-		if mp.X < ap.X or mp.X > ap.X + as.X or mp.Y < ap.Y or mp.Y > ap.Y + as.Y then
-			hideTooltip()
-		end
-	end))
-
-	return { show = showTooltip, hide = hideTooltip, start = startTooltipDelay }
+	return { show = showTooltip, hide = hideTooltip }
 end
 
 function UILib:notify(message, notifType, duration)
@@ -4116,19 +4102,19 @@ local function createColorPicker(group, items, window, text, default, callback, 
 		local pad = 5
 		local boxAbs = colorBox.AbsolutePosition
 		local boxSize = colorBox.AbsoluteSize
-		local targetX = boxAbs.X + boxSize.X - pickerW
+		local targetX = boxAbs.X + (boxSize.X / 2) - (pickerW / 2)
 		if not boxAbs or boxAbs.X < 1 then
-			local winAbsPos = window.window.AbsolutePosition or Vector2.new(200, 200)
-			local winAbsSize = window.window.AbsoluteSize or Vector2.new(500, 400)
-			targetX = winAbsPos.X + winAbsSize.X - pickerW - 40
+			local wa = window.window.AbsolutePosition or Vector2.new(200, 200)
+			local ws = window.window.AbsoluteSize or Vector2.new(500, 400)
+			targetX = wa.X + ws.X - pickerW - 30
 		end
 		targetX = math.clamp(targetX, pad, screenW - pickerW - pad)
-		local targetY = boxAbs.Y + boxSize.Y + 6
+		local targetY = boxAbs.Y + boxSize.Y + 10
 		if not boxAbs or boxAbs.Y < 1 then
-			local winAbsPos = window.window.AbsolutePosition or Vector2.new(200, 200)
-			targetY = winAbsPos.Y + 80
+			local wa = window.window.AbsolutePosition or Vector2.new(200, 200)
+			targetY = wa.Y + 100
 		end
-		if targetY + pickerH > screenH - pad then targetY = boxAbs.Y - pickerH - 6 end
+		if targetY + pickerH > screenH - pad then targetY = boxAbs.Y - pickerH - 10 end
 		targetY = math.clamp(targetY, pad, screenH - pickerH - pad)
 		pickerFrame.Position = UDim2.new(0, targetX, 0, targetY)
 
@@ -4999,20 +4985,13 @@ function UILib.Column:addGroup(title)
 		popup.Position = UDim2.new(0, -1000, 0, -1000)
 		popup.Visible = false
 		popup.Parent = self.sg
-		popup.Size = UDim2.new(0, 240, 0, 0)
+		popup.Size = UDim2.new(0, 240, 0, 10)
 		Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 8)
 		local ps = Instance.new("UIStroke", popup)
 		ps.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		ps.Color = self.theme.Border
 		ps.Thickness = 1.5
 		ps.Transparency = 0.2
-
-		local blocker = Instance.new("TextButton", popup)
-		blocker.Size = UDim2.new(1, 40, 1, 40)
-		blocker.Position = UDim2.new(0, -20, 0, -20)
-		blocker.BackgroundTransparency = 1
-		blocker.Text = ""
-		blocker.ZIndex = 0
 
 		Instance.new("UIPadding", popup).PaddingLeft = UDim.new(0, 10)
 		Instance.new("UIPadding", popup).PaddingRight = UDim.new(0, 10)
@@ -5064,7 +5043,7 @@ function UILib.Column:addGroup(title)
 			local mp = UIS:GetMouseLocation()
 			local d = self._panels[cacheKey]
 			if not d then conn:Disconnect(); return end
-			if mp.X >= d.tx - 24 and mp.X <= d.tx + d.pw + 24 and mp.Y >= d.ty - 24 and mp.Y <= d.ty + d.ph + 24 then return end
+				if mp.X >= d.tx - 20 and mp.X <= d.tx + d.pw + 20 and mp.Y >= d.ty - 20 and mp.Y <= d.ty + d.ph + 20 then return end
 			local bp = d.anchor.AbsolutePosition
 			local bs = d.anchor.AbsoluteSize
 			if bp and bs and mp.X >= bp.X - 4 and mp.X <= bp.X + bs.X + 4 and mp.Y >= bp.Y - 4 and mp.Y <= bp.Y + bs.Y + 4 then return end
@@ -5277,7 +5256,28 @@ function UILib.Column:addGroup(title)
 			rightOffset = rightOffset + 16
 		end
 		if tooltip then
-			attachTooltip(r, tooltip, window)
+			local tipIcon = Instance.new("ImageLabel")
+			local ti = window:lucide("info")
+			tipIcon.Size = UDim2.new(0, 14, 0, 14)
+			tipIcon.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
+			tipIcon.BackgroundTransparency = 1
+			tipIcon.Image = ti or ""
+			tipIcon.ImageColor3 = window.theme.GrayLt
+			tipIcon.ScaleType = Enum.ScaleType.Fit
+			tipIcon.ZIndex = 5
+			tipIcon.Parent = r
+			local tb = Instance.new("TextButton")
+			tb.Size = UDim2.new(1, 8, 1, 8)
+			tb.BackgroundTransparency = 1
+			tb.Text = ""
+			tb.ZIndex = 6
+			tb.Parent = tipIcon
+			local tt = window.tooltip
+			local showing = false
+			tb.MouseButton1Click:Connect(function()
+				if showing then tt.hide(); showing = false
+				else tt.show(tooltip, tb); showing = true end
+			end)
 			rightOffset = rightOffset + 16
 		end
 		local cbOuter, cbStroke, cbMark, lbl = createToggleCheckbox(r, default, window, text, rightOffset)
