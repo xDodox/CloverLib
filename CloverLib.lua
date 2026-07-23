@@ -165,7 +165,7 @@ local function makeTooltipSystem(sg, theme, connections)
 	local tooltipActiveElement                          = nil
 
 	local function showTooltip(text, element)
-		if not element then return end
+		if not element or not text or text == "" then return end
 		tooltipText.Text     = text
 		tooltipActiveElement = element
 		local screenWidth    = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
@@ -4110,6 +4110,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
+		local pad = 5
 		local winAbsPos = window.window.AbsolutePosition
 		local winAbsSize = window.window.AbsoluteSize
 		if not winAbsPos or not winAbsSize then
@@ -4975,74 +4976,98 @@ function UILib.Column:addGroup(title)
 
 	function UILib:openAdvancedPanel(anchorElement, builder)
 		if self._activePanel then
-			self._activePanel:Destroy()
+			local s = self._activePanel:FindFirstChildOfClass("UIScale")
+			if s then
+				TweenService:Create(s, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
+				task.delay(0.16, function()
+					pcall(function() self._activePanel.Visible = false end)
+				end)
+			else
+				self._activePanel.Visible = false
+			end
 			self._activePanel = nil
 			return
 		end
 		anchorElement = anchorElement or self.window
-		local popup = Instance.new("Frame")
-		popup.BackgroundColor3 = self.theme.Surface
-		popup.BorderSizePixel = 0
-		popup.ZIndex = 9998
-		popup.ClipsDescendants = false
-		popup.Position = UDim2.new(0, -1000, 0, -1000)
-		popup.Parent = self.sg
-		popup.Size = UDim2.new(0, 240, 0, 0)
-		Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 8)
-		local ps = Instance.new("UIStroke", popup)
-		ps.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		ps.Color = self.theme.Border
-		ps.Thickness = 1.5
-		ps.Transparency = 0.2
+		local popup = self._panelCache
+		if not popup then
+			popup = Instance.new("Frame")
+			popup.BackgroundColor3 = self.theme.Surface
+			popup.BorderSizePixel = 0
+			popup.ZIndex = 9998
+			popup.ClipsDescendants = false
+			popup.Position = UDim2.new(0, -1000, 0, -1000)
+			popup.Visible = false
+			popup.Parent = self.sg
+			popup.Size = UDim2.new(0, 240, 0, 0)
+			Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 8)
+			local ps = Instance.new("UIStroke", popup)
+			ps.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+			ps.Color = self.theme.Border
+			ps.Thickness = 1.5
+			ps.Transparency = 0.2
 
-		local pad = Instance.new("UIPadding", popup)
-		pad.PaddingLeft = UDim.new(0, 12)
-		pad.PaddingRight = UDim.new(0, 12)
-		pad.PaddingTop = UDim.new(0, 10)
-		pad.PaddingBottom = UDim.new(0, 10)
+			local pad = Instance.new("UIPadding", popup)
+			pad.PaddingLeft = UDim.new(0, 12)
+			pad.PaddingRight = UDim.new(0, 12)
+			pad.PaddingTop = UDim.new(0, 10)
+			pad.PaddingBottom = UDim.new(0, 10)
 
-		local layout = Instance.new("UIListLayout", popup)
-		layout.SortOrder = Enum.SortOrder.LayoutOrder
-		layout.Padding = UDim.new(0, 4)
+			local layout = Instance.new("UIListLayout", popup)
+			layout.SortOrder = Enum.SortOrder.LayoutOrder
+			layout.Padding = UDim.new(0, 4)
 
-		local popupScale = Instance.new("UIScale", popup)
-		popupScale.Scale = 0
+			local popupScale = Instance.new("UIScale", popup)
+			popupScale.Scale = 0
 
-		local popupW, popupH = 240, 40
-		local function updateSize()
-			local h = layout.AbsoluteContentSize.Y + 20
-			popup.Size = UDim2.new(0, 240, 0, h)
-			popupW, popupH = 240, h
+			local popupW2, popupH2 = 240, 40
+			local function updateSize()
+				local h = layout.AbsoluteContentSize.Y + 20
+				popup.Size = UDim2.new(0, 240, 0, h)
+				popupW2, popupH2 = 240, h
+			end
+			layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSize)
+
+			local ng = buildNestedGroup(popup, updateSize)
+			builder(ng)
+			task.wait(0.05)
+			updateSize()
+
+			self._panelCache = popup
+			self._panelScale = popupScale
+			self._panelW, self._panelH = popupW2, popupH2
+			self._panelLayout = layout
+		else
+			local ngs = buildNestedGroup(popup, function() end)
+			builder(ngs)
 		end
-		layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSize)
-
-		local ng = buildNestedGroup(popup, updateSize)
-		builder(ng)
-		task.wait(0.05)
-		updateSize()
 
 		local anchorAbs = anchorElement.AbsolutePosition
-		local anchorSize = anchorElement.AbsoluteSize
-		if not anchorAbs or anchorAbs.X < 1 or not anchorSize then
+		if not anchorAbs or anchorAbs.X < 1 then
 			anchorAbs = self.window.AbsolutePosition
-			anchorSize = self.window.AbsoluteSize
 		end
 		if not anchorAbs then anchorAbs = Vector2.new(200, 200) end
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
-		popupW, popupH = popup.Size.X.Offset, popup.Size.Y.Offset
+		local pw, ph = popup.Size.X.Offset, popup.Size.Y.Offset
+		if pw < 10 then pw, ph = 240, 100 end
 		local pl = 4
-		local tx = math.clamp(anchorAbs.X, pl, screenW - popupW - pl)
-		local ty = anchorAbs.Y + 24
-		if ty + popupH > screenH - pl then
-			ty = anchorAbs.Y - popupH - 4
+		local tx = math.clamp(anchorAbs.X, pl, screenW - pw - pl)
+		local ty = anchorAbs.Y + 36
+		if ty + ph > screenH - pl then
+			ty = anchorAbs.Y - ph - 4
 		end
 		ty = math.max(pl, ty)
 		popup.Position = UDim2.new(0, tx, 0, ty)
+		popup.Visible = true
 
-		TweenService:Create(popupScale, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		local s = popup:FindFirstChildOfClass("UIScale") or Instance.new("UIScale", popup)
+		self._panelScale = s
+		TweenService:Create(s, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 
 		self._activePanel = popup
+		self._panelTx, self._panelTy = tx, ty
+		self._panelPw, self._panelPh = pw, ph
 		self._panelJustOpened = true
 		task.delay(0.1, function() self._panelJustOpened = false end)
 
@@ -5051,22 +5076,27 @@ function UILib.Column:addGroup(title)
 			if self._panelJustOpened then return end
 			if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
 			local mp = UIS:GetMouseLocation()
-			if mp.X >= tx - 4 and mp.X <= tx + popupW + 4 and mp.Y >= ty - 4 and mp.Y <= ty + popupH + 4 then return end
+			local ptx, pty = self._panelTx or tx, self._panelTy or ty
+			local ppw, pph = self._panelPw or pw, self._panelPh or ph
+			if mp.X >= ptx - 4 and mp.X <= ptx + ppw + 4 and mp.Y >= pty - 4 and mp.Y <= pty + pph + 4 then return end
+			if self._activePanel ~= popup then conn:Disconnect(); return end
 			local bp = anchorElement.AbsolutePosition
 			local bs2 = anchorElement.AbsoluteSize
 			if bp and bs2 and mp.X >= bp.X - 4 and mp.X <= bp.X + bs2.X + 4 and mp.Y >= bp.Y - 4 and mp.Y <= bp.Y + bs2.Y + 4 then return end
-			TweenService:Create(popupScale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
-			task.delay(0.16, function()
-				pcall(function() popup:Destroy() end)
-			end)
+			local sc = popup:FindFirstChildOfClass("UIScale")
+			if sc then
+				TweenService:Create(sc, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
+				task.delay(0.16, function()
+					pcall(function() popup.Visible = false end)
+				end)
+			else
+				popup.Visible = false
+			end
 			conn:Disconnect()
 			self._activePanel = nil
 		end)
-		popup.Destroying:Connect(function()
-			conn:Disconnect()
-			self._activePanel = nil
-		end)
-		return ng
+		self._panelConn = conn
+		return ng or {}
 	end
 
 	local function createToggleCheckbox(parent, default, window, text, rightOffset)
@@ -5280,7 +5310,7 @@ function UILib.Column:addGroup(title)
 			tipIcon.ZIndex = 5
 			tipIcon.Parent = r
 			local tb = Instance.new("TextButton")
-			tb.Size = UDim2.new(1, 8, 1, 8)
+			tb.Size = UDim2.new(1, 12, 1, 12)
 			tb.BackgroundTransparency = 1
 			tb.Text = ""
 			tb.ZIndex = 6
