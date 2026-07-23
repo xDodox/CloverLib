@@ -506,7 +506,6 @@ function UILib:importConfigFromString(json)
 		end
 	end
 	self._loadingConfig = nil
-	self:notify("Imported " .. count .. " value(s)", "success")
 end
 
 -- ════════════════════════════════════════
@@ -777,8 +776,7 @@ function UILib:loadConfigStructured(name)
 	if not ok then self:notify("Not found: " .. name, "error", 3); return end
 	local decoded = HS:JSONDecode(content)
 	if type(decoded) ~= "table" then self:notify("Invalid config", "error", 3); return end
-	local count = _applyStructuredJSON(self, decoded)
-	self:notify("Loaded " .. count .. " value(s): " .. name, "success", 2)
+	_applyStructuredJSON(self, decoded)
 end
 
 function UILib:exportConfigStructured()
@@ -790,8 +788,7 @@ end
 function UILib:importConfigStructured(json)
 	local ok, decoded = pcall(HS.JSONDecode, HS, json)
 	if not ok or type(decoded) ~= "table" then self:notify("Invalid JSON", "error", 3); return end
-	local count = _applyStructuredJSON(self, decoded)
-	self:notify("Imported " .. count .. " value(s)", "success", 2)
+	_applyStructuredJSON(self, decoded)
 end
 
 function UILib:listConfigsStructured()
@@ -846,8 +843,6 @@ function UILib.new(opts)
 	)
 end
 
-	local MIN_SIDEBAR_WIDTH = 80
-	local MAX_SIDEBAR_WIDTH = 160
 	local MIN_KEYBIND_WIDTH = 52
 local MAX_KEYBIND_WIDTH = 76
 
@@ -988,9 +983,9 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	self.originalSize = win.Size
 	self.visibleTarget = false
 
-	self.sidebarWidth = math.max(MIN_SIDEBAR_WIDTH, math.min(MAX_SIDEBAR_WIDTH, math.floor(self.size.X * 0.2)))
+	self.sidebarWidth = 140
 	local function getSidebarWidth()
-		return math.max(MIN_SIDEBAR_WIDTH, math.min(MAX_SIDEBAR_WIDTH, self.sidebarWidth))
+		return self.sidebarWidth
 	end
 	self.getSidebarWidth = getSidebarWidth
 
@@ -1426,33 +1421,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	sidebarEdge.ZIndex = 5
 	sidebarEdge.Parent = win
 	self.sidebarEdge = sidebarEdge
-
-	local sidebarDrag = Instance.new("TextButton")
-	sidebarDrag.Size = UDim2.new(0, 6, 1, -92)
-	sidebarDrag.Position = UDim2.new(0, initialSW - 3, 0, 46)
-	sidebarDrag.BackgroundTransparency = 1
-	sidebarDrag.Text = ""
-	sidebarDrag.ZIndex = 10
-	sidebarDrag.Parent = win
-	pcall(function() sidebarDrag.Cursor = Enum.CursorSystem.ResizeWidth end)
-	self.sidebarDrag = sidebarDrag
-	local draggingSidebar = false
-	sidebarDrag.MouseButton1Down:Connect(function()
-		draggingSidebar = true
-	end)
-	local sDragConn = UIS.InputChanged:Connect(function(i)
-		if not draggingSidebar or (i.UserInputType ~= Enum.UserInputType.MouseMovement and i.UserInputType ~= Enum.UserInputType.Touch) then return end
-		local winAbsPos = win.AbsolutePosition
-		local newW = math.clamp(i.Position.X - winAbsPos.X, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH)
-		self.sidebarWidth = newW
-		updateLayout()
-		sidebarDrag.Position = UDim2.new(0, newW - 3, 0, 46)
-	end)
-	local sDragEnd = UIS.InputEnded:Connect(function(i)
-		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then draggingSidebar = false end
-	end)
-	table.insert(self.connections, sDragConn)
-	table.insert(self.connections, sDragEnd)
 
 	local content = Instance.new("ScrollingFrame")
 	content.Size = UDim2.new(0, self.size.X - initialSW - 1, 1, -92)
@@ -2123,7 +2091,6 @@ function UILib:buildUITab()
 		cfgDropdown._values = list
 		pcall(function()
 			cfgDropdown:SetValues(list)
-			cfgDropdown:SetValue(selectedCfg)
 		end)
 	end
 
@@ -2163,8 +2130,34 @@ function UILib:buildUITab()
 		if name == "" then self:notify("Enter a name", "warning", 2); return end
 		self:saveConfigStructured(name)
 		selectedCfg = name
+		pcall(function() if nameBox then nameBox.Text = "" end end)
 		cfgRefreshDropdown()
 	end, nil, Enum.TextXAlignment.Center)
+	cfg:button("Rename Config", function()
+		if selectedCfg == "" or selectedCfg == "(no configs)" then self:notify("Select a config first", "warning", 2); return end
+		local nameBox = cfgNameBox.frame and cfgNameBox.frame:FindFirstChildOfClass("TextBox")
+		local newName = (nameBox and nameBox.Text and nameBox.Text ~= "" and nameBox.Text) or ""
+		if newName == "" then self:notify("Enter a new name first", "warning", 2); return end
+		if newName == selectedCfg then self:notify("Name is the same", "warning", 2); return end
+		self:confirm("Rename '" .. selectedCfg .. "' to '" .. newName .. "'?", function(ok)
+			if not ok then return end
+			local dir = self:getConfigDir()
+			local oldPath = dir .. selectedCfg .. ".json"
+			local newPath = dir .. newName .. ".json"
+			if isfile and isfile(newPath) then self:notify("Name already exists", "error", 3); return end
+			local okMove = pcall(function()
+				local content = readfile(oldPath)
+				writefile(newPath, content)
+				delfile(oldPath)
+			end)
+			if not okMove then self:notify("Rename failed", "error", 3); return end
+			if self:getAutoLoadConfig() == selectedCfg then self:setAutoLoadConfig(newName) end
+			self:notify("Renamed to " .. newName, "success", 2)
+			selectedCfg = newName
+			pcall(function() if nameBox then nameBox.Text = "" end end)
+			cfgRefreshDropdown()
+		end)
+	end, nil, Enum.TextXAlignment.Center, Color3.fromRGB(255, 200, 80))
 	cfg:separator("Share & Import")
 
 	cfg:button("Export Config", function()
@@ -2178,6 +2171,8 @@ function UILib:buildUITab()
 		local code = (box and box.Text and box.Text ~= "" and box.Text) or ""
 		if code == "" then self:notify("Enter a share code first", "warning", 2); return end
 		self:importConfigCode(self.configShareUrl or "https://cloverhub.fun", code)
+		pcall(function() if box then box.Text = "" end end)
+		cfgRefreshDropdown()
 	end, "Fetch and apply config from share code", Enum.TextXAlignment.Center, Color3.fromRGB(100, 255, 180))
 
 	self:ignoreConfig("ui_width", "ui_height", "ui_togglekey", "ui_watermark", "ui_theme", "ui_cfgdropdown", "ui_autoload", "ui_cfgname", "ui_sharecode")
@@ -3360,16 +3355,16 @@ function UILib.Tab:addSubTab(name, description)
 
 	local textCol = Instance.new("Frame")
 	textCol.Size = UDim2.new(1, -12, 1, -4)
-	textCol.Position = UDim2.new(0, 8, 0, 2)
+	textCol.Position = UDim2.new(0, 8, 0, 1)
 	textCol.BackgroundTransparency = 1
 	textCol.ZIndex = 6
 	textCol.Parent = btn
 	local colLayout = Instance.new("UIListLayout", textCol)
 	colLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	colLayout.Padding = UDim.new(0, 1)
+	colLayout.Padding = UDim.new(0, 0)
 
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, 0, 16)
+	label.Size = UDim2.new(1, 0, 0, 15)
 	label.BackgroundTransparency = 1
 	label.Text = name
 	label.TextColor3 = self.window.theme.Gray
@@ -4069,17 +4064,15 @@ local function createColorPicker(group, items, window, text, default, callback, 
 
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
-		task.wait(0.03)
-		local btnAbsPos = colorBox.AbsolutePosition
-		local btnAbsSize = colorBox.AbsoluteSize
+		local winAbsPos = window.window.AbsolutePosition
+		local winAbsSize = window.window.AbsoluteSize
 		local pad = 5
-		local targetX = btnAbsPos.X + (btnAbsSize.X / 2) - (pickerW / 2)
-		targetX = math.clamp(targetX, pad, screenW - pickerW - pad)
-		local targetY = btnAbsPos.Y + btnAbsSize.Y + pad
-		if targetY + pickerH > screenH - pad then
-			targetY = btnAbsPos.Y - pickerH - pad
+		local targetX = winAbsPos.X + winAbsSize.X + pad
+		if targetX + pickerW > screenW - pad then
+			targetX = winAbsPos.X - pickerW - pad
 		end
-		targetY = math.clamp(targetY, pad, screenH - pickerH - pad)
+		targetX = math.max(pad, math.min(targetX, screenW - pickerW - pad))
+		local targetY = math.clamp(winAbsPos.Y + (winAbsSize.Y / 2) - (pickerH / 2), pad, screenH - pickerH - pad)
 		pickerFrame.Position = UDim2.new(0, targetX, 0, targetY)
 
 		TweenService:Create(pickerScale, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
