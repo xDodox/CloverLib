@@ -205,7 +205,7 @@ local function makeTooltipSystem(sg, theme, connections)
 		showTooltip(text, element)
 	end
 
-	return { show = showTooltip, hide = hideTooltip }
+	return { show = showTooltip, hide = hideTooltip, start = startTooltipDelay }
 end
 
 function UILib:notify(message, notifType, duration)
@@ -4109,7 +4109,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 			targetX = wa.X + ws.X - pickerW - 30
 		end
 		targetX = math.clamp(targetX, pad, screenW - pickerW - pad)
-		local targetY = boxAbs.Y + boxSize.Y + 10
+		local targetY = boxAbs.Y + boxSize.Y + 16
 		if not boxAbs or boxAbs.Y < 1 then
 			local wa = window.window.AbsolutePosition or Vector2.new(200, 200)
 			targetY = wa.Y + 100
@@ -4969,7 +4969,7 @@ function UILib.Column:addGroup(title)
 
 	function UILib:openAdvancedPanel(anchorElement, builder)
 		anchorElement = anchorElement or self.window
-		local cacheKey = tostring(anchorElement)
+		local cacheKey = anchorElement
 		if not self._panels then self._panels = {} end
 		if not self._repositionPanel then
 			self._repositionPanel = function(data, anchor)
