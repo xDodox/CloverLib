@@ -171,10 +171,12 @@ local function makeTooltipSystem(sg, theme, connections)
 		local screenWidth    = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 		local screenHeight   = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
 		local textWidth      = 160
-		local textSize       = game:GetService("TextService"):GetTextSize(text, 12, Enum.Font.GothamSemibold,
-			Vector2.new(textWidth, 500))
-		local tipW           = textWidth + 24
-		local tipH           = textSize.Y + 16
+		local tipW, tipH     = textWidth + 24, 40
+		pcall(function()
+			local ts = game:GetService("TextService"):GetTextSize(text, 12, Enum.Font.GothamSemibold, Vector2.new(textWidth, 500))
+			tipW = textWidth + 24
+			tipH = ts.Y + 16
+		end)
 		tooltipFrame.Size    = UDim2.new(0, tipW, 0, tipH)
 		local mousePos       = UIS:GetMouseLocation()
 		local targetX        = mousePos.X - tipW / 2
@@ -4122,7 +4124,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 			targetX = winAbsPos.X - pickerW - pad
 		end
 		targetX = math.max(pad, math.min(targetX + 20, screenW - pickerW - pad))
-		local targetY = math.clamp(winAbsPos.Y + 20, pad, screenH - pickerH - pad)
+		local targetY = math.clamp(winAbsPos.Y + (winAbsSize.Y / 2) - (pickerH / 2), pad, screenH - pickerH - pad)
 		pickerFrame.Position = UDim2.new(0, targetX, 0, targetY)
 
 		TweenService:Create(pickerScale, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
@@ -5037,9 +5039,6 @@ function UILib.Column:addGroup(title)
 			self._panelScale = popupScale
 			self._panelW, self._panelH = popupW2, popupH2
 			self._panelLayout = layout
-		else
-			local ngs = buildNestedGroup(popup, function() end)
-			builder(ngs)
 		end
 
 		local anchorAbs = anchorElement.AbsolutePosition
@@ -5096,7 +5095,7 @@ function UILib.Column:addGroup(title)
 			self._activePanel = nil
 		end)
 		self._panelConn = conn
-		return ng or {}
+		return
 	end
 
 	local function createToggleCheckbox(parent, default, window, text, rightOffset)
