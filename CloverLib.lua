@@ -978,8 +978,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	Instance.new("UICorner", winStrokeFrame).CornerRadius = UDim.new(0, 10)
 	local winStroke = Instance.new("UIStroke", winStrokeFrame)
 	winStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	winStroke.Color = Color3.new(0, 0, 0)
-	winStroke.Thickness = 2
+	winStroke.Color = Color3.fromRGB(40, 40, 40)
+	winStroke.Thickness = 1
 	self.originalPosition = win.Position
 	self.originalSize = win.Size
 	self.visibleTarget = false
@@ -3958,11 +3958,26 @@ local function createColorPicker(group, items, window, text, default, callback, 
 	row.BorderSizePixel = 0
 	row.Parent = items
 	local rightOffset = 0
+	local colorBox = Instance.new("TextButton")
+	colorBox.Size = UDim2.new(0, 22, 0, 22)
+	colorBox.Position = UDim2.new(1, -(26 + rightOffset), 0.5, -11)
+	colorBox.BackgroundColor3 = default
+	colorBox.BorderSizePixel = 0
+	colorBox.ZIndex = 4
+	colorBox.Text = ""
+	colorBox.AutoButtonColor = false
+	colorBox.Parent = row
+	Instance.new("UICorner", colorBox).CornerRadius = UDim.new(0, 3)
+	local stroke = Instance.new("UIStroke", colorBox)
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Color = window.theme.Border
+	stroke.Thickness = 1
+	rightOffset = rightOffset + 18
 	if type(settingsCallback) == "function" then
 		local gearBtn = Instance.new("ImageLabel")
 		local gi = window:lucide("settings")
 		gearBtn.Size = UDim2.new(0, 14, 0, 14)
-		gearBtn.Position = UDim2.new(1, -(rightOffset + 16), 0.5, -7)
+		gearBtn.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
 		gearBtn.BackgroundTransparency = 1
 		gearBtn.Image = gi or ""
 		gearBtn.ImageColor3 = window.theme.GrayLt
@@ -3976,7 +3991,9 @@ local function createColorPicker(group, items, window, text, default, callback, 
 		gb.ZIndex = 6
 		gb.Parent = gearBtn
 		gb.MouseButton1Click:Connect(function()
-			settingsCallback(gearBtn)
+			if type(settingsCallback) == "function" then
+				settingsCallback(gearBtn)
+			end
 		end)
 		rightOffset = rightOffset + 16
 	end
@@ -3992,20 +4009,6 @@ local function createColorPicker(group, items, window, text, default, callback, 
 	label.TextWrapped = true
 	label.ZIndex = 3
 	label.Parent = row
-	local colorBox = Instance.new("TextButton")
-	colorBox.Size = UDim2.new(0, 22, 0, 22)
-	colorBox.Position = UDim2.new(1, -(26 + rightOffset), 0.5, -11)
-	colorBox.BackgroundColor3 = default
-	colorBox.BorderSizePixel = 0
-	colorBox.ZIndex = 4
-	colorBox.Text = ""
-	colorBox.AutoButtonColor = false
-	colorBox.Parent = row
-	Instance.new("UICorner", colorBox).CornerRadius = UDim.new(0, 3)
-	local stroke = Instance.new("UIStroke", colorBox)
-	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	stroke.Color = window.theme.Border
-	stroke.Thickness = 1
 	local current = default or Color3.new(1, 0, 0)
 	local elem = { ID = id, Value = current, label = cfgId or text }
 	local pickerFrame = nil
@@ -4981,7 +4984,10 @@ function UILib.Column:addGroup(title)
 		popup.BackgroundColor3 = self.theme.Surface
 		popup.BorderSizePixel = 0
 		popup.ZIndex = 9998
+		popup.ClipsDescendants = false
+		popup.Position = UDim2.new(0, -1000, 0, -1000)
 		popup.Parent = self.sg
+		popup.Size = UDim2.new(0, 240, 0, 0)
 		Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 8)
 		local ps = Instance.new("UIStroke", popup)
 		ps.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -4989,31 +4995,28 @@ function UILib.Column:addGroup(title)
 		ps.Thickness = 1.5
 		ps.Transparency = 0.2
 
-		local scroll = Instance.new("ScrollingFrame")
-		scroll.Size = UDim2.new(1, -16, 1, -16)
-		scroll.Position = UDim2.new(0, 8, 0, 8)
-		scroll.BackgroundTransparency = 1
-		scroll.BorderSizePixel = 0
-		scroll.ScrollBarThickness = 2
-		scroll.ScrollBarImageColor3 = self.theme.Accent
-		scroll.ZIndex = 9999
-		scroll.Parent = popup
-		scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+		local pad = Instance.new("UIPadding", popup)
+		pad.PaddingLeft = UDim.new(0, 12)
+		pad.PaddingRight = UDim.new(0, 12)
+		pad.PaddingTop = UDim.new(0, 10)
+		pad.PaddingBottom = UDim.new(0, 10)
 
-		local layout = Instance.new("UIListLayout", scroll)
+		local layout = Instance.new("UIListLayout", popup)
 		layout.SortOrder = Enum.SortOrder.LayoutOrder
-		layout.Padding = UDim.new(0, 3)
+		layout.Padding = UDim.new(0, 4)
+
+		local popupScale = Instance.new("UIScale", popup)
+		popupScale.Scale = 0
 
 		local function updateSize()
-			local h = layout.AbsoluteContentSize.Y + 8
-			scroll.CanvasSize = UDim2.new(0, 0, 0, h)
-			popup.Size = UDim2.new(0, 220, 0, math.min(h + 8, 400))
+			local h = layout.AbsoluteContentSize.Y + 20
+			popup.Size = UDim2.new(0, 240, 0, h)
 		end
 		layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSize)
 
-		local ng = buildNestedGroup(scroll, updateSize)
+		local ng = buildNestedGroup(popup, updateSize)
 		builder(ng)
-		task.wait(0.03)
+		task.wait(0.02)
 		updateSize()
 
 		local anchorAbs = anchorElement.AbsolutePosition
@@ -5024,26 +5027,35 @@ function UILib.Column:addGroup(title)
 		end
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
-		local pad = 4
-		local tx = math.clamp(anchorAbs.X, pad, screenW - popup.Size.X.Offset - pad)
-		local ty = anchorAbs.Y + anchorSize.Y + pad
-		if ty + popup.Size.Y.Offset > screenH - pad then
-			ty = anchorAbs.Y - popup.Size.Y.Offset - pad
-		end
-		ty = math.max(pad, ty)
-		popup.Position = UDim2.new(0, tx, 0, ty)
 		local popupW, popupH = popup.Size.X.Offset, popup.Size.Y.Offset
+		local pl = 4
+		local tx = math.clamp(anchorAbs.X, pl, screenW - popupW - pl)
+		local ty = anchorAbs.Y + anchorSize.Y + pl
+		if ty + popupH > screenH - pl then
+			ty = anchorAbs.Y - popupH - pl
+		end
+		ty = math.max(pl, ty)
+		popup.Position = UDim2.new(0, tx, 0, ty)
+
+		TweenService:Create(popupScale, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 
 		self._activePanel = popup
+		self._panelJustOpened = true
+		task.delay(0.15, function() self._panelJustOpened = false end)
+
 		local conn
 		conn = UIS.InputBegan:Connect(function(input)
+			if self._panelJustOpened then return end
 			if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
 			local mp = UIS:GetMouseLocation()
-			if mp.X >= tx and mp.X <= tx + popupW and mp.Y >= ty and mp.Y <= ty + popupH then return end
+			if mp.X >= tx - 4 and mp.X <= tx + popupW + 4 and mp.Y >= ty - 4 and mp.Y <= ty + popupH + 4 then return end
 			local bp = anchorElement.AbsolutePosition
 			local bs2 = anchorElement.AbsoluteSize
-			if mp.X >= bp.X and mp.X <= bp.X + bs2.X and mp.Y >= bp.Y and mp.Y <= bp.Y + bs2.Y then return end
-			popup:Destroy()
+			if bp and bs2 and mp.X >= bp.X - 4 and mp.X <= bp.X + bs2.X + 4 and mp.Y >= bp.Y - 4 and mp.Y <= bp.Y + bs2.Y + 4 then return end
+			TweenService:Create(popupScale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
+			task.delay(0.16, function()
+				pcall(function() popup:Destroy() end)
+			end)
 			conn:Disconnect()
 			self._activePanel = nil
 		end)
