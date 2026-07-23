@@ -981,8 +981,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	winStrokeFrame.Parent = win
 	Instance.new("UICorner", winStrokeFrame).CornerRadius = UDim.new(0, 10)
 	local winStroke = Instance.new("UIStroke", winStrokeFrame)
-	winStroke.Color = Color3.fromRGB(40, 40, 40)
-	winStroke.Thickness = 1
+	winStroke.Color = Color3.new(0, 0, 0)
+	winStroke.Thickness = 2
 	self.originalPosition = win.Position
 	self.originalSize = win.Size
 	self.visibleTarget = false
@@ -4029,7 +4029,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 		pickerFrame.Size = UDim2.new(0, pickerW, 0, pickerH)
 		pickerFrame.BackgroundColor3 = window.theme.Surface
 		pickerFrame.BorderSizePixel = 0
-		pickerFrame.ZIndex = 2000
+		pickerFrame.ZIndex = 9999
 		pickerFrame.Parent = window.sg
 		pickerFrame.Destroying:Connect(function()
 			local cons = _pickerCons[pickerFrame]
@@ -4060,15 +4060,16 @@ local function createColorPicker(group, items, window, text, default, callback, 
 
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
-		local winAbsPos = window.window.AbsolutePosition
-		local winAbsSize = window.window.AbsoluteSize
+		local btnAbsPos = colorBox.AbsolutePosition
+		local btnAbsSize = colorBox.AbsoluteSize
 		local pad = 5
-		local targetX = winAbsPos.X + winAbsSize.X + pad
-		if targetX + pickerW > screenW - pad then
-			targetX = winAbsPos.X - pickerW - pad
+		local targetX = btnAbsPos.X + (btnAbsSize.X / 2) - (pickerW / 2)
+		targetX = math.clamp(targetX, pad, screenW - pickerW - pad)
+		local targetY = btnAbsPos.Y + btnAbsSize.Y + pad
+		if targetY + pickerH > screenH - pad then
+			targetY = btnAbsPos.Y - pickerH - pad
 		end
-		targetX = math.max(pad, math.min(targetX, screenW - pickerW - pad))
-		local targetY = math.clamp(winAbsPos.Y + (winAbsSize.Y / 2) - (pickerH / 2), pad, screenH - pickerH - pad)
+		targetY = math.clamp(targetY, pad, screenH - pickerH - pad)
 		pickerFrame.Position = UDim2.new(0, targetX, 0, targetY)
 
 		TweenService:Create(pickerScale, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
