@@ -143,7 +143,7 @@ local function makeTooltipSystem(sg, theme, connections)
 	tooltipFrame.BackgroundColor3                       = theme.Panel
 	tooltipFrame.BorderSizePixel                        = 0
 	tooltipFrame.Visible                                = false
-	tooltipFrame.ZIndex                                 = 1000
+	tooltipFrame.ZIndex                                 = 10000
 	tooltipFrame.Parent                                 = sg
 	Instance.new("UICorner", tooltipFrame).CornerRadius = UDim.new(0, 4)
 	local tipPadding                                    = Instance.new("UIPadding", tooltipFrame)
@@ -166,11 +166,6 @@ local function makeTooltipSystem(sg, theme, connections)
 
 	local function showTooltip(text, element)
 		if not element then return end
-		local mp = UIS:GetMouseLocation()
-		if element.AbsolutePosition and element.AbsoluteSize then
-			local ap, as = element.AbsolutePosition, element.AbsoluteSize
-			if mp.X < ap.X or mp.X > ap.X + as.X or mp.Y < ap.Y or mp.Y > ap.Y + as.Y then return end
-		end
 		tooltipText.Text     = text
 		tooltipActiveElement = element
 		local screenWidth    = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
@@ -3972,7 +3967,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Color = window.theme.Border
 	stroke.Thickness = 1
-	rightOffset = rightOffset + 18
+	rightOffset = rightOffset + 26
 	if type(settingsCallback) == "function" then
 		local gearBtn = Instance.new("ImageLabel")
 		local gi = window:lucide("settings")
@@ -4117,6 +4112,10 @@ local function createColorPicker(group, items, window, text, default, callback, 
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
 		local winAbsPos = window.window.AbsolutePosition
 		local winAbsSize = window.window.AbsoluteSize
+		if not winAbsPos then
+			winAbsPos = Vector2.new(200, 200)
+			winAbsSize = Vector2.new(500, 400)
+		end
 		local targetX = winAbsPos.X + winAbsSize.X + pad
 		if targetX + pickerW > screenW - pad then
 			targetX = winAbsPos.X - pickerW - pad
@@ -4978,6 +4977,7 @@ function UILib.Column:addGroup(title)
 		if self._activePanel then
 			self._activePanel:Destroy()
 			self._activePanel = nil
+			return
 		end
 		anchorElement = anchorElement or self.window
 		local popup = Instance.new("Frame")
@@ -5030,9 +5030,9 @@ function UILib.Column:addGroup(title)
 		local popupW, popupH = popup.Size.X.Offset, popup.Size.Y.Offset
 		local pl = 4
 		local tx = math.clamp(anchorAbs.X, pl, screenW - popupW - pl)
-		local ty = anchorAbs.Y + anchorSize.Y + pl
+		local ty = anchorAbs.Y + anchorSize.Y + 8
 		if ty + popupH > screenH - pl then
-			ty = anchorAbs.Y - popupH - pl
+			ty = anchorAbs.Y - popupH - 8
 		end
 		ty = math.max(pl, ty)
 		popup.Position = UDim2.new(0, tx, 0, ty)
@@ -5041,7 +5041,7 @@ function UILib.Column:addGroup(title)
 
 		self._activePanel = popup
 		self._panelJustOpened = true
-		task.delay(0.15, function() self._panelJustOpened = false end)
+		task.delay(0.1, function() self._panelJustOpened = false end)
 
 		local conn
 		conn = UIS.InputBegan:Connect(function(input)
