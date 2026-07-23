@@ -3713,7 +3713,7 @@ end
 	return elem
 end
 
-local function createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step, cfgId)
+local function createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step, cfgId, settingsCallback)
 	step = step or 1
 	local id = generateID()
 	local row = Instance.new("Frame")
@@ -3785,6 +3785,27 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	valueBoxInput.ZIndex = 5
 	valueBoxInput.Parent = valueBox
 	Instance.new("UICorner", valueBoxInput).CornerRadius = UDim.new(0, 4)
+	if settingsCallback then
+		local gearBtn = Instance.new("ImageLabel")
+		local gi = window:lucide("settings")
+		gearBtn.Size = UDim2.new(0, 14, 0, 14)
+		gearBtn.BackgroundTransparency = 1
+		gearBtn.Image = gi or ""
+		gearBtn.ImageColor3 = window.theme.GrayLt
+		gearBtn.ScaleType = Enum.ScaleType.Fit
+		gearBtn.ZIndex = 5
+		gearBtn.LayoutOrder = 3
+		gearBtn.Parent = topRow
+		local gb = Instance.new("TextButton")
+		gb.Size = UDim2.new(1, 8, 1, 8)
+		gb.BackgroundTransparency = 1
+		gb.Text = ""
+		gb.ZIndex = 6
+		gb.Parent = gearBtn
+		gb.MouseButton1Click:Connect(function()
+			settingsCallback(gearBtn)
+		end)
+	end
 	local track = Instance.new("Frame")
 	track.Size = UDim2.new(1, 0, 0, 22)
 	track.Position = UDim2.new(0, 0, 0, 26)
@@ -3927,15 +3948,38 @@ end
 
 local _pickerCons = {}
 
-local function createColorPicker(group, items, window, text, default, callback, cfgId)
+local function createColorPicker(group, items, window, text, default, callback, cfgId, settingsCallback)
 	local id = generateID()
 	local row = Instance.new("Frame")
 	row.Size = UDim2.new(1, 0, 0, 32)
 	row.BackgroundTransparency = 1
 	row.BorderSizePixel = 0
 	row.Parent = items
+	local rightOffset = 0
+	if settingsCallback then
+		local gearBtn = Instance.new("ImageLabel")
+		local gi = window:lucide("settings")
+		gearBtn.Size = UDim2.new(0, 14, 0, 14)
+		gearBtn.Position = UDim2.new(1, -(rightOffset + 16), 0.5, -7)
+		gearBtn.BackgroundTransparency = 1
+		gearBtn.Image = gi or ""
+		gearBtn.ImageColor3 = window.theme.GrayLt
+		gearBtn.ScaleType = Enum.ScaleType.Fit
+		gearBtn.ZIndex = 5
+		gearBtn.Parent = row
+		local gb = Instance.new("TextButton")
+		gb.Size = UDim2.new(1, 8, 1, 8)
+		gb.BackgroundTransparency = 1
+		gb.Text = ""
+		gb.ZIndex = 6
+		gb.Parent = gearBtn
+		gb.MouseButton1Click:Connect(function()
+			settingsCallback()
+		end)
+		rightOffset = rightOffset + 16
+	end
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, -62, 1, 0)
+	label.Size = UDim2.new(1, -(62 + rightOffset), 1, 0)
 	label.Position = UDim2.new(0, 4, 0, 0)
 	label.BackgroundTransparency = 1
 	label.Text = text
@@ -3943,11 +3987,12 @@ local function createColorPicker(group, items, window, text, default, callback, 
 	label.Font = Enum.Font.GothamSemibold
 	label.TextSize = 13
 	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.TextWrapped = true
 	label.ZIndex = 3
 	label.Parent = row
 	local colorBox = Instance.new("TextButton")
 	colorBox.Size = UDim2.new(0, 22, 0, 22)
-	colorBox.Position = UDim2.new(1, -26, 0.5, -11)
+	colorBox.Position = UDim2.new(1, -(26 + rightOffset), 0.5, -11)
 	colorBox.BackgroundColor3 = default
 	colorBox.BorderSizePixel = 0
 	colorBox.ZIndex = 4
@@ -4931,6 +4976,83 @@ function UILib.Column:addGroup(title)
 		return ng
 	end
 
+	function UILib:openAdvancedPanel(anchorElement, builder)
+		if self._activePanel then
+			self._activePanel:Destroy()
+			self._activePanel = nil
+		end
+		local popup = Instance.new("Frame")
+		popup.BackgroundColor3 = self.theme.Surface
+		popup.BorderSizePixel = 0
+		popup.ZIndex = 9998
+		popup.Parent = self.sg
+		Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 8)
+		local ps = Instance.new("UIStroke", popup)
+		ps.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		ps.Color = self.theme.Border
+		ps.Thickness = 1.5
+		ps.Transparency = 0.2
+
+		local scroll = Instance.new("ScrollingFrame")
+		scroll.Size = UDim2.new(1, -8, 1, -8)
+		scroll.Position = UDim2.new(0, 4, 0, 4)
+		scroll.BackgroundTransparency = 1
+		scroll.BorderSizePixel = 0
+		scroll.ScrollBarThickness = 2
+		scroll.ScrollBarImageColor3 = self.theme.Accent
+		scroll.ZIndex = 9999
+		scroll.Parent = popup
+		scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+		local layout = Instance.new("UIListLayout", scroll)
+		layout.SortOrder = Enum.SortOrder.LayoutOrder
+		layout.Padding = UDim.new(0, 3)
+
+		local function updateSize()
+			local h = layout.AbsoluteContentSize.Y + 8
+			scroll.CanvasSize = UDim2.new(0, 0, 0, h)
+			popup.Size = UDim2.new(0, 220, 0, math.min(h + 8, 400))
+		end
+		layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSize)
+
+		local ng = buildNestedGroup(scroll, updateSize)
+		builder(ng)
+		task.wait(0.05)
+		updateSize()
+
+		local anchorAbs = anchorElement.AbsolutePosition
+		local anchorSize = anchorElement.AbsoluteSize
+		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
+		local pad = 4
+		local tx = anchorAbs.X
+		local ty = anchorAbs.Y + anchorSize.Y + pad
+		if ty + popup.AbsoluteSize.Y > screenH - pad then
+			ty = anchorAbs.Y - popup.AbsoluteSize.Y - pad
+		end
+		popup.Position = UDim2.new(0, tx, 0, math.max(pad, ty))
+
+		self._activePanel = popup
+		local conn
+		conn = UIS.InputBegan:Connect(function(input)
+			if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
+			local mp = UIS:GetMouseLocation()
+			local ap = popup.AbsolutePosition
+			local as = popup.AbsoluteSize
+			local bp = anchorElement.AbsolutePosition
+			local bs2 = anchorElement.AbsoluteSize
+			if mp.X >= bp.X and mp.X <= bp.X + bs2.X and mp.Y >= bp.Y and mp.Y <= bp.Y + bs2.Y then return end
+			if mp.X >= ap.X and mp.X <= ap.X + as.X and mp.Y >= ap.Y and mp.Y <= ap.Y + as.Y then return end
+			popup:Destroy()
+			conn:Disconnect()
+			self._activePanel = nil
+		end)
+		popup.Destroying:Connect(function()
+			conn:Disconnect()
+			self._activePanel = nil
+		end)
+		return ng
+	end
+
 	local function createToggleCheckbox(parent, default, window, text, rightOffset)
 		rightOffset = rightOffset or 4
 		local CB_SIZE = 22
@@ -5227,15 +5349,15 @@ function UILib.Column:addGroup(title)
 		return cleanNum(val)
 	end
 
-	function group:slider(text, minVal, maxVal, defaultVal, callback, step, tooltip, icon, display, cfgId)
-		local r, elem = createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step, cfgId)
+	function group:slider(text, minVal, maxVal, defaultVal, callback, step, tooltip, icon, display, cfgId, settingsCallback)
+		local r, elem = createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step, cfgId, settingsCallback)
 		if display then elem:setDisplay(display) end
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		return elem
 	end
 
-	function group:dropdown(text, options, default, callback, tooltip, refreshCallback, icon, cfgId)
+	function group:dropdown(text, options, default, callback, tooltip, refreshCallback, icon, cfgId, settingsCallback)
 		assert(text ~= nil, "Dropdown - Missing text")
 		local id = generateID()
 		local r = Instance.new("Frame")
@@ -5246,7 +5368,9 @@ function UILib.Column:addGroup(title)
 		r.Parent = items
 
 		local lbl = Instance.new("TextLabel")
-		local lblWidth = refreshCallback and UDim2.new(1, -64, 0, 18) or UDim2.new(1, -10, 0, 18)
+		local gearWidth = settingsCallback and 16 or 0
+		local refWidth = (refreshCallback and 54 or 0)
+		local lblWidth = UDim2.new(1, -(10 + refWidth + gearWidth), 0, 18)
 		lbl.Size = lblWidth
 		lbl.Position = UDim2.new(0, 4, 0, 2)
 		lbl.BackgroundTransparency = 1
@@ -5260,6 +5384,28 @@ function UILib.Column:addGroup(title)
 		lbl.Parent = r
 
 		local refreshBtn = buildDropdownRefreshBtn(r, window, refreshCallback)
+
+		if settingsCallback then
+			local gearBtn = Instance.new("ImageLabel")
+			local gi = window:lucide("settings")
+			gearBtn.Size = UDim2.new(0, 14, 0, 14)
+			gearBtn.Position = UDim2.new(1, -(10 + gearWidth), 0, 4)
+			gearBtn.BackgroundTransparency = 1
+			gearBtn.Image = gi or ""
+			gearBtn.ImageColor3 = window.theme.GrayLt
+			gearBtn.ScaleType = Enum.ScaleType.Fit
+			gearBtn.ZIndex = 12
+			gearBtn.Parent = r
+			local gb = Instance.new("TextButton")
+			gb.Size = UDim2.new(1, 8, 1, 8)
+			gb.BackgroundTransparency = 1
+			gb.Text = ""
+			gb.ZIndex = 13
+			gb.Parent = gearBtn
+			gb.MouseButton1Click:Connect(function()
+				settingsCallback(gearBtn)
+			end)
+		end
 
 		local dbtn = Instance.new("TextButton")
 		dbtn.Size = UDim2.new(1, 0, 0, 32)
@@ -6257,9 +6403,9 @@ function UILib.Column:addGroup(title)
 		return container
 	end
 
-	function group:colorpicker(text, default, callback, tooltip, icon, cfgId)
+	function group:colorpicker(text, default, callback, tooltip, icon, cfgId, settingsCallback)
 		assert(text ~= nil and text ~= "", "ColorPicker - Missing text")
-		local r, elem = createColorPicker(group, items, window, text, default, callback, cfgId)
+		local r, elem = createColorPicker(group, items, window, text, default, callback, cfgId, settingsCallback)
 		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		return elem
