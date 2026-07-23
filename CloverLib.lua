@@ -182,10 +182,11 @@ local function makeTooltipSystem(sg, theme, connections)
 			tipH = ts.Y + 16
 		end)
 		tooltipFrame.Size    = UDim2.new(0, tipW, 0, tipH)
-		local mousePos       = UIS:GetMouseLocation()
-		local targetX        = mousePos.X - tipW / 2
-		local targetY        = mousePos.Y - tipH - 10
-		if targetY < 8 then targetY = mousePos.Y + 18 end
+		local ePos = element.AbsolutePosition or Vector2.new(200, 200)
+		local eSize = element.AbsoluteSize or Vector2.new(14, 14)
+		local targetX = ePos.X + eSize.X / 2 - tipW / 2
+		local targetY = ePos.Y - tipH - 8
+		if targetY < 8 then targetY = ePos.Y + eSize.Y + 8 end
 		targetX = math.clamp(targetX, 8, screenWidth - tipW - 8)
 		targetY = math.clamp(targetY, 8, screenHeight - tipH - 8)
 		tooltipFrame.Position = UDim2.new(0, targetX, 0, targetY)
@@ -4109,12 +4110,12 @@ local function createColorPicker(group, items, window, text, default, callback, 
 			targetX = wa.X + ws.X - pickerW - 30
 		end
 		targetX = math.clamp(targetX, pad, screenW - pickerW - pad)
-		local targetY = boxAbs.Y + boxSize.Y + 16
+		local targetY = boxAbs.Y + boxSize.Y + 30
 		if not boxAbs or boxAbs.Y < 1 then
 			local wa = window.window.AbsolutePosition or Vector2.new(200, 200)
-			targetY = wa.Y + 100
+			targetY = wa.Y + 120
 		end
-		if targetY + pickerH > screenH - pad then targetY = boxAbs.Y - pickerH - 10 end
+		if targetY + pickerH > screenH - pad then targetY = boxAbs.Y - pickerH - 30 end
 		targetY = math.clamp(targetY, pad, screenH - pickerH - pad)
 		pickerFrame.Position = UDim2.new(0, targetX, 0, targetY)
 
@@ -4982,7 +4983,7 @@ function UILib.Column:addGroup(title)
 				local ph = data.popup.AbsoluteSize.Y
 				if pw < 10 then pw, ph = 240, 100 end
 				local tx = math.clamp(a.X, 4, sw - pw - 4)
-				local ty = a.Y + 36
+				local ty = a.Y + 48
 				if ty + ph > sh - 4 then ty = a.Y - ph - 4 end
 				ty = math.max(4, ty)
 				data.popup.Position = UDim2.new(0, tx, 0, ty)
@@ -5001,7 +5002,7 @@ function UILib.Column:addGroup(title)
 					local pp = d.popup
 					local ap = pp.AbsolutePosition
 					local as = pp.AbsoluteSize
-					if ap and as and mp.X >= ap.X - 4 and mp.X <= ap.X + as.X + 4 and mp.Y >= ap.Y - 4 and mp.Y <= ap.Y + as.Y + 4 then return end
+					if ap and as and mp.X >= ap.X - 8 and mp.X <= ap.X + as.X + 8 and mp.Y >= ap.Y - 8 and mp.Y <= ap.Y + as.Y + 8 then return end
 					local bp = (anchorEl or d.anchor).AbsolutePosition
 					local bs = (anchorEl or d.anchor).AbsoluteSize
 					if bp and bs and mp.X >= bp.X - 4 and mp.X <= bp.X + bs.X + 4 and mp.Y >= bp.Y - 4 and mp.Y <= bp.Y + bs.Y + 4 then return end
@@ -5048,10 +5049,10 @@ function UILib.Column:addGroup(title)
 		ps.Thickness = 1.5
 		ps.Transparency = 0.2
 
-		Instance.new("UIPadding", popup).PaddingLeft = UDim.new(0, 12)
-		Instance.new("UIPadding", popup).PaddingRight = UDim.new(0, 12)
-		Instance.new("UIPadding", popup).PaddingTop = UDim.new(0, 10)
-		Instance.new("UIPadding", popup).PaddingBottom = UDim.new(0, 10)
+		Instance.new("UIPadding", popup).PaddingLeft = UDim.new(0, 14)
+		Instance.new("UIPadding", popup).PaddingRight = UDim.new(0, 14)
+		Instance.new("UIPadding", popup).PaddingTop = UDim.new(0, 12)
+		Instance.new("UIPadding", popup).PaddingBottom = UDim.new(0, 12)
 
 		local layout = Instance.new("UIListLayout", popup)
 		layout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -5061,8 +5062,8 @@ function UILib.Column:addGroup(title)
 		popupScale.Scale = 0
 
 		local function updateSize()
-			local h = layout.AbsoluteContentSize.Y + 20
-			popup.Size = UDim2.new(0, 240, 0, math.max(h, 30))
+			local h = layout.AbsoluteContentSize.Y + 24
+			popup.Size = UDim2.new(0, 240, 0, math.max(h, 40))
 		end
 		layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSize)
 
@@ -5357,7 +5358,30 @@ function UILib.Column:addGroup(title)
 			state = not state
 			elem.SetValue(state)
 		end)
-		if tooltip then attachTooltip(r, tooltip, window) end
+		if tooltip then
+			local tipIcon = Instance.new("ImageLabel")
+			tipIcon.Size = UDim2.new(0, 14, 0, 14)
+			tipIcon.Position = UDim2.new(1, -18, 0.5, -7)
+			tipIcon.BackgroundTransparency = 1
+			tipIcon.Image = window:lucide("info") or ""
+			tipIcon.ImageColor3 = window.theme.GrayLt
+			tipIcon.ScaleType = Enum.ScaleType.Fit
+			tipIcon.ZIndex = 5
+			tipIcon.Parent = r
+			local tb = Instance.new("TextButton")
+			tb.Size = UDim2.new(1, 0, 1, 0)
+			tb.BackgroundTransparency = 1
+			tb.Text = ""
+			tb.ZIndex = 6
+			tb.Parent = tipIcon
+			tb.MouseEnter:Connect(function()
+				if not window.tooltip or window.tooltipSuppressed then return end
+				window.tooltip.show(tooltip, tb)
+			end)
+			tb.MouseLeave:Connect(function()
+				if window.tooltip then window.tooltip.hide() end
+			end)
+		end
 		updateSize()
 		elem.frame = r
 		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
