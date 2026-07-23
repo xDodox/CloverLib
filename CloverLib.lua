@@ -3493,13 +3493,18 @@ local function generateID() elemCounter = elemCounter + 1; return "elem_" .. ele
 local function attachTooltip(element, text, window)
 	if not text or not window or not window.tooltip then return end
 	local tt = window.tooltip
-	element.MouseEnter:Connect(function()
-		if window.tooltipSuppressed then return end
-		tt.start(text, element)
-	end)
-	element.MouseLeave:Connect(function() tt.hide() end)
+	local showing = false
 	element.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then tt.hide() end
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			if window.tooltipSuppressed then return end
+			if showing then
+				tt.hide(); showing = false; tooltipActiveElement = nil
+			else
+				tt.show(text, element); showing = true
+				tooltipActiveElement = nil
+				task.delay(4, function() if showing then tt.hide(); showing = false end end)
+			end
+		end
 	end)
 end
 
@@ -4119,12 +4124,10 @@ local function createColorPicker(group, items, window, text, default, callback, 
 			winAbsPos = Vector2.new(200, 200)
 			winAbsSize = Vector2.new(500, 400)
 		end
-		local targetX = winAbsPos.X + winAbsSize.X + pad
-		if targetX + pickerW > screenW - pad then
-			targetX = winAbsPos.X - pickerW - pad
-		end
-		targetX = math.max(pad, math.min(targetX + 20, screenW - pickerW - pad))
-		local targetY = math.clamp(winAbsPos.Y + (winAbsSize.Y / 2) - (pickerH / 2), pad, screenH - pickerH - pad)
+		local targetX = winAbsPos.X + winAbsSize.X - pickerW - pad
+		if targetX < pad then targetX = pad end
+		targetX = math.min(targetX + 20, screenW - pickerW - pad)
+		local targetY = math.clamp(winAbsPos.Y + (winAbsSize.Y / 2) - (pickerH / 2) + 20, pad, screenH - pickerH - pad)
 		pickerFrame.Position = UDim2.new(0, targetX, 0, targetY)
 
 		TweenService:Create(pickerScale, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
@@ -4977,96 +4980,71 @@ function UILib.Column:addGroup(title)
 	end
 
 	function UILib:openAdvancedPanel(anchorElement, builder)
-		if self._activePanel then
-			local s = self._activePanel:FindFirstChildOfClass("UIScale")
-			if s then
-				TweenService:Create(s, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
-				task.delay(0.16, function()
-					pcall(function() self._activePanel.Visible = false end)
-				end)
-			else
-				self._activePanel.Visible = false
-			end
-			self._activePanel = nil
+		anchorElement = anchorElement or self.window
+		local cacheKey = tostring(anchorElement)
+		if not self._panels then self._panels = {} end
+		local data = self._panels[cacheKey]
+		if data then
+			data.popup.Visible = false
+			self._panels[cacheKey] = nil
 			return
 		end
-		anchorElement = anchorElement or self.window
-		local popup = self._panelCache
-		if not popup then
-			popup = Instance.new("Frame")
-			popup.BackgroundColor3 = self.theme.Surface
-			popup.BorderSizePixel = 0
-			popup.ZIndex = 9998
-			popup.ClipsDescendants = false
-			popup.Position = UDim2.new(0, -1000, 0, -1000)
-			popup.Visible = false
-			popup.Parent = self.sg
-			popup.Size = UDim2.new(0, 240, 0, 0)
-			Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 8)
-			local ps = Instance.new("UIStroke", popup)
-			ps.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-			ps.Color = self.theme.Border
-			ps.Thickness = 1.5
-			ps.Transparency = 0.2
+		local popup = Instance.new("Frame")
+		popup.BackgroundColor3 = self.theme.Surface
+		popup.BorderSizePixel = 0
+		popup.ZIndex = 9998
+		popup.ClipsDescendants = false
+		popup.Position = UDim2.new(0, -1000, 0, -1000)
+		popup.Visible = false
+		popup.Parent = self.sg
+		popup.Size = UDim2.new(0, 240, 0, 0)
+		Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 8)
+		local ps = Instance.new("UIStroke", popup)
+		ps.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		ps.Color = self.theme.Border
+		ps.Thickness = 1.5
+		ps.Transparency = 0.2
 
-			local pad = Instance.new("UIPadding", popup)
-			pad.PaddingLeft = UDim.new(0, 12)
-			pad.PaddingRight = UDim.new(0, 12)
-			pad.PaddingTop = UDim.new(0, 10)
-			pad.PaddingBottom = UDim.new(0, 10)
+		Instance.new("UIPadding", popup).PaddingLeft = UDim.new(0, 12)
+		Instance.new("UIPadding", popup).PaddingRight = UDim.new(0, 12)
+		Instance.new("UIPadding", popup).PaddingTop = UDim.new(0, 10)
+		Instance.new("UIPadding", popup).PaddingBottom = UDim.new(0, 10)
 
-			local layout = Instance.new("UIListLayout", popup)
-			layout.SortOrder = Enum.SortOrder.LayoutOrder
-			layout.Padding = UDim.new(0, 4)
+		local layout = Instance.new("UIListLayout", popup)
+		layout.SortOrder = Enum.SortOrder.LayoutOrder
+		layout.Padding = UDim.new(0, 4)
 
-			local popupScale = Instance.new("UIScale", popup)
-			popupScale.Scale = 0
+		local popupScale = Instance.new("UIScale", popup)
+		popupScale.Scale = 0
 
-			local popupW2, popupH2 = 240, 40
-			local function updateSize()
-				local h = layout.AbsoluteContentSize.Y + 20
-				popup.Size = UDim2.new(0, 240, 0, h)
-				popupW2, popupH2 = 240, h
-			end
-			layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSize)
-
-			local ng = buildNestedGroup(popup, updateSize)
-			builder(ng)
-			task.wait(0.05)
-			updateSize()
-
-			self._panelCache = popup
-			self._panelScale = popupScale
-			self._panelW, self._panelH = popupW2, popupH2
-			self._panelLayout = layout
+		local function updateSize()
+			local h = layout.AbsoluteContentSize.Y + 20
+			popup.Size = UDim2.new(0, 240, 0, h)
 		end
+		layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSize)
+
+		local ng = buildNestedGroup(popup, updateSize)
+		builder(ng)
+		task.wait(0.05)
+		updateSize()
 
 		local anchorAbs = anchorElement.AbsolutePosition
-		if not anchorAbs or anchorAbs.X < 1 then
-			anchorAbs = self.window.AbsolutePosition
-		end
+		if not anchorAbs or anchorAbs.X < 1 then anchorAbs = self.window.AbsolutePosition end
 		if not anchorAbs then anchorAbs = Vector2.new(200, 200) end
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 		local pw, ph = popup.Size.X.Offset, popup.Size.Y.Offset
 		if pw < 10 then pw, ph = 240, 100 end
-		local pl = 4
-		local tx = math.clamp(anchorAbs.X, pl, screenW - pw - pl)
+		local tx = math.clamp(anchorAbs.X, 4, screenW - pw - 4)
 		local ty = anchorAbs.Y + 36
-		if ty + ph > screenH - pl then
-			ty = anchorAbs.Y - ph - 4
-		end
-		ty = math.max(pl, ty)
+		if ty + ph > screenH - 4 then ty = anchorAbs.Y - ph - 4 end
+		ty = math.max(4, ty)
 		popup.Position = UDim2.new(0, tx, 0, ty)
 		popup.Visible = true
 
-		local s = popup:FindFirstChildOfClass("UIScale") or Instance.new("UIScale", popup)
-		self._panelScale = s
-		TweenService:Create(s, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		TweenService:Create(popupScale, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 
-		self._activePanel = popup
-		self._panelTx, self._panelTy = tx, ty
-		self._panelPw, self._panelPh = pw, ph
+		self._panels[cacheKey] = { popup = popup, scale = popupScale, tx = tx, ty = ty, pw = pw, ph = ph, anchor = anchorElement }
 		self._panelJustOpened = true
 		task.delay(0.1, function() self._panelJustOpened = false end)
 
@@ -5075,27 +5053,19 @@ function UILib.Column:addGroup(title)
 			if self._panelJustOpened then return end
 			if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
 			local mp = UIS:GetMouseLocation()
-			local ptx, pty = self._panelTx or tx, self._panelTy or ty
-			local ppw, pph = self._panelPw or pw, self._panelPh or ph
-			if mp.X >= ptx - 4 and mp.X <= ptx + ppw + 4 and mp.Y >= pty - 4 and mp.Y <= pty + pph + 4 then return end
-			if self._activePanel ~= popup then conn:Disconnect(); return end
-			local bp = anchorElement.AbsolutePosition
-			local bs2 = anchorElement.AbsoluteSize
-			if bp and bs2 and mp.X >= bp.X - 4 and mp.X <= bp.X + bs2.X + 4 and mp.Y >= bp.Y - 4 and mp.Y <= bp.Y + bs2.Y + 4 then return end
-			local sc = popup:FindFirstChildOfClass("UIScale")
-			if sc then
-				TweenService:Create(sc, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
-				task.delay(0.16, function()
-					pcall(function() popup.Visible = false end)
-				end)
-			else
-				popup.Visible = false
-			end
+			local d = self._panels[cacheKey]
+			if not d then conn:Disconnect(); return end
+			if mp.X >= d.tx - 4 and mp.X <= d.tx + d.pw + 4 and mp.Y >= d.ty - 4 and mp.Y <= d.ty + d.ph + 4 then return end
+			local bp = d.anchor.AbsolutePosition
+			local bs = d.anchor.AbsoluteSize
+			if bp and bs and mp.X >= bp.X - 4 and mp.X <= bp.X + bs.X + 4 and mp.Y >= bp.Y - 4 and mp.Y <= bp.Y + bs.Y + 4 then return end
+			TweenService:Create(d.scale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
+			task.delay(0.16, function() pcall(function() d.popup.Visible = false end) end)
 			conn:Disconnect()
-			self._activePanel = nil
+			self._panels[cacheKey] = nil
 		end)
-		self._panelConn = conn
-		return
+		d = self._panels[cacheKey]
+		if d then d.conn = conn end
 	end
 
 	local function createToggleCheckbox(parent, default, window, text, rightOffset)
