@@ -4419,6 +4419,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 	if default then for _, v in ipairs(default) do selected[v] = true end end
 	local checks = {}
 	local backgrounds = {}
+	local selectionBGs = {}
 	local open = false
 
 	local function buildOptions(opts)
@@ -4427,6 +4428,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 		end
 		checks = {}
 		backgrounds = {}
+		selectionBGs = {}
 		
 		local filtered = {}
 		for _, opt in ipairs(opts) do
@@ -4466,6 +4468,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 				bg.ZIndex = 50
 				bg.Parent = ob
 				table.insert(window.accentObjects, bg)
+				selectionBGs[opt] = bg
 
 				local bar = Instance.new("Frame")
 				bar.Size = UDim2.new(0, 2, 0, 14)
@@ -4596,6 +4599,10 @@ local function createMultiDropdown(group, items, window, text, options, default,
 				ck.TextColor3 = isSel and window.theme.White or window.theme.Gray
 				ck.Font = isSel and Enum.Font.GothamBold or Enum.Font.GothamSemibold
 				if backgrounds[opt] then backgrounds[opt].Visible = isSel end
+				if selectionBGs[opt] then
+					selectionBGs[opt].BackgroundTransparency = isSel and 0.8 or 1
+					selectionBGs[opt].BackgroundColor3 = window.theme.Accent
+				end
 			end
 			local keys = {}
 			for k, _ in pairs(selected) do table.insert(keys, k) end
@@ -4605,7 +4612,9 @@ local function createMultiDropdown(group, items, window, text, options, default,
 			else
 				selLbl.Text = s
 			end
-			window:SafeCallback(callback, keys)
+			if not _configLoading then
+				window:SafeCallback(callback, keys)
+			end
 			window.configs[id].Value = selected
 		end
 	}
@@ -5364,6 +5373,7 @@ function UILib.Column:addGroup(title)
 
 		local checks = {}
 		local backgrounds = {}
+		local selectionBGs = {}
 		local currentOptions = options
 		local currentSelection = default or ""
 		local open = false
@@ -5400,6 +5410,7 @@ function UILib.Column:addGroup(title)
 			for _, child in ipairs(dlist:GetChildren()) do if child:IsA("TextButton") then child:Destroy() end end
 			checks = {}
 			backgrounds = {}
+			selectionBGs = {}
 			currentOptions = opts
 			listH = #opts * 28 + 4
 			dlist.CanvasSize = UDim2.new(0, 0, 0, listH)
@@ -5423,6 +5434,7 @@ function UILib.Column:addGroup(title)
 				bg.ZIndex = 50
 				bg.Parent = ob
 				table.insert(window.accentObjects, bg)
+				selectionBGs[opt] = bg
 				
 				local bar = Instance.new("Frame")
 				bar.Size = UDim2.new(0, 2, 0, 14)
@@ -5553,7 +5565,6 @@ function UILib.Column:addGroup(title)
 			_values = options,
 			Refresh = refresh,
 		SetValue = function(val)
-				warn("[CL-DEBUG]     Dropdown.SetValue label:", elem.label, "val:", val, "in checks:", checks[val] ~= nil)
 				if type(val) ~= "string" then return end
 				currentSelection = val
 				selLbl.Text = val
@@ -5563,7 +5574,13 @@ function UILib.Column:addGroup(title)
 				lbl2.Font = sel and Enum.Font.GothamBold or Enum.Font.GothamSemibold
 			end
 			for o, b in pairs(backgrounds) do b.Visible = (o == val) end
-			window:SafeCallback(callback, val)
+			for o, sbg in pairs(selectionBGs) do
+				sbg.BackgroundTransparency = (o == val) and 0.8 or 1
+				sbg.BackgroundColor3 = window.theme.Accent
+			end
+			if not _configLoading then
+				window:SafeCallback(callback, val)
+			end
 			window.configs[id].Value = val
 		end,
 			SetValues = function(self, newOpts)
