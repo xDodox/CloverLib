@@ -146,11 +146,15 @@ local function makeTooltipSystem(sg, theme, connections)
 	tooltipFrame.ZIndex                                 = 10000
 	tooltipFrame.Parent                                 = sg
 	Instance.new("UICorner", tooltipFrame).CornerRadius = UDim.new(0, 4)
+	local tipStroke = Instance.new("UIStroke", tooltipFrame)
+	tipStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	tipStroke.Color = theme.Border
+	tipStroke.Thickness = 1
 	local tipPadding                                    = Instance.new("UIPadding", tooltipFrame)
-	tipPadding.PaddingLeft                              = UDim.new(0, 6)
-	tipPadding.PaddingRight                             = UDim.new(0, 6)
-	tipPadding.PaddingTop                               = UDim.new(0, 4)
-	tipPadding.PaddingBottom                            = UDim.new(0, 4)
+	tipPadding.PaddingLeft                              = UDim.new(0, 10)
+	tipPadding.PaddingRight                             = UDim.new(0, 10)
+	tipPadding.PaddingTop                               = UDim.new(0, 8)
+	tipPadding.PaddingBottom                            = UDim.new(0, 8)
 	local tooltipText                                   = Instance.new("TextLabel")
 	tooltipText.Size                                    = UDim2.new(1, 0, 1, 0)
 	tooltipText.BackgroundTransparency                  = 1
@@ -170,8 +174,8 @@ local function makeTooltipSystem(sg, theme, connections)
 		tooltipActiveElement = element
 		local screenWidth    = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 		local screenHeight   = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
-		local textWidth      = 160
-		local tipW, tipH     = textWidth + 24, 40
+		local textWidth      = 200
+		local tipW, tipH     = textWidth + 30, 36
 		pcall(function()
 			local ts = game:GetService("TextService"):GetTextSize(text, 12, Enum.Font.GothamSemibold, Vector2.new(textWidth, 500))
 			tipW = textWidth + 24
@@ -4118,16 +4122,22 @@ local function createColorPicker(group, items, window, text, default, callback, 
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
 		local pad = 5
-		local winAbsPos = window.window.AbsolutePosition
-		local winAbsSize = window.window.AbsoluteSize
-		if not winAbsPos or not winAbsSize then
-			winAbsPos = Vector2.new(200, 200)
-			winAbsSize = Vector2.new(500, 400)
+		local boxAbs = colorBox.AbsolutePosition
+		local boxSize = colorBox.AbsoluteSize
+		local targetX = boxAbs.X + (boxSize.X / 2) - (pickerW / 2)
+		if not boxAbs or boxAbs.X < 1 then
+			local winAbsPos = window.window.AbsolutePosition or Vector2.new(200, 200)
+			local winAbsSize = window.window.AbsoluteSize or Vector2.new(500, 400)
+			targetX = winAbsPos.X + winAbsSize.X - pickerW - 40
 		end
-		local targetX = winAbsPos.X + winAbsSize.X - pickerW - pad
-		if targetX < pad then targetX = pad end
-		targetX = math.min(targetX + 20, screenW - pickerW - pad)
-		local targetY = math.clamp(winAbsPos.Y + (winAbsSize.Y / 2) - (pickerH / 2) + 20, pad, screenH - pickerH - pad)
+		targetX = math.clamp(targetX, pad, screenW - pickerW - pad)
+		local targetY = boxAbs.Y + boxSize.Y + 2
+		if not boxAbs or boxAbs.Y < 1 then
+			local winAbsPos = window.window.AbsolutePosition or Vector2.new(200, 200)
+			targetY = winAbsPos.Y + 60
+		end
+		if targetY + pickerH > screenH - pad then targetY = boxAbs.Y - pickerH - 2 end
+		targetY = math.clamp(targetY, pad, screenH - pickerH - pad)
 		pickerFrame.Position = UDim2.new(0, targetX, 0, targetY)
 
 		TweenService:Create(pickerScale, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
@@ -5279,7 +5289,7 @@ function UILib.Column:addGroup(title)
 			tipIcon.ZIndex = 5
 			tipIcon.Parent = r
 			local tb = Instance.new("TextButton")
-			tb.Size = UDim2.new(1, 12, 1, 12)
+			tb.Size = UDim2.new(1, 0, 1, 0)
 			tb.BackgroundTransparency = 1
 			tb.Text = ""
 			tb.ZIndex = 6
