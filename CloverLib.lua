@@ -559,9 +559,9 @@ UILib.Parser = {
 				-- explicitly capture local for SetValue call
 				local pass = v
 				warn("[CL-DEBUG]   Toggle.Load calling SetValue with pass:", pass, "type:", type(pass), "elem IS table:", type(elem) == "table")
-				elem:SetValue(pass)
+				elem.SetValue(pass)
 			else
-				elem:SetValue(tostring(v or ""))
+				elem.SetValue(tostring(v or ""))
 			end
 		end,
 	},
@@ -583,7 +583,7 @@ UILib.Parser = {
 			local v = data.value
 			if type(v) == "table" then v = v[1] end
 			warn("[CL-DEBUG]   Dropdown.Load setting:", tostring(v or ""))
-			elem:SetValue(tostring(v or ""))
+			elem.SetValue(tostring(v or ""))
 		end,
 	},
 	MultiDropdown = {
@@ -598,7 +598,7 @@ UILib.Parser = {
 			if data.value then
 				local v = data.value
 				if type(v) == "table" and #v > 0 and type(v[1]) == "table" then v = v[1] end
-				elem:SetValue(v)
+				elem.SetValue(v)
 			end
 		end,
 	},
@@ -617,7 +617,7 @@ UILib.Parser = {
 				local g = tonumber(type(c[2]) == "table" and c[2][1] or c[2]) or 0
 				local b = tonumber(type(c[3]) == "table" and c[3][1] or c[3]) or 0
 				warn("[CL-DEBUG]   ColorPicker.Load r:", r, "g:", g, "b:", b)
-				elem:SetValue(Color3.new(r / 255, g / 255, b / 255))
+				elem.SetValue(Color3.new(r / 255, g / 255, b / 255))
 			else
 				warn("[CL-DEBUG]   ColorPicker.Load data.color is nil!")
 			end
@@ -630,7 +630,7 @@ UILib.Parser = {
 		Load = function(data, elem)
 			local v = data.value
 			if type(v) == "table" then v = v[1] end
-			elem:SetValue(tostring(v or ""))
+			elem.SetValue(tostring(v or ""))
 		end,
 	},
 	TextBox = {
@@ -640,7 +640,7 @@ UILib.Parser = {
 		Load = function(data, elem)
 			local v = data.value
 			if type(v) == "table" then v = v[1] end
-			elem:SetValue(tostring(v or ""))
+			elem.SetValue(tostring(v or ""))
 		end,
 	},
 	NumberBox = {
@@ -649,7 +649,7 @@ UILib.Parser = {
 		end,
 		Load = function(data, elem)
 			local v = type(data.value) == "table" and data.value[1] or data.value
-			elem:SetValue(tonumber(v) or 0)
+			elem.SetValue(tonumber(v) or 0)
 		end,
 	},
 	RangeSlider = {
@@ -661,7 +661,7 @@ UILib.Parser = {
 		Load = function(data, elem)
 			local lo = tonumber(type(data.min) == "table" and data.min[1] or data.min) or 0
 			local hi = tonumber(type(data.max) == "table" and data.max[1] or data.max) or 0
-			elem:SetValue({ lo, hi })
+			elem.SetValue({ lo, hi })
 		end,
 	},
 }
