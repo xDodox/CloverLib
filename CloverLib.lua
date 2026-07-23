@@ -777,6 +777,7 @@ function UILib:loadConfigStructured(name)
 	local decoded = HS:JSONDecode(content)
 	if type(decoded) ~= "table" then self:notify("Invalid config", "error", 3); return end
 	_applyStructuredJSON(self, decoded)
+	self:notify("Loaded: " .. name, "success", 2)
 end
 
 function UILib:exportConfigStructured()
@@ -4064,15 +4065,21 @@ local function createColorPicker(group, items, window, text, default, callback, 
 
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
-		local winAbsPos = window.window.AbsolutePosition
-		local winAbsSize = window.window.AbsoluteSize
-		local pad = 5
-		local targetX = winAbsPos.X + winAbsSize.X + pad
-		if targetX + pickerW > screenW - pad then
-			targetX = winAbsPos.X - pickerW - pad
+		local boxAbs = colorBox.AbsolutePosition
+		local boxSize = colorBox.AbsoluteSize
+		local pad = 6
+		local targetX = boxAbs.X + (boxSize.X / 2) - (pickerW / 2)
+		if targetX < pad or boxAbs.X < 1 then
+			local winAbsPos = window.window.AbsolutePosition
+			local winAbsSize = window.window.AbsoluteSize
+			targetX = winAbsPos.X + winAbsSize.X - pickerW - pad
 		end
-		targetX = math.max(pad, math.min(targetX, screenW - pickerW - pad))
-		local targetY = math.clamp(winAbsPos.Y + (winAbsSize.Y / 2) - (pickerH / 2), pad, screenH - pickerH - pad)
+		targetX = math.clamp(targetX, pad, screenW - pickerW - pad)
+		local targetY = boxAbs.Y + boxSize.Y + pad
+		if targetY + pickerH > screenH - pad or boxAbs.Y < 1 then
+			targetY = boxAbs.Y - pickerH - pad
+		end
+		targetY = math.clamp(targetY, pad, screenH - pickerH - pad)
 		pickerFrame.Position = UDim2.new(0, targetX, 0, targetY)
 
 		TweenService:Create(pickerScale, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
