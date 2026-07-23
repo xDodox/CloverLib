@@ -3967,7 +3967,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Color = window.theme.Border
 	stroke.Thickness = 1
-	rightOffset = rightOffset + 26
+	rightOffset = rightOffset + 30
 	if type(settingsCallback) == "function" then
 		local gearBtn = Instance.new("ImageLabel")
 		local gi = window:lucide("settings")
@@ -4112,7 +4112,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
 		local winAbsPos = window.window.AbsolutePosition
 		local winAbsSize = window.window.AbsoluteSize
-		if not winAbsPos then
+		if not winAbsPos or not winAbsSize then
 			winAbsPos = Vector2.new(200, 200)
 			winAbsSize = Vector2.new(500, 400)
 		end
@@ -5008,31 +5008,34 @@ function UILib.Column:addGroup(title)
 		local popupScale = Instance.new("UIScale", popup)
 		popupScale.Scale = 0
 
+		local popupW, popupH = 240, 40
 		local function updateSize()
 			local h = layout.AbsoluteContentSize.Y + 20
 			popup.Size = UDim2.new(0, 240, 0, h)
+			popupW, popupH = 240, h
 		end
 		layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSize)
 
 		local ng = buildNestedGroup(popup, updateSize)
 		builder(ng)
-		task.wait(0.02)
+		task.wait(0.05)
 		updateSize()
 
 		local anchorAbs = anchorElement.AbsolutePosition
 		local anchorSize = anchorElement.AbsoluteSize
-		if not anchorAbs or anchorAbs.X < 1 then
+		if not anchorAbs or anchorAbs.X < 1 or not anchorSize then
 			anchorAbs = self.window.AbsolutePosition
 			anchorSize = self.window.AbsoluteSize
 		end
+		if not anchorAbs then anchorAbs = Vector2.new(200, 200) end
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
-		local popupW, popupH = popup.Size.X.Offset, popup.Size.Y.Offset
+		popupW, popupH = popup.Size.X.Offset, popup.Size.Y.Offset
 		local pl = 4
 		local tx = math.clamp(anchorAbs.X, pl, screenW - popupW - pl)
-		local ty = anchorAbs.Y + anchorSize.Y + 8
+		local ty = anchorAbs.Y + 24
 		if ty + popupH > screenH - pl then
-			ty = anchorAbs.Y - popupH - 8
+			ty = anchorAbs.Y - popupH - 4
 		end
 		ty = math.max(pl, ty)
 		popup.Position = UDim2.new(0, tx, 0, ty)
@@ -5266,7 +5269,7 @@ function UILib.Column:addGroup(title)
 			rightOffset = rightOffset + 16
 		end
 		if tooltip then
-			local tipIcon = Instance.new("ImageButton")
+			local tipIcon = Instance.new("ImageLabel")
 			local ti = window:lucide("info")
 			tipIcon.Size = UDim2.new(0, 14, 0, 14)
 			tipIcon.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
@@ -5275,9 +5278,14 @@ function UILib.Column:addGroup(title)
 			tipIcon.ImageColor3 = window.theme.GrayLt
 			tipIcon.ScaleType = Enum.ScaleType.Fit
 			tipIcon.ZIndex = 5
-			tipIcon.AutoButtonColor = false
 			tipIcon.Parent = r
-			attachTooltip(tipIcon, tooltip, window)
+			local tb = Instance.new("TextButton")
+			tb.Size = UDim2.new(1, 8, 1, 8)
+			tb.BackgroundTransparency = 1
+			tb.Text = ""
+			tb.ZIndex = 6
+			tb.Parent = tipIcon
+			attachTooltip(tb, tooltip, window)
 			rightOffset = rightOffset + 16
 		end
 		local cbOuter, cbStroke, cbMark, lbl = createToggleCheckbox(r, default, window, text, rightOffset)
