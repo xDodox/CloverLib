@@ -981,6 +981,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	winStrokeFrame.Parent = win
 	Instance.new("UICorner", winStrokeFrame).CornerRadius = UDim.new(0, 10)
 	local winStroke = Instance.new("UIStroke", winStrokeFrame)
+	winStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	winStroke.Color = Color3.new(0, 0, 0)
 	winStroke.Thickness = 2
 	self.originalPosition = win.Position
@@ -2054,6 +2055,7 @@ function UILib:buildUITab()
 		if self.navbarCover then self.navbarCover.BackgroundColor3 = panel end
 		if self.navTopLine then self.navTopLine.BackgroundColor3 = accent end
 		if self.sidebarEdge then self.sidebarEdge.BackgroundColor3 = border end
+		if self.watermark then self.watermark.BackgroundColor3 = panel end
 		for _, tab in ipairs(self.tabOrder or {}) do
 			if tab.subtabs then
 				for _, s in pairs(tab.subtabs) do
@@ -2165,23 +2167,20 @@ function UILib:buildUITab()
 	end, nil, Enum.TextXAlignment.Center)
 	cfg:separator("Share & Import")
 
-	cfg:button("Export Settings", function()
+	cfg:button("Export Config", function()
 		self:shareConfigCode(self.configShareUrl or "https://cloverhub.fun")
 	end, "Upload config and get a short share code", Enum.TextXAlignment.Center, Color3.fromRGB(100, 180, 255))
 
-	local randomCode = ""
-	for i = 1, 6 do randomCode = randomCode .. string.char(math.random(65, 70)) .. string.char(math.random(48, 57)) end
-	if #randomCode > 6 then randomCode = randomCode:sub(1, 6) end
-	local importCodeBox = cfg:textbox("Import Code", "", "e.g. " .. randomCode, function(_) end, nil, "ui_importcode")
+	local shareCodeBox = cfg:textbox("Share Code", "", "e.g. A1B2C3", function(_) end, nil, "ui_sharecode")
 
-	cfg:button("Import Settings", function()
-		local codeBox = importCodeBox.frame and importCodeBox.frame:FindFirstChildOfClass("TextBox")
-		local code = (codeBox and codeBox.Text and codeBox.Text ~= "" and codeBox.Text) or ""
+	cfg:button("Import Config", function()
+		local box = shareCodeBox.frame and shareCodeBox.frame:FindFirstChildOfClass("TextBox")
+		local code = (box and box.Text and box.Text ~= "" and box.Text) or ""
 		if code == "" then self:notify("Enter a share code first", "warning", 2); return end
 		self:importConfigCode(self.configShareUrl or "https://cloverhub.fun", code)
 	end, "Fetch and apply config from share code", Enum.TextXAlignment.Center, Color3.fromRGB(100, 255, 180))
 
-	self:ignoreConfig("ui_width", "ui_height", "ui_togglekey", "ui_watermark", "ui_theme", "ui_cfgdropdown", "ui_autoload", "ui_cfgname", "ui_importcode")
+	self:ignoreConfig("ui_width", "ui_height", "ui_togglekey", "ui_watermark", "ui_theme", "ui_cfgdropdown", "ui_autoload", "ui_cfgname", "ui_sharecode")
 	self:tryAutoLoad()
 end
 
@@ -2230,6 +2229,9 @@ function UILib:importConfigCode(baseUrl, code)
 			local data = HS:JSONDecode(res.Body)
 			if data and data.success and data.json then
 				self:importConfigStructured(data.json)
+				local dir = self:getConfigDir()
+				pcall(makefolder, dir)
+				pcall(writefile, dir .. code .. ".json", data.json)
 			else
 				self:notify("Config not found: " .. code, "error", 3)
 			end
@@ -2241,6 +2243,9 @@ function UILib:importConfigCode(baseUrl, code)
 		local data = HS:JSONDecode(body)
 		if data and data.success and data.json then
 			self:importConfigStructured(data.json)
+			local dir = self:getConfigDir()
+			pcall(makefolder, dir)
+			pcall(writefile, dir .. code .. ".json", data.json)
 		else
 			self:notify("Config not found: " .. code, "error", 3)
 		end
@@ -3315,6 +3320,7 @@ function UILib.Tab:addSubTab(name, description)
 	btn.AutoButtonColor = false
 	btn.Visible = false
 	btn.ZIndex = 5
+	btn.ClipsDescendants = false
 	btn.Parent = self.window.sidebar
 
 	local hov = Instance.new("Frame")
@@ -3353,15 +3359,17 @@ function UILib.Tab:addSubTab(name, description)
 	sub.selGradient = selGradient
 
 	local textCol = Instance.new("Frame")
-	textCol.Size = UDim2.new(1, -12, 1, 0)
-	textCol.Position = UDim2.new(0, 8, 0, 0)
+	textCol.Size = UDim2.new(1, -12, 1, -4)
+	textCol.Position = UDim2.new(0, 8, 0, 2)
 	textCol.BackgroundTransparency = 1
 	textCol.ZIndex = 6
 	textCol.Parent = btn
+	local colLayout = Instance.new("UIListLayout", textCol)
+	colLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	colLayout.Padding = UDim.new(0, 1)
 
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, 0.55, 0)
-	label.Position = UDim2.new(0, 0, 0, 2)
+	label.Size = UDim2.new(1, 0, 0, 16)
 	label.BackgroundTransparency = 1
 	label.Text = name
 	label.TextColor3 = self.window.theme.Gray
@@ -3369,20 +3377,21 @@ function UILib.Tab:addSubTab(name, description)
 	label.TextSize = 12
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.ZIndex = 6
+	label.LayoutOrder = 1
 	label.Parent = textCol
 
 	local desc = Instance.new("TextLabel")
-	desc.Size = UDim2.new(1, 0, description and 0.5 or 0.45, 0)
-	desc.Position = UDim2.new(0, 0, 0.55, 0)
+	desc.Size = UDim2.new(1, 0, 0, 0)
 	desc.BackgroundTransparency = 1
 	desc.Text = description or ""
 	desc.TextColor3 = self.window.theme.Gray
 	desc.Font = Enum.Font.GothamSemibold
-	desc.TextSize = 8
+	desc.TextSize = 10
 	desc.TextXAlignment = Enum.TextXAlignment.Left
 	desc.TextWrapped = true
-	desc.TextTruncate = Enum.TextTruncate.AtEnd
+	desc.AutomaticSize = Enum.AutomaticSize.Y
 	desc.ZIndex = 6
+	desc.LayoutOrder = 2
 	desc.Parent = textCol
 	sub.desc = desc
 
@@ -4060,6 +4069,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
+		task.wait(0.03)
 		local btnAbsPos = colorBox.AbsolutePosition
 		local btnAbsSize = colorBox.AbsoluteSize
 		local pad = 5
@@ -4266,10 +4276,9 @@ local function createColorPicker(group, items, window, text, default, callback, 
 					inputBeganConn:Disconnect()
 					return
 				end
-				local ap, as = pickerFrame.AbsolutePosition, pickerFrame.AbsoluteSize
 				local bp, bs2 = colorBox.AbsolutePosition, colorBox.AbsoluteSize
 				if pos.X >= bp.X and pos.X <= bp.X + bs2.X and pos.Y >= bp.Y and pos.Y <= bp.Y + bs2.Y then return end
-				if pos.X < ap.X or pos.X > ap.X + as.X or pos.Y < ap.Y or pos.Y > ap.Y + as.Y then
+				if pos.X < targetX or pos.X > targetX + pickerW or pos.Y < targetY or pos.Y > targetY + pickerH then
 					task.spawn(closePicker)
 					inputBeganConn:Disconnect()
 				end
