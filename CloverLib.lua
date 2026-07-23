@@ -4102,7 +4102,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 		local pad = 5
 		local boxAbs = colorBox.AbsolutePosition
 		local boxSize = colorBox.AbsoluteSize
-		local targetX = boxAbs.X + (boxSize.X / 2) - (pickerW / 2)
+		local targetX = boxAbs.X
 		if not boxAbs or boxAbs.X < 1 then
 			local wa = window.window.AbsolutePosition or Vector2.new(200, 200)
 			local ws = window.window.AbsoluteSize or Vector2.new(500, 400)
@@ -4971,10 +4971,65 @@ function UILib.Column:addGroup(title)
 		anchorElement = anchorElement or self.window
 		local cacheKey = tostring(anchorElement)
 		if not self._panels then self._panels = {} end
+		if not self._repositionPanel then
+			self._repositionPanel = function(data, anchor)
+				local a = anchor.AbsolutePosition
+				if not a or a.X < 1 then a = self.window.AbsolutePosition end
+				if not a then a = Vector2.new(200, 200) end
+				local sh = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
+				local sw = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
+				local pw = data.popup.AbsoluteSize.X
+				local ph = data.popup.AbsoluteSize.Y
+				if pw < 10 then pw, ph = 240, 100 end
+				local tx = math.clamp(a.X, 4, sw - pw - 4)
+				local ty = a.Y + 36
+				if ty + ph > sh - 4 then ty = a.Y - ph - 4 end
+				ty = math.max(4, ty)
+				data.popup.Position = UDim2.new(0, tx, 0, ty)
+				data.tx, data.ty = tx, ty
+			end
+		end
+		if not self._makeCloseConn then
+			self._makeCloseConn = function(data, ck, anchorEl)
+				local conn
+				conn = UIS.InputBegan:Connect(function(input)
+					if self._panelJustOpened then return end
+					if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
+					local mp = UIS:GetMouseLocation()
+					local d = self._panels[ck]
+					if not d then conn:Disconnect(); return end
+					local pp = d.popup
+					local ap = pp.AbsolutePosition
+					local as = pp.AbsoluteSize
+					if ap and as and mp.X >= ap.X - 4 and mp.X <= ap.X + as.X + 4 and mp.Y >= ap.Y - 4 and mp.Y <= ap.Y + as.Y + 4 then return end
+					local bp = (anchorEl or d.anchor).AbsolutePosition
+					local bs = (anchorEl or d.anchor).AbsoluteSize
+					if bp and bs and mp.X >= bp.X - 4 and mp.X <= bp.X + bs.X + 4 and mp.Y >= bp.Y - 4 and mp.Y <= bp.Y + bs.Y + 4 then return end
+					TweenService:Create(d.scale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
+					task.delay(0.16, function() pcall(function() pp.Visible = false end) end)
+					d.open = false
+					conn:Disconnect()
+					d.conn = nil
+				end)
+				return conn
+			end
+		end
+		local repositionPanel = self._repositionPanel
+		local makeCloseConn = self._makeCloseConn
 		local data = self._panels[cacheKey]
 		if data then
-			data.popup.Visible = false
-			self._panels[cacheKey] = nil
+			if data.open then
+				TweenService:Create(data.scale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
+				task.delay(0.16, function() pcall(function() data.popup.Visible = false end) end)
+				data.open = false
+				if data.conn then data.conn:Disconnect(); data.conn = nil end
+			else
+				repositionPanel(data, anchorElement)
+				data.popup.Visible = true
+				TweenService:Create(data.scale, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+				data.open = true
+				data.conn = makeCloseConn(data, cacheKey, anchorElement)
+			end
 			return
 		end
 		local popup = Instance.new("Frame")
@@ -4993,10 +5048,10 @@ function UILib.Column:addGroup(title)
 		ps.Thickness = 1.5
 		ps.Transparency = 0.2
 
-		Instance.new("UIPadding", popup).PaddingLeft = UDim.new(0, 10)
-		Instance.new("UIPadding", popup).PaddingRight = UDim.new(0, 10)
-		Instance.new("UIPadding", popup).PaddingTop = UDim.new(0, 8)
-		Instance.new("UIPadding", popup).PaddingBottom = UDim.new(0, 8)
+		Instance.new("UIPadding", popup).PaddingLeft = UDim.new(0, 12)
+		Instance.new("UIPadding", popup).PaddingRight = UDim.new(0, 12)
+		Instance.new("UIPadding", popup).PaddingTop = UDim.new(0, 10)
+		Instance.new("UIPadding", popup).PaddingBottom = UDim.new(0, 10)
 
 		local layout = Instance.new("UIListLayout", popup)
 		layout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -5007,13 +5062,15 @@ function UILib.Column:addGroup(title)
 
 		local function updateSize()
 			local h = layout.AbsoluteContentSize.Y + 20
-			popup.Size = UDim2.new(0, 240, 0, h)
+			popup.Size = UDim2.new(0, 240, 0, math.max(h, 30))
 		end
 		layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSize)
 
 		local ng = buildNestedGroup(popup, updateSize)
 		builder(ng)
-		task.wait(0.05)
+		task.wait(0.08)
+		updateSize()
+		task.wait(0.02)
 		updateSize()
 
 		local anchorAbs = anchorElement.AbsolutePosition
@@ -5021,7 +5078,8 @@ function UILib.Column:addGroup(title)
 		if not anchorAbs then anchorAbs = Vector2.new(200, 200) end
 		local screenH = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
 		local screenW = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920
-		local pw, ph = popup.Size.X.Offset, popup.Size.Y.Offset
+		local pw = popup.AbsoluteSize.X
+		local ph = popup.AbsoluteSize.Y
 		if pw < 10 then pw, ph = 240, 100 end
 		local tx = math.clamp(anchorAbs.X, 4, screenW - pw - 4)
 		local ty = anchorAbs.Y + 36
@@ -5030,30 +5088,14 @@ function UILib.Column:addGroup(title)
 		popup.Position = UDim2.new(0, tx, 0, ty)
 		popup.Visible = true
 
+		data = { popup = popup, scale = popupScale, anchor = anchorElement, open = true }
+		repositionPanel(data, anchorElement)
 		TweenService:Create(popupScale, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 
-		self._panels[cacheKey] = { popup = popup, scale = popupScale, tx = tx, ty = ty, pw = pw, ph = ph, anchor = anchorElement }
 		self._panelJustOpened = true
-		task.delay(0.1, function() self._panelJustOpened = false end)
-
-		local conn
-		conn = UIS.InputBegan:Connect(function(input)
-			if self._panelJustOpened then return end
-			if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
-			local mp = UIS:GetMouseLocation()
-			local d = self._panels[cacheKey]
-			if not d then conn:Disconnect(); return end
-				if mp.X >= d.tx - 20 and mp.X <= d.tx + d.pw + 20 and mp.Y >= d.ty - 20 and mp.Y <= d.ty + d.ph + 20 then return end
-			local bp = d.anchor.AbsolutePosition
-			local bs = d.anchor.AbsoluteSize
-			if bp and bs and mp.X >= bp.X - 4 and mp.X <= bp.X + bs.X + 4 and mp.Y >= bp.Y - 4 and mp.Y <= bp.Y + bs.Y + 4 then return end
-			TweenService:Create(d.scale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
-			task.delay(0.16, function() pcall(function() d.popup.Visible = false end) end)
-			conn:Disconnect()
-			self._panels[cacheKey] = nil
-		end)
-		d = self._panels[cacheKey]
-		if d then d.conn = conn end
+		task.delay(0.15, function() self._panelJustOpened = false end)
+		data.conn = makeCloseConn(data, cacheKey, anchorElement)
+		self._panels[cacheKey] = data
 	end
 
 	local function createToggleCheckbox(parent, default, window, text, rightOffset)
@@ -5275,6 +5317,7 @@ function UILib.Column:addGroup(title)
 			local tt = window.tooltip
 			local showing = false
 			tb.MouseButton1Click:Connect(function()
+				if not tt then return end
 				if showing then tt.hide(); showing = false
 				else tt.show(tooltip, tb); showing = true end
 			end)
