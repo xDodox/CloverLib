@@ -1833,12 +1833,13 @@ end
 function UILib:setupKeybindSystem()
 	if self._hudFrame then return end
 	local hud = Instance.new("Frame")
-	hud.Size = UDim2.new(0, 160, 0, 0)
+	hud.Size = UDim2.new(0, 160, 0, 24)
 	hud.Position = self._hudPos or UDim2.new(0, 10, 0.5, 0)
 	hud.AnchorPoint = Vector2.new(0, 0.5)
 	hud.BackgroundColor3 = self.theme.Panel
 	hud.BackgroundTransparency = 0.25
 	hud.BorderSizePixel = 0
+	hud.ClipsDescendants = true
 	hud.ZIndex = 200
 	hud.Visible = false
 	hud.Parent = self.sg
@@ -2018,6 +2019,228 @@ function UILib:updateKeybindEntry(kb)
 	kb.entry.nameLabel.TextColor3 = kb.active and self.theme.White or self.theme.GrayLt
 	kb.entry.infoLabel.Text = kb.mode == "Always" and "[A] " .. kb.key or "[" .. kb.mode:sub(1,1) .. "] " .. kb.key
 	kb.entry.infoLabel.TextColor3 = kb.active and self.theme.Accent or self.theme.Gray
+end
+
+function UILib:createCard(title, accentColor)
+	accentColor = accentColor or self.theme.Accent
+	if not self._cards then self._cards = {} end
+	local card = {}
+	card.window = self
+	card.title = title
+	card.accent = accentColor
+	card.subtabs = {}
+	card.activeSub = nil
+	card.visible = false
+
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(0, 280, 0, 360)
+	frame.BackgroundColor3 = self.theme.Panel
+	frame.BackgroundTransparency = 0.15
+	frame.BorderSizePixel = 0
+	frame.ZIndex = 999
+	frame.Visible = false
+	frame.Parent = self.sg
+	Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
+	local frameStroke = Instance.new("UIStroke", frame)
+	frameStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	frameStroke.Color = accentColor
+	frameStroke.Thickness = 1.5
+	card.frame = frame
+
+	local topBar = Instance.new("Frame")
+	topBar.Size = UDim2.new(1, 0, 0, 3)
+	topBar.BackgroundColor3 = accentColor
+	topBar.BorderSizePixel = 0
+	topBar.ZIndex = 1000
+	topBar.Parent = frame
+
+	local titleLbl = Instance.new("TextLabel")
+	titleLbl.Size = UDim2.new(1, 0, 0, 28)
+	titleLbl.Position = UDim2.new(0, 0, 0, 8)
+	titleLbl.BackgroundTransparency = 1
+	titleLbl.Text = title:upper()
+	titleLbl.TextColor3 = self.theme.White
+	titleLbl.Font = Enum.Font.GothamBold
+	titleLbl.TextSize = 14
+	titleLbl.TextXAlignment = Enum.TextXAlignment.Center
+	titleLbl.ZIndex = 1000
+	titleLbl.Parent = frame
+
+	local accentLine = Instance.new("Frame")
+	accentLine.Size = UDim2.new(0.6, 0, 0, 1)
+	accentLine.Position = UDim2.new(0.2, 0, 0, 38)
+	accentLine.BackgroundColor3 = accentColor
+	accentLine.BorderSizePixel = 0
+	accentLine.ZIndex = 1000
+	accentLine.Parent = frame
+
+	local tabBar = Instance.new("Frame")
+	tabBar.Size = UDim2.new(1, 0, 0, 32)
+	tabBar.Position = UDim2.new(0, 0, 0, 44)
+	tabBar.BackgroundTransparency = 1
+	tabBar.ZIndex = 1000
+	tabBar.Parent = frame
+	local tabLayout = Instance.new("UIListLayout", tabBar)
+	tabLayout.FillDirection = Enum.FillDirection.Horizontal
+	tabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	tabLayout.Padding = UDim.new(0, 12)
+	tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+	local contentHolder = Instance.new("CanvasGroup")
+	contentHolder.Size = UDim2.new(1, 0, 1, -80)
+	contentHolder.Position = UDim2.new(0, 0, 0, 80)
+	contentHolder.BackgroundTransparency = 1
+	contentHolder.BorderSizePixel = 0
+	contentHolder.ZIndex = 1000
+	contentHolder.GroupTransparency = 0
+	contentHolder.Parent = frame
+	local contentPad = Instance.new("UIPadding", contentHolder)
+	contentPad.PaddingLeft = UDim.new(0, 12)
+	contentPad.PaddingRight = UDim.new(0, 12)
+	contentPad.PaddingTop = UDim.new(0, 6)
+	contentPad.PaddingBottom = UDim.new(0, 6)
+
+	local contentFrames = {}
+	local contentLayout = Instance.new("UIListLayout", contentHolder)
+	contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+	card.frame = frame
+	card.contentHolder = contentHolder
+	card.contentFrames = contentFrames
+	card.tabBar = tabBar
+
+	function card:addSubTab(name, icon, builder)
+		local active = #self.subtabs == 0
+		local tabBtn = Instance.new("ImageButton")
+		tabBtn.Size = UDim2.new(0, 24, 0, 24)
+		tabBtn.BackgroundTransparency = 1
+		tabBtn.Image = self.window:lucide(icon) or ""
+		tabBtn.ImageColor3 = active and self.accent or self.window.theme.Gray
+		tabBtn.ZIndex = 1000
+		tabBtn.Parent = tabBar
+
+		local contentFrame = Instance.new("Frame")
+		contentFrame.Size = UDim2.new(1, 0, 1, 0)
+		contentFrame.BackgroundTransparency = 1
+		contentFrame.Visible = active
+		contentFrame.Parent = contentHolder
+		local cLayout = Instance.new("UIListLayout", contentFrame)
+		cLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		cLayout.Padding = UDim.new(0, 3)
+
+		local fakeColumn = { window = self.window, frame = contentFrame, tab = nil, sub = nil }
+		local realGroup = UILib.Column.addGroup(fakeColumn, name)
+		realGroup.frame.BackgroundTransparency = 1
+		realGroup.headerRow.Visible = false
+		realGroup.frame.Size = UDim2.new(1, 0, 1, 0)
+		realGroup.items.Position = UDim2.new(0, 0, 0, 0)
+		realGroup.items.Size = UDim2.new(1, 0, 1, 0)
+
+		builder(realGroup)
+
+		local data = { name = name, btn = tabBtn, frame = contentFrame, builder = builder, group = realGroup }
+		table.insert(self.subtabs, data)
+		if active then self.activeSub = data end
+
+		tabBtn.MouseButton1Click:Connect(function()
+			self:switchSubTab(data)
+		end)
+
+		return data
+	end
+
+	function card:switchSubTab(data)
+		if self.activeSub == data then return end
+		local old = self.activeSub
+		self.activeSub = data
+		TweenService:Create(contentHolder, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { GroupTransparency = 1 }):Play()
+		task.delay(0.16, function()
+			if old then old.frame.Visible = false; old.btn.ImageColor3 = self.window.theme.Gray end
+			data.frame.Visible = true; data.btn.ImageColor3 = self.accent
+			TweenService:Create(contentHolder, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { GroupTransparency = 0 }):Play()
+		end)
+	end
+
+	local cardScale = Instance.new("UIScale", frame)
+	cardScale.Scale = 0
+	card.scale = cardScale
+
+	function card:show()
+		self.visible = true
+		table.insert(self.window._cards, self)
+		self:_reposition()
+		frame.Visible = true
+		TweenService:Create(cardScale, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	end
+
+	function card:hide()
+		self.visible = false
+		for i, c in ipairs(self.window._cards) do
+			if c == self then table.remove(self.window._cards, i); break end
+		end
+		self:_reposition()
+		TweenService:Create(cardScale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
+		task.delay(0.16, function() frame.Visible = false end)
+	end
+
+	function card:toggle()
+		if self.visible then self:hide() else self:show() end
+	end
+
+	function card:_reposition()
+		local cards = self.window._cards
+		local vis = {}
+		for _, c in ipairs(cards) do if c.visible then table.insert(vis, c) end end
+		local n = #vis
+		if n == 0 then return end
+		local winAbs = self.window.window.AbsolutePosition
+		local winSize = self.window.window.AbsoluteSize
+		local pad, cardW = 20, 260
+		if not self.window._cardCenter then self.window._cardCenter = vis[1] end
+		local center = self.window._cardCenter
+		if not center.visible then
+			for _, c in ipairs(vis) do center = c; break end
+			self.window._cardCenter = center
+		end
+		local order = { center }
+		local idx = 1
+		for _, c in ipairs(cards) do
+			if c.visible and c ~= center then
+				if idx % 2 == 1 then table.insert(order, c)
+				else table.insert(order, 2, c) end
+				idx = idx + 1
+			end
+		end
+		for i, c in ipairs(order) do
+			local tx, tz, scale = 0, 1, 1
+			if n == 1 then
+				tx = winAbs.X + winSize.X - cardW - pad; tz = 2; scale = 1
+			else
+				if i == 1 then tx = winAbs.X + winSize.X/2 - cardW/2; tz = 2; scale = 1
+				elseif i == 2 then tx = winAbs.X + pad; tz = 1; scale = 0.92
+				elseif i == 3 then tx = winAbs.X + winSize.X - cardW - pad; tz = 1; scale = 0.92
+				else
+					local row = math.floor((i - 1) / 2)
+					local col = (i - 1) % 2
+					tx = winAbs.X + pad + col * (winSize.X - cardW - pad*2)
+					tz = 0; scale = 0.85
+				end
+			end
+			c.frame.ZIndex = 999 + tz
+			c.frame.BackgroundTransparency = tz == 2 and 0.12 or (tz == 1 and 0.25 or 0.4)
+			local ty = winAbs.Y + winSize.Y/2 - c.frame.Size.Y.Offset * scale / 2
+			c.frame.Position = UDim2.new(0, math.max(0, tx), 0, math.max(0, ty))
+			local s = c.frame:FindFirstChildOfClass("UIScale") or Instance.new("UIScale", c.frame)
+			TweenService:Create(s, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Scale = scale }):Play()
+		end
+	end
+	function card:focus()
+		self.window._cardCenter = self
+		self:_reposition()
+	end
+	end
+
+	return card
 end
 
 function UILib:buildUITab()
