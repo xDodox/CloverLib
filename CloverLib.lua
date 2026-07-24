@@ -1259,12 +1259,14 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	local _searchClearing = false
 
 	local function restoreAllVisibility()
-		if self.activeTab and self.activeTab.subtabOrder then
-			for _, sub in ipairs(self.activeTab.subtabOrder) do
-				if sub.btn then sub.btn.Visible = true end
-				if sub.groups then
-					for _, g in ipairs(sub.groups) do
-						if g.frame then g.frame.Visible = true end
+		for _, tab in ipairs(self.tabOrder or {}) do
+			if tab.subtabOrder then
+				for _, sub in ipairs(tab.subtabOrder) do
+					if sub.btn then sub.btn.Visible = true end
+					if sub.groups then
+						for _, g in ipairs(sub.groups) do
+							if g.frame then g.frame.Visible = true end
+						end
 					end
 				end
 			end
@@ -1519,7 +1521,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 
 		table.insert(self.connections,
 		UIS.InputBegan:Connect(function(input, gpe)
-			if input.KeyCode == self.toggleKey then
+			if input.KeyCode and input.KeyCode == self.toggleKey then
 				self:setVisible(not self.visibleTarget)
 			end
 		end))
@@ -1955,7 +1957,8 @@ function UILib:unregisterKeybind(kb)
 		local idx = table.find(self._hudEntries, kb.entry)
 		if idx then table.remove(self._hudEntries, idx) end
 		if #self._hudEntries == 0 then self._hudFrame.Visible = false end
-		self._hudFrame.Size = UDim2.new(0, 160, 0, self._hudLayout.AbsoluteContentSize.Y + 8)
+		task.wait(0.03)
+		self._hudFrame.Size = UDim2.new(0, 160, 0, math.max(self._hudLayout.AbsoluteContentSize.Y + 8, 30))
 	end
 end
 
@@ -2016,7 +2019,8 @@ function UILib:addKeybindEntry(kb)
 	kb.entry = entry
 	table.insert(self._hudEntries, entry)
 	self._hudFrame.Visible = true
-	self._hudFrame.Size = UDim2.new(0, 160, 0, self._hudLayout.AbsoluteContentSize.Y + 8)
+	task.wait(0.03)
+	self._hudFrame.Size = UDim2.new(0, 160, 0, math.max(self._hudLayout.AbsoluteContentSize.Y + 8, 30))
 end
 
 function UILib:updateKeybindEntry(kb)
