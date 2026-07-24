@@ -980,10 +980,9 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 
 	local function updateLayout()
 		local sw = getSidebarWidth()
-		local mobile = UIS.TouchEnabled
 		local showSidebar = not self.activeTab or self.activeTab.showSidebar ~= false
 		if self.sidebar then
-			self.sidebar.Size = UDim2.new(0, mobile and 0 or sw, 1, -92)
+			self.sidebar.Size = UDim2.new(0, sw, 1, -92)
 			self.sidebar.Visible = showSidebar
 			for _, sub in ipairs(self.allSubTabs) do
 				if sub.btn then
@@ -993,12 +992,12 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		end
 		if self.sidebarEdge then
 			self.sidebarEdge.Visible = showSidebar
-			self.sidebarEdge.Position = UDim2.new(0, mobile and 0 or sw, 0, 46)
+			self.sidebarEdge.Position = UDim2.new(0, sw, 0, 46)
 			self.sidebarEdge.Size = UDim2.new(0, 1, 1, -92)
 		end
 		if self.content then
-			local offset = (not mobile and showSidebar) and (sw + 1) or 0
-			local contentW = mobile and self.size.X or (showSidebar and (self.size.X - sw - 1) or self.size.X)
+			local offset = showSidebar and (sw + 1) or 0
+			local contentW = showSidebar and (self.size.X - sw - 1) or self.size.X
 			self.content.Size = UDim2.new(0, contentW, 1, -92)
 			self.content.Position = UDim2.new(0, offset, 0, 46)
 		end
@@ -1609,71 +1608,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 				self:toggle()
 			end
 		end)
-
-		-- Mobile sidebar: hidden by default, toggle via hamburger button
-		self.sidebar.Visible = false
-		if self.sidebarEdge then self.sidebarEdge.Visible = false end
-		self.mobileSidebarOpen = false
-
-		local sidebarOverlay = Instance.new("TextButton")
-		sidebarOverlay.Size = UDim2.new(0, 0, 1, 0)
-		sidebarOverlay.Position = UDim2.new(0, 0, 0, 0)
-		sidebarOverlay.BackgroundColor3 = Color3.new(0, 0, 0)
-		sidebarOverlay.BackgroundTransparency = 0.5
-		sidebarOverlay.BorderSizePixel = 0
-		sidebarOverlay.Text = ""
-		sidebarOverlay.Visible = false
-		sidebarOverlay.ZIndex = 200
-		sidebarOverlay.Parent = win
-		self.sidebarOverlay = sidebarOverlay
-
-		local hamburger = Instance.new("TextButton")
-		hamburger.Size = UDim2.new(0, 32, 0, 32)
-		hamburger.Position = UDim2.new(0, 8, 0.5, -16)
-		hamburger.BackgroundColor3 = self.theme.Item
-		hamburger.BorderSizePixel = 0
-		hamburger.AutoButtonColor = false
-		hamburger.Text = "☰"
-		hamburger.TextColor3 = self.theme.White
-		hamburger.Font = Enum.Font.GothamBold
-		hamburger.TextSize = 18
-		hamburger.ZIndex = 20
-		hamburger.Parent = header
-		Instance.new("UICorner", hamburger).CornerRadius = UDim.new(0, 4)
-		self.hamburgerBtn = hamburger
-
-		local function toggleMobileSidebar()
-			self.mobileSidebarOpen = not self.mobileSidebarOpen
-			sidebarOverlay.Visible = self.mobileSidebarOpen
-			sidebarOverlay.Size = UDim2.new(0, self.mobileSidebarOpen and self.size.X or 0, 1, 0)
-			if self.mobileSidebarOpen then
-				self.sidebar.Visible = true
-				self.sidebarEdge.Visible = true
-				self.sidebar.ZIndex = 210
-				self.sidebar.BackgroundTransparency = 0
-				TweenService:Create(self.sidebar, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-					Size = UDim2.new(0, getSidebarWidth(), 1, -92)
-				}):Play()
-			else
-				TweenService:Create(self.sidebar, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-					Size = UDim2.new(0, 0, 1, -92)
-				}):Play()
-				TweenService:Create(sidebarOverlay, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-					Size = UDim2.new(0, 0, 1, 0)
-				}):Play()
-				task.delay(0.16, function()
-					if not self.mobileSidebarOpen then
-						self.sidebar.Visible = false
-						self.sidebarEdge.Visible = false
-						sidebarOverlay.Visible = false
-					end
-				end)
-			end
-		end
-		hamburger.MouseButton1Click:Connect(toggleMobileSidebar)
-		sidebarOverlay.MouseButton1Click:Connect(function()
-			if self.mobileSidebarOpen then toggleMobileSidebar() end
-		end)
 	end
 
 	self.tabs = {}
@@ -2156,6 +2090,9 @@ function UILib:buildUITab()
 		if self.sidebarEdge then self.sidebarEdge.BackgroundColor3 = border end
 		if self.tooltip then self.tooltip.frame.BackgroundColor3 = panel end
 		if self.watermark then self.watermark.BackgroundColor3 = panel end
+		for _, d in pairs(self._panels or {}) do
+			if d.popup then d.popup.BackgroundColor3 = panel end
+		end
 		for _, tab in ipairs(self.tabOrder or {}) do
 			if tab.subtabs then
 				for _, s in pairs(tab.subtabs) do
@@ -4128,7 +4065,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 	label.Position = UDim2.new(0, 4, 0, 0)
 	label.BackgroundTransparency = 1
 	label.Text = text
-	label.TextColor3 = window.theme.GrayLt
+	label.TextColor3 = window.theme.White
 	label.Font = Enum.Font.GothamSemibold
 	label.TextSize = 13
 	label.TextXAlignment = Enum.TextXAlignment.Left
@@ -5119,6 +5056,9 @@ function UILib.Column:addGroup(title)
 	end
 
 	function UILib:openAdvancedPanel(anchorElement, builder)
+		if self._panelBusy then return end
+		self._panelBusy = true
+		task.delay(0.3, function() self._panelBusy = false end)
 		if self.tooltip then self.tooltip.hide() end
 		anchorElement = anchorElement or self.window
 		local cacheKey = anchorElement
@@ -5155,13 +5095,15 @@ function UILib.Column:addGroup(title)
 				local px = d.tx or 200
 				local py = d.ty or 200
 				if mp.X >= px - 8 and mp.X <= px + as.X + 8 and mp.Y >= py - 8 and mp.Y <= py + as.Y + 8 then return end
-				for pf, _ in pairs(_pickerCons) do
-					if pf and pf.Parent then
-						local pa = pf.AbsolutePosition
-						local ps = pf.AbsoluteSize
-						if pa and ps and mp.X >= pa.X and mp.X <= pa.X + ps.X and mp.Y >= pa.Y and mp.Y <= pa.Y + ps.Y then return end
+			for pf, _ in pairs(_pickerCons) do
+				if pf and pf.Parent and pf.Visible then
+					local pa = pf.AbsolutePosition
+					local ps = pf.AbsoluteSize
+					if pa and ps and ps.X > 10 then
+						if mp.X >= pa.X - 4 and mp.X <= pa.X + ps.X + 4 and mp.Y >= pa.Y - 4 and mp.Y <= pa.Y + ps.Y + 4 then return end
 					end
 				end
+			end
 					local bp = (anchorEl or d.anchor).AbsolutePosition
 					local bs = (anchorEl or d.anchor).AbsoluteSize
 					if bp and bs and mp.X >= bp.X - 4 and mp.X <= bp.X + bs.X + 4 and mp.Y >= bp.Y - 4 and mp.Y <= bp.Y + bs.Y + 4 then return end
@@ -6070,7 +6012,7 @@ function UILib.Column:addGroup(title)
 			end)
 		end)
 		local elem = { ID = id, Value = currentName, label = cfgId or text, _mode = "keybind" }
-		function elem:SetValue(val)
+		elem.SetValue = function(val)
 			kbtn.Text = type(val) == "string" and val or tostring(val)
 			window.configs[id].Value = val
 		end
