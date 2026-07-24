@@ -1817,16 +1817,25 @@ function UILib:setupKeybindSystem()
 	hudLayout.Padding = UDim.new(0, 2)
 
 	local header = Instance.new("TextLabel")
-	header.Size = UDim2.new(1, 0, 0, 12)
+	header.Size = UDim2.new(1, 0, 0, 14)
 	header.BackgroundTransparency = 1
 	header.Text = "KEYBINDS"
 	header.TextColor3 = self.theme.GrayLt
 	header.Font = Enum.Font.GothamBold
 	header.TextSize = 8
-	header.TextXAlignment = Enum.TextXAlignment.Left
+	header.TextXAlignment = Enum.TextXAlignment.Center
 	header.ZIndex = 201
 	header.LayoutOrder = 1
 	header.Parent = hud
+
+	local headerLine = Instance.new("Frame")
+	headerLine.Size = UDim2.new(1, 0, 0, 1)
+	headerLine.BackgroundColor3 = self.theme.Accent
+	headerLine.BackgroundTransparency = 0.4
+	headerLine.BorderSizePixel = 0
+	headerLine.ZIndex = 201
+	headerLine.LayoutOrder = 2
+	headerLine.Parent = hud
 
 	local hudDrag = Instance.new("TextButton")
 	hudDrag.Size = UDim2.new(1, 0, 1, 0)
@@ -1922,43 +1931,34 @@ function UILib:addKeybindEntry(kb)
 	row.Size = UDim2.new(1, 0, 0, 14)
 	row.BackgroundTransparency = 1
 	row.ZIndex = 201
-	row.LayoutOrder = #self._hudEntries + 2
+	row.LayoutOrder = #self._hudEntries + 3
 	row.Parent = self._hudFrame
 
 	local nameLbl = Instance.new("TextLabel")
-	nameLbl.Size = UDim2.new(0.48, 0, 1, 0)
+	nameLbl.Size = UDim2.new(0, 0, 1, 0)
+	nameLbl.AutomaticSize = Enum.AutomaticSize.X
 	nameLbl.BackgroundTransparency = 1
 	nameLbl.Text = kb.name
-	nameLbl.TextColor3 = self.theme.White
+	nameLbl.TextColor3 = kb.active and self.theme.White or self.theme.GrayLt
 	nameLbl.Font = Enum.Font.GothamSemibold
 	nameLbl.TextSize = 9
 	nameLbl.TextXAlignment = Enum.TextXAlignment.Left
 	nameLbl.ZIndex = 202
 	nameLbl.Parent = row
 
-	local modeLbl = Instance.new("TextLabel")
-	modeLbl.Size = UDim2.new(0.24, 0, 1, 0)
-	modeLbl.Position = UDim2.new(0.48, 0, 0, 0)
-	modeLbl.BackgroundTransparency = 1
-	modeLbl.Text = "[" .. kb.mode .. "]"
-	modeLbl.TextColor3 = self.theme.Gray
-	modeLbl.Font = Enum.Font.GothamSemibold
-	modeLbl.TextSize = 9
-	modeLbl.TextXAlignment = Enum.TextXAlignment.Left
-	modeLbl.ZIndex = 202
-	modeLbl.Parent = row
-
-	local keyLbl = Instance.new("TextLabel")
-	keyLbl.Size = UDim2.new(0.28, 0, 1, 0)
-	keyLbl.Position = UDim2.new(0.72, 0, 0, 0)
-	keyLbl.BackgroundTransparency = 1
-	keyLbl.Text = kb.key
-	keyLbl.TextColor3 = kb.active and self.theme.Accent or self.theme.Gray
-	keyLbl.Font = Enum.Font.GothamBold
-	keyLbl.TextSize = 9
-	keyLbl.TextXAlignment = Enum.TextXAlignment.Right
-	keyLbl.ZIndex = 202
-	keyLbl.Parent = row
+	local infoLbl = Instance.new("TextLabel")
+	infoLbl.Size = UDim2.new(0, 0, 1, 0)
+	infoLbl.AutomaticSize = Enum.AutomaticSize.X
+	infoLbl.Position = UDim2.new(1, 0, 0, 0)
+	infoLbl.AnchorPoint = Vector2.new(1, 0)
+	infoLbl.BackgroundTransparency = 1
+	infoLbl.Text = kb.mode == "Always" and "[A] " .. kb.key or "[" .. kb.mode:sub(1,1) .. "] " .. kb.key
+	infoLbl.TextColor3 = kb.active and self.theme.Accent or self.theme.Gray
+	infoLbl.Font = Enum.Font.GothamBold
+	infoLbl.TextSize = 9
+	infoLbl.TextXAlignment = Enum.TextXAlignment.Right
+	infoLbl.ZIndex = 202
+	infoLbl.Parent = row
 
 	row.InputBegan:Connect(function(inp)
 		if inp.UserInputType == Enum.UserInputType.MouseButton2 then
@@ -1970,7 +1970,7 @@ function UILib:addKeybindEntry(kb)
 		end
 	end)
 
-	local entry = { row = row, keyLabel = keyLbl, modeLabel = modeLbl }
+	local entry = { row = row, nameLabel = nameLbl, infoLabel = infoLbl }
 	kb.entry = entry
 	table.insert(self._hudEntries, entry)
 	self._hudFrame.Visible = true
@@ -1978,9 +1978,9 @@ end
 
 function UILib:updateKeybindEntry(kb)
 	if not kb.entry then return end
-	kb.entry.keyLabel.TextColor3 = kb.active and self.theme.Accent or self.theme.Gray
-	kb.entry.modeLabel.Text = "[" .. kb.mode .. "]"
-	kb.entry.keyLabel.Text = kb.key
+	kb.entry.nameLabel.TextColor3 = kb.active and self.theme.White or self.theme.GrayLt
+	kb.entry.infoLabel.Text = kb.mode == "Always" and "[A] " .. kb.key or "[" .. kb.mode:sub(1,1) .. "] " .. kb.key
+	kb.entry.infoLabel.TextColor3 = kb.active and self.theme.Accent or self.theme.Gray
 end
 
 function UILib:buildUITab()
@@ -2401,6 +2401,13 @@ function UILib:setVisible(visible)
 		self.uiScale.Scale = self._targetScale
 		TweenService:Create(self.uiScale, TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.In), { Scale = 0 }):Play()
 		task.delay(0.16, function() if not self.visibleTarget then self.window.Visible = false end end)
+		for _, d in pairs(self._panels or {}) do
+			if d.open then
+				pcall(function() d.popup.Visible = false end)
+				d.open = false
+				if d.conn then d.conn:Disconnect(); d.conn = nil end
+			end
+		end
 	end
 end
 
@@ -3603,6 +3610,7 @@ local function attachTooltip(element, text, window)
 	local tt = window.tooltip
 	element.MouseEnter:Connect(function()
 		if window.tooltipSuppressed then return end
+		for _, d in pairs(window._panels or {}) do if d.open then return end end
 		tt.show(text, element)
 	end)
 	element.MouseLeave:Connect(function() tt.hide() end)
@@ -5450,6 +5458,7 @@ function UILib.Column:addGroup(title)
 			tb.Parent = tipIcon
 			tb.MouseEnter:Connect(function()
 				if not window.tooltip or window.tooltipSuppressed then return end
+				for _, d in pairs(window._panels or {}) do if d.open then return end end
 				window.tooltip.show(tooltip, tb)
 			end)
 			tb.MouseLeave:Connect(function()
