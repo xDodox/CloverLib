@@ -206,7 +206,7 @@ local function makeTooltipSystem(sg, theme, connections)
 		showTooltip(text, element)
 	end
 
-	return { show = showTooltip, hide = hideTooltip, start = startTooltipDelay }
+	return { show = showTooltip, hide = hideTooltip, start = startTooltipDelay, frame = tooltipFrame }
 end
 
 function UILib:notify(message, notifType, duration)
@@ -2012,6 +2012,7 @@ function UILib:buildUITab()
 		if self.navbarCover then self.navbarCover.BackgroundColor3 = panel end
 		if self.navTopLine then self.navTopLine.BackgroundColor3 = accent end
 		if self.sidebarEdge then self.sidebarEdge.BackgroundColor3 = border end
+		if self.tooltip then self.tooltip.frame.BackgroundColor3 = panel end
 		if self.watermark then self.watermark.BackgroundColor3 = panel end
 		for _, tab in ipairs(self.tabOrder or {}) do
 			if tab.subtabs then
@@ -4110,7 +4111,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 			targetX = wa.X + ws.X - pickerW - 30
 		end
 		targetX = math.clamp(targetX, pad, screenW - pickerW - pad)
-		local targetY = boxAbs.Y + boxSize.Y + 40
+		local targetY = boxAbs.Y + boxSize.Y + 50
 		if not boxAbs or boxAbs.Y < 1 then
 			local wa = window.window.AbsolutePosition or Vector2.new(200, 200)
 			targetY = wa.Y + 120
@@ -5245,30 +5246,6 @@ function UILib.Column:addGroup(title)
 				state = not state
 				elem.SetValue(state)
 			end)
-			if tooltip then
-				local tipIcon = Instance.new("ImageLabel")
-				tipIcon.Size = UDim2.new(0, 14, 0, 14)
-				tipIcon.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
-				tipIcon.BackgroundTransparency = 1
-				tipIcon.Image = window:lucide("info") or ""
-				tipIcon.ImageColor3 = window.theme.GrayLt
-				tipIcon.ScaleType = Enum.ScaleType.Fit
-				tipIcon.ZIndex = 5
-				tipIcon.Parent = toggleRow
-				local tb = Instance.new("TextButton")
-				tb.Size = UDim2.new(1, 0, 1, 0)
-				tb.BackgroundTransparency = 1
-				tb.Text = ""
-				tb.ZIndex = 6
-				tb.Parent = tipIcon
-				tb.MouseEnter:Connect(function()
-					if not window.tooltip or window.tooltipSuppressed then return end
-					window.tooltip.show(tooltip, tb)
-				end)
-				tb.MouseLeave:Connect(function()
-					if window.tooltip then window.tooltip.hide() end
-				end)
-			end
 			updateContentSize()
 			elem.frame = container
 		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
@@ -6504,30 +6481,6 @@ function UILib.Column:addGroup(title)
 			}):Play()
 			task.delay(0.21, updateSize)
 		end)
-		if tooltip then
-			local tipIcon = Instance.new("ImageLabel")
-			tipIcon.Size = UDim2.new(0, 14, 0, 14)
-			tipIcon.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
-			tipIcon.BackgroundTransparency = 1
-			tipIcon.Image = window:lucide("info") or ""
-			tipIcon.ImageColor3 = window.theme.GrayLt
-			tipIcon.ScaleType = Enum.ScaleType.Fit
-			tipIcon.ZIndex = 5
-			tipIcon.Parent = toggleRow
-			local tb = Instance.new("TextButton")
-			tb.Size = UDim2.new(1, 0, 1, 0)
-			tb.BackgroundTransparency = 1
-			tb.Text = ""
-			tb.ZIndex = 6
-			tb.Parent = tipIcon
-			tb.MouseEnter:Connect(function()
-				if not window.tooltip or window.tooltipSuppressed then return end
-				window.tooltip.show(tooltip, tb)
-			end)
-			tb.MouseLeave:Connect(function()
-				if window.tooltip then window.tooltip.hide() end
-			end)
-		end
 		updateContentSize()
 		return container
 	end
