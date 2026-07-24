@@ -165,7 +165,6 @@ local function makeTooltipSystem(sg, theme, connections)
 	tooltipText.ZIndex                                  = 1001
 	tooltipText.Parent                                  = tooltipFrame
 
-	local tooltipTimer                                  = nil
 	local tooltipActiveElement                          = nil
 
 	local function showTooltip(text, element)
@@ -194,19 +193,11 @@ local function makeTooltipSystem(sg, theme, connections)
 	end
 
 	local function hideTooltip()
-		if tooltipTimer then
-			task.cancel(tooltipTimer); tooltipTimer = nil
-		end
 		tooltipFrame.Visible = false
 		tooltipActiveElement = nil
 	end
 
-	local function startTooltipDelay(text, element)
-		hideTooltip()
-		showTooltip(text, element)
-	end
-
-	return { show = showTooltip, hide = hideTooltip, start = startTooltipDelay, frame = tooltipFrame }
+	return { show = showTooltip, hide = hideTooltip, frame = tooltipFrame }
 end
 
 function UILib:notify(message, notifType, duration)
@@ -684,7 +675,6 @@ end
 local function _applyStructuredJSON(self, decoded)
 	local labelMap = _buildLabelMap(self)
 	local count = 0
-	local misses = {}
 	self._loadingConfig = true
 	_configLoading = true
 
@@ -697,7 +687,6 @@ local function _applyStructuredJSON(self, decoded)
 			pcall(parser.Load, obj, elem)
 			count = count + 1
 		end
-		if #misses > 0 then pcall(writefile, self:getConfigDir() .. "_debug_load.txt", table.concat(misses, "\n")) end
 	else
 		local legacyTypes = { Toggle = "state", Slider = "value", Dropdown = "value", MultiDropdown = "value", ColorPicker = "color", TextBox = "text", Keybind = "keybind" }
 		for etype, items in pairs(decoded) do
