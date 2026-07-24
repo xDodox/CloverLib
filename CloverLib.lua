@@ -1511,7 +1511,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 
 		table.insert(self.connections,
 		UIS.InputBegan:Connect(function(input, gpe)
-			if input.KeyCode == self.toggleKey then
+			if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == self.toggleKey then
 				self:setVisible(not self.visibleTarget)
 			end
 		end))
@@ -1656,7 +1656,7 @@ function UILib:addWatermark(name)
 	local wm = Instance.new("Frame")
 	wm.AutomaticSize = Enum.AutomaticSize.X
 	wm.Size = UDim2.new(0, 0, 0, 24)
-	wm.Position = UDim2.new(1, -10, 0, 10)
+	wm.Position = self._wmPos or UDim2.new(1, -10, 0, 10)
 	wm.AnchorPoint = Vector2.new(1, 0)
 	wm.BackgroundColor3 = self.theme.Panel
 	wm.BackgroundTransparency = 0.25
@@ -1714,6 +1714,7 @@ function UILib:addWatermark(name)
 				local delta = i.Position - dragStart
 				wm.Position = UDim2.new(dragPos.X.Scale, dragPos.X.Offset + delta.X, dragPos.Y.Scale,
 					dragPos.Y.Offset + delta.Y)
+				self._wmPos = wm.Position
 			end
 		end)
 		local wmDragEnd = UIS.InputEnded:Connect(function(i)
@@ -1823,7 +1824,7 @@ function UILib:setupKeybindHUD()
 	if self._hudFrame then return end
 	local hud = Instance.new("Frame")
 	hud.Size = UDim2.new(0, 200, 0, 0)
-	hud.Position = UDim2.new(0, 10, 1, -10)
+	hud.Position = self._hudPos or UDim2.new(0, 10, 1, -10)
 	hud.AnchorPoint = Vector2.new(0, 1)
 	hud.BackgroundColor3 = self.theme.Panel
 	hud.BackgroundTransparency = 0.25
@@ -1859,6 +1860,31 @@ function UILib:setupKeybindHUD()
 	header.ZIndex = 201
 	header.LayoutOrder = 1
 	header.Parent = hud
+
+	local hudDrag = Instance.new("TextButton")
+	hudDrag.Size = UDim2.new(1, 0, 1, 0)
+	hudDrag.BackgroundTransparency = 1
+	hudDrag.Text = ""
+	hudDrag.ZIndex = 205
+	hudDrag.Parent = hud
+	local hDrag, hDragStart, hDragPos = false, nil, nil
+	hudDrag.InputBegan:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+			hDrag, hDragStart, hDragPos = true, i.Position, hud.Position
+		end
+	end)
+	local hMove = UIS.InputChanged:Connect(function(i)
+		if hDrag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+			local delta = i.Position - hDragStart
+			hud.Position = UDim2.new(hDragPos.X.Scale, hDragPos.X.Offset + delta.X, hDragPos.Y.Scale, hDragPos.Y.Offset + delta.Y)
+			self._hudPos = hud.Position
+		end
+	end)
+	local hEnd = UIS.InputEnded:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then hDrag = false end
+	end)
+	table.insert(self.connections, hMove)
+	table.insert(self.connections, hEnd)
 
 	local function updateHudSize()
 		hud.Size = UDim2.new(0, 200, 0, hudLayout.AbsoluteContentSize.Y + 16)
@@ -4106,6 +4132,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 
 	local function closePicker()
 		if pickerFrame then
+			window._pickerOpen = false
 			local p = pickerFrame
 			local cons = _pickerCons[p]
 			if cons then
@@ -4130,16 +4157,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 
 	local function openPicker()
 		if window.tooltip then window.tooltip.hide() end
-		window.tooltipSuppressed = false
-		for _, d in pairs(window._panels or {}) do
-			if d.popup and d.popup.Visible then
-				for _, child in ipairs(d.popup:GetDescendants()) do
-					if child.Name == "ExpandPanel" and child.Visible then
-						pcall(function() child.Visible = false end)
-					end
-				end
-			end
-		end
+		window._pickerOpen = true
 		if pickerFrame and pickerFrame.Parent then return end
 		if window._openingPicker then return end
 		window._openingPicker = true
@@ -5086,6 +5104,7 @@ function UILib.Column:addGroup(title)
 				local px = d.tx or 200
 				local py = d.ty or 200
 				if mp.X >= px - 8 and mp.X <= px + as.X + 8 and mp.Y >= py - 8 and mp.Y <= py + as.Y + 8 then return end
+			if window._pickerOpen then return end
 			for pf, _ in pairs(_pickerCons) do
 				if pf and pf.Parent and pf.Visible then
 					local pa = pf.AbsolutePosition
@@ -5124,7 +5143,7 @@ function UILib.Column:addGroup(title)
 				TweenService:Create(data.scale, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 				data.open = true
 				data.conn = makeCloseConn(data, cacheKey, anchorElement)
-				data.animating = false
+				task.delay(0.21, function() data.animating = false end)
 			end
 			return
 		end
