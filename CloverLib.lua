@@ -1790,7 +1790,7 @@ end
 function UILib:setupKeybindSystem()
 	if self._hudFrame then return end
 	local hud = Instance.new("Frame")
-	hud.Size = UDim2.new(0, 200, 0, 0)
+	hud.Size = UDim2.new(0, 160, 0, 0)
 	hud.Position = self._hudPos or UDim2.new(0, 10, 1, -10)
 	hud.AnchorPoint = Vector2.new(0, 1)
 	hud.BackgroundColor3 = self.theme.Panel
@@ -1799,7 +1799,6 @@ function UILib:setupKeybindSystem()
 	hud.ZIndex = 200
 	hud.Visible = false
 	hud.Parent = self.sg
-	hud.Size = UDim2.new(0, 200, 0, 0)
 	hud.AutomaticSize = Enum.AutomaticSize.Y
 	Instance.new("UICorner", hud).CornerRadius = UDim.new(0, 6)
 	local hudStroke = Instance.new("UIStroke", hud)
@@ -1808,22 +1807,22 @@ function UILib:setupKeybindSystem()
 	hudStroke.Thickness = 1
 	hudStroke.Transparency = 0.6
 
-	Instance.new("UIPadding", hud).PaddingLeft = UDim.new(0, 10)
-	Instance.new("UIPadding", hud).PaddingRight = UDim.new(0, 10)
-	Instance.new("UIPadding", hud).PaddingTop = UDim.new(0, 8)
-	Instance.new("UIPadding", hud).PaddingBottom = UDim.new(0, 8)
+	Instance.new("UIPadding", hud).PaddingLeft = UDim.new(0, 6)
+	Instance.new("UIPadding", hud).PaddingRight = UDim.new(0, 6)
+	Instance.new("UIPadding", hud).PaddingTop = UDim.new(0, 4)
+	Instance.new("UIPadding", hud).PaddingBottom = UDim.new(0, 4)
 
 	local hudLayout = Instance.new("UIListLayout", hud)
 	hudLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	hudLayout.Padding = UDim.new(0, 6)
+	hudLayout.Padding = UDim.new(0, 2)
 
 	local header = Instance.new("TextLabel")
-	header.Size = UDim2.new(1, 0, 0, 16)
+	header.Size = UDim2.new(1, 0, 0, 12)
 	header.BackgroundTransparency = 1
 	header.Text = "KEYBINDS"
 	header.TextColor3 = self.theme.GrayLt
 	header.Font = Enum.Font.GothamBold
-	header.TextSize = 9
+	header.TextSize = 8
 	header.TextXAlignment = Enum.TextXAlignment.Left
 	header.ZIndex = 201
 	header.LayoutOrder = 1
@@ -1920,31 +1919,31 @@ end
 function UILib:addKeybindEntry(kb)
 	if not self._hudFrame then self:setupKeybindSystem() end
 	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, 0, 0, 18)
+	row.Size = UDim2.new(1, 0, 0, 14)
 	row.BackgroundTransparency = 1
 	row.ZIndex = 201
 	row.LayoutOrder = #self._hudEntries + 2
 	row.Parent = self._hudFrame
 
 	local nameLbl = Instance.new("TextLabel")
-	nameLbl.Size = UDim2.new(0.5, 0, 1, 0)
+	nameLbl.Size = UDim2.new(0.48, 0, 1, 0)
 	nameLbl.BackgroundTransparency = 1
 	nameLbl.Text = kb.name
 	nameLbl.TextColor3 = self.theme.White
 	nameLbl.Font = Enum.Font.GothamSemibold
-	nameLbl.TextSize = 10
+	nameLbl.TextSize = 9
 	nameLbl.TextXAlignment = Enum.TextXAlignment.Left
 	nameLbl.ZIndex = 202
 	nameLbl.Parent = row
 
 	local modeLbl = Instance.new("TextLabel")
-	modeLbl.Size = UDim2.new(0.22, 0, 1, 0)
-	modeLbl.Position = UDim2.new(0.5, 0, 0, 0)
+	modeLbl.Size = UDim2.new(0.24, 0, 1, 0)
+	modeLbl.Position = UDim2.new(0.48, 0, 0, 0)
 	modeLbl.BackgroundTransparency = 1
 	modeLbl.Text = "[" .. kb.mode .. "]"
 	modeLbl.TextColor3 = self.theme.Gray
 	modeLbl.Font = Enum.Font.GothamSemibold
-	modeLbl.TextSize = 10
+	modeLbl.TextSize = 9
 	modeLbl.TextXAlignment = Enum.TextXAlignment.Left
 	modeLbl.ZIndex = 202
 	modeLbl.Parent = row
@@ -1956,14 +1955,18 @@ function UILib:addKeybindEntry(kb)
 	keyLbl.Text = kb.key
 	keyLbl.TextColor3 = kb.active and self.theme.Accent or self.theme.Gray
 	keyLbl.Font = Enum.Font.GothamBold
-	keyLbl.TextSize = 10
+	keyLbl.TextSize = 9
 	keyLbl.TextXAlignment = Enum.TextXAlignment.Right
 	keyLbl.ZIndex = 202
 	keyLbl.Parent = row
 
 	row.InputBegan:Connect(function(inp)
 		if inp.UserInputType == Enum.UserInputType.MouseButton2 then
-			self:setKeybindMode(kb, kb.mode == "Hold" and "Toggle" or "Hold")
+			self:openAdvancedPanel(row, function(popup)
+				popup:dropdown("Mode", {"Always", "Toggle", "Hold"}, kb.mode, function(val)
+					self:setKeybindMode(kb, val)
+				end)
+			end)
 		end
 	end)
 
