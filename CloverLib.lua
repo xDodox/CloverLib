@@ -167,7 +167,6 @@ local function makeTooltipSystem(sg, theme, connections)
 
 	local tooltipTimer                                  = nil
 	local tooltipActiveElement                          = nil
-	local tooltipJustToggled                           = false
 
 	local function showTooltip(text, element)
 		if not element or not text or text == "" then return end
@@ -206,13 +205,6 @@ local function makeTooltipSystem(sg, theme, connections)
 		hideTooltip()
 		showTooltip(text, element)
 	end
-
-	table.insert(connections, UIS.InputBegan:Connect(function(input)
-		if tooltipJustToggled then return end
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			if tooltipFrame.Visible then hideTooltip() end
-		end
-	end))
 
 	return { show = showTooltip, hide = hideTooltip, start = startTooltipDelay, frame = tooltipFrame }
 end
@@ -5341,14 +5333,12 @@ function UILib.Column:addGroup(title)
 			tb.Text = ""
 			tb.ZIndex = 6
 			tb.Parent = tipIcon
-			local tt = window.tooltip
-			local showing = false
-			tb.MouseButton1Click:Connect(function()
-				if not tt then return end
-				tooltipJustToggled = true
-				task.delay(0.1, function() tooltipJustToggled = false end)
-				if showing then tt.hide(); showing = false
-				else tt.show(tooltip, tb); showing = true end
+			tb.MouseEnter:Connect(function()
+				if not window.tooltip or window.tooltipSuppressed then return end
+				window.tooltip.show(tooltip, tb)
+			end)
+			tb.MouseLeave:Connect(function()
+				if window.tooltip then window.tooltip.hide() end
 			end)
 			rightOffset = rightOffset + 20
 		end
