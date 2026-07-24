@@ -1850,8 +1850,8 @@ function UILib:setupKeybindSystem()
 	hudStroke.Transparency = 0.6
 
 	local hudPad = Instance.new("UIPadding", hud)
-	hudPad.PaddingLeft = UDim.new(0, 6)
-	hudPad.PaddingRight = UDim.new(0, 6)
+	hudPad.PaddingLeft = UDim.new(0, 8)
+	hudPad.PaddingRight = UDim.new(0, 8)
 	hudPad.PaddingTop = UDim.new(0, 4)
 	hudPad.PaddingBottom = UDim.new(0, 4)
 
@@ -1860,25 +1860,16 @@ function UILib:setupKeybindSystem()
 	hudLayout.Padding = UDim.new(0, 2)
 
 	local header = Instance.new("TextLabel")
-	header.Size = UDim2.new(1, 0, 0, 14)
+	header.Size = UDim2.new(1, 0, 0, 12)
 	header.BackgroundTransparency = 1
 	header.Text = "KEYBINDS"
 	header.TextColor3 = self.theme.GrayLt
 	header.Font = Enum.Font.GothamBold
 	header.TextSize = 8
-	header.TextXAlignment = Enum.TextXAlignment.Center
+	header.TextXAlignment = Enum.TextXAlignment.Left
 	header.ZIndex = 201
 	header.LayoutOrder = 1
 	header.Parent = hud
-
-	local headerLine = Instance.new("Frame")
-	headerLine.Size = UDim2.new(1, 0, 0, 1)
-	headerLine.BackgroundColor3 = self.theme.Accent
-	headerLine.BackgroundTransparency = 0.4
-	headerLine.BorderSizePixel = 0
-	headerLine.ZIndex = 201
-	headerLine.LayoutOrder = 2
-	headerLine.Parent = hud
 
 	local hudDrag = Instance.new("TextButton")
 	hudDrag.Size = UDim2.new(1, 0, 1, 0)
@@ -1910,7 +1901,6 @@ function UILib:setupKeybindSystem()
 	self._hudEntries = {}
 	self._keybinds = {}
 	self._keybindListener = UIS.InputBegan:Connect(function(input, gpe)
-		if gpe then return end
 		if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 		local name = input.KeyCode.Name
 		local kb = self._keybinds[name]
@@ -1976,7 +1966,7 @@ function UILib:addKeybindEntry(kb)
 	row.Size = UDim2.new(1, 0, 0, 14)
 	row.BackgroundTransparency = 1
 	row.ZIndex = 201
-	row.LayoutOrder = #self._hudEntries + 3
+	row.LayoutOrder = #self._hudEntries + 2
 	row.Parent = self._hudFrame
 
 	local nameLbl = Instance.new("TextLabel")
@@ -2436,6 +2426,9 @@ end
 
 function UILib:setVisible(visible)
 	if visible == self.visibleTarget then return end
+	if self._visibilityLock then return end
+	self._visibilityLock = true
+	task.delay(0.2, function() self._visibilityLock = false end)
 	self.visibleTarget = visible
 
 	if visible then
