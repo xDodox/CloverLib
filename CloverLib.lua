@@ -1732,20 +1732,20 @@ function UILib:addWatermark(name)
 	end
 	local wm = Instance.new("Frame")
 	wm.AutomaticSize = Enum.AutomaticSize.X
-	wm.Size = UDim2.new(0, 0, 0, 26)
+	wm.Size = UDim2.new(0, 0, 0, 24)
 	wm.Position = UDim2.new(1, -10, 0, 10)
 	wm.AnchorPoint = Vector2.new(1, 0)
 	wm.BackgroundColor3 = self.theme.Panel
-	wm.BackgroundTransparency = 0.2
+	wm.BackgroundTransparency = 0.25
 	wm.BorderSizePixel = 0
 	wm.Parent = self.sg
 	wm.ZIndex = 200
-	Instance.new("UICorner", wm).CornerRadius = UDim.new(0, 14)
+	Instance.new("UICorner", wm).CornerRadius = UDim.new(0, 6)
 	local wmStroke = Instance.new("UIStroke", wm)
 	wmStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	wmStroke.Color = self.theme.Border
 	wmStroke.Thickness = 1
-	wmStroke.Transparency = 0.5
+	wmStroke.Transparency = 0.6
 	local row = Instance.new("Frame")
 	row.AutomaticSize = Enum.AutomaticSize.X
 	row.Size = UDim2.new(0, 0, 1, 0)
@@ -1816,13 +1816,14 @@ function UILib:addWatermark(name)
 
 	local function addDivider(order)
 		local div = Instance.new("Frame")
-		div.Size = UDim2.new(0, 1, 0, 14)
+		div.Size = UDim2.new(0, 3, 0, 3)
 		div.BackgroundColor3 = self.theme.Border
-		div.BackgroundTransparency = 0.4
+		div.BackgroundTransparency = 0.5
 		div.BorderSizePixel = 0
 		div.ZIndex = 201
 		div.LayoutOrder = order
 		div.Parent = row
+		Instance.new("UICorner", div).CornerRadius = UDim.new(0, 2)
 	end
 	addDivider(2)
 
@@ -1893,6 +1894,127 @@ function UILib:addWatermark(name)
 	self.wmConn = connection
 	self.watermark = wm
 	return wm
+end
+
+function UILib:setupKeybindHUD()
+	if self._hudFrame then return end
+	local hud = Instance.new("Frame")
+	hud.Size = UDim2.new(0, 200, 0, 0)
+	hud.Position = UDim2.new(0, 10, 1, -10)
+	hud.AnchorPoint = Vector2.new(0, 1)
+	hud.BackgroundColor3 = self.theme.Panel
+	hud.BackgroundTransparency = 0.25
+	hud.BorderSizePixel = 0
+	hud.ZIndex = 200
+	hud.Visible = false
+	hud.Parent = self.sg
+	Instance.new("UICorner", hud).CornerRadius = UDim.new(0, 6)
+	local hudStroke = Instance.new("UIStroke", hud)
+	hudStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	hudStroke.Color = self.theme.Border
+	hudStroke.Thickness = 1
+	hudStroke.Transparency = 0.6
+
+	local hudPad = Instance.new("UIPadding", hud)
+	hudPad.PaddingLeft = UDim.new(0, 10)
+	hudPad.PaddingRight = UDim.new(0, 10)
+	hudPad.PaddingTop = UDim.new(0, 8)
+	hudPad.PaddingBottom = UDim.new(0, 8)
+
+	local hudLayout = Instance.new("UIListLayout", hud)
+	hudLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	hudLayout.Padding = UDim.new(0, 6)
+
+	local header = Instance.new("TextLabel")
+	header.Size = UDim2.new(1, 0, 0, 16)
+	header.BackgroundTransparency = 1
+	header.Text = "KEYBINDS"
+	header.TextColor3 = self.theme.GrayLt
+	header.Font = Enum.Font.GothamBold
+	header.TextSize = 9
+	header.TextXAlignment = Enum.TextXAlignment.Left
+	header.ZIndex = 201
+	header.LayoutOrder = 1
+	header.Parent = hud
+
+	local function updateHudSize()
+		hud.Size = UDim2.new(0, 200, 0, hudLayout.AbsoluteContentSize.Y + 16)
+	end
+	hudLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateHudSize)
+
+	self._hudFrame = hud
+	self._hudLayout = hudLayout
+	self._hudEntries = {}
+	self._hudUpdate = updateHudSize
+end
+
+function UILib:addKeybindHUD(name, key, mode)
+	if not self._hudFrame then self:setupKeybindHUD() end
+	mode = mode or "Hold"
+	local row = Instance.new("Frame")
+	row.Size = UDim2.new(1, 0, 0, 18)
+	row.BackgroundTransparency = 1
+	row.ZIndex = 201
+	row.LayoutOrder = #self._hudEntries + 2
+	row.Parent = self._hudFrame
+
+	local nameLbl = Instance.new("TextLabel")
+	nameLbl.Size = UDim2.new(0.55, 0, 1, 0)
+	nameLbl.BackgroundTransparency = 1
+	nameLbl.Text = name
+	nameLbl.TextColor3 = self.theme.White
+	nameLbl.Font = Enum.Font.GothamSemibold
+	nameLbl.TextSize = 10
+	nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+	nameLbl.ZIndex = 202
+	nameLbl.Parent = row
+
+	local modeLbl = Instance.new("TextLabel")
+	modeLbl.Size = UDim2.new(0.25, 0, 1, 0)
+	modeLbl.Position = UDim2.new(0.55, 0, 0, 0)
+	modeLbl.BackgroundTransparency = 1
+	modeLbl.Text = "[" .. mode .. "]"
+	modeLbl.TextColor3 = self.theme.Gray
+	modeLbl.Font = Enum.Font.GothamSemibold
+	modeLbl.TextSize = 10
+	modeLbl.TextXAlignment = Enum.TextXAlignment.Left
+	modeLbl.ZIndex = 202
+	modeLbl.Parent = row
+
+	local keyLbl = Instance.new("TextLabel")
+	keyLbl.Size = UDim2.new(0.2, 0, 1, 0)
+	keyLbl.Position = UDim2.new(0.8, 0, 0, 0)
+	keyLbl.BackgroundTransparency = 1
+	keyLbl.Text = key
+	keyLbl.TextColor3 = self.theme.Accent
+	keyLbl.Font = Enum.Font.GothamBold
+	keyLbl.TextSize = 10
+	keyLbl.TextXAlignment = Enum.TextXAlignment.Right
+	keyLbl.ZIndex = 202
+	keyLbl.Parent = row
+
+	local entry = { row = row, keyLabel = keyLbl, modeLabel = modeLbl }
+	table.insert(self._hudEntries, entry)
+	self._hudUpdate()
+	self._hudFrame.Visible = true
+	return entry
+end
+
+function UILib:removeKeybindHUD(entry)
+	local idx = table.find(self._hudEntries, entry)
+	if idx then
+		entry.row:Destroy()
+		table.remove(self._hudEntries, idx)
+		self._hudUpdate()
+		if #self._hudEntries == 0 then
+			self._hudFrame.Visible = false
+		end
+	end
+end
+
+function UILib:updateKeybindHUD(entry, key, mode)
+	if key then entry.keyLabel.Text = key end
+	if mode then entry.modeLabel.Text = "[" .. mode .. "]" end
 end
 
 function UILib:buildUITab()
