@@ -1307,6 +1307,47 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	-- Global search across all tabs and subtabs
 	headerSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
 		if _searchClearing then return end
+		local query = headerSearchBox.Text:lower()
+
+		for _, tab in ipairs(self.tabOrder or {}) do
+			if tab.subtabOrder then
+				for _, sub in ipairs(tab.subtabOrder) do
+					if sub.btn then
+						local nameMatch = query == "" or (sub.name and sub.name:lower():find(query, 1, true))
+						local contentMatch = false
+						if not nameMatch and sub.groups then
+							for _, g in ipairs(sub.groups) do
+								if contentMatch then break end
+								local gTitle = g.frame and g.frame:FindFirstChildOfClass("TextLabel")
+								if gTitle and gTitle.Text:lower():find(query, 1, true) then contentMatch = true; break end
+								if g.items then
+									for _, c in ipairs(g.items:GetDescendants()) do
+										if c:IsA("TextLabel") or c:IsA("TextButton") then
+											if c.Text and c.Text:lower():find(query, 1, true) then
+												contentMatch = true; break
+											end
+										elseif c:IsA("TextBox") then
+											if (c.Text and c.Text:lower():find(query, 1, true)) or (c.PlaceholderText and c.PlaceholderText:lower():find(query, 1, true)) then
+												contentMatch = true; break
+			end
+		end
+		for _, d in pairs(self._panels or {}) do
+			if d.open then
+				TweenService:Create(d.scale, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
+				d.open = false
+				task.delay(0.13, function() pcall(function() d.popup.Visible = false end) end)
+				if d.conn then d.conn:Disconnect(); d.conn = nil end
+			end
+		end
+									end
+								end
+							end
+						end
+						sub.btn.Visible = nameMatch or contentMatch
+					end
+				end
+			end
+		end
 	end)
 
 	-- Press Enter to navigate to first visible subtab (switching tabs if needed)
@@ -1478,8 +1519,10 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 
 		table.insert(self.connections,
 		UIS.InputBegan:Connect(function(input, gpe)
-			if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == self.toggleKey then
-				self:setVisible(not self.visibleTarget)
+			if input.UserInputType == Enum.UserInputType.Keyboard then
+				if input.KeyCode == self.toggleKey or input.KeyCode.Name == self.toggleKey.Name then
+					self:setVisible(not self.visibleTarget)
+				end
 			end
 		end))
 
@@ -1791,15 +1834,14 @@ function UILib:setupKeybindSystem()
 	if self._hudFrame then return end
 	local hud = Instance.new("Frame")
 	hud.Size = UDim2.new(0, 160, 0, 0)
-	hud.Position = self._hudPos or UDim2.new(0, 10, 1, -10)
-	hud.AnchorPoint = Vector2.new(0, 1)
+	hud.Position = self._hudPos or UDim2.new(0, 10, 0, 10)
+	hud.AnchorPoint = Vector2.new(0, 0)
 	hud.BackgroundColor3 = self.theme.Panel
 	hud.BackgroundTransparency = 0.25
 	hud.BorderSizePixel = 0
 	hud.ZIndex = 200
 	hud.Visible = false
 	hud.Parent = self.sg
-	hud.AutomaticSize = Enum.AutomaticSize.Y
 	Instance.new("UICorner", hud).CornerRadius = UDim.new(0, 6)
 	local hudStroke = Instance.new("UIStroke", hud)
 	hudStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -1807,10 +1849,11 @@ function UILib:setupKeybindSystem()
 	hudStroke.Thickness = 1
 	hudStroke.Transparency = 0.6
 
-	Instance.new("UIPadding", hud).PaddingLeft = UDim.new(0, 6)
-	Instance.new("UIPadding", hud).PaddingRight = UDim.new(0, 6)
-	Instance.new("UIPadding", hud).PaddingTop = UDim.new(0, 4)
-	Instance.new("UIPadding", hud).PaddingBottom = UDim.new(0, 4)
+	local hudPad = Instance.new("UIPadding", hud)
+	hudPad.PaddingLeft = UDim.new(0, 6)
+	hudPad.PaddingRight = UDim.new(0, 6)
+	hudPad.PaddingTop = UDim.new(0, 4)
+	hudPad.PaddingBottom = UDim.new(0, 4)
 
 	local hudLayout = Instance.new("UIListLayout", hud)
 	hudLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1914,6 +1957,7 @@ function UILib:unregisterKeybind(kb)
 		local idx = table.find(self._hudEntries, kb.entry)
 		if idx then table.remove(self._hudEntries, idx) end
 		if #self._hudEntries == 0 then self._hudFrame.Visible = false end
+		self._hudFrame.Size = UDim2.new(0, 160, 0, self._hudLayout.AbsoluteContentSize.Y + 8)
 	end
 end
 
@@ -1974,6 +2018,7 @@ function UILib:addKeybindEntry(kb)
 	kb.entry = entry
 	table.insert(self._hudEntries, entry)
 	self._hudFrame.Visible = true
+	self._hudFrame.Size = UDim2.new(0, 160, 0, self._hudLayout.AbsoluteContentSize.Y + 8)
 end
 
 function UILib:updateKeybindEntry(kb)
@@ -2407,6 +2452,10 @@ function UILib:setVisible(visible)
 				d.open = false
 				if d.conn then d.conn:Disconnect(); d.conn = nil end
 			end
+		end
+		if self._pickerFrame then
+			pcall(function() self._pickerFrame:Destroy() end)
+			self._pickerFrame = nil
 		end
 	end
 end
@@ -4205,7 +4254,9 @@ local function createColorPicker(group, items, window, text, default, callback, 
 				_pickerCons[pickerFrame] = nil
 			end
 			pickerFrame = nil
+			window._pickerFrame = nil
 		end)
+		window._pickerFrame = pickerFrame
 		table.insert(window.activePopups, pickerFrame)
 
 		local blocker = Instance.new("TextButton", pickerFrame)
