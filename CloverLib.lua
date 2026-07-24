@@ -1307,57 +1307,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	-- Global search across all tabs and subtabs
 	headerSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
 		if _searchClearing then return end
-		local query = headerSearchBox.Text:lower()
-
-		if query == "" then
-			for _, tab in ipairs(self.tabOrder or {}) do
-				if tab.subtabOrder then
-					for _, sub in ipairs(tab.subtabOrder) do
-						if sub.btn then sub.btn.Visible = true end
-					end
-				end
-			end
-			return
-		end
-		for _, tab in ipairs(self.tabOrder or {}) do
-			if tab.subtabOrder and tab == self.activeTab then
-				for _, sub in ipairs(tab.subtabOrder) do
-					if sub.btn then
-						local nameMatch = sub.name and sub.name:lower():find(query, 1, true)
-						local contentMatch = false
-						if not nameMatch and sub.groups then
-							for _, g in ipairs(sub.groups) do
-								if contentMatch then break end
-								local gTitle = g.frame and g.frame:FindFirstChildOfClass("TextLabel")
-								if gTitle and gTitle.Text:lower():find(query, 1, true) then contentMatch = true; break end
-								if g.items then
-									for _, c in ipairs(g.items:GetDescendants()) do
-										if c:IsA("TextLabel") or c:IsA("TextButton") then
-											if c.Text and c.Text:lower():find(query, 1, true) then
-												contentMatch = true; break
-											end
-										elseif c:IsA("TextBox") then
-											if (c.Text and c.Text:lower():find(query, 1, true)) or (c.PlaceholderText and c.PlaceholderText:lower():find(query, 1, true)) then
-												contentMatch = true; break
-			end
-		end
-		for _, d in pairs(self._panels or {}) do
-			if d.open then
-				TweenService:Create(d.scale, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
-				d.open = false
-				task.delay(0.13, function() pcall(function() d.popup.Visible = false end) end)
-				if d.conn then d.conn:Disconnect(); d.conn = nil end
-			end
-		end
-									end
-								end
-							end
-						end
-						sub.btn.Visible = query == "" or nameMatch or contentMatch
-					end
-				end
-			end
-		end
 	end)
 
 	-- Press Enter to navigate to first visible subtab (switching tabs if needed)
@@ -1850,6 +1799,8 @@ function UILib:setupKeybindSystem()
 	hud.ZIndex = 200
 	hud.Visible = false
 	hud.Parent = self.sg
+	hud.Size = UDim2.new(0, 200, 0, 0)
+	hud.AutomaticSize = Enum.AutomaticSize.Y
 	Instance.new("UICorner", hud).CornerRadius = UDim.new(0, 6)
 	local hudStroke = Instance.new("UIStroke", hud)
 	hudStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -1861,8 +1812,6 @@ function UILib:setupKeybindSystem()
 	Instance.new("UIPadding", hud).PaddingRight = UDim.new(0, 10)
 	Instance.new("UIPadding", hud).PaddingTop = UDim.new(0, 8)
 	Instance.new("UIPadding", hud).PaddingBottom = UDim.new(0, 8)
-	hud.Size = UDim2.new(0, 200, 0, 0)
-	hud.AutomaticSize = Enum.AutomaticSize.Y
 
 	local hudLayout = Instance.new("UIListLayout", hud)
 	hudLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -6099,62 +6048,33 @@ function UILib.Column:addGroup(title)
 		local keyMode = "Hold"
 		kbtn.InputBegan:Connect(function(inp)
 			if inp.UserInputType == Enum.UserInputType.MouseButton2 then
+				if _keyModePopup then _keyModePopup:Destroy() end
 				local popup = Instance.new("Frame")
-				popup.BackgroundColor3 = window.theme.Surface
-				popup.BorderSizePixel = 0
+				popup.BackgroundTransparency = 1
+				popup.Size = UDim2.new(0, 130, 0, 0)
 				popup.ZIndex = 9999
-				popup.Size = UDim2.new(0, 120, 0, 80)
-				popup.Visible = false
 				popup.Parent = window.sg
-				Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 6)
-				local ps2 = Instance.new("UIStroke", popup)
-				ps2.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-				ps2.Color = window.theme.Border
-				ps2.Thickness = 1
-
-				local function addRow(order, txt, selected)
-					local b = Instance.new("TextButton", popup)
-					b.Size = UDim2.new(1, 0, 0, 26)
-					b.BackgroundColor3 = selected and window.theme.Accent or window.theme.Surface
-					b.BackgroundTransparency = selected and 0.8 or 1
-					b.Text = ""
-					b.ZIndex = 10000
-					b.LayoutOrder = order
-					local l = Instance.new("TextLabel", b)
-					l.Size = UDim2.new(1, -16, 1, 0)
-					l.Position = UDim2.new(0, 8, 0, 0)
-					l.BackgroundTransparency = 1
-					l.Text = txt
-					l.TextColor3 = selected and window.theme.White or window.theme.GrayLt
-					l.Font = Enum.Font.GothamSemibold
-					l.TextSize = 11
-					l.TextXAlignment = Enum.TextXAlignment.Left
-					l.ZIndex = 10001
-					b.MouseButton1Click:Connect(function()
-						keyMode = txt
-						popup:Destroy()
-					end)
-				end
-				local layout = Instance.new("UIListLayout", popup)
-				layout.SortOrder = Enum.SortOrder.LayoutOrder
-				addRow(1, "Hold", keyMode == "Hold")
-				addRow(2, "Toggle", keyMode == "Toggle")
-				addRow(3, "Always", keyMode == "Always")
-
+				local tempGroup = { window = window, items = popup, updateSize = function() end }
+				setmetatable(tempGroup, { __index = group })
+				local dd = tempGroup:dropdown("", {"Always", "Toggle", "Hold"}, keyMode, function(val)
+					keyMode = val
+					popup:Destroy()
+					_keyModePopup = nil
+				end)
+				dd.frame.Size = UDim2.new(1, 0, 0, 36)
+				dd.frame:FindFirstChildOfClass("TextLabel").Visible = false
+				_keyModePopup = popup
+				task.wait(0.02)
 				local ap = kbtn.AbsolutePosition
 				local as = kbtn.AbsoluteSize
 				local sw = window.sg.AbsoluteSize.X
-				local sh = window.sg.AbsoluteSize.Y
-				local tx = math.clamp(ap.X + as.X/2 - 60, 4, sw - 124)
-				local ty = ap.Y + as.Y + 4
-				if ty + 82 > sh - 4 then ty = ap.Y - 82 - 4 end
-				popup.Position = UDim2.new(0, tx, 0, math.max(4, ty))
-				popup.Visible = true
+				local ty = ap.Y + as.Y + 8
+				popup.Position = UDim2.new(0, math.clamp(ap.X + as.X/2 - 65, 4, sw - 134), 0, math.max(4, ty))
 
 				local bc
 				bc = UIS.InputBegan:Connect(function(iinp)
 					if iinp.UserInputType == Enum.UserInputType.MouseButton1 or iinp.UserInputType == Enum.UserInputType.Touch then
-						pcall(function() popup:Destroy() end); bc:Disconnect()
+						pcall(function() popup:Destroy() end); bc:Disconnect(); _keyModePopup = nil
 					end
 				end)
 			end
