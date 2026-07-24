@@ -3670,7 +3670,6 @@ function UILib.SubTab:addButton(text, callback, tooltip, color)
 	lbl.ZIndex = 4
 	lbl.Parent = btn
 	btn.MouseButton1Click:Connect(callback)
-	if tooltip then attachTooltip(btn, tooltip, window) end
 	btn.remove = function() btn:Destroy() end
 	return btn
 end
@@ -4983,8 +4982,8 @@ function UILib.Column:addGroup(title)
 				local pw = data.popup.AbsoluteSize.X
 				local ph = data.popup.AbsoluteSize.Y
 				if pw < 10 then pw, ph = 240, 100 end
-				local tx = math.clamp(a.X + 5, 4, sw - pw - 4)
-				local ty = a.Y + 75
+				local tx = math.clamp(a.X + 0, 4, sw - pw - 4)
+				local ty = a.Y + 80
 				if ty + ph > sh - 4 then ty = a.Y - ph - 4 end
 				ty = math.max(4, ty)
 				data.popup.Position = UDim2.new(0, tx, 0, ty)
@@ -5005,6 +5004,13 @@ function UILib.Column:addGroup(title)
 				local px = d.tx or 200
 				local py = d.ty or 200
 				if mp.X >= px - 8 and mp.X <= px + as.X + 8 and mp.Y >= py - 8 and mp.Y <= py + as.Y + 8 then return end
+				for pf, _ in pairs(_pickerCons) do
+					if pf and pf.Parent then
+						local pa = pf.AbsolutePosition
+						local ps = pf.AbsoluteSize
+						if pa and ps and mp.X >= pa.X and mp.X <= pa.X + ps.X and mp.Y >= pa.Y and mp.Y <= pa.Y + ps.Y then return end
+					end
+				end
 					local bp = (anchorEl or d.anchor).AbsolutePosition
 					local bs = (anchorEl or d.anchor).AbsoluteSize
 					if bp and bs and mp.X >= bp.X - 4 and mp.X <= bp.X + bs.X + 4 and mp.Y >= bp.Y - 4 and mp.Y <= bp.Y + bs.Y + 4 then return end
