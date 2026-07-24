@@ -5938,8 +5938,7 @@ function UILib.Column:addGroup(title)
 			kbtn.Text = type(val) == "string" and val or tostring(val)
 			window.configs[id].Value = val
 		end
-		window.configs[id] = finalizeElement(elem, window, group)
-		if tooltip then attachTooltip(r, tooltip, window) end
+
 		updateSize()
 		elem.frame = r
 		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
@@ -6157,7 +6156,6 @@ function UILib.Column:addGroup(title)
 		end
 
 		btn.MouseButton1Click:Connect(callback)
-		if tooltip then attachTooltip(btn, tooltip, window) end
 		updateSize()
 		pcall(function() btn.remove = function() btn:Destroy(); updateSize() end end)
 		return btn
@@ -6217,9 +6215,8 @@ function UILib.Column:addGroup(title)
 			}):Play()
 		end
 
-			if tooltip then attachTooltip(r, tooltip, window) end
-			updateSize()
-			ref.remove = function() r:Destroy(); updateSize() end
+		updateSize()
+		ref.remove = function() r:Destroy(); updateSize() end
 			function ref:SetVisible(v, anim)
 				if not anim then
 					r.Visible = v
@@ -6263,7 +6260,6 @@ function UILib.Column:addGroup(title)
 			updateSize()
 		end
 
-		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		ref.remove = function() r:Destroy(); updateSize() end
 		function ref:SetVisible(v, anim)
@@ -6476,10 +6472,9 @@ function UILib.Column:addGroup(title)
 		return elem
 	end
 
-	function group:multidropdown(text, options, default, callback, tooltip, refreshCallback, cfgId)
+	function 	group:multidropdown(text, options, default, callback, tooltip, refreshCallback, cfgId)
 		assert(text ~= nil and text ~= "", "MultiDropdown - Missing text")
 		local r, elem = createMultiDropdown(group, items, window, text, options, default, callback, refreshCallback, cfgId)
-		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		return elem
 	end
