@@ -178,7 +178,7 @@ local function makeTooltipSystem(sg, theme, connections)
 		pcall(function()
 			local ts = game:GetService("TextService"):GetTextSize(text, 12, Enum.Font.GothamSemibold, Vector2.new(textWidth, 500))
 			tipW = textWidth + 24
-			tipH = ts.Y + 16
+			tipH = ts.Y + 18
 		end)
 		tooltipFrame.Size    = UDim2.new(0, tipW, 0, tipH)
 		local ePos = element.AbsolutePosition or Vector2.new(200, 200)
@@ -1991,6 +1991,11 @@ function UILib:buildUITab()
 		end
 	end, "Display FPS and ping", nil, nil, nil, nil, nil, "ui_watermark")
 
+	grp:toggle("Show Keybinds", self._hudFrame ~= nil and self._hudFrame.Visible, function(v)
+		if not self._hudFrame then self:setupKeybindHUD() end
+		self._hudFrame.Visible = v
+	end, "Show active keybinds on screen", nil, nil, nil, nil, nil, "ui_keybindhud")
+
 	grp:button("Unload", function()
 		self:confirm("Are you sure you want to unload?", function(ok)
 			if ok then self:Destroy() end
@@ -2233,7 +2238,7 @@ function UILib:buildUITab()
 		cfgRefreshDropdown()
 	end, "Fetch and apply config from share code", Enum.TextXAlignment.Center, Color3.fromRGB(100, 255, 180))
 
-	self:ignoreConfig("ui_width", "ui_height", "ui_togglekey", "ui_watermark", "ui_theme", "ui_cfgdropdown", "ui_autoload", "ui_cfgname", "ui_sharecode")
+	self:ignoreConfig("ui_width", "ui_height", "ui_togglekey", 	"ui_watermark", "ui_theme", "ui_cfgdropdown", "ui_autoload", "ui_cfgname", "ui_sharecode", "ui_keybindhud")
 	self:tryAutoLoad()
 end
 
@@ -5045,9 +5050,6 @@ function UILib.Column:addGroup(title)
 	end
 
 	function UILib:openAdvancedPanel(anchorElement, builder)
-		if self._panelBusy then return end
-		self._panelBusy = true
-		task.delay(0.3, function() self._panelBusy = false end)
 		if self.tooltip then self.tooltip.hide() end
 		anchorElement = anchorElement or self.window
 		local cacheKey = anchorElement
@@ -5109,9 +5111,11 @@ function UILib.Column:addGroup(title)
 		local makeCloseConn = self._makeCloseConn
 		local data = self._panels[cacheKey]
 		if data then
+			if data.animating then return end
+			data.animating = true
 			if data.open then
 				TweenService:Create(data.scale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
-				task.delay(0.16, function() pcall(function() data.popup.Visible = false end) end)
+				task.delay(0.16, function() pcall(function() data.popup.Visible = false end); data.animating = false end)
 				data.open = false
 				if data.conn then data.conn:Disconnect(); data.conn = nil end
 			else
@@ -5120,6 +5124,7 @@ function UILib.Column:addGroup(title)
 				TweenService:Create(data.scale, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 				data.open = true
 				data.conn = makeCloseConn(data, cacheKey, anchorElement)
+				data.animating = false
 			end
 			return
 		end
@@ -6005,6 +6010,14 @@ function UILib.Column:addGroup(title)
 			kbtn.Text = type(val) == "string" and val or tostring(val)
 			window.configs[id].Value = val
 		end
+		local keyMode = "Hold"
+		kbtn.InputBegan:Connect(function(inp)
+			if inp.UserInputType == Enum.UserInputType.MouseButton2 then
+				keyMode = keyMode == "Hold" and "Toggle" or "Hold"
+				self:notify(keyMode, "info", 1)
+			end
+		end)
+		elem._keybindMode = keyMode
 
 		updateSize()
 		elem.frame = r
