@@ -1329,8 +1329,16 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 										elseif c:IsA("TextBox") then
 											if (c.Text and c.Text:lower():find(query, 1, true)) or (c.PlaceholderText and c.PlaceholderText:lower():find(query, 1, true)) then
 												contentMatch = true; break
-											end
-										end
+			end
+		end
+		for _, d in pairs(self._panels or {}) do
+			if d.open then
+				TweenService:Create(d.scale, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
+				d.open = false
+				task.delay(0.13, function() pcall(function() d.popup.Visible = false end) end)
+				if d.conn then d.conn:Disconnect(); d.conn = nil end
+			end
+		end
 									end
 								end
 							end
@@ -1887,9 +1895,13 @@ function UILib:setupKeybindHUD()
 	table.insert(self.connections, hEnd)
 
 	local function updateHudSize()
-		hud.Size = UDim2.new(0, 200, 0, hudLayout.AbsoluteContentSize.Y + 16)
+		local h = hudLayout.AbsoluteContentSize.Y
+		if h > 0 then hud.Size = UDim2.new(0, 200, 0, h + 16) end
 	end
-	hudLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateHudSize)
+	hudLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		task.wait(0.02)
+		updateHudSize()
+	end)
 
 	self._hudFrame = hud
 	self._hudLayout = hudLayout
@@ -2017,9 +2029,9 @@ function UILib:buildUITab()
 		end
 	end, "Display FPS and ping", nil, nil, nil, nil, nil, "ui_watermark")
 
-	grp:toggle("Show Keybinds", self._hudFrame ~= nil and self._hudFrame.Visible, function(v)
-		if not self._hudFrame then self:setupKeybindHUD() end
-		self._hudFrame.Visible = v
+	grp:toggle("Show Keybinds", false, function(v)
+		if v and not self._hudFrame then self:setupKeybindHUD() end
+		if self._hudFrame then self._hudFrame.Visible = v end
 	end, "Show active keybinds on screen", nil, nil, nil, nil, nil, "ui_keybindhud")
 
 	grp:button("Unload", function()
@@ -4158,6 +4170,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 	local function openPicker()
 		if window.tooltip then window.tooltip.hide() end
 		window._pickerOpen = true
+		window.tooltipSuppressed = false
 		if pickerFrame and pickerFrame.Parent then return end
 		if window._openingPicker then return end
 		window._openingPicker = true
@@ -5117,9 +5130,10 @@ function UILib.Column:addGroup(title)
 					local bp = (anchorEl or d.anchor).AbsolutePosition
 					local bs = (anchorEl or d.anchor).AbsoluteSize
 					if bp and bs and mp.X >= bp.X - 4 and mp.X <= bp.X + bs.X + 4 and mp.Y >= bp.Y - 4 and mp.Y <= bp.Y + bs.Y + 4 then return end
-					TweenService:Create(d.scale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
-					task.delay(0.16, function() pcall(function() pp.Visible = false end) end)
-					d.open = false
+				TweenService:Create(d.scale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
+				d.animating = true
+				task.delay(0.16, function() pcall(function() pp.Visible = false end); d.animating = false end)
+				d.open = false
 					conn:Disconnect()
 					d.conn = nil
 				end)
@@ -6033,7 +6047,7 @@ function UILib.Column:addGroup(title)
 		kbtn.InputBegan:Connect(function(inp)
 			if inp.UserInputType == Enum.UserInputType.MouseButton2 then
 				keyMode = keyMode == "Hold" and "Toggle" or "Hold"
-				self:notify(keyMode, "info", 1)
+				window:notify(keyMode, "info", 1)
 			end
 		end)
 		elem._keybindMode = keyMode
