@@ -1519,10 +1519,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 
 		table.insert(self.connections,
 		UIS.InputBegan:Connect(function(input, gpe)
-			if input.UserInputType == Enum.UserInputType.Keyboard then
-				if input.KeyCode == self.toggleKey or input.KeyCode.Name == self.toggleKey.Name then
-					self:setVisible(not self.visibleTarget)
-				end
+			if input.KeyCode == self.toggleKey then
+				self:setVisible(not self.visibleTarget)
 			end
 		end))
 
@@ -1834,8 +1832,8 @@ function UILib:setupKeybindSystem()
 	if self._hudFrame then return end
 	local hud = Instance.new("Frame")
 	hud.Size = UDim2.new(0, 160, 0, 0)
-	hud.Position = self._hudPos or UDim2.new(0, 10, 0, 10)
-	hud.AnchorPoint = Vector2.new(0, 0)
+	hud.Position = self._hudPos or UDim2.new(0, 10, 0.5, 0)
+	hud.AnchorPoint = Vector2.new(0, 0.5)
 	hud.BackgroundColor3 = self.theme.Panel
 	hud.BackgroundTransparency = 0.25
 	hud.BorderSizePixel = 0
@@ -5145,6 +5143,8 @@ function UILib.Column:addGroup(title)
 	end
 
 	function UILib:openAdvancedPanel(anchorElement, builder)
+		self._panelJustOpened = true
+		task.delay(0.1, function() self._panelJustOpened = false end)
 		if self.tooltip then self.tooltip.hide() end
 		anchorElement = anchorElement or self.window
 		local cacheKey = anchorElement
@@ -5286,8 +5286,6 @@ function UILib.Column:addGroup(title)
 		repositionPanel(data, anchorElement)
 		TweenService:Create(popupScale, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 
-		self._panelJustOpened = true
-		task.delay(0.15, function() self._panelJustOpened = false end)
 		data.conn = makeCloseConn(data, cacheKey, anchorElement)
 		self._panels[cacheKey] = data
 	end
