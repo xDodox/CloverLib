@@ -167,6 +167,7 @@ local function makeTooltipSystem(sg, theme, connections)
 
 	local tooltipTimer                                  = nil
 	local tooltipActiveElement                          = nil
+	local tooltipJustToggled                           = false
 
 	local function showTooltip(text, element)
 		if not element or not text or text == "" then return end
@@ -205,6 +206,13 @@ local function makeTooltipSystem(sg, theme, connections)
 		hideTooltip()
 		showTooltip(text, element)
 	end
+
+	table.insert(connections, UIS.InputBegan:Connect(function(input)
+		if tooltipJustToggled then return end
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			if tooltipFrame.Visible then hideTooltip() end
+		end
+	end))
 
 	return { show = showTooltip, hide = hideTooltip, start = startTooltipDelay, frame = tooltipFrame }
 end
@@ -5327,6 +5335,8 @@ function UILib.Column:addGroup(title)
 			local showing = false
 			tb.MouseButton1Click:Connect(function()
 				if not tt then return end
+				tooltipJustToggled = true
+				task.delay(0.1, function() tooltipJustToggled = false end)
 				if showing then tt.hide(); showing = false
 				else tt.show(tooltip, tb); showing = true end
 			end)
@@ -5910,22 +5920,22 @@ function UILib.Column:addGroup(title)
 					kbtn.Text = i.KeyCode.Name
 					kbtn.TextColor3 = window.theme.GrayLt
 					onChange(i.KeyCode, i.KeyCode.Name)
-					window.configs[id].Value = i.KeyCode.Name
+					if window.configs[id] then window.configs[id].Value = i.KeyCode.Name end
 				elseif u == Enum.UserInputType.MouseButton2 then
 					kbtn.Text = "RMB"
 					kbtn.TextColor3 = window.theme.GrayLt
 					onChange(Enum.UserInputType.MouseButton2, "RMB")
-					window.configs[id].Value = "RMB"
+					if window.configs[id] then window.configs[id].Value = "RMB" end
 				elseif u == Enum.UserInputType.MouseButton1 or u == Enum.UserInputType.Touch then
 					kbtn.Text = u == Enum.UserInputType.Touch and "Touch" or "LMB"
 					kbtn.TextColor3 = window.theme.GrayLt
 					onChange(u, u == Enum.UserInputType.Touch and "Touch" or "LMB")
-					window.configs[id].Value = u == Enum.UserInputType.Touch and "Touch" or "LMB"
+					if window.configs[id] then window.configs[id].Value = u == Enum.UserInputType.Touch and "Touch" or "LMB" end
 				elseif u == Enum.UserInputType.MouseButton3 then
 					kbtn.Text = "MMB"
 					kbtn.TextColor3 = window.theme.GrayLt
 					onChange(Enum.UserInputType.MouseButton3, "MMB")
-					window.configs[id].Value = "MMB"
+					if window.configs[id] then window.configs[id].Value = "MMB" end
 				else
 					kbtn.Text = currentName
 					kbtn.TextColor3 = window.theme.GrayLt
