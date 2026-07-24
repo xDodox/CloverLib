@@ -4065,6 +4065,16 @@ local function createColorPicker(group, items, window, text, default, callback, 
 
 	local function openPicker()
 		if window.tooltip then window.tooltip.hide() end
+		window.tooltipSuppressed = false
+		for _, d in pairs(window._panels or {}) do
+			if d.popup and d.popup.Visible then
+				for _, child in ipairs(d.popup:GetDescendants()) do
+					if child.Name == "ExpandPanel" and child.Visible then
+						pcall(function() child.Visible = false end)
+					end
+				end
+			end
+		end
 		if pickerFrame and pickerFrame.Parent then return end
 		if window._openingPicker then return end
 		window._openingPicker = true
