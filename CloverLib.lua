@@ -6048,34 +6048,10 @@ function UILib.Column:addGroup(title)
 		local keyMode = "Hold"
 		kbtn.InputBegan:Connect(function(inp)
 			if inp.UserInputType == Enum.UserInputType.MouseButton2 then
-				if _keyModePopup then _keyModePopup:Destroy() end
-				local popup = Instance.new("Frame")
-				popup.BackgroundTransparency = 1
-				popup.Size = UDim2.new(0, 130, 0, 0)
-				popup.ZIndex = 9999
-				popup.Parent = window.sg
-				local tempGroup = { window = window, items = popup, updateSize = function() end }
-				setmetatable(tempGroup, { __index = group })
-				local dd = tempGroup:dropdown("", {"Always", "Toggle", "Hold"}, keyMode, function(val)
-					keyMode = val
-					popup:Destroy()
-					_keyModePopup = nil
-				end)
-				dd.frame.Size = UDim2.new(1, 0, 0, 36)
-				dd.frame:FindFirstChildOfClass("TextLabel").Visible = false
-				_keyModePopup = popup
-				task.wait(0.02)
-				local ap = kbtn.AbsolutePosition
-				local as = kbtn.AbsoluteSize
-				local sw = window.sg.AbsoluteSize.X
-				local ty = ap.Y + as.Y + 8
-				popup.Position = UDim2.new(0, math.clamp(ap.X + as.X/2 - 65, 4, sw - 134), 0, math.max(4, ty))
-
-				local bc
-				bc = UIS.InputBegan:Connect(function(iinp)
-					if iinp.UserInputType == Enum.UserInputType.MouseButton1 or iinp.UserInputType == Enum.UserInputType.Touch then
-						pcall(function() popup:Destroy() end); bc:Disconnect(); _keyModePopup = nil
-					end
+				window:openAdvancedPanel(kbtn, function(popup)
+					popup:dropdown("Mode", {"Always", "Toggle", "Hold"}, keyMode, function(val)
+						keyMode = val
+					end)
 				end)
 			end
 		end)
