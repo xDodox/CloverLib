@@ -1309,11 +1309,21 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		if _searchClearing then return end
 		local query = headerSearchBox.Text:lower()
 
+		if query == "" then
+			for _, tab in ipairs(self.tabOrder or {}) do
+				if tab.subtabOrder then
+					for _, sub in ipairs(tab.subtabOrder) do
+						if sub.btn then sub.btn.Visible = true end
+					end
+				end
+			end
+			return
+		end
 		for _, tab in ipairs(self.tabOrder or {}) do
-			if tab.subtabOrder and (query == "" or tab == self.activeTab) then
+			if tab.subtabOrder and tab == self.activeTab then
 				for _, sub in ipairs(tab.subtabOrder) do
 					if sub.btn then
-						local nameMatch = query == "" or (sub.name and sub.name:lower():find(query, 1, true))
+						local nameMatch = sub.name and sub.name:lower():find(query, 1, true)
 						local contentMatch = false
 						if not nameMatch and sub.groups then
 							for _, g in ipairs(sub.groups) do
@@ -1851,6 +1861,8 @@ function UILib:setupKeybindSystem()
 	Instance.new("UIPadding", hud).PaddingRight = UDim.new(0, 10)
 	Instance.new("UIPadding", hud).PaddingTop = UDim.new(0, 8)
 	Instance.new("UIPadding", hud).PaddingBottom = UDim.new(0, 8)
+	hud.Size = UDim2.new(0, 200, 0, 0)
+	hud.AutomaticSize = Enum.AutomaticSize.Y
 
 	local hudLayout = Instance.new("UIListLayout", hud)
 	hudLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1893,25 +1905,16 @@ function UILib:setupKeybindSystem()
 	table.insert(self.connections, hMove)
 	table.insert(self.connections, hEnd)
 
-	local function updateHudSize()
-		local h = hudLayout.AbsoluteContentSize.Y
-		if h > 0 then hud.Size = UDim2.new(0, 200, 0, h + 16) end
-	end
-	hudLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-		task.wait(0.02); updateHudSize()
-	end)
-
 	self._hudFrame = hud
 	self._hudLayout = hudLayout
 	self._hudEntries = {}
-	self._hudUpdate = updateHudSize
 	self._keybinds = {}
 	self._keybindListener = UIS.InputBegan:Connect(function(input, gpe)
 		if gpe then return end
 		if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 		local name = input.KeyCode.Name
 		local kb = self._keybinds[name]
-		if not kb then return end
+		if not kb or kb.mode == "Always" then return end
 		if kb.mode == "Toggle" then
 			kb.active = not kb.active
 			kb.callback(kb.active)
@@ -1929,7 +1932,7 @@ function UILib:setupKeybindSystem()
 		if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 		local name = input.KeyCode.Name
 		local kb = self._keybinds[name]
-		if not kb or kb.mode == "Toggle" then return end
+		if not kb or kb.mode == "Toggle" or kb.mode == "Always" then return end
 		kb.active = false
 		kb.callback(false)
 		self:updateKeybindEntry(kb)
@@ -1943,6 +1946,7 @@ function UILib:registerKeybind(name, key, mode, callback)
 	local kb = { name = name, key = key, mode = mode, callback = callback, active = false }
 	self._keybinds[key] = kb
 	self:addKeybindEntry(kb)
+	if mode == "Always" then kb.active = true; callback(true); self:updateKeybindEntry(kb) end
 	return kb
 end
 
@@ -1953,7 +1957,6 @@ function UILib:unregisterKeybind(kb)
 		local idx = table.find(self._hudEntries, kb.entry)
 		if idx then table.remove(self._hudEntries, idx) end
 		if #self._hudEntries == 0 then self._hudFrame.Visible = false end
-		self._hudUpdate()
 	end
 end
 
@@ -2018,7 +2021,6 @@ function UILib:addKeybindEntry(kb)
 	local entry = { row = row, keyLabel = keyLbl, modeLabel = modeLbl }
 	kb.entry = entry
 	table.insert(self._hudEntries, entry)
-	self._hudUpdate()
 	self._hudFrame.Visible = true
 end
 
@@ -6101,40 +6103,54 @@ function UILib.Column:addGroup(title)
 				popup.BackgroundColor3 = window.theme.Surface
 				popup.BorderSizePixel = 0
 				popup.ZIndex = 9999
+				popup.Size = UDim2.new(0, 120, 0, 80)
+				popup.Visible = false
 				popup.Parent = window.sg
-				popup.Size = UDim2.new(0, 140, 0, 0)
 				Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 6)
 				local ps2 = Instance.new("UIStroke", popup)
 				ps2.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 				ps2.Color = window.theme.Border
 				ps2.Thickness = 1
-				Instance.new("UIPadding", popup).PaddingTop = UDim.new(0, 4)
-				Instance.new("UIPadding", popup).PaddingBottom = UDim.new(0, 4)
-				local popLayout = Instance.new("UIListLayout", popup)
-				popLayout.SortOrder = Enum.SortOrder.LayoutOrder
-				local modes = {"Hold", "Toggle", "Always"}
-				for _, m in ipairs(modes) do
-					local btn = Instance.new("TextButton")
-					btn.Size = UDim2.new(1, 0, 0, 24)
-					btn.BackgroundTransparency = 1
-					btn.Text = m .. (m == keyMode and " ✓" or "")
-					btn.TextColor3 = m == keyMode and window.theme.Accent or window.theme.White
-					btn.Font = Enum.Font.GothamSemibold
-					btn.TextSize = 11
-					btn.ZIndex = 10000
-					btn.Parent = popup
-					btn.MouseButton1Click:Connect(function()
-						keyMode = m
+
+				local function addRow(order, txt, selected)
+					local b = Instance.new("TextButton", popup)
+					b.Size = UDim2.new(1, 0, 0, 26)
+					b.BackgroundColor3 = selected and window.theme.Accent or window.theme.Surface
+					b.BackgroundTransparency = selected and 0.8 or 1
+					b.Text = ""
+					b.ZIndex = 10000
+					b.LayoutOrder = order
+					local l = Instance.new("TextLabel", b)
+					l.Size = UDim2.new(1, -16, 1, 0)
+					l.Position = UDim2.new(0, 8, 0, 0)
+					l.BackgroundTransparency = 1
+					l.Text = txt
+					l.TextColor3 = selected and window.theme.White or window.theme.GrayLt
+					l.Font = Enum.Font.GothamSemibold
+					l.TextSize = 11
+					l.TextXAlignment = Enum.TextXAlignment.Left
+					l.ZIndex = 10001
+					b.MouseButton1Click:Connect(function()
+						keyMode = txt
 						popup:Destroy()
 					end)
 				end
-				popup.Size = UDim2.new(0, 140, 0, popLayout.AbsoluteContentSize.Y + 8)
+				local layout = Instance.new("UIListLayout", popup)
+				layout.SortOrder = Enum.SortOrder.LayoutOrder
+				addRow(1, "Hold", keyMode == "Hold")
+				addRow(2, "Toggle", keyMode == "Toggle")
+				addRow(3, "Always", keyMode == "Always")
+
 				local ap = kbtn.AbsolutePosition
-				local sx = window.window.AbsoluteSize.X
-				local tx = math.clamp(ap.X + kbtn.AbsoluteSize.X/2 - 70, 4, window.sg.AbsoluteSize.X - 144)
-				local ty = ap.Y + 24
-				if ty + popup.AbsoluteSize.Y > window.sg.AbsoluteSize.Y - 4 then ty = ap.Y - popup.AbsoluteSize.Y - 4 end
-				popup.Position = UDim2.new(0, tx, 0, ty)
+				local as = kbtn.AbsoluteSize
+				local sw = window.sg.AbsoluteSize.X
+				local sh = window.sg.AbsoluteSize.Y
+				local tx = math.clamp(ap.X + as.X/2 - 60, 4, sw - 124)
+				local ty = ap.Y + as.Y + 4
+				if ty + 82 > sh - 4 then ty = ap.Y - 82 - 4 end
+				popup.Position = UDim2.new(0, tx, 0, math.max(4, ty))
+				popup.Visible = true
+
 				local bc
 				bc = UIS.InputBegan:Connect(function(iinp)
 					if iinp.UserInputType == Enum.UserInputType.MouseButton1 or iinp.UserInputType == Enum.UserInputType.Touch then
