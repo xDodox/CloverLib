@@ -1523,7 +1523,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 
 		table.insert(self.connections,
 		UIS.InputBegan:Connect(function(input, gpe)
-			if gpe then return end
 			if input.KeyCode == self.toggleKey then
 				self:setVisible(not self.visibleTarget)
 			end
@@ -1733,15 +1732,20 @@ function UILib:addWatermark(name)
 	end
 	local wm = Instance.new("Frame")
 	wm.AutomaticSize = Enum.AutomaticSize.X
-	wm.Size = UDim2.new(0, 0, 0, 22)
+	wm.Size = UDim2.new(0, 0, 0, 26)
 	wm.Position = UDim2.new(1, -10, 0, 10)
 	wm.AnchorPoint = Vector2.new(1, 0)
 	wm.BackgroundColor3 = self.theme.Panel
-	wm.BackgroundTransparency = 0.15
+	wm.BackgroundTransparency = 0.2
 	wm.BorderSizePixel = 0
 	wm.Parent = self.sg
 	wm.ZIndex = 200
 	Instance.new("UICorner", wm).CornerRadius = UDim.new(0, 14)
+	local wmStroke = Instance.new("UIStroke", wm)
+	wmStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	wmStroke.Color = self.theme.Border
+	wmStroke.Thickness = 1
+	wmStroke.Transparency = 0.5
 	local row = Instance.new("Frame")
 	row.AutomaticSize = Enum.AutomaticSize.X
 	row.Size = UDim2.new(0, 0, 1, 0)
@@ -1754,8 +1758,8 @@ function UILib:addWatermark(name)
 	rowLayout.Padding = UDim.new(0, 8)
 	rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	local rowPad = Instance.new("UIPadding", row)
-	rowPad.PaddingLeft = UDim.new(0, 8)
-	rowPad.PaddingRight = UDim.new(0, 8)
+	rowPad.PaddingLeft = UDim.new(0, 10)
+	rowPad.PaddingRight = UDim.new(0, 10)
 	local watermarkScale = Instance.new("UIScale", wm)
 	watermarkScale.Scale = self._wmScale or 1
 	local function updateWatermarkSize(delta)
@@ -1810,11 +1814,23 @@ function UILib:addWatermark(name)
 	nameLbl.LayoutOrder = 1
 	nameLbl.Parent = row
 
+	local function addDivider(order)
+		local div = Instance.new("Frame")
+		div.Size = UDim2.new(0, 1, 0, 14)
+		div.BackgroundColor3 = self.theme.Border
+		div.BackgroundTransparency = 0.4
+		div.BorderSizePixel = 0
+		div.ZIndex = 201
+		div.LayoutOrder = order
+		div.Parent = row
+	end
+	addDivider(2)
+
 	local fpsLabel = Instance.new("TextLabel")
 	fpsLabel.AutomaticSize = Enum.AutomaticSize.X
 	fpsLabel.Size = UDim2.new(0, 0, 1, 0)
 	fpsLabel.BackgroundTransparency = 1
-	fpsLabel.Text = " |  0 FPS "
+	fpsLabel.Text = "0 FPS"
 	fpsLabel.TextColor3 = self.theme.GrayLt
 	fpsLabel.Font = Enum.Font.GothamSemibold
 	fpsLabel.TextSize = 10
@@ -1822,28 +1838,32 @@ function UILib:addWatermark(name)
 	fpsLabel.LayoutOrder = 3
 	fpsLabel.Parent = row
 
+	addDivider(4)
+
 	local pingLabel = Instance.new("TextLabel")
 	pingLabel.AutomaticSize = Enum.AutomaticSize.X
 	pingLabel.Size = UDim2.new(0, 0, 1, 0)
 	pingLabel.BackgroundTransparency = 1
-	pingLabel.Text = " |  0ms "
+	pingLabel.Text = "0ms"
 	pingLabel.TextColor3 = self.theme.GrayLt
 	pingLabel.Font = Enum.Font.GothamSemibold
 	pingLabel.TextSize = 10
 	pingLabel.ZIndex = 201
-	pingLabel.LayoutOrder = 4
+	pingLabel.LayoutOrder = 5
 	pingLabel.Parent = row
+
+	addDivider(6)
 
 	local uptimeLabel = Instance.new("TextLabel")
 	uptimeLabel.AutomaticSize = Enum.AutomaticSize.X
 	uptimeLabel.Size = UDim2.new(0, 0, 1, 0)
 	uptimeLabel.BackgroundTransparency = 1
-	uptimeLabel.Text = " |  00:00:00 "
+	uptimeLabel.Text = "00:00:00"
 	uptimeLabel.TextColor3 = self.theme.GrayLt
 	uptimeLabel.Font = Enum.Font.GothamSemibold
 	uptimeLabel.TextSize = 10
 	uptimeLabel.ZIndex = 201
-	uptimeLabel.LayoutOrder = 5
+	uptimeLabel.LayoutOrder = 7
 	uptimeLabel.Parent = row
 
 	local frameCount = 0
@@ -1858,16 +1878,16 @@ function UILib:addWatermark(name)
 		frameCount = frameCount + 1
 		local now = tick()
 		if now - lastTime >= 1 then
-			fpsLabel.Text = " |  " .. math.floor(frameCount / (now - lastTime) + 0.5) .. " FPS "
+			fpsLabel.Text = math.floor(frameCount / (now - lastTime) + 0.5) .. " FPS"
 			frameCount = 0
 			lastTime = now
 		end
 		if now - lastPingUpdate >= 0.5 then
 			lastPingUpdate = now
 			local ping = LP:GetNetworkPing() * 1000
-			pingLabel.Text = " |  " .. math.floor(ping + 0.5) .. "ms "
+			pingLabel.Text = math.floor(ping + 0.5) .. "ms"
 			local up = math.floor(workspace.DistributedGameTime)
-			uptimeLabel.Text = string.format(" |  %02d:%02d:%02d ", math.floor(up/3600), math.floor((up%3600)/60), up%60)
+			uptimeLabel.Text = string.format("%02d:%02d:%02d", math.floor(up/3600), math.floor((up%3600)/60), up%60)
 		end
 	end)
 	self.wmConn = connection
@@ -4511,14 +4531,13 @@ local function createMultiDropdown(group, items, window, text, options, default,
 				selectionBGs[opt] = bg
 
 				local bar = Instance.new("Frame")
-				bar.Size = UDim2.new(0, 2, 0, 14)
-				bar.Position = UDim2.new(0, 0, 0.5, -7)
+				bar.Size = UDim2.new(0, 4, 1, 0)
+				bar.Position = UDim2.new(0, 0, 0, 0)
 				bar.BackgroundColor3 = window.theme.Accent
 				bar.BorderSizePixel = 0
 				bar.Visible = isSel
 				bar.ZIndex = 53
 				bar.Parent = ob
-				Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 1)
 				backgrounds[opt] = bar
 				table.insert(window.accentObjects, bar)
 				local ol = Instance.new("TextLabel")
@@ -5648,14 +5667,13 @@ function UILib.Column:addGroup(title)
 				selectionBGs[opt] = bg
 				
 				local bar = Instance.new("Frame")
-				bar.Size = UDim2.new(0, 2, 0, 14)
-				bar.Position = UDim2.new(0, 0, 0.5, -7)
+				bar.Size = UDim2.new(0, 4, 1, 0)
+				bar.Position = UDim2.new(0, 0, 0, 0)
 				bar.BackgroundColor3 = window.theme.Accent
 				bar.BorderSizePixel = 0
 				bar.Visible = isSelected
 				bar.ZIndex = 53
 				bar.Parent = ob
-				Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 1)
 				backgrounds[opt] = bar
 				table.insert(window.accentObjects, bar)
 				local ol = Instance.new("TextLabel")
@@ -5810,19 +5828,6 @@ function UILib.Column:addGroup(title)
 		}
 		window.configs[id] = finalizeElement(elem, window, group)
 
-		if tooltip then
-			local tt = window.tooltip
-			if tt then
-				dbtn.MouseEnter:Connect(function() if not open then tt.start(tooltip, dbtn) end end)
-				dbtn.MouseLeave:Connect(function() tt.hide() end)
-				dbtn.InputBegan:Connect(function(inp)
-					if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
-						tt
-							.hide()
-					end
-				end)
-			end
-		end
 		updateSize()
 		elem.frame = r
 		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
