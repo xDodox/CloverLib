@@ -1310,7 +1310,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		local query = headerSearchBox.Text:lower()
 
 		for _, tab in ipairs(self.tabOrder or {}) do
-			if tab.subtabOrder then
+			if tab.subtabOrder and (query == "" or tab == self.activeTab) then
 				for _, sub in ipairs(tab.subtabOrder) do
 					if sub.btn then
 						local nameMatch = query == "" or (sub.name and sub.name:lower():find(query, 1, true))
@@ -1828,7 +1828,7 @@ function UILib:addWatermark(name)
 	return wm
 end
 
-function UILib:setupKeybindHUD()
+function UILib:setupKeybindSystem()
 	if self._hudFrame then return end
 	local hud = Instance.new("Frame")
 	hud.Size = UDim2.new(0, 200, 0, 0)
@@ -1847,11 +1847,10 @@ function UILib:setupKeybindHUD()
 	hudStroke.Thickness = 1
 	hudStroke.Transparency = 0.6
 
-	local hudPad = Instance.new("UIPadding", hud)
-	hudPad.PaddingLeft = UDim.new(0, 10)
-	hudPad.PaddingRight = UDim.new(0, 10)
-	hudPad.PaddingTop = UDim.new(0, 8)
-	hudPad.PaddingBottom = UDim.new(0, 8)
+	Instance.new("UIPadding", hud).PaddingLeft = UDim.new(0, 10)
+	Instance.new("UIPadding", hud).PaddingRight = UDim.new(0, 10)
+	Instance.new("UIPadding", hud).PaddingTop = UDim.new(0, 8)
+	Instance.new("UIPadding", hud).PaddingBottom = UDim.new(0, 8)
 
 	local hudLayout = Instance.new("UIListLayout", hud)
 	hudLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1899,19 +1898,75 @@ function UILib:setupKeybindHUD()
 		if h > 0 then hud.Size = UDim2.new(0, 200, 0, h + 16) end
 	end
 	hudLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-		task.wait(0.02)
-		updateHudSize()
+		task.wait(0.02); updateHudSize()
 	end)
 
 	self._hudFrame = hud
 	self._hudLayout = hudLayout
 	self._hudEntries = {}
 	self._hudUpdate = updateHudSize
+	self._keybinds = {}
+	self._keybindListener = UIS.InputBegan:Connect(function(input, gpe)
+		if gpe then return end
+		if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+		local name = input.KeyCode.Name
+		local kb = self._keybinds[name]
+		if not kb then return end
+		if kb.mode == "Toggle" then
+			kb.active = not kb.active
+			kb.callback(kb.active)
+			self:updateKeybindEntry(kb)
+		else
+			if not kb.active then
+				kb.active = true
+				kb.callback(true)
+				self:updateKeybindEntry(kb)
+			end
+		end
+	end)
+	table.insert(self.connections, self._keybindListener)
+	self._keybindRelease = UIS.InputEnded:Connect(function(input)
+		if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+		local name = input.KeyCode.Name
+		local kb = self._keybinds[name]
+		if not kb or kb.mode == "Toggle" then return end
+		kb.active = false
+		kb.callback(false)
+		self:updateKeybindEntry(kb)
+	end)
+	table.insert(self.connections, self._keybindRelease)
 end
 
-function UILib:addKeybindHUD(name, key, mode)
-	if not self._hudFrame then self:setupKeybindHUD() end
+function UILib:registerKeybind(name, key, mode, callback)
+	self:setupKeybindSystem()
 	mode = mode or "Hold"
+	local kb = { name = name, key = key, mode = mode, callback = callback, active = false }
+	self._keybinds[key] = kb
+	self:addKeybindEntry(kb)
+	return kb
+end
+
+function UILib:unregisterKeybind(kb)
+	self._keybinds[kb.key] = nil
+	if kb.entry then
+		kb.entry.row:Destroy()
+		local idx = table.find(self._hudEntries, kb.entry)
+		if idx then table.remove(self._hudEntries, idx) end
+		if #self._hudEntries == 0 then self._hudFrame.Visible = false end
+		self._hudUpdate()
+	end
+end
+
+function UILib:setKeybindMode(kb, mode)
+	kb.mode = mode
+	kb.active = false
+	kb.callback(false)
+	self:updateKeybindEntry(kb)
+	self:notify(kb.name .. ": " .. mode, "info", 1)
+end
+
+function UILib:addKeybindEntry(kb)
+	if not self._hudFrame then self:setupKeybindSystem() end
 	local row = Instance.new("Frame")
 	row.Size = UDim2.new(1, 0, 0, 18)
 	row.BackgroundTransparency = 1
@@ -1920,9 +1975,9 @@ function UILib:addKeybindHUD(name, key, mode)
 	row.Parent = self._hudFrame
 
 	local nameLbl = Instance.new("TextLabel")
-	nameLbl.Size = UDim2.new(0.55, 0, 1, 0)
+	nameLbl.Size = UDim2.new(0.5, 0, 1, 0)
 	nameLbl.BackgroundTransparency = 1
-	nameLbl.Text = name
+	nameLbl.Text = kb.name
 	nameLbl.TextColor3 = self.theme.White
 	nameLbl.Font = Enum.Font.GothamSemibold
 	nameLbl.TextSize = 10
@@ -1931,10 +1986,10 @@ function UILib:addKeybindHUD(name, key, mode)
 	nameLbl.Parent = row
 
 	local modeLbl = Instance.new("TextLabel")
-	modeLbl.Size = UDim2.new(0.25, 0, 1, 0)
-	modeLbl.Position = UDim2.new(0.55, 0, 0, 0)
+	modeLbl.Size = UDim2.new(0.22, 0, 1, 0)
+	modeLbl.Position = UDim2.new(0.5, 0, 0, 0)
 	modeLbl.BackgroundTransparency = 1
-	modeLbl.Text = "[" .. mode .. "]"
+	modeLbl.Text = "[" .. kb.mode .. "]"
 	modeLbl.TextColor3 = self.theme.Gray
 	modeLbl.Font = Enum.Font.GothamSemibold
 	modeLbl.TextSize = 10
@@ -1943,39 +1998,35 @@ function UILib:addKeybindHUD(name, key, mode)
 	modeLbl.Parent = row
 
 	local keyLbl = Instance.new("TextLabel")
-	keyLbl.Size = UDim2.new(0.2, 0, 1, 0)
-	keyLbl.Position = UDim2.new(0.8, 0, 0, 0)
+	keyLbl.Size = UDim2.new(0.28, 0, 1, 0)
+	keyLbl.Position = UDim2.new(0.72, 0, 0, 0)
 	keyLbl.BackgroundTransparency = 1
-	keyLbl.Text = key
-	keyLbl.TextColor3 = self.theme.Accent
+	keyLbl.Text = kb.key
+	keyLbl.TextColor3 = kb.active and self.theme.Accent or self.theme.Gray
 	keyLbl.Font = Enum.Font.GothamBold
 	keyLbl.TextSize = 10
 	keyLbl.TextXAlignment = Enum.TextXAlignment.Right
 	keyLbl.ZIndex = 202
 	keyLbl.Parent = row
 
+	row.InputBegan:Connect(function(inp)
+		if inp.UserInputType == Enum.UserInputType.MouseButton2 then
+			self:setKeybindMode(kb, kb.mode == "Hold" and "Toggle" or "Hold")
+		end
+	end)
+
 	local entry = { row = row, keyLabel = keyLbl, modeLabel = modeLbl }
+	kb.entry = entry
 	table.insert(self._hudEntries, entry)
 	self._hudUpdate()
 	self._hudFrame.Visible = true
-	return entry
 end
 
-function UILib:removeKeybindHUD(entry)
-	local idx = table.find(self._hudEntries, entry)
-	if idx then
-		entry.row:Destroy()
-		table.remove(self._hudEntries, idx)
-		self._hudUpdate()
-		if #self._hudEntries == 0 then
-			self._hudFrame.Visible = false
-		end
-	end
-end
-
-function UILib:updateKeybindHUD(entry, key, mode)
-	if key then entry.keyLabel.Text = key end
-	if mode then entry.modeLabel.Text = "[" .. mode .. "]" end
+function UILib:updateKeybindEntry(kb)
+	if not kb.entry then return end
+	kb.entry.keyLabel.TextColor3 = kb.active and self.theme.Accent or self.theme.Gray
+	kb.entry.modeLabel.Text = "[" .. kb.mode .. "]"
+	kb.entry.keyLabel.Text = kb.key
 end
 
 function UILib:buildUITab()
@@ -2030,7 +2081,7 @@ function UILib:buildUITab()
 	end, "Display FPS and ping", nil, nil, nil, nil, nil, "ui_watermark")
 
 	grp:toggle("Show Keybinds", false, function(v)
-		if v and not self._hudFrame then self:setupKeybindHUD() end
+		if not self._hudFrame then self:setupKeybindSystem() end
 		if self._hudFrame then self._hudFrame.Visible = v end
 	end, "Show active keybinds on screen", nil, nil, nil, nil, nil, "ui_keybindhud")
 
@@ -6046,8 +6097,50 @@ function UILib.Column:addGroup(title)
 		local keyMode = "Hold"
 		kbtn.InputBegan:Connect(function(inp)
 			if inp.UserInputType == Enum.UserInputType.MouseButton2 then
-				keyMode = keyMode == "Hold" and "Toggle" or "Hold"
-				window:notify(keyMode, "info", 1)
+				local popup = Instance.new("Frame")
+				popup.BackgroundColor3 = window.theme.Surface
+				popup.BorderSizePixel = 0
+				popup.ZIndex = 9999
+				popup.Parent = window.sg
+				popup.Size = UDim2.new(0, 140, 0, 0)
+				Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 6)
+				local ps2 = Instance.new("UIStroke", popup)
+				ps2.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+				ps2.Color = window.theme.Border
+				ps2.Thickness = 1
+				Instance.new("UIPadding", popup).PaddingTop = UDim.new(0, 4)
+				Instance.new("UIPadding", popup).PaddingBottom = UDim.new(0, 4)
+				local popLayout = Instance.new("UIListLayout", popup)
+				popLayout.SortOrder = Enum.SortOrder.LayoutOrder
+				local modes = {"Hold", "Toggle", "Always"}
+				for _, m in ipairs(modes) do
+					local btn = Instance.new("TextButton")
+					btn.Size = UDim2.new(1, 0, 0, 24)
+					btn.BackgroundTransparency = 1
+					btn.Text = m .. (m == keyMode and " ✓" or "")
+					btn.TextColor3 = m == keyMode and window.theme.Accent or window.theme.White
+					btn.Font = Enum.Font.GothamSemibold
+					btn.TextSize = 11
+					btn.ZIndex = 10000
+					btn.Parent = popup
+					btn.MouseButton1Click:Connect(function()
+						keyMode = m
+						popup:Destroy()
+					end)
+				end
+				popup.Size = UDim2.new(0, 140, 0, popLayout.AbsoluteContentSize.Y + 8)
+				local ap = kbtn.AbsolutePosition
+				local sx = window.window.AbsoluteSize.X
+				local tx = math.clamp(ap.X + kbtn.AbsoluteSize.X/2 - 70, 4, window.sg.AbsoluteSize.X - 144)
+				local ty = ap.Y + 24
+				if ty + popup.AbsoluteSize.Y > window.sg.AbsoluteSize.Y - 4 then ty = ap.Y - popup.AbsoluteSize.Y - 4 end
+				popup.Position = UDim2.new(0, tx, 0, ty)
+				local bc
+				bc = UIS.InputBegan:Connect(function(iinp)
+					if iinp.UserInputType == Enum.UserInputType.MouseButton1 or iinp.UserInputType == Enum.UserInputType.Touch then
+						pcall(function() popup:Destroy() end); bc:Disconnect()
+					end
+				end)
 			end
 		end)
 		elem._keybindMode = keyMode
