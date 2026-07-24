@@ -3601,7 +3601,6 @@ function UILib.SubTab:addInput(labelText, default, placeholder, callback, toolti
 			current = box.Text
 			window:SafeCallback(callback, current)
 	end)
-	if tooltip then attachTooltip(r, tooltip, window) end
 	local elem = {
 		ID = id,
 		Value = current,
@@ -4889,7 +4888,6 @@ function UILib.Column:addGroup(title)
 		body.AutomaticSize = Enum.AutomaticSize.Y
 		body.Parent = r
 		Instance.new("UIPadding", r).PaddingBottom = UDim.new(0, 6)
-		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		local ref = {}
 		function ref:setTitle(t) lbl.Text = t end
@@ -5304,7 +5302,7 @@ function UILib.Column:addGroup(title)
 					settingsCallback(gearBtn)
 				end
 			end)
-			rightOffset = rightOffset + 16
+			rightOffset = rightOffset + 24
 		end
 		if tooltip then
 			local tipIcon = Instance.new("ImageLabel")
@@ -5330,7 +5328,7 @@ function UILib.Column:addGroup(title)
 				if showing then tt.hide(); showing = false
 				else tt.show(tooltip, tb); showing = true end
 			end)
-			rightOffset = rightOffset + 16
+			rightOffset = rightOffset + 24
 		end
 		local cbOuter, cbStroke, cbMark, lbl = createToggleCheckbox(r, default, window, text, rightOffset)
 		local state = default
@@ -5418,7 +5416,6 @@ function UILib.Column:addGroup(title)
 	function group:slider(text, minVal, maxVal, defaultVal, callback, step, tooltip, icon, display, cfgId, settingsCallback)
 		local r, elem = createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step, cfgId, settingsCallback)
 		if display then elem:setDisplay(display) end
-		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		return elem
 	end
@@ -5964,7 +5961,6 @@ function UILib.Column:addGroup(title)
 		lbl.AutomaticSize = Enum.AutomaticSize.Y
 		lbl.ZIndex = 3
 		lbl.Parent = f
-		if tooltip then attachTooltip(f, tooltip, window) end
 		updateSize()
 		local ref = { frame = f }
 		function ref:setText(t)
@@ -6326,7 +6322,6 @@ function UILib.Column:addGroup(title)
 				end
 			end
 
-			if tooltip then attachTooltip(r, tooltip, window) end
 			updateSize()
 			return ref
 		else
@@ -6368,7 +6363,6 @@ function UILib.Column:addGroup(title)
 				end
 			end
 
-			if tooltip then attachTooltip(r, tooltip, window) end
 			updateSize()
 			ref.remove = function() r:Destroy(); updateSize() end
 			function ref:SetVisible(v, anim)
@@ -6467,7 +6461,6 @@ function UILib.Column:addGroup(title)
 	function group:colorpicker(text, default, callback, tooltip, icon, cfgId, settingsCallback)
 		assert(text ~= nil and text ~= "", "ColorPicker - Missing text")
 		local r, elem = createColorPicker(group, items, window, text, default, callback, cfgId, settingsCallback)
-		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		return elem
 	end
@@ -6540,7 +6533,6 @@ function UILib.Column:addGroup(title)
 			end
 		}
 		window.configs[id] = finalizeElement(elem, window, group)
-		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		elem.frame = r
 		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
@@ -6618,7 +6610,6 @@ function UILib.Column:addGroup(title)
 			end
 		}
 		window.configs[id] = finalizeElement(elem, window, group)
-		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		elem.frame = r
 		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
@@ -6806,7 +6797,6 @@ function UILib.Column:addGroup(title)
 			end
 		}
 		window.configs[id] = finalizeElement(elem, window, group)
-		if tooltip then attachTooltip(r, tooltip, window) end
 		updateSize()
 		elem.frame = r
 		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
