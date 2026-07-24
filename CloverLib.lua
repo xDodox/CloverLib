@@ -2238,7 +2238,6 @@ function UILib:createCard(title, accentColor)
 		self.window._cardCenter = self
 		self:_reposition()
 	end
-	end
 
 	return card
 end
