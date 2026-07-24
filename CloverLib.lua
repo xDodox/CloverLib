@@ -4056,6 +4056,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 	end
 
 	local function openPicker()
+		if window.tooltip then window.tooltip.hide() end
 		if pickerFrame and pickerFrame.Parent then return end
 		if window._openingPicker then return end
 		window._openingPicker = true
@@ -4967,6 +4968,7 @@ function UILib.Column:addGroup(title)
 	end
 
 	function UILib:openAdvancedPanel(anchorElement, builder)
+		if self.tooltip then self.tooltip.hide() end
 		anchorElement = anchorElement or self.window
 		local cacheKey = anchorElement
 		if not self._panels then self._panels = {} end
@@ -5302,7 +5304,7 @@ function UILib.Column:addGroup(title)
 					settingsCallback(gearBtn)
 				end
 			end)
-			rightOffset = rightOffset + 24
+			rightOffset = rightOffset + 20
 		end
 		if tooltip then
 			local tipIcon = Instance.new("ImageLabel")
@@ -5328,7 +5330,7 @@ function UILib.Column:addGroup(title)
 				if showing then tt.hide(); showing = false
 				else tt.show(tooltip, tb); showing = true end
 			end)
-			rightOffset = rightOffset + 24
+			rightOffset = rightOffset + 20
 		end
 		local cbOuter, cbStroke, cbMark, lbl = createToggleCheckbox(r, default, window, text, rightOffset)
 		local state = default
