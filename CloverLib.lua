@@ -1983,12 +1983,6 @@ function UILib:updateKeybindKey(kb, newKey)
 	self._keybinds[newKey] = kb
 	self:updateKeybindEntry(kb)
 end
-	if not kb.entry then return end
-	kb.entry.nameLabel.Text = kb.name .. " [" .. kb.mode:upper() .. "]"
-	kb.entry.nameLabel.TextColor3 = kb.active and self.theme.White or self.theme.GrayLt
-	kb.entry.keyLabel.Text = kb.key
-	kb.entry.keyLabel.TextColor3 = kb.active and self.theme.Accent or self.theme.Gray
-end
 
 function UILib:buildUITab()
 	if self.uiTabBuilt then return end
