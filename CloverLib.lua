@@ -1919,8 +1919,8 @@ end
 
 function UILib:setKeybindMode(kb, mode)
 	kb.mode = mode
-	kb.active = false
-	kb.callback(false)
+	kb.active = (mode == "Always")
+	kb.callback(kb.active)
 	self:updateKeybindEntry(kb)
 	if kb.cfgId and self.configs then
 		for _, elem in pairs(self.configs) do
