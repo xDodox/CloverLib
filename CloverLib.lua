@@ -1833,8 +1833,8 @@ end
 function UILib:setupKeybindSystem()
 	if self._hudFrame then return end
 	local hud = Instance.new("Frame")
-	hud.Size = UDim2.new(0, 155, 0, 0)
-	hud.AutomaticSize = Enum.AutomaticSize.Y
+	hud.Size = UDim2.new(0, 0, 0, 0)
+	hud.AutomaticSize = Enum.AutomaticSize.XY
 	hud.Position = self._hudPos or UDim2.new(0, 10, 0.5, 0)
 	hud.AnchorPoint = Vector2.new(0, 0.5)
 	hud.BackgroundColor3 = self.theme.Panel
@@ -1851,33 +1851,21 @@ function UILib:setupKeybindSystem()
 	hudStroke.Transparency = 0.6
 
 	local hudPad = Instance.new("UIPadding", hud)
-	hudPad.PaddingLeft = UDim.new(0, 6)
-	hudPad.PaddingRight = UDim.new(0, 6)
-	hudPad.PaddingTop = UDim.new(0, 0)
-	hudPad.PaddingBottom = UDim.new(0, 2)
+	hudPad.PaddingLeft = UDim.new(0, 8)
+	hudPad.PaddingRight = UDim.new(0, 8)
+	hudPad.PaddingTop = UDim.new(0, 4)
+	hudPad.PaddingBottom = UDim.new(0, 4)
 
 	local hudLayout = Instance.new("UIListLayout", hud)
+	hudLayout.FillDirection = Enum.FillDirection.Horizontal
 	hudLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	hudLayout.Padding = UDim.new(0, 1)
-
-	local header = Instance.new("TextLabel")
-	header.Size = UDim2.new(1, 0, 0, 12)
-	header.BackgroundTransparency = 1
-	header.Text = "KEYBINDS"
-	header.TextColor3 = self.theme.GrayLt
-	header.Font = Enum.Font.GothamBold
-	header.TextSize = 9
-	header.TextXAlignment = Enum.TextXAlignment.Center
-	header.ZIndex = 201
-	header.LayoutOrder = 1
-	header.Parent = hud
+	hudLayout.Padding = UDim.new(0, 10)
 
 	local hudDrag = Instance.new("TextButton")
-	hudDrag.Size = UDim2.new(1, 0, 0, 16)
+	hudDrag.Size = UDim2.new(1, 0, 1, 0)
 	hudDrag.BackgroundTransparency = 1
 	hudDrag.Text = ""
 	hudDrag.ZIndex = 205
-	hudDrag.LayoutOrder = 0
 	hudDrag.Parent = hud
 	local hDrag, hDragStart, hDragPos = false, nil, nil
 	hudDrag.InputBegan:Connect(function(i)
@@ -1965,19 +1953,33 @@ end
 function UILib:addKeybindEntry(kb)
 	if not self._hudFrame then self:setupKeybindSystem() end
 	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, 0, 0, 14)
+	row.Size = UDim2.new(0, 0, 0, 16)
+	row.AutomaticSize = Enum.AutomaticSize.X
 	row.BackgroundTransparency = 1
 	row.ZIndex = 201
-	row.LayoutOrder = #self._hudEntries + 2
 	row.Parent = self._hudFrame
+	local inner = Instance.new("UIListLayout", row)
+	inner.FillDirection = Enum.FillDirection.Horizontal
+	inner.SortOrder = Enum.SortOrder.LayoutOrder
+	inner.Padding = UDim.new(0, 6)
+
+	local dot = Instance.new("Frame")
+	dot.Size = UDim2.new(0, 3, 0, 3)
+	dot.BackgroundColor3 = self.theme.Border
+	dot.BackgroundTransparency = 0.5
+	dot.BorderSizePixel = 0
+	dot.ZIndex = 201
+	dot.Parent = row
+	Instance.new("UICorner", dot).CornerRadius = UDim.new(0, 2)
 
 	local nameLbl = Instance.new("TextLabel")
-	nameLbl.Size = UDim2.new(1, 0, 1, 0)
+	nameLbl.Size = UDim2.new(0, 0, 1, 0)
+	nameLbl.AutomaticSize = Enum.AutomaticSize.X
 	nameLbl.BackgroundTransparency = 1
 	nameLbl.Text = kb.name .. " [" .. kb.mode:upper() .. "]"
 	nameLbl.TextColor3 = kb.active and self.theme.White or self.theme.GrayLt
 	nameLbl.Font = Enum.Font.GothamSemibold
-	nameLbl.TextSize = 11
+	nameLbl.TextSize = 10
 	nameLbl.TextXAlignment = Enum.TextXAlignment.Left
 	nameLbl.ZIndex = 202
 	nameLbl.Parent = row
@@ -1985,13 +1987,11 @@ function UILib:addKeybindEntry(kb)
 	local keyLbl = Instance.new("TextLabel")
 	keyLbl.Size = UDim2.new(0, 0, 1, 0)
 	keyLbl.AutomaticSize = Enum.AutomaticSize.X
-	keyLbl.Position = UDim2.new(1, 0, 0, 0)
-	keyLbl.AnchorPoint = Vector2.new(1, 0)
 	keyLbl.BackgroundTransparency = 1
 	keyLbl.Text = kb.key
 	keyLbl.TextColor3 = kb.active and self.theme.Accent or self.theme.Gray
 	keyLbl.Font = Enum.Font.GothamBold
-	keyLbl.TextSize = 11
+	keyLbl.TextSize = 10
 	keyLbl.TextXAlignment = Enum.TextXAlignment.Right
 	keyLbl.ZIndex = 202
 	keyLbl.Parent = row
@@ -5167,16 +5167,25 @@ function UILib.Column:addGroup(title)
 			self._makeCloseConn = function(data, ck, anchorEl)
 				local conn
 				conn = UIS.InputBegan:Connect(function(input)
-					if d.justOpened then return end
 					if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
 					local mp = UIS:GetMouseLocation()
 					local d = self._panels[ck]
 					if not d then conn:Disconnect(); return end
+					if d.justOpened then return end
 				local pp = d.popup
 				local as = pp.AbsoluteSize or Vector2.new(240, 100)
 				local px = d.tx or 200
 				local py = d.ty or 200
 				if mp.X >= px - 8 and mp.X <= px + as.X + 8 and mp.Y >= py - 8 and mp.Y <= py + as.Y + 8 then return end
+			for _, child in ipairs(pp:GetDescendants()) do
+				if child:IsA("GuiObject") and child.Visible then
+					local ca = child.AbsolutePosition
+					local cs = child.AbsoluteSize
+					if ca and cs and cs.X > 10 and cs.Y > 10 then
+						if mp.X >= ca.X - 4 and mp.X <= ca.X + cs.X + 4 and mp.Y >= ca.Y - 4 and mp.Y <= ca.Y + cs.Y + 4 then return end
+					end
+				end
+			end
 			if window._pickerOpen then return end
 			for _, pd in pairs(window._panels or {}) do
 				if pd.open and pd.popup and pd.popup.Visible then
@@ -5196,15 +5205,15 @@ function UILib.Column:addGroup(title)
 					end
 				end
 			end
-					local bp = (anchorEl or d.anchor).AbsolutePosition
-					local bs = (anchorEl or d.anchor).AbsoluteSize
-					if bp and bs and mp.X >= bp.X - 4 and mp.X <= bp.X + bs.X + 4 and mp.Y >= bp.Y - 4 and mp.Y <= bp.Y + bs.Y + 4 then return end
-				TweenService:Create(d.scale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
-				d.animating = true
-				task.delay(0.16, function() pcall(function() pp.Visible = false end); d.animating = false end)
-				d.open = false
-					conn:Disconnect()
-					d.conn = nil
+			local bp = (anchorEl or d.anchor).AbsolutePosition
+			local bs = (anchorEl or d.anchor).AbsoluteSize
+			if bp and bs and mp.X >= bp.X - 4 and mp.X <= bp.X + bs.X + 4 and mp.Y >= bp.Y - 4 and mp.Y <= bp.Y + bs.Y + 4 then return end
+			TweenService:Create(d.scale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
+			d.animating = true
+			task.delay(0.16, function() pcall(function() pp.Visible = false end); d.animating = false end)
+			d.open = false
+			conn:Disconnect()
+			d.conn = nil
 				end)
 				return conn
 			end
