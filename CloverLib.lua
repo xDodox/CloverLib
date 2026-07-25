@@ -5241,6 +5241,12 @@ function UILib.Column:addGroup(title)
 		popup.Visible = false
 		popup.Parent = self.sg
 		popup.Size = UDim2.new(0, 240, 0, 10)
+		local blocker = Instance.new("TextButton", popup)
+		blocker.Size = UDim2.new(1, 0, 1, 0)
+		blocker.BackgroundTransparency = 1
+		blocker.Text = ""
+		blocker.ZIndex = 0
+		blocker.Active = true
 		Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 8)
 		local ps = Instance.new("UIStroke", popup)
 		ps.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
