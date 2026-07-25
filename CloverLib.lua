@@ -1833,7 +1833,7 @@ end
 function UILib:setupKeybindSystem()
 	if self._hudFrame then return end
 	local hud = Instance.new("Frame")
-	hud.Size = UDim2.new(0, 150, 0, 0)
+	hud.Size = UDim2.new(0, 155, 0, 0)
 	hud.AutomaticSize = Enum.AutomaticSize.Y
 	hud.Position = self._hudPos or UDim2.new(0, 10, 0.5, 0)
 	hud.AnchorPoint = Vector2.new(0, 0.5)
@@ -1853,7 +1853,7 @@ function UILib:setupKeybindSystem()
 	local hudPad = Instance.new("UIPadding", hud)
 	hudPad.PaddingLeft = UDim.new(0, 6)
 	hudPad.PaddingRight = UDim.new(0, 6)
-	hudPad.PaddingTop = UDim.new(0, 2)
+	hudPad.PaddingTop = UDim.new(0, 0)
 	hudPad.PaddingBottom = UDim.new(0, 2)
 
 	local hudLayout = Instance.new("UIListLayout", hud)
@@ -1972,30 +1972,29 @@ function UILib:addKeybindEntry(kb)
 	row.Parent = self._hudFrame
 
 	local nameLbl = Instance.new("TextLabel")
-	nameLbl.Size = UDim2.new(0, 0, 1, 0)
-	nameLbl.AutomaticSize = Enum.AutomaticSize.X
+	nameLbl.Size = UDim2.new(1, 0, 1, 0)
 	nameLbl.BackgroundTransparency = 1
-	nameLbl.Text = kb.name
+	nameLbl.Text = kb.name .. " [" .. kb.mode:upper() .. "]"
 	nameLbl.TextColor3 = kb.active and self.theme.White or self.theme.GrayLt
 	nameLbl.Font = Enum.Font.GothamSemibold
-	nameLbl.TextSize = 9
+	nameLbl.TextSize = 11
 	nameLbl.TextXAlignment = Enum.TextXAlignment.Left
 	nameLbl.ZIndex = 202
 	nameLbl.Parent = row
 
-	local infoLbl = Instance.new("TextLabel")
-	infoLbl.Size = UDim2.new(0, 0, 1, 0)
-	infoLbl.AutomaticSize = Enum.AutomaticSize.X
-	infoLbl.Position = UDim2.new(1, 0, 0, 0)
-	infoLbl.AnchorPoint = Vector2.new(1, 0)
-	infoLbl.BackgroundTransparency = 1
-	infoLbl.Text = "[" .. kb.mode:upper() .. "] " .. kb.key
-	infoLbl.TextColor3 = kb.active and self.theme.Accent or self.theme.Gray
-	infoLbl.Font = Enum.Font.GothamBold
-	infoLbl.TextSize = 9
-	infoLbl.TextXAlignment = Enum.TextXAlignment.Right
-	infoLbl.ZIndex = 202
-	infoLbl.Parent = row
+	local keyLbl = Instance.new("TextLabel")
+	keyLbl.Size = UDim2.new(0, 0, 1, 0)
+	keyLbl.AutomaticSize = Enum.AutomaticSize.X
+	keyLbl.Position = UDim2.new(1, 0, 0, 0)
+	keyLbl.AnchorPoint = Vector2.new(1, 0)
+	keyLbl.BackgroundTransparency = 1
+	keyLbl.Text = kb.key
+	keyLbl.TextColor3 = kb.active and self.theme.Accent or self.theme.Gray
+	keyLbl.Font = Enum.Font.GothamBold
+	keyLbl.TextSize = 11
+	keyLbl.TextXAlignment = Enum.TextXAlignment.Right
+	keyLbl.ZIndex = 202
+	keyLbl.Parent = row
 
 	row.InputBegan:Connect(function(inp)
 		if inp.UserInputType == Enum.UserInputType.MouseButton2 then
@@ -2007,7 +2006,7 @@ function UILib:addKeybindEntry(kb)
 		end
 	end)
 
-	local entry = { row = row, nameLabel = nameLbl, infoLabel = infoLbl }
+	local entry = { row = row, nameLabel = nameLbl, keyLabel = keyLbl }
 	kb.entry = entry
 	table.insert(self._hudEntries, entry)
 	self._hudFrame.Visible = self._hudEnabled
@@ -2015,9 +2014,10 @@ end
 
 function UILib:updateKeybindEntry(kb)
 	if not kb.entry then return end
+	kb.entry.nameLabel.Text = kb.name .. " [" .. kb.mode:upper() .. "]"
 	kb.entry.nameLabel.TextColor3 = kb.active and self.theme.White or self.theme.GrayLt
-	kb.entry.infoLabel.Text = "[" .. kb.mode:upper() .. "] " .. kb.key
-	kb.entry.infoLabel.TextColor3 = kb.active and self.theme.Accent or self.theme.Gray
+	kb.entry.keyLabel.Text = kb.key
+	kb.entry.keyLabel.TextColor3 = kb.active and self.theme.Accent or self.theme.Gray
 end
 
 function UILib:buildUITab()
@@ -5241,12 +5241,6 @@ function UILib.Column:addGroup(title)
 		popup.Visible = false
 		popup.Parent = self.sg
 		popup.Size = UDim2.new(0, 240, 0, 10)
-		local blocker = Instance.new("TextButton", popup)
-		blocker.Size = UDim2.new(1, 0, 1, 0)
-		blocker.BackgroundTransparency = 1
-		blocker.Text = ""
-		blocker.ZIndex = 0
-		blocker.Active = true
 		Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 8)
 		local ps = Instance.new("UIStroke", popup)
 		ps.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
