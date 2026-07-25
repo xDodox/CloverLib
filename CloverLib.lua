@@ -1861,12 +1861,12 @@ function UILib:setupKeybindSystem()
 	hudLayout.Padding = UDim.new(0, 2)
 
 	local header = Instance.new("TextLabel")
-	header.Size = UDim2.new(1, 0, 0, 12)
+	header.Size = UDim2.new(1, 0, 0, 14)
 	header.BackgroundTransparency = 1
 	header.Text = "KEYBINDS"
-	header.TextColor3 = self.theme.GrayLt
+	header.TextColor3 = self.theme.White
 	header.Font = Enum.Font.GothamBold
-	header.TextSize = 8
+	header.TextSize = 10
 	header.TextXAlignment = Enum.TextXAlignment.Left
 	header.ZIndex = 201
 	header.LayoutOrder = 1
@@ -2035,11 +2035,11 @@ function UILib:createCard(title, accentColor)
 	local frame = Instance.new("Frame")
 	frame.Size = UDim2.new(0, 280, 0, 360)
 	frame.BackgroundColor3 = self.theme.Panel
-	frame.BackgroundTransparency = 0.15
+	frame.BackgroundTransparency = 0.12
 	frame.BorderSizePixel = 0
-	frame.ZIndex = 999
+	frame.ZIndex = 210
 	frame.Visible = false
-	frame.Parent = self.sg
+	frame.Parent = self.window
 	Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
 	local frameStroke = Instance.new("UIStroke", frame)
 	frameStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -2193,9 +2193,8 @@ function UILib:createCard(title, accentColor)
 		for _, c in ipairs(cards) do if c.visible then table.insert(vis, c) end end
 		local n = #vis
 		if n == 0 then return end
-		local winAbs = self.window.window.AbsolutePosition
 		local winSize = self.window.window.AbsoluteSize
-		local pad, cardW = 20, 260
+		local pad, cardW = 10, 280
 		if not self.window._cardCenter then self.window._cardCenter = vis[1] end
 		local center = self.window._cardCenter
 		if not center.visible then
@@ -2214,21 +2213,20 @@ function UILib:createCard(title, accentColor)
 		for i, c in ipairs(order) do
 			local tx, tz, scale = 0, 1, 1
 			if n == 1 then
-				tx = winAbs.X + winSize.X - cardW - pad; tz = 2; scale = 1
+				tx = winSize.X - cardW - pad; tz = 2; scale = 1
 			else
-				if i == 1 then tx = winAbs.X + winSize.X/2 - cardW/2; tz = 2; scale = 1
-				elseif i == 2 then tx = winAbs.X + pad; tz = 1; scale = 0.92
-				elseif i == 3 then tx = winAbs.X + winSize.X - cardW - pad; tz = 1; scale = 0.92
+				if i == 1 then tx = winSize.X/2 - cardW/2; tz = 2; scale = 1
+				elseif i == 2 then tx = pad; tz = 1; scale = 0.92
+				elseif i == 3 then tx = winSize.X - cardW - pad; tz = 1; scale = 0.92
 				else
-					local row = math.floor((i - 1) / 2)
 					local col = (i - 1) % 2
-					tx = winAbs.X + pad + col * (winSize.X - cardW - pad*2)
+					tx = pad + col * (winSize.X - cardW - pad*2)
 					tz = 0; scale = 0.85
 				end
 			end
-			c.frame.ZIndex = 999 + tz
-			c.frame.BackgroundTransparency = tz == 2 and 0.12 or (tz == 1 and 0.25 or 0.4)
-			local ty = winAbs.Y + winSize.Y/2 - c.frame.Size.Y.Offset * scale / 2
+			c.frame.ZIndex = 210 + tz
+			c.frame.BackgroundTransparency = tz == 2 and 0.08 or (tz == 1 and 0.2 or 0.35)
+			local ty = winSize.Y/2 - c.frame.Size.Y.Offset * scale / 2
 			c.frame.Position = UDim2.new(0, math.max(0, tx), 0, math.max(0, ty))
 			local s = c.frame:FindFirstChildOfClass("UIScale") or Instance.new("UIScale", c.frame)
 			TweenService:Create(s, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Scale = scale }):Play()
