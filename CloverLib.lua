@@ -1969,7 +1969,12 @@ function UILib:addKeybindEntry(kb)
 	self._hudFrame.Visible = self._hudEnabled
 end
 
-function UILib:updateKeybindEntry(kb)
+function UILib:updateKeybindKey(kb, newKey)
+	self._keybinds[kb.key] = nil
+	kb.key = newKey
+	self._keybinds[newKey] = kb
+	self:updateKeybindEntry(kb)
+end
 	if not kb.entry then return end
 	kb.entry.nameLabel.Text = kb.name .. " [" .. kb.mode:upper() .. "]"
 	kb.entry.nameLabel.TextColor3 = kb.active and self.theme.White or self.theme.GrayLt
@@ -5163,7 +5168,7 @@ function UILib.Column:addGroup(title)
 					end
 				end
 			end
-			local bp = (anchorEl or d.anchor).AbsolutePosition
+			local bp = d.anchor and d.anchor.AbsolutePosition
 			local bs = (anchorEl or d.anchor).AbsoluteSize
 			if bp and bs and mp.X >= bp.X - 4 and mp.X <= bp.X + bs.X + 4 and mp.Y >= bp.Y - 4 and mp.Y <= bp.Y + bs.Y + 4 then return end
 			TweenService:Create(d.scale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
@@ -6072,6 +6077,15 @@ function UILib.Column:addGroup(title)
 					kbtn.TextColor3 = window.theme.GrayLt
 					onChange(i.KeyCode, i.KeyCode.Name)
 					if window.configs[id] then window.configs[id].Value = i.KeyCode.Name end
+					for _, kb in pairs(window._keybinds or {}) do
+						if kb.element == elem then
+							window._keybinds[kb.key] = nil
+							kb.key = i.KeyCode.Name
+							window._keybinds[kb.key] = kb
+							window:updateKeybindEntry(kb)
+							break
+						end
+					end
 				elseif u == Enum.UserInputType.MouseButton2 then
 					kbtn.Text = "RMB"
 					kbtn.TextColor3 = window.theme.GrayLt
