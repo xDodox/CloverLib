@@ -1853,15 +1853,15 @@ function UILib:setupKeybindSystem()
 	local hudPad = Instance.new("UIPadding", hud)
 	hudPad.PaddingLeft = UDim.new(0, 6)
 	hudPad.PaddingRight = UDim.new(0, 6)
-	hudPad.PaddingTop = UDim.new(0, 3)
-	hudPad.PaddingBottom = UDim.new(0, 3)
+	hudPad.PaddingTop = UDim.new(0, 2)
+	hudPad.PaddingBottom = UDim.new(0, 2)
 
 	local hudLayout = Instance.new("UIListLayout", hud)
 	hudLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	hudLayout.Padding = UDim.new(0, 3)
+	hudLayout.Padding = UDim.new(0, 1)
 
 	local header = Instance.new("TextLabel")
-	header.Size = UDim2.new(1, 0, 0, 16)
+	header.Size = UDim2.new(1, 0, 0, 12)
 	header.BackgroundTransparency = 1
 	header.Text = "KEYBINDS"
 	header.TextColor3 = self.theme.GrayLt
@@ -1989,7 +1989,7 @@ function UILib:addKeybindEntry(kb)
 	infoLbl.Position = UDim2.new(1, 0, 0, 0)
 	infoLbl.AnchorPoint = Vector2.new(1, 0)
 	infoLbl.BackgroundTransparency = 1
-	infoLbl.Text = kb.mode:upper() .. " | " .. kb.key
+	infoLbl.Text = "[" .. kb.mode:upper() .. "] " .. kb.key
 	infoLbl.TextColor3 = kb.active and self.theme.Accent or self.theme.Gray
 	infoLbl.Font = Enum.Font.GothamBold
 	infoLbl.TextSize = 9
@@ -2010,13 +2010,13 @@ function UILib:addKeybindEntry(kb)
 	local entry = { row = row, nameLabel = nameLbl, infoLabel = infoLbl }
 	kb.entry = entry
 	table.insert(self._hudEntries, entry)
-	self._hudFrame.Visible = true
+	self._hudFrame.Visible = self._hudEnabled
 end
 
 function UILib:updateKeybindEntry(kb)
 	if not kb.entry then return end
 	kb.entry.nameLabel.TextColor3 = kb.active and self.theme.White or self.theme.GrayLt
-	kb.entry.infoLabel.Text = kb.mode:upper() .. " | " .. kb.key
+	kb.entry.infoLabel.Text = "[" .. kb.mode:upper() .. "] " .. kb.key
 	kb.entry.infoLabel.TextColor3 = kb.active and self.theme.Accent or self.theme.Gray
 end
 
@@ -2072,6 +2072,7 @@ function UILib:buildUITab()
 	end, "Display FPS and ping", nil, nil, nil, nil, nil, "ui_watermark")
 
 	grp:toggle("Show Keybinds", false, function(v)
+		self._hudEnabled = v
 		if not self._hudFrame then self:setupKeybindSystem() end
 		if self._hudFrame then self._hudFrame.Visible = v end
 	end, "Show active keybinds on screen", nil, nil, nil, nil, nil, "ui_keybindhud")
