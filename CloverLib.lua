@@ -1833,7 +1833,7 @@ end
 function UILib:setupKeybindSystem()
 	if self._hudFrame then return end
 	local hud = Instance.new("Frame")
-	hud.Size = UDim2.new(0, 160, 0, 0)
+	hud.Size = UDim2.new(0, 150, 0, 0)
 	hud.AutomaticSize = Enum.AutomaticSize.Y
 	hud.Position = self._hudPos or UDim2.new(0, 10, 0.5, 0)
 	hud.AnchorPoint = Vector2.new(0, 0.5)
@@ -1851,10 +1851,10 @@ function UILib:setupKeybindSystem()
 	hudStroke.Transparency = 0.6
 
 	local hudPad = Instance.new("UIPadding", hud)
-	hudPad.PaddingLeft = UDim.new(0, 8)
-	hudPad.PaddingRight = UDim.new(0, 8)
-	hudPad.PaddingTop = UDim.new(0, 5)
-	hudPad.PaddingBottom = UDim.new(0, 5)
+	hudPad.PaddingLeft = UDim.new(0, 6)
+	hudPad.PaddingRight = UDim.new(0, 6)
+	hudPad.PaddingTop = UDim.new(0, 3)
+	hudPad.PaddingBottom = UDim.new(0, 3)
 
 	local hudLayout = Instance.new("UIListLayout", hud)
 	hudLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1989,7 +1989,7 @@ function UILib:addKeybindEntry(kb)
 	infoLbl.Position = UDim2.new(1, 0, 0, 0)
 	infoLbl.AnchorPoint = Vector2.new(1, 0)
 	infoLbl.BackgroundTransparency = 1
-	infoLbl.Text = kb.mode == "Always" and "[A] " .. kb.key or "[" .. kb.mode:sub(1,1) .. "] " .. kb.key
+	infoLbl.Text = kb.mode:upper() .. " | " .. kb.key
 	infoLbl.TextColor3 = kb.active and self.theme.Accent or self.theme.Gray
 	infoLbl.Font = Enum.Font.GothamBold
 	infoLbl.TextSize = 9
@@ -2016,7 +2016,7 @@ end
 function UILib:updateKeybindEntry(kb)
 	if not kb.entry then return end
 	kb.entry.nameLabel.TextColor3 = kb.active and self.theme.White or self.theme.GrayLt
-	kb.entry.infoLabel.Text = kb.mode == "Always" and "[A] " .. kb.key or "[" .. kb.mode:sub(1,1) .. "] " .. kb.key
+	kb.entry.infoLabel.Text = kb.mode:upper() .. " | " .. kb.key
 	kb.entry.infoLabel.TextColor3 = kb.active and self.theme.Accent or self.theme.Gray
 end
 
@@ -5140,8 +5140,6 @@ function UILib.Column:addGroup(title)
 	end
 
 	function UILib:openAdvancedPanel(anchorElement, builder)
-		self._panelJustOpened = true
-		task.delay(0.1, function() self._panelJustOpened = false end)
 		if self.tooltip then self.tooltip.hide() end
 		anchorElement = anchorElement or self.window
 		local cacheKey = anchorElement
@@ -5168,7 +5166,7 @@ function UILib.Column:addGroup(title)
 			self._makeCloseConn = function(data, ck, anchorEl)
 				local conn
 				conn = UIS.InputBegan:Connect(function(input)
-					if self._panelJustOpened then return end
+					if d.justOpened then return end
 					if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
 					local mp = UIS:GetMouseLocation()
 					local d = self._panels[ck]
@@ -5224,6 +5222,8 @@ function UILib.Column:addGroup(title)
 			else
 				repositionPanel(data, anchorElement)
 				data.popup.Visible = true
+				data.justOpened = true
+				task.delay(0.1, function() data.justOpened = false end)
 				TweenService:Create(data.scale, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 				data.open = true
 				data.conn = makeCloseConn(data, cacheKey, anchorElement)
@@ -5288,7 +5288,8 @@ function UILib.Column:addGroup(title)
 		popup.Position = UDim2.new(0, tx, 0, ty)
 		popup.Visible = true
 
-		data = { popup = popup, scale = popupScale, anchor = anchorElement, open = true }
+		data = { popup = popup, scale = popupScale, anchor = anchorElement, open = true, justOpened = true }
+		task.delay(0.1, function() data.justOpened = false end)
 		repositionPanel(data, anchorElement)
 		TweenService:Create(popupScale, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 
