@@ -1895,10 +1895,10 @@ function UILib:setupKeybindSystem()
 	table.insert(self.connections, self._keybindRelease)
 end
 
-function UILib:registerKeybind(name, key, mode, callback)
+function UILib:registerKeybind(name, key, mode, callback, cfgId)
 	self:setupKeybindSystem()
 	mode = mode or "Hold"
-	local kb = { name = name, key = key, mode = mode, callback = callback, active = false }
+	local kb = { name = name, key = key, mode = mode, callback = callback, active = false, cfgId = cfgId }
 	self._keybinds[key] = kb
 	self:addKeybindEntry(kb)
 	if mode == "Always" then kb.active = true; callback(true); self:updateKeybindEntry(kb) end
@@ -2129,6 +2129,9 @@ function UILib:buildUITab()
 		if self.watermark then self.watermark.BackgroundColor3 = panel end
 		for _, d in pairs(self._panels or {}) do
 			if d.popup then d.popup.BackgroundColor3 = panel end
+		end
+		for _, kb in pairs(self._keybinds or {}) do
+			self:updateKeybindEntry(kb)
 		end
 		for _, tab in ipairs(self.tabOrder or {}) do
 			if tab.subtabs then
@@ -6078,7 +6081,7 @@ function UILib.Column:addGroup(title)
 					onChange(i.KeyCode, i.KeyCode.Name)
 					if window.configs[id] then window.configs[id].Value = i.KeyCode.Name end
 					for _, kb in pairs(window._keybinds or {}) do
-						if kb.element == elem then
+						if kb.element == elem or kb.cfgId == (cfgId or text) then
 							window._keybinds[kb.key] = nil
 							kb.key = i.KeyCode.Name
 							window._keybinds[kb.key] = kb
