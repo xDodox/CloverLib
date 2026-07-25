@@ -1833,8 +1833,8 @@ end
 function UILib:setupKeybindSystem()
 	if self._hudFrame then return end
 	local hud = Instance.new("Frame")
-	hud.Size = UDim2.new(0, 0, 0, 0)
-	hud.AutomaticSize = Enum.AutomaticSize.XY
+	hud.Size = UDim2.new(0, 140, 0, 0)
+	hud.AutomaticSize = Enum.AutomaticSize.Y
 	hud.Position = self._hudPos or UDim2.new(0, 10, 0.5, 0)
 	hud.AnchorPoint = Vector2.new(0, 0.5)
 	hud.BackgroundColor3 = self.theme.Panel
@@ -1844,78 +1844,55 @@ function UILib:setupKeybindSystem()
 	hud.Visible = false
 	hud.Parent = self.sg
 	Instance.new("UICorner", hud).CornerRadius = UDim.new(0, 6)
-	local hudStroke = Instance.new("UIStroke", hud)
-	hudStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	hudStroke.Color = self.theme.Border
-	hudStroke.Thickness = 1
-	hudStroke.Transparency = 0.6
+	local s = Instance.new("UIStroke", hud)
+	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	s.Color = self.theme.Border; s.Thickness = 1; s.Transparency = 0.6
+	local p = Instance.new("UIPadding", hud)
+	p.PaddingLeft = UDim.new(0, 8); p.PaddingRight = UDim.new(0, 8); p.PaddingTop = UDim.new(0, 5); p.PaddingBottom = UDim.new(0, 5)
+	local l = Instance.new("UIListLayout", hud)
+	l.SortOrder = Enum.SortOrder.LayoutOrder; l.Padding = UDim.new(0, 3)
 
-	local hudPad = Instance.new("UIPadding", hud)
-	hudPad.PaddingLeft = UDim.new(0, 8)
-	hudPad.PaddingRight = UDim.new(0, 8)
-	hudPad.PaddingTop = UDim.new(0, 4)
-	hudPad.PaddingBottom = UDim.new(0, 4)
+	local hdr = Instance.new("TextLabel")
+	hdr.Size = UDim2.new(1, 0, 0, 14); hdr.BackgroundTransparency = 1
+	hdr.Text = "KEYBINDS"; hdr.TextColor3 = self.theme.GrayLt
+	hdr.Font = Enum.Font.GothamBold; hdr.TextSize = 9
+	hdr.TextXAlignment = Enum.TextXAlignment.Center; hdr.ZIndex = 201
+	hdr.LayoutOrder = 1; hdr.Parent = hud
 
-	local hudLayout = Instance.new("UIListLayout", hud)
-	hudLayout.FillDirection = Enum.FillDirection.Horizontal
-	hudLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	hudLayout.Padding = UDim.new(0, 10)
-
-	local hudDrag = Instance.new("TextButton")
-	hudDrag.Size = UDim2.new(1, 0, 1, 0)
-	hudDrag.BackgroundTransparency = 1
-	hudDrag.Text = ""
-	hudDrag.ZIndex = 205
-	hudDrag.Parent = hud
-	local hDrag, hDragStart, hDragPos = false, nil, nil
-	hudDrag.InputBegan:Connect(function(i)
+	local dg = Instance.new("TextButton")
+	dg.Size = UDim2.new(1, 0, 1, 0); dg.BackgroundTransparency = 1; dg.Text = ""; dg.ZIndex = 205; dg.Parent = hud
+	local dr = false; local ds, dp
+	dg.InputBegan:Connect(function(i)
 		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-			hDrag, hDragStart, hDragPos = true, i.Position, hud.Position
+			dr, ds, dp = true, i.Position, hud.Position
 		end
 	end)
-	local hMove = UIS.InputChanged:Connect(function(i)
-		if hDrag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
-			local delta = i.Position - hDragStart
-			hud.Position = UDim2.new(hDragPos.X.Scale, hDragPos.X.Offset + delta.X, hDragPos.Y.Scale, hDragPos.Y.Offset + delta.Y)
+	local dm = UIS.InputChanged:Connect(function(i)
+		if dr and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+			local d = i.Position - ds
+			hud.Position = UDim2.new(dp.X.Scale, dp.X.Offset + d.X, dp.Y.Scale, dp.Y.Offset + d.Y)
 			self._hudPos = hud.Position
 		end
 	end)
-	local hEnd = UIS.InputEnded:Connect(function(i)
-		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then hDrag = false end
+	local de = UIS.InputEnded:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dr = false end
 	end)
-	table.insert(self.connections, hMove)
-	table.insert(self.connections, hEnd)
+	table.insert(self.connections, dm); table.insert(self.connections, de)
 
-	self._hudFrame = hud
-	self._hudLayout = hudLayout
-	self._hudEntries = {}
-	self._keybinds = {}
+	self._hudFrame = hud; self._hudLayout = l; self._hudEntries = {}; self._keybinds = {}
 	self._keybindListener = UIS.InputBegan:Connect(function(input, gpe)
 		if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-		local name = input.KeyCode.Name
-		local kb = self._keybinds[name]
+		local kb = self._keybinds[input.KeyCode.Name]
 		if not kb or kb.mode == "Always" then return end
-		if kb.mode == "Toggle" then
-			kb.active = not kb.active
-			kb.callback(kb.active)
-			self:updateKeybindEntry(kb)
-		else
-			if not kb.active then
-				kb.active = true
-				kb.callback(true)
-				self:updateKeybindEntry(kb)
-			end
-		end
+		if kb.mode == "Toggle" then kb.active = not kb.active; kb.callback(kb.active); self:updateKeybindEntry(kb)
+		elseif not kb.active then kb.active = true; kb.callback(true); self:updateKeybindEntry(kb) end
 	end)
 	table.insert(self.connections, self._keybindListener)
 	self._keybindRelease = UIS.InputEnded:Connect(function(input)
 		if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-		local name = input.KeyCode.Name
-		local kb = self._keybinds[name]
+		local kb = self._keybinds[input.KeyCode.Name]
 		if not kb or kb.mode == "Toggle" or kb.mode == "Always" then return end
-		kb.active = false
-		kb.callback(false)
-		self:updateKeybindEntry(kb)
+		kb.active = false; kb.callback(false); self:updateKeybindEntry(kb)
 	end)
 	table.insert(self.connections, self._keybindRelease)
 end
@@ -1953,48 +1930,30 @@ end
 function UILib:addKeybindEntry(kb)
 	if not self._hudFrame then self:setupKeybindSystem() end
 	local row = Instance.new("Frame")
-	row.Size = UDim2.new(0, 0, 0, 16)
-	row.AutomaticSize = Enum.AutomaticSize.X
+	row.Size = UDim2.new(1, 0, 0, 14)
 	row.BackgroundTransparency = 1
 	row.ZIndex = 201
+	row.LayoutOrder = #self._hudEntries + 2
 	row.Parent = self._hudFrame
-	local inner = Instance.new("UIListLayout", row)
-	inner.FillDirection = Enum.FillDirection.Horizontal
-	inner.SortOrder = Enum.SortOrder.LayoutOrder
-	inner.Padding = UDim.new(0, 6)
-
-	local dot = Instance.new("Frame")
-	dot.Size = UDim2.new(0, 3, 0, 3)
-	dot.BackgroundColor3 = self.theme.Border
-	dot.BackgroundTransparency = 0.5
-	dot.BorderSizePixel = 0
-	dot.ZIndex = 201
-	dot.Parent = row
-	Instance.new("UICorner", dot).CornerRadius = UDim.new(0, 2)
 
 	local nameLbl = Instance.new("TextLabel")
-	nameLbl.Size = UDim2.new(0, 0, 1, 0)
-	nameLbl.AutomaticSize = Enum.AutomaticSize.X
+	nameLbl.Size = UDim2.new(1, -28, 1, 0)
 	nameLbl.BackgroundTransparency = 1
 	nameLbl.Text = kb.name .. " [" .. kb.mode:upper() .. "]"
 	nameLbl.TextColor3 = kb.active and self.theme.White or self.theme.GrayLt
-	nameLbl.Font = Enum.Font.GothamSemibold
-	nameLbl.TextSize = 10
+	nameLbl.Font = Enum.Font.GothamSemibold; nameLbl.TextSize = 10
 	nameLbl.TextXAlignment = Enum.TextXAlignment.Left
-	nameLbl.ZIndex = 202
-	nameLbl.Parent = row
+	nameLbl.ZIndex = 202; nameLbl.Parent = row
 
 	local keyLbl = Instance.new("TextLabel")
-	keyLbl.Size = UDim2.new(0, 0, 1, 0)
-	keyLbl.AutomaticSize = Enum.AutomaticSize.X
+	keyLbl.Size = UDim2.new(0, 24, 1, 0)
+	keyLbl.Position = UDim2.new(1, -26, 0, 0)
 	keyLbl.BackgroundTransparency = 1
 	keyLbl.Text = kb.key
 	keyLbl.TextColor3 = kb.active and self.theme.Accent or self.theme.Gray
-	keyLbl.Font = Enum.Font.GothamBold
-	keyLbl.TextSize = 10
+	keyLbl.Font = Enum.Font.GothamBold; keyLbl.TextSize = 10
 	keyLbl.TextXAlignment = Enum.TextXAlignment.Right
-	keyLbl.ZIndex = 202
-	keyLbl.Parent = row
+	keyLbl.ZIndex = 202; keyLbl.Parent = row
 
 	row.InputBegan:Connect(function(inp)
 		if inp.UserInputType == Enum.UserInputType.MouseButton2 then
@@ -5251,6 +5210,14 @@ function UILib.Column:addGroup(title)
 		popup.Parent = self.sg
 		popup.Size = UDim2.new(0, 240, 0, 10)
 		Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 8)
+
+		local overlay = Instance.new("TextButton", popup)
+		overlay.Size = UDim2.new(1, 40, 1, 40)
+		overlay.Position = UDim2.new(0, -20, 0, -20)
+		overlay.BackgroundTransparency = 1
+		overlay.Text = ""
+		overlay.ZIndex = -1
+		overlay.Active = true
 		local ps = Instance.new("UIStroke", popup)
 		ps.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		ps.Color = self.theme.Border
