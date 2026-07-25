@@ -1833,13 +1833,13 @@ end
 function UILib:setupKeybindSystem()
 	if self._hudFrame then return end
 	local hud = Instance.new("Frame")
-	hud.Size = UDim2.new(0, 160, 0, 24)
+	hud.Size = UDim2.new(0, 160, 0, 0)
+	hud.AutomaticSize = Enum.AutomaticSize.Y
 	hud.Position = self._hudPos or UDim2.new(0, 10, 0.5, 0)
 	hud.AnchorPoint = Vector2.new(0, 0.5)
 	hud.BackgroundColor3 = self.theme.Panel
 	hud.BackgroundTransparency = 0.25
 	hud.BorderSizePixel = 0
-	hud.ClipsDescendants = true
 	hud.ZIndex = 200
 	hud.Visible = false
 	hud.Parent = self.sg
@@ -1853,30 +1853,31 @@ function UILib:setupKeybindSystem()
 	local hudPad = Instance.new("UIPadding", hud)
 	hudPad.PaddingLeft = UDim.new(0, 8)
 	hudPad.PaddingRight = UDim.new(0, 8)
-	hudPad.PaddingTop = UDim.new(0, 4)
-	hudPad.PaddingBottom = UDim.new(0, 4)
+	hudPad.PaddingTop = UDim.new(0, 5)
+	hudPad.PaddingBottom = UDim.new(0, 5)
 
 	local hudLayout = Instance.new("UIListLayout", hud)
 	hudLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	hudLayout.Padding = UDim.new(0, 2)
+	hudLayout.Padding = UDim.new(0, 3)
 
 	local header = Instance.new("TextLabel")
-	header.Size = UDim2.new(1, 0, 0, 14)
+	header.Size = UDim2.new(1, 0, 0, 16)
 	header.BackgroundTransparency = 1
 	header.Text = "KEYBINDS"
-	header.TextColor3 = self.theme.White
+	header.TextColor3 = self.theme.GrayLt
 	header.Font = Enum.Font.GothamBold
-	header.TextSize = 10
-	header.TextXAlignment = Enum.TextXAlignment.Left
+	header.TextSize = 9
+	header.TextXAlignment = Enum.TextXAlignment.Center
 	header.ZIndex = 201
 	header.LayoutOrder = 1
 	header.Parent = hud
 
 	local hudDrag = Instance.new("TextButton")
-	hudDrag.Size = UDim2.new(1, 0, 1, 0)
+	hudDrag.Size = UDim2.new(1, 0, 0, 16)
 	hudDrag.BackgroundTransparency = 1
 	hudDrag.Text = ""
 	hudDrag.ZIndex = 205
+	hudDrag.LayoutOrder = 0
 	hudDrag.Parent = hud
 	local hDrag, hDragStart, hDragPos = false, nil, nil
 	hudDrag.InputBegan:Connect(function(i)
@@ -2010,8 +2011,6 @@ function UILib:addKeybindEntry(kb)
 	kb.entry = entry
 	table.insert(self._hudEntries, entry)
 	self._hudFrame.Visible = true
-	task.wait(0.03)
-	self._hudFrame.Size = UDim2.new(0, 160, 0, math.max(self._hudLayout.AbsoluteContentSize.Y + 8, 30))
 end
 
 function UILib:updateKeybindEntry(kb)
