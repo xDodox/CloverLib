@@ -1858,7 +1858,6 @@ function UILib:setupKeybindSystem()
 	hdr.Font = Enum.Font.GothamBold; hdr.TextSize = 9
 	hdr.TextXAlignment = Enum.TextXAlignment.Center; hdr.ZIndex = 201
 	hdr.LayoutOrder = 1; hdr.Parent = hud
-
 	hdr.Active = true
 	local dr = false; local ds, dp
 	hdr.InputBegan:Connect(function(i)
@@ -5169,7 +5168,7 @@ function UILib.Column:addGroup(title)
 			if bp and bs and mp.X >= bp.X - 4 and mp.X <= bp.X + bs.X + 4 and mp.Y >= bp.Y - 4 and mp.Y <= bp.Y + bs.Y + 4 then return end
 			TweenService:Create(d.scale, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
 			d.animating = true
-			task.delay(0.16, function() pcall(function() pp.Visible = false end); d.animating = false end)
+			task.delay(0.16, function() pcall(function() pp.Visible = false end); pcall(function() if d.overlay then d.overlay.Visible = false end end); d.animating = false end)
 			d.open = false
 			conn:Disconnect()
 			d.conn = nil
@@ -5191,7 +5190,7 @@ function UILib.Column:addGroup(title)
 			else
 				repositionPanel(data, anchorElement)
 				data.popup.Visible = true
-			if data.overlay then data.overlay.Visible = true end
+				if data.overlay then data.overlay.Visible = true end
 				data.justOpened = true
 				task.delay(0.1, function() data.justOpened = false end)
 				TweenService:Create(data.scale, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Scale = 1 }):Play()
@@ -5217,14 +5216,14 @@ function UILib.Column:addGroup(title)
 		overlay.Text = ""
 		overlay.ZIndex = 9996
 		overlay.Active = true
+		overlay.Visible = false
 		overlay.Parent = self.sg
 		local function syncOverlay()
-			overlay.Position = UDim2.new(popup.Position.X.Scale, popup.Position.X.Offset - 20, popup.Position.Y.Scale, popup.Position.Y.Offset - 20)
+			overlay.Position = UDim2.new(0, popup.AbsolutePosition.X - 20, 0, popup.AbsolutePosition.Y - 20)
 			overlay.Size = UDim2.new(0, popup.AbsoluteSize.X + 40, 0, popup.AbsoluteSize.Y + 40)
 		end
 		popup:GetPropertyChangedSignal("Position"):Connect(syncOverlay)
 		popup:GetPropertyChangedSignal("AbsoluteSize"):Connect(syncOverlay)
-		syncOverlay()
 		local ps = Instance.new("UIStroke", popup)
 		ps.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		ps.Color = self.theme.Border
@@ -5271,8 +5270,10 @@ function UILib.Column:addGroup(title)
 		ty = math.max(4, ty)
 		popup.Position = UDim2.new(0, tx, 0, ty)
 		popup.Visible = true
+		overlay.Visible = true
+		syncOverlay()
 
-		data = { popup = popup, overlay = overlay, scale = popupScale, anchor = anchorElement, open = true, justOpened = true }
+		data = { popup = popup, scale = popupScale, anchor = anchorElement, open = true, justOpened = true, overlay = overlay }
 		task.delay(0.1, function() data.justOpened = false end)
 		repositionPanel(data, anchorElement)
 		TweenService:Create(popupScale, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Scale = 1 }):Play()
