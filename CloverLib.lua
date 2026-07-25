@@ -888,8 +888,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		end
 		if self.configs then
 			for _, elem in pairs(self.configs) do
-				if elem.IsToggle and elem.Value == true then
-					pcall(function() elem.SetValue(true) end)
+				if elem.IsToggle then
+					pcall(function() elem.SetValue(elem.Value) end)
 				end
 			end
 		end
@@ -1922,6 +1922,14 @@ function UILib:setKeybindMode(kb, mode)
 	kb.active = false
 	kb.callback(false)
 	self:updateKeybindEntry(kb)
+	if kb.cfgId and self.configs then
+		for _, elem in pairs(self.configs) do
+			if elem.label == kb.cfgId and elem._keybindMode then
+				elem._keybindMode = mode
+				break
+			end
+		end
+	end
 	self:notify(kb.name .. ": " .. mode, "info", 1)
 end
 
@@ -2134,6 +2142,12 @@ function UILib:buildUITab()
 		end
 		for _, kb in pairs(self._keybinds or {}) do
 			self:updateKeybindEntry(kb)
+		end
+		for _, elem in pairs(self.configs or {}) do
+			if elem._mode == "keybind" and elem.frame then
+				local kbtn = elem.frame:FindFirstChildOfClass("TextButton")
+				if kbtn then kbtn.BackgroundColor3 = bg end
+			end
 		end
 		for _, tab in ipairs(self.tabOrder or {}) do
 			if tab.subtabs then
@@ -6118,11 +6132,17 @@ function UILib.Column:addGroup(title)
 			window.configs[id].Value = val
 		end
 		local keyMode = "Hold"
-		kbtn.InputBegan:Connect(function(inp)
+				kbtn.InputBegan:Connect(function(inp)
 			if inp.UserInputType == Enum.UserInputType.MouseButton2 then
 				window:openAdvancedPanel(kbtn, function(popup)
 					popup:dropdown("Mode", {"Always", "Toggle", "Hold"}, keyMode, function(val)
 						keyMode = val
+						for _, kb in pairs(window._keybinds or {}) do
+							if kb.cfgId == (cfgId or text) then
+								window:setKeybindMode(kb, val)
+								break
+							end
+						end
 					end)
 				end)
 			end
