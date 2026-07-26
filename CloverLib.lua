@@ -2132,6 +2132,17 @@ function UILib:buildUITab()
 		for _, d in pairs(self._panels or {}) do
 			if d.popup then d.popup.BackgroundColor3 = panel end
 		end
+		for _, d in pairs(self._panels or {}) do
+			if d.popup and d.popup.Visible then
+				for _, desc in ipairs(d.popup:GetDescendants()) do
+					if desc:IsA("Frame") and desc.Name == "SelectionBG" then
+						pcall(function() desc.BackgroundColor3 = accent end)
+					elseif desc:IsA("Frame") and desc.BackgroundColor3 and desc.BackgroundColor3.r > 0 then
+						pcall(function() desc.BackgroundColor3 = panel end)
+					end
+				end
+			end
+		end
 		for _, kb in pairs(self._keybinds or {}) do
 			self:updateKeybindEntry(kb)
 		end
@@ -6058,6 +6069,7 @@ function UILib.Column:addGroup(title)
 		table.insert(window.keybindButtons, kbtn)
 		local listening = false
 		local skipNext = false
+		local elem = { ID = id, Value = currentName, label = cfgId or text, _mode = "keybind" }
 		kbtn.MouseButton1Click:Connect(function()
 			if listening then return end
 			listening = true
@@ -6088,12 +6100,12 @@ function UILib.Column:addGroup(title)
 					kbtn.TextColor3 = window.theme.GrayLt
 					onChange(i.KeyCode, i.KeyCode.Name)
 					if window.configs[id] then window.configs[id].Value = i.KeyCode.Name end
-					if elem._linkedKB then
-						window._keybinds[elem._linkedKB.key] = nil
-						elem._linkedKB.key = i.KeyCode.Name
-						window._keybinds[elem._linkedKB.key] = elem._linkedKB
-						window:updateKeybindEntry(elem._linkedKB)
-					end
+				if elem._linkedKB and window._keybinds then
+					window._keybinds[elem._linkedKB.key] = nil
+					elem._linkedKB.key = i.KeyCode.Name
+					window._keybinds[elem._linkedKB.key] = elem._linkedKB
+					window:updateKeybindEntry(elem._linkedKB)
+				end
 				elseif u == Enum.UserInputType.MouseButton2 then
 					kbtn.Text = "RMB"
 					kbtn.TextColor3 = window.theme.GrayLt
@@ -6115,11 +6127,10 @@ function UILib.Column:addGroup(title)
 				end
 			end)
 		end)
-		local elem = { ID = id, Value = currentName, label = cfgId or text, _mode = "keybind" }
 		elem.SetValue = function(val)
 			kbtn.Text = type(val) == "string" and val or tostring(val)
 			window.configs[id].Value = val
-			if elem._linkedKB and type(val) == "string" then
+			if elem._linkedKB and window._keybinds and type(val) == "string" then
 				window._keybinds[elem._linkedKB.key] = nil
 				elem._linkedKB.key = val
 				window._keybinds[val] = elem._linkedKB
