@@ -2133,7 +2133,7 @@ function UILib:buildUITab()
 			if d.popup then d.popup.BackgroundColor3 = panel end
 		end
 		for _, d in pairs(self._panels or {}) do
-			if d.popup and d.popup.Visible then
+			if d.popup then
 				for _, desc in ipairs(d.popup:GetDescendants()) do
 					if desc:IsA("Frame") and desc.Name == "SelectionBG" then
 						pcall(function() desc.BackgroundColor3 = accent end)
