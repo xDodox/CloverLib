@@ -2102,6 +2102,7 @@ function UILib:buildUITab()
 	end
 
 	local function applyFullTheme(theme)
+		_configLoading = true
 		local accent, bg, panel, item, itemHov, track, border = unpack(theme, 2)
 		self.theme.Accent = accent
 		self.theme.AccentD = Color3.new(accent.r * 0.70, accent.g * 0.70, accent.b * 0.70)
@@ -2151,19 +2152,7 @@ function UILib:buildUITab()
 		end
 		refreshAllUI()
 		refreshAllBorders(border)
-		for _, d in pairs(self._panels or {}) do
-			if d.popup then
-				for _, s in ipairs(d.popup:GetDescendants()) do
-					if s:IsA("UIStroke") then
-						pcall(function() s.Color = border end)
-					elseif s.Name == "SelectionBG" and s:IsA("Frame") then
-						pcall(function() s.BackgroundColor3 = accent end)
-					end
-				end
-				local popStroke = d.popup:FindFirstChildOfClass("UIStroke")
-				if popStroke then popStroke.Color = border end
-			end
-		end
+		_configLoading = false
 	end
 
 	local function applyCurrentTheme()
