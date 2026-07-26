@@ -876,7 +876,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		end
 		if self.configs then
 			for _, elem in pairs(self.configs) do
-				if elem.IsToggle then
+				if elem.IsToggle or elem._mode == "keybind" then
 					pcall(function() elem.SetValue(elem.Value) end)
 				end
 			end
@@ -1971,6 +1971,14 @@ function UILib:updateKeybindEntry(kb)
 	kb.entry.nameLabel.TextColor3 = kb.active and self.theme.White or self.theme.GrayLt
 	kb.entry.keyLabel.Text = kb.key
 	kb.entry.keyLabel.TextColor3 = kb.active and self.theme.Accent or self.theme.Gray
+	kb.entry.row.Visible = kb.active
+	if self._hudEnabled then
+		local anyActive = false
+		for _, ekb in pairs(self._keybinds) do
+			if ekb.active then anyActive = true; break end
+		end
+		self._hudFrame.Visible = anyActive
+	end
 end
 
 function UILib:updateKeybindKey(kb, newKey)
@@ -2132,17 +2140,6 @@ function UILib:buildUITab()
 		for _, d in pairs(self._panels or {}) do
 			if d.popup then d.popup.BackgroundColor3 = panel end
 		end
-		for _, d in pairs(self._panels or {}) do
-			if d.popup and d.popup.Visible then
-				for _, desc in ipairs(d.popup:GetDescendants()) do
-					if desc:IsA("Frame") and desc.Name == "SelectionBG" then
-						pcall(function() desc.BackgroundColor3 = accent end)
-					elseif desc:IsA("Frame") and desc.BackgroundColor3 and desc.BackgroundColor3.r > 0 then
-						pcall(function() desc.BackgroundColor3 = panel end)
-					end
-				end
-			end
-		end
 		for _, kb in pairs(self._keybinds or {}) do
 			self:updateKeybindEntry(kb)
 		end
@@ -2161,6 +2158,17 @@ function UILib:buildUITab()
 		end
 		refreshAllUI()
 		refreshAllBorders(border)
+		for _, d in pairs(self._panels or {}) do
+			if d.popup and d.popup.Visible then
+				for _, s in ipairs(d.popup:GetDescendants()) do
+					if s:IsA("UIStroke") then
+						pcall(function() s.Color = border end)
+					elseif s.Name == "SelectionBG" and s:IsA("Frame") then
+						pcall(function() s.BackgroundColor3 = accent end)
+					end
+				end
+			end
+		end
 	end
 
 	local function applyCurrentTheme()
