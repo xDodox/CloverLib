@@ -6119,6 +6119,12 @@ function UILib.Column:addGroup(title)
 		elem.SetValue = function(val)
 			kbtn.Text = type(val) == "string" and val or tostring(val)
 			window.configs[id].Value = val
+			if elem._linkedKB and type(val) == "string" then
+				window._keybinds[elem._linkedKB.key] = nil
+				elem._linkedKB.key = val
+				window._keybinds[val] = elem._linkedKB
+				window:updateKeybindEntry(elem._linkedKB)
+			end
 		end
 		local keyMode = "Hold"
 				kbtn.InputBegan:Connect(function(inp)
