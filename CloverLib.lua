@@ -6088,14 +6088,11 @@ function UILib.Column:addGroup(title)
 					kbtn.TextColor3 = window.theme.GrayLt
 					onChange(i.KeyCode, i.KeyCode.Name)
 					if window.configs[id] then window.configs[id].Value = i.KeyCode.Name end
-					for _, kb in pairs(window._keybinds or {}) do
-						if kb.element == elem or kb.cfgId == (cfgId or text) then
-							window._keybinds[kb.key] = nil
-							kb.key = i.KeyCode.Name
-							window._keybinds[kb.key] = kb
-							window:updateKeybindEntry(kb)
-							break
-						end
+					if elem._linkedKB then
+						window._keybinds[elem._linkedKB.key] = nil
+						elem._linkedKB.key = i.KeyCode.Name
+						window._keybinds[elem._linkedKB.key] = elem._linkedKB
+						window:updateKeybindEntry(elem._linkedKB)
 					end
 				elseif u == Enum.UserInputType.MouseButton2 then
 					kbtn.Text = "RMB"
@@ -6129,11 +6126,8 @@ function UILib.Column:addGroup(title)
 				window:openAdvancedPanel(kbtn, function(popup)
 					popup:dropdown("Mode", {"Always", "Toggle", "Hold"}, keyMode, function(val)
 						keyMode = val
-						for _, kb in pairs(window._keybinds or {}) do
-							if kb.cfgId == (cfgId or text) then
-								window:setKeybindMode(kb, val)
-								break
-							end
+						if elem._linkedKB then
+							window:setKeybindMode(elem._linkedKB, val)
 						end
 					end)
 				end)
