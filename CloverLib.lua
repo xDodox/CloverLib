@@ -300,18 +300,6 @@ function UILib:notify(message, notifType, duration)
 end)
 end
 
-function UILib:getConfigDir()
-	local gameName = (game and game.Name and game.Name ~= "" and game.Name) or "Unknown"
-	gameName = gameName:gsub("[^%w%s%-_]", ""):gsub("%s+", "_"):sub(1, 40)
-	local scriptName = (self.title and self.title ~= "" and self.title) or "CloverHub"
-	scriptName = scriptName:gsub("[^%w%s%-_]", ""):gsub("%s+", "_"):sub(1, 40)
-	local dir = "Clover/" .. gameName .. "/" .. scriptName .. "/"
-	pcall(makefolder, "Clover")
-	pcall(makefolder, "Clover/" .. gameName)
-	pcall(makefolder, "Clover/" .. gameName .. "/" .. scriptName)
-	return dir
-end
-
 function UILib:saveConfig(name)
 	local data = {}
 	if not self.configs then return end
@@ -2136,6 +2124,10 @@ function UILib:buildUITab()
 		if self.navTopLine then self.navTopLine.BackgroundColor3 = accent end
 		if self.sidebarEdge then self.sidebarEdge.BackgroundColor3 = border end
 		if self.tooltip then self.tooltip.frame.BackgroundColor3 = panel end
+		if self.tooltip then
+			local ts = self.tooltip.frame:FindFirstChildOfClass("UIStroke")
+			if ts then ts.Color = border end
+		end
 		if self.watermark then self.watermark.BackgroundColor3 = panel end
 		for _, d in pairs(self._panels or {}) do
 			if d.popup then d.popup.BackgroundColor3 = panel end
