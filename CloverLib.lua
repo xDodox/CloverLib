@@ -1895,7 +1895,8 @@ function UILib:setupKeybindSystem()
 	local holdCheck = RunService.RenderStepped:Connect(function()
 		for _, kb in pairs(self._keybinds) do
 			if kb.active and kb._holdKey and kb.mode == "Hold" then
-				if not UIS:IsKeyDown(kb._holdKey) then
+				local ok, down = pcall(UIS.IsKeyDown, UIS, kb._holdKey)
+				if ok and not down then
 					kb.active = false
 					kb._holdKey = nil
 					pcall(kb.callback, false)
@@ -1987,6 +1988,7 @@ function UILib:addKeybindEntry(kb)
 	kb.entry = entry
 	table.insert(self._hudEntries, entry)
 	self._hudFrame.Visible = self._hudEnabled
+	self:updateKeybindEntry(kb)
 end
 
 function UILib:updateKeybindEntry(kb)
@@ -2059,7 +2061,14 @@ function UILib:buildUITab()
 	grp:toggle("Show Keybinds", false, function(v)
 		self._hudEnabled = v
 		if not self._hudFrame then self:setupKeybindSystem() end
-		if self._hudFrame then self._hudFrame.Visible = v end
+		if self._hudFrame then
+			self._hudFrame.Visible = v
+			if v then
+				for _, kb in pairs(self._keybinds or {}) do
+					self:updateKeybindEntry(kb)
+				end
+			end
+		end
 	end, "Show active keybinds on screen", nil, nil, nil, nil, nil, "ui_keybindhud")
 
 	grp:button("Unload", function()
