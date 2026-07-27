@@ -2152,6 +2152,15 @@ function UILib:buildUITab()
 		end
 		refreshAllUI()
 		refreshAllBorders(border)
+		for _, d in pairs(self._panels or {}) do
+			if d.popup then
+				for _, s in ipairs(d.popup:GetDescendants()) do
+					if s:IsA("UIStroke") then pcall(function() s.Color = border end) end
+				end
+				local ps = d.popup:FindFirstChildOfClass("UIStroke")
+				if ps then ps.Color = border end
+			end
+		end
 		_configLoading = false
 	end
 
