@@ -1871,16 +1871,26 @@ function UILib:setupKeybindSystem()
 		local kb = self._keybinds[input.KeyCode.Name]
 		if not kb or kb.mode == "Always" then return end
 		if kb.mode == "Toggle" then kb.active = not kb.active; kb.callback(kb.active); self:updateKeybindEntry(kb)
-		elseif not kb.active then kb.active = true; kb.callback(true); self:updateKeybindEntry(kb) end
+		elseif not kb.active then kb.active = true; kb._holdKey = input.KeyCode; kb.callback(true); self:updateKeybindEntry(kb) end
 	end)
 	table.insert(self.connections, self._keybindListener)
 	self._keybindRelease = UIS.InputEnded:Connect(function(input)
 		if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 		local kb = self._keybinds[input.KeyCode.Name]
 		if not kb or kb.mode == "Toggle" or kb.mode == "Always" then return end
-		kb.active = false; kb.callback(false); self:updateKeybindEntry(kb)
+		kb.active = false; kb._holdKey = nil; kb.callback(false); self:updateKeybindEntry(kb)
 	end)
 	table.insert(self.connections, self._keybindRelease)
+	local holdCheck = RunService.RenderStepped:Connect(function()
+		for _, kb in pairs(self._keybinds) do
+			if kb.active and kb._holdKey and kb.mode ~= "Toggle" and kb.mode ~= "Always" then
+				if not UIS:IsKeyDown(kb._holdKey) then
+					kb.active = false; kb._holdKey = nil; kb.callback(false); self:updateKeybindEntry(kb)
+				end
+			end
+		end
+	end)
+	table.insert(self.connections, holdCheck)
 end
 
 function UILib:registerKeybind(name, key, mode, callback, cfgId)
@@ -6101,12 +6111,18 @@ function UILib.Column:addGroup(title)
 					kbtn.TextColor3 = window.theme.GrayLt
 					onChange(i.KeyCode, i.KeyCode.Name)
 					if window.configs[id] then window.configs[id].Value = i.KeyCode.Name end
-				if elem._linkedKB and window._keybinds then
-					window._keybinds[elem._linkedKB.key] = nil
-					elem._linkedKB.key = i.KeyCode.Name
-					window._keybinds[elem._linkedKB.key] = elem._linkedKB
-					window:updateKeybindEntry(elem._linkedKB)
-				end
+					local kb = elem._linkedKB
+					if not kb then
+						for _, v in pairs(window._keybinds or {}) do
+							if v.cfgId == (cfgId or text) then kb = v; break end
+						end
+					end
+					if kb and window._keybinds then
+						window._keybinds[kb.key] = nil
+						kb.key = i.KeyCode.Name
+						window._keybinds[kb.key] = kb
+						window:updateKeybindEntry(kb)
+					end
 				elseif u == Enum.UserInputType.MouseButton2 then
 					kbtn.Text = "RMB"
 					kbtn.TextColor3 = window.theme.GrayLt
@@ -6131,11 +6147,17 @@ function UILib.Column:addGroup(title)
 		elem.SetValue = function(val)
 			kbtn.Text = type(val) == "string" and val or tostring(val)
 			window.configs[id].Value = val
-			if elem._linkedKB and window._keybinds and type(val) == "string" then
-				window._keybinds[elem._linkedKB.key] = nil
-				elem._linkedKB.key = val
-				window._keybinds[val] = elem._linkedKB
-				window:updateKeybindEntry(elem._linkedKB)
+			local kb = elem._linkedKB
+			if not kb then
+				for _, v in pairs(window._keybinds or {}) do
+					if v.cfgId == (cfgId or text) then kb = v; break end
+				end
+			end
+			if kb and window._keybinds and type(val) == "string" then
+				window._keybinds[kb.key] = nil
+				kb.key = val
+				window._keybinds[val] = kb
+				window:updateKeybindEntry(kb)
 			end
 		end
 		local keyMode = "Hold"
