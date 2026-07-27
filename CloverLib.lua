@@ -809,9 +809,6 @@ function UILib.new(opts)
 	)
 end
 
-	local MIN_KEYBIND_WIDTH = 52
-local MAX_KEYBIND_WIDTH = 76
-
 function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, showLogo, uiTabIcon)
 	local self = setmetatable({}, UILib)
 	self.theme = theme or {}
@@ -834,8 +831,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	self.rainbowElements = {}
 	self.pulseElements = {}
 	self.keybindButtons = {}
-	self._dirty = false
-	self._autosaveConn = nil
 
 	self.allSubTabs = {}
 	self.activePopups = {}
@@ -1500,9 +1495,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 					win.Position = UDim2.new(dragPos.X.Scale, dragPos.X.Offset + delta.X, dragPos.Y.Scale,
 						dragPos.Y.Offset + delta.Y)
 					self.originalPosition = win.Position
-					self.savedPos = win.Position
-				end
-			end))
+				end))
 		table.insert(self.connections,
 			UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = false end end))
 	end
@@ -1895,8 +1888,9 @@ function UILib:setupKeybindSystem()
 	local holdCheck = RunService.RenderStepped:Connect(function()
 		for _, kb in pairs(self._keybinds) do
 			if kb.active and kb._holdKey and kb.mode == "Hold" then
-				local ok, down = pcall(UIS.IsKeyDown, UIS, kb._holdKey)
-				if ok and not down then
+				local down = false
+				pcall(function() down = UIS:IsKeyDown(kb._holdKey) end)
+				if not down then
 					kb.active = false
 					kb._holdKey = nil
 					pcall(kb.callback, false)
@@ -4458,7 +4452,6 @@ local function createColorPicker(group, items, window, text, default, callback, 
 		hbStroke.Color = window.theme.Border
 		hbStroke.Thickness = 1
 
-		local alphaDragging = false
 		hueSlider.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 				hueDragging = true
@@ -4507,7 +4500,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 					return
 				end
 				local bp, bs2 = colorBox.AbsolutePosition, colorBox.AbsoluteSize
-				if pos.X >= bp.X and pos.X <= bp.X + bs2.X and pos.Y >= bp.Y and pos.Y <= bp.Y + bs2.Y then return end
+				if bp and bs2 and pos.X >= bp.X and pos.X <= bp.X + bs2.X and pos.Y >= bp.Y and pos.Y <= bp.Y + bs2.Y then return end
 				if pos.X < targetX or pos.X > targetX + pickerW or pos.Y < targetY or pos.Y > targetY + pickerH then
 					task.spawn(closePicker)
 					inputBeganConn:Disconnect()
@@ -5972,7 +5965,7 @@ function UILib.Column:addGroup(title)
 
 				expandPanel.Size = UDim2.new(1, 0, 0, 0)
 				expandPanel.Visible = true
-				local spaceBelow = workspace.CurrentCamera.ViewportSize.Y - (r.AbsolutePosition.Y + r.AbsoluteSize.Y)
+				local spaceBelow = (workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080) - (r.AbsolutePosition.Y + r.AbsoluteSize.Y)
 				local flipUp = spaceBelow < totalPanelH + 8
 				if flipUp then
 					expandPanel.Position = UDim2.new(0, 0, 0, -totalPanelH)
