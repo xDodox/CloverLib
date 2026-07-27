@@ -1495,6 +1495,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 					win.Position = UDim2.new(dragPos.X.Scale, dragPos.X.Offset + delta.X, dragPos.Y.Scale,
 						dragPos.Y.Offset + delta.Y)
 					self.originalPosition = win.Position
+				end
 				end))
 		table.insert(self.connections,
 			UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = false end end))
