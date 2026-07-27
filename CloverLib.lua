@@ -1861,6 +1861,7 @@ function UILib:setupKeybindSystem()
 
 	self._hudFrame = hud; self._hudLayout = l; self._hudEntries = {}; self._keybinds = {}
 	self._keybindListener = UIS.InputBegan:Connect(function(input, gpe)
+		if gpe then return end
 		if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 		local kb = self._keybinds[input.KeyCode.Name]
 		if not kb or kb.mode == "Always" then return end
@@ -1876,7 +1877,8 @@ function UILib:setupKeybindSystem()
 		end
 	end)
 	table.insert(self.connections, self._keybindListener)
-	self._keybindRelease = UIS.InputEnded:Connect(function(input)
+	self._keybindRelease = UIS.InputEnded:Connect(function(input, gpe)
+		if gpe then return end
 		if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 		local kb = self._keybinds[input.KeyCode.Name]
 		if not kb or kb.mode ~= "Hold" then return end
@@ -1930,9 +1932,13 @@ function UILib:setKeybindMode(kb, mode)
 	self:updateKeybindEntry(kb)
 	if kb.cfgId and self.configs then
 		for _, elem in pairs(self.configs) do
-			if elem.label == kb.cfgId and elem._keybindMode then
-				elem._keybindMode = mode
-				break
+			if elem.label == kb.cfgId then
+				if elem.IsToggle then
+					elem.Mode = (mode == "Always") and "always" or "toggle"
+				end
+				if elem._keybindMode then
+					elem._keybindMode = mode
+				end
 			end
 		end
 	end
@@ -6176,10 +6182,11 @@ function UILib.Column:addGroup(title)
 			end
 		end
 		local keyMode = "Hold"
-				kbtn.InputBegan:Connect(function(inp)
+		kbtn.InputBegan:Connect(function(inp)
 			if inp.UserInputType == Enum.UserInputType.MouseButton2 then
+				local liveMode = (elem._linkedKB and elem._linkedKB.mode) or keyMode
 				window:openAdvancedPanel(kbtn, function(popup)
-					popup:dropdown("Mode", {"Always", "Toggle", "Hold"}, keyMode, function(val)
+					popup:dropdown("Mode", {"Always", "Toggle", "Hold"}, liveMode, function(val)
 						keyMode = val
 						if elem._linkedKB then
 							window:setKeybindMode(elem._linkedKB, val)
