@@ -1888,9 +1888,7 @@ function UILib:setupKeybindSystem()
 	local holdCheck = RunService.RenderStepped:Connect(function()
 		for _, kb in pairs(self._keybinds) do
 			if kb.active and kb._holdKey and kb.mode == "Hold" then
-				local down = false
-				pcall(function() down = UIS:IsKeyDown(kb._holdKey) end)
-				if not down then
+				if not UIS:IsKeyDown(kb._holdKey) then
 					kb.active = false
 					kb._holdKey = nil
 					pcall(kb.callback, false)
