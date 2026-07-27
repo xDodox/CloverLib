@@ -1870,24 +1870,36 @@ function UILib:setupKeybindSystem()
 		if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 		local kb = self._keybinds[input.KeyCode.Name]
 		if not kb or kb.mode == "Always" then return end
-		if kb.mode == "Toggle" then kb.active = not kb.active; kb.callback(kb.active); self:updateKeybindEntry(kb)
-		elseif kb.mode == "Hold" and not kb.active then kb.active = true; kb._holdKey = input.KeyCode; kb.callback(true); self:updateKeybindEntry(kb) end
+		if kb.mode == "Toggle" then
+			kb.active = not kb.active
+			kb.callback(kb.active)
+			self:updateKeybindEntry(kb)
+		elseif kb.mode == "Hold" and not kb.active then
+			kb.active = true
+			kb._holdKey = input.KeyCode
+			kb.callback(true)
+			self:updateKeybindEntry(kb)
+		end
 	end)
 	table.insert(self.connections, self._keybindListener)
 	self._keybindRelease = UIS.InputEnded:Connect(function(input)
 		if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 		local kb = self._keybinds[input.KeyCode.Name]
 		if not kb or kb.mode ~= "Hold" then return end
-		kb.active = false; kb._holdKey = nil
-		pcall(kb.callback, false); self:updateKeybindEntry(kb)
+		kb.active = false
+		kb._holdKey = nil
+		pcall(kb.callback, false)
+		self:updateKeybindEntry(kb)
 	end)
 	table.insert(self.connections, self._keybindRelease)
 	local holdCheck = RunService.RenderStepped:Connect(function()
 		for _, kb in pairs(self._keybinds) do
 			if kb.active and kb._holdKey and kb.mode == "Hold" then
 				if not UIS:IsKeyDown(kb._holdKey) then
-					kb.active = false; kb._holdKey = nil
-					pcall(kb.callback, false); self:updateKeybindEntry(kb)
+					kb.active = false
+					kb._holdKey = nil
+					pcall(kb.callback, false)
+					self:updateKeybindEntry(kb)
 				end
 			end
 		end
