@@ -3959,7 +3959,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	if type(settingsCallback) == "function" then
 		local gearBtn = Instance.new("ImageLabel")
 		local gi = window:lucide("settings")
-		gearBtn.Size = UDim2.new(0, 14, 0, 14)
+		gearBtn.Size = UDim2.new(0, 16, 0, 16)
 		gearBtn.Position = UDim2.new(1, -18, 0.5, -7)
 		gearBtn.BackgroundTransparency = 1
 		gearBtn.Image = gi or ""
@@ -4147,7 +4147,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 	if type(settingsCallback) == "function" then
 		local gearBtn = Instance.new("ImageLabel")
 		local gi = window:lucide("settings")
-		gearBtn.Size = UDim2.new(0, 14, 0, 14)
+		gearBtn.Size = UDim2.new(0, 16, 0, 16)
 		gearBtn.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
 		gearBtn.BackgroundTransparency = 1
 		gearBtn.Image = gi or ""
@@ -5518,7 +5518,7 @@ function UILib.Column:addGroup(title)
 		if type(settingsCallback) == "function" then
 			local gearBtn = Instance.new("ImageLabel")
 			local gi = window:lucide("settings")
-			gearBtn.Size = UDim2.new(0, 14, 0, 14)
+			gearBtn.Size = UDim2.new(0, 16, 0, 16)
 			gearBtn.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
 			gearBtn.BackgroundTransparency = 1
 			gearBtn.Image = gi or ""
@@ -5542,7 +5542,7 @@ function UILib.Column:addGroup(title)
 		if tooltip then
 			local tipIcon = Instance.new("ImageLabel")
 			local ti = window:lucide("info")
-			tipIcon.Size = UDim2.new(0, 14, 0, 14)
+			tipIcon.Size = UDim2.new(0, 16, 0, 16)
 			tipIcon.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
 			tipIcon.BackgroundTransparency = 1
 			tipIcon.Image = ti or ""
@@ -5687,7 +5687,7 @@ function UILib.Column:addGroup(title)
 		if type(settingsCallback) == "function" then
 			local gearBtn = Instance.new("ImageLabel")
 			local gi = window:lucide("settings")
-			gearBtn.Size = UDim2.new(0, 14, 0, 14)
+			gearBtn.Size = UDim2.new(0, 16, 0, 16)
 			gearBtn.Position = UDim2.new(1, -(10 + gearWidth), 0, 4)
 			gearBtn.BackgroundTransparency = 1
 			gearBtn.Image = gi or ""
