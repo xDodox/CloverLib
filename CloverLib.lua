@@ -5440,6 +5440,8 @@ function UILib.Column:addGroup(title)
 				state = val
 				elem.Value = state
 				updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
+				task.wait(0.01)
+				updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
 				local targetH = TOGGLE_H + (state and contentLayout.AbsoluteContentSize.Y or 0)
 				TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 					Size = UDim2.new(1, 0, 0, targetH)
@@ -5571,6 +5573,8 @@ function UILib.Column:addGroup(title)
 		elem.SetValue = function(val)
 			state = val
 			elem.Value = state
+			updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
+			task.wait(0.01)
 			updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
 			window:SafeCallback(callback, state)
 			if window.configs[id] then window.configs[id].Value = state end
