@@ -5372,7 +5372,7 @@ function UILib.Column:addGroup(title)
 		local cbKnob = Instance.new("Frame")
 		cbKnob.Name = "Knob"
 		cbKnob.Size = UDim2.new(0, KNOB_SZ, 0, KNOB_SZ)
-		cbKnob.Position = UDim2.new(0, KNOB_PAD, 0.5, -KNOB_SZ / 2)
+		cbKnob.Position = UDim2.new(0, KNOB_PAD, 0.5, -KNOB_SZ / 2 + 2)
 		cbKnob.AnchorPoint = Vector2.new(0, 0.5)
 		cbKnob.BackgroundColor3 = Color3.new(1, 1, 1)
 		cbKnob.BorderSizePixel = 0
@@ -5380,7 +5380,7 @@ function UILib.Column:addGroup(title)
 		cbKnob.Parent = cbOuter
 		Instance.new("UICorner", cbKnob).CornerRadius = UDim.new(1, 0)
 		if default then
-			cbKnob.Position = UDim2.new(1, -(KNOB_SZ + KNOB_PAD), 0.5, -KNOB_SZ / 2)
+			cbKnob.Position = UDim2.new(1, -(KNOB_SZ + KNOB_PAD), 0.5, -KNOB_SZ / 2 + 2)
 		end
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -(46 + rightOffset), 1, 0)
@@ -5409,7 +5409,7 @@ function UILib.Column:addGroup(title)
 		TweenService:Create(
 			cbKnob,
 			TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-			{ Position = UDim2.new(0, targetX, 0.5, -KNOB_SZ / 2) }
+			{ Position = UDim2.new(0, targetX, 0.5, -KNOB_SZ / 2 + 2) }
 		):Play()
 	end
 
