@@ -364,10 +364,10 @@ function UILib:loadConfig(name)
 		if self.configs and self.configs[id] and not self.configs[id]._noConfig then
 			local elem = self.configs[id]
 			if type(value) == "table" and value.value ~= nil then value = value.value end
-			if type(value) == "table" and value.__type == "Color3" then
-				local c = Color3.new(value.r or 0, value.g or 0, value.b or 0)
-				if elem.SetColor then pcall(elem.SetColor, c) else pcall(elem.SetValue, c, true) end
-			elseif elem.SetValue then
+if type(value) == "table" and value.__type == "Color3" then
+			local c = Color3.new(value.r or 0, value.g or 0, value.b or 0)
+			if elem.SetColor then pcall(elem.SetColor, c) elseif elem.SetValue then pcall(elem.SetValue, c, true) end
+		elseif elem.SetValue then
 				pcall(elem.SetValue, value, true)
 			end
 		end
@@ -448,8 +448,8 @@ function UILib:importConfigFromString(json)
 			local raw = (type(value) == "table" and value.value ~= nil) and value.value or value
 			if type(raw) == "table" and raw.__type == "Color3" then
 				local c = Color3.new(raw.r or 0, raw.g or 0, raw.b or 0)
-				if elem.SetColor then pcall(elem.SetColor, c) else pcall(elem.SetValue, c, true) end
-			else
+				if elem.SetColor then pcall(elem.SetColor, c) elseif elem.SetValue then pcall(elem.SetValue, c, true) end
+			elseif elem.SetValue then
 				pcall(elem.SetValue, raw, true)
 			end
 			count = count + 1
@@ -3967,7 +3967,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		gb.Parent = gearBtn
 gb.MouseButton1Click:Connect(function()
 		if type(settingsCallback) == "function" then
-			window:pushKeybindTarget(window.configs[id])
+			window:pushKeybindTarget(window.configs and window.configs[id])
 			settingsCallback(gearBtn)
 			window:popKeybindTarget()
 		end
@@ -4157,7 +4157,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 		gb.Parent = gearBtn
 gb.MouseButton1Click:Connect(function()
 		if type(settingsCallback) == "function" then
-			window:pushKeybindTarget(window.configs[id])
+			window:pushKeybindTarget(window.configs and window.configs[id])
 			settingsCallback(gearBtn)
 			window:popKeybindTarget()
 		end
@@ -5715,7 +5715,7 @@ updateToggleCheckbox(cbOuter, cbStroke, cbKnob, state, window)
 			gb.ZIndex = 13
 			gb.Parent = gearBtn
 gb.MouseButton1Click:Connect(function()
-			window:pushKeybindTarget(window.configs[id])
+			window:pushKeybindTarget(window.configs and window.configs[id])
 			settingsCallback(gearBtn)
 			window:popKeybindTarget()
 		end)
@@ -6126,7 +6126,7 @@ local listening = false
 
 		local function driver(active)
 			local t = getTarget()
-			if t then pcall(t.SetValue, t, active) end
+			if t and t.SetValue then pcall(t.SetValue, t, active) end
 		end
 
 		local function pickKey(keyObj, keyName)
