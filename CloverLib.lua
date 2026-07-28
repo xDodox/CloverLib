@@ -1877,8 +1877,7 @@ function UILib:setupKeybindSystem()
 		end
 	end)
 	table.insert(self.connections, self._keybindListener)
-	self._keybindRelease = UIS.InputEnded:Connect(function(input, gpe)
-		if gpe then return end
+	self._keybindRelease = UIS.InputEnded:Connect(function(input)
 		if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 		local kb = self._keybinds[input.KeyCode.Name]
 		if not kb or kb.mode ~= "Hold" then return end
