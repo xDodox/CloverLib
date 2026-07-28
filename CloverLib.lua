@@ -6184,10 +6184,11 @@ function UILib.Column:addGroup(title)
 		local keyMode = "Hold"
 		kbtn.InputBegan:Connect(function(inp)
 			if inp.UserInputType == Enum.UserInputType.MouseButton2 then
-				local liveMode = (elem._linkedKB and elem._linkedKB.mode) or keyMode
+				local liveMode = elem._linkedKB and elem._linkedKB.mode or elem._keybindMode or keyMode
 				window:openAdvancedPanel(kbtn, function(popup)
 					popup:dropdown("Mode", {"Always", "Toggle", "Hold"}, liveMode, function(val)
 						keyMode = val
+						elem._keybindMode = val
 						if elem._linkedKB then
 							window:setKeybindMode(elem._linkedKB, val)
 						end
