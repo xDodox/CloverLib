@@ -1883,7 +1883,7 @@ function UILib:setupKeybindSystem()
 		if not kb or kb.mode ~= "Hold" then return end
 		kb.active = false
 		kb._holdKey = nil
-		pcall(kb.callback, false)
+		kb.callback(false)
 		self:updateKeybindEntry(kb)
 	end)
 	table.insert(self.connections, self._keybindRelease)
@@ -1893,7 +1893,7 @@ function UILib:setupKeybindSystem()
 				if not UIS:IsKeyDown(kb._holdKey) then
 					kb.active = false
 					kb._holdKey = nil
-					pcall(kb.callback, false)
+					kb.callback(false)
 					self:updateKeybindEntry(kb)
 				end
 			end
@@ -5573,8 +5573,6 @@ function UILib.Column:addGroup(title)
 		elem.SetValue = function(val)
 			state = val
 			elem.Value = state
-			updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
-			task.wait(0.01)
 			updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
 			window:SafeCallback(callback, state)
 			if window.configs[id] then window.configs[id].Value = state end
