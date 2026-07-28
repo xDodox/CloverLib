@@ -37,6 +37,32 @@ local _configLoading = false
 
 local LUCIDE_ICONS = nil
 
+local function _kbInputKey(input)
+	local uit = input.UserInputType
+	if uit == Enum.UserInputType.Keyboard then
+		return input.KeyCode.Name
+	elseif uit == Enum.UserInputType.MouseButton1 then return "LMB"
+	elseif uit == Enum.UserInputType.MouseButton2 then return "RMB"
+	elseif uit == Enum.UserInputType.MouseButton3 then return "MMB"
+	elseif uit == Enum.UserInputType.Touch then return "Touch"
+	end
+	return nil
+end
+
+function UILib:pushKeybindTarget(elem)
+	if not self._keybindTargetStack then self._keybindTargetStack = {} end
+	table.insert(self._keybindTargetStack, elem and { elem = elem } or {})
+end
+
+function UILib:popKeybindTarget()
+	if self._keybindTargetStack then table.remove(self._keybindTargetStack) end
+end
+
+function UILib:currentKeybindTarget()
+	if not self._keybindTargetStack or #self._keybindTargetStack == 0 then return nil end
+	return self._keybindTargetStack[#self._keybindTargetStack]
+end
+
 local function tryParseIcons(src)
 	if type(src) ~= "string" or src == "" then return nil end
 	local ok, fn = pcall(loadstring, src)
@@ -60,9 +86,8 @@ local function fetchUrl(url)
 			return res.Body or res.body or res["Body"] or nil
 		end
 	end
-	local ok, body = pcall(game.GetService, game, "HttpService")
-	if ok then
-		ok, body = pcall(function() return game:GetService("HttpService"):GetAsync(url) end)
+	if HS then
+		local ok, body = pcall(HS.GetAsync, HS, url)
 		if ok then return body end
 	end
 	return nil
@@ -337,29 +362,13 @@ function UILib:loadConfig(name)
 	self._loadingConfig = true
 	for id, value in pairs(data) do
 		if self.configs and self.configs[id] and not self.configs[id]._noConfig then
+			local elem = self.configs[id]
+			if type(value) == "table" and value.value ~= nil then value = value.value end
 			if type(value) == "table" and value.__type == "Color3" then
-				local colorVal = Color3.new(value.r or 1, value.g or 0, value.b or 0)
-				local elem = self.configs[id]
-				pcall(function() elem:SetColor(colorVal) end)
-			else
-				local elem = self.configs[id]
-				if elem.SetValue then
-					if elem._confirmMessage then
-						elem.Value = value
-						if elem.frame then
-							local cbOuter = elem.frame:FindFirstChildOfClass("TextButton")
-							if cbOuter then
-								cbOuter.BackgroundColor3 = value and self.theme.Accent or self.theme.BG
-								local stroke = cbOuter:FindFirstChildOfClass("UIStroke")
-								if stroke then stroke.Color = value and self.theme.AccentD or self.theme.Border end
-								local mark = cbOuter:FindFirstChildOfClass("TextLabel")
-								if mark then mark.Text = value and "X" or "" end
-							end
-						end
-					else
-						pcall(elem.SetValue, value, true)
-					end
-				end
+				local c = Color3.new(value.r or 0, value.g or 0, value.b or 0)
+				if elem.SetColor then pcall(elem.SetColor, c) else pcall(elem.SetValue, c, true) end
+			elseif elem.SetValue then
+				pcall(elem.SetValue, value, true)
 			end
 		end
 	end
@@ -435,39 +444,13 @@ function UILib:importConfigFromString(json)
 	self._loadingConfig = true
 	for id, value in pairs(data) do
 		if self.configs and self.configs[id] and not self.configs[id]._noConfig then
-			local raw
-			if type(value) == "table" and value.value ~= nil then
-				raw = value.value
-			else
-				raw = value
-			end
+			local elem = self.configs[id]
+			local raw = (type(value) == "table" and value.value ~= nil) and value.value or value
 			if type(raw) == "table" and raw.__type == "Color3" then
-				local colorVal = Color3.new(raw.r or 1, raw.g or 0, raw.b or 0)
-				local elem = self.configs[id]
-				if elem._confirmMessage then
-					elem.Value = colorVal
-					local colorBox = elem.frame and elem.frame:FindFirstChild("Frame", true)
-					if colorBox and colorBox:IsA("Frame") then colorBox.BackgroundColor3 = colorVal end
-				else
-					pcall(elem.SetValue, colorVal, true)
-				end
+				local c = Color3.new(raw.r or 0, raw.g or 0, raw.b or 0)
+				if elem.SetColor then pcall(elem.SetColor, c) else pcall(elem.SetValue, c, true) end
 			else
-				local elem = self.configs[id]
-				if elem._confirmMessage then
-					elem.Value = raw
-					if elem.frame then
-						local cbOuter = elem.frame:FindFirstChildOfClass("TextButton")
-						if cbOuter then
-							cbOuter.BackgroundColor3 = raw and self.theme.Accent or self.theme.BG
-							local st = cbOuter:FindFirstChildOfClass("UIStroke")
-							if st then st.Color = raw and self.theme.AccentD or self.theme.Border end
-							local mk = cbOuter:FindFirstChildOfClass("TextLabel")
-							if mk then mk.Text = raw and "X" or "" end
-						end
-					end
-				else
-					pcall(elem.SetValue, raw, true)
-				end
+				pcall(elem.SetValue, raw, true)
 			end
 			count = count + 1
 		end
@@ -635,7 +618,8 @@ UILib.Parser = {
 	for id, elem in pairs(self.configs) do
 		local label = self:getElementLabel(elem)
 		if label and not elem._noConfig and not (self.configIgnore and self.configIgnore[label]) then
-			map[label] = elem
+			if not map[label] then map[label] = {} end
+			table.insert(map[label], elem)
 		end
 	end
 	return map
@@ -668,12 +652,14 @@ local function _applyStructuredJSON(self, decoded)
 
 	if decoded.objects then
 		for _, obj in ipairs(decoded.objects) do
-			local elem = labelMap[obj.label]
-			if not elem then continue end
+			local elems = labelMap[obj.label]
+			if not elems then continue end
 			local parser = UILib.Parser[obj.type]
 			if not parser then continue end
-			pcall(parser.Load, obj, elem)
-			count = count + 1
+			for _, elem in ipairs(elems) do
+				pcall(parser.Load, obj, elem)
+				count = count + 1
+			end
 		end
 	else
 		local legacyTypes = { Toggle = "state", Slider = "value", Dropdown = "value", MultiDropdown = "value", ColorPicker = "color", TextBox = "text", Keybind = "keybind" }
@@ -683,32 +669,20 @@ local function _applyStructuredJSON(self, decoded)
 			local parser = UILib.Parser[etype]
 			if not parser then continue end
 			for label, sdata in pairs(items) do
-				local elem = labelMap[label]
-				if not elem then continue end
+				local elems = labelMap[label]
+				if not elems then continue end
 				local legacyField = legacyTypes[etype] or etype:lower()
 				local obj = { type = etype, label = label, value = sdata[legacyField], color = sdata.color }
-				local ok = pcall(parser.Load, obj, elem)
-				if ok then count = count + 1 end
+				for _, elem in ipairs(elems) do
+					local ok = pcall(parser.Load, obj, elem)
+					if ok then count = count + 1 end
+				end
 			end
 		end
 	end
 
 	self._loadingConfig = nil
 	_configLoading = false
-	task.wait(0.05)
-	_configLoading = true
-	self._loadingConfig = true
-	for id, elem in pairs(self.configs) do
-		local label = self:getElementLabel(elem)
-		if label and not (self.configIgnore and self.configIgnore[label]) and not elem._noConfig then
-			local etype = self:getElementType(elem)
-			if etype == "Toggle" or etype == "Dropdown" or etype == "ColorPicker" then
-				pcall(elem.SetValue, elem.Value)
-			end
-		end
-	end
-	_configLoading = false
-	self._loadingConfig = nil
 	return count
 end
 
@@ -1495,7 +1469,6 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 					win.Position = UDim2.new(dragPos.X.Scale, dragPos.X.Offset + delta.X, dragPos.Y.Scale,
 						dragPos.Y.Offset + delta.Y)
 					self.originalPosition = win.Position
-				end
 				end))
 		table.insert(self.connections,
 			UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = false end end))
@@ -1861,39 +1834,48 @@ function UILib:setupKeybindSystem()
 
 	self._hudFrame = hud; self._hudLayout = l; self._hudEntries = {}; self._keybinds = {}
 	self._keybindListener = UIS.InputBegan:Connect(function(input, gpe)
-		if gpe then return end
-		if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-		local kb = self._keybinds[input.KeyCode.Name]
+		local key = _kbInputKey(input)
+		if not key then return end
+		local kb = self._keybinds[key]
 		if not kb or kb.mode == "Always" then return end
 		if kb.mode == "Toggle" then
 			kb.active = not kb.active
-			kb.callback(kb.active)
+			pcall(kb.callback, kb.active)
 			self:updateKeybindEntry(kb)
 		elseif kb.mode == "Hold" and not kb.active then
 			kb.active = true
 			kb._holdKey = input.KeyCode
-			kb.callback(true)
+			kb._holdInput = input.UserInputType
+			kb._holdKind = (input.UserInputType == Enum.UserInputType.Keyboard) and "kb" or "mouse"
+			pcall(kb.callback, true)
 			self:updateKeybindEntry(kb)
 		end
 	end)
 	table.insert(self.connections, self._keybindListener)
 	self._keybindRelease = UIS.InputEnded:Connect(function(input)
-		if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-		local kb = self._keybinds[input.KeyCode.Name]
+		local key = _kbInputKey(input)
+		if not key then return end
+		local kb = self._keybinds[key]
 		if not kb or kb.mode ~= "Hold" then return end
 		kb.active = false
-		kb._holdKey = nil
-		kb.callback(false)
+		kb._holdKey = nil; kb._holdInput = nil; kb._holdKind = nil
+		pcall(kb.callback, false)
 		self:updateKeybindEntry(kb)
 	end)
 	table.insert(self.connections, self._keybindRelease)
 	local holdCheck = RunService.RenderStepped:Connect(function()
 		for _, kb in pairs(self._keybinds) do
-			if kb.active and kb._holdKey and kb.mode == "Hold" then
-				if not UIS:IsKeyDown(kb._holdKey) then
+			if kb.active and kb.mode == "Hold" and kb._holdKind then
+				local stillDown = false
+				if kb._holdKind == "kb" then
+					stillDown = kb._holdKey and UIS:IsKeyDown(kb._holdKey) or false
+				elseif kb._holdKind == "mouse" then
+					stillDown = kb._holdInput and UIS:IsMouseButtonPressed(kb._holdInput) or false
+				end
+				if not stillDown then
 					kb.active = false
-					kb._holdKey = nil
-					kb.callback(false)
+					kb._holdKey = nil; kb._holdInput = nil; kb._holdKind = nil
+					pcall(kb.callback, false)
 					self:updateKeybindEntry(kb)
 				end
 			end
@@ -1908,7 +1890,11 @@ function UILib:registerKeybind(name, key, mode, callback, cfgId)
 	local kb = { name = name, key = key, mode = mode, callback = callback, active = false, cfgId = cfgId }
 	self._keybinds[key] = kb
 	self:addKeybindEntry(kb)
-	if mode == "Always" then kb.active = true; callback(true); self:updateKeybindEntry(kb) end
+	if mode == "Always" then
+		kb.active = true
+		pcall(kb.callback, true)
+		self:updateKeybindEntry(kb)
+	end
 	return kb
 end
 
@@ -1925,19 +1911,26 @@ function UILib:unregisterKeybind(kb)
 end
 
 function UILib:setKeybindMode(kb, mode)
+	local wasActive = kb.active
 	kb.mode = mode
-	kb.active = (mode == "Always")
-	kb.callback(kb.active)
+	if mode == "Always" then
+		if not wasActive then
+			kb.active = true
+			pcall(kb.callback, true)
+		end
+	else
+		if wasActive then
+			kb.active = false
+			kb._holdKey = nil; kb._holdInput = nil; kb._holdKind = nil
+			pcall(kb.callback, false)
+		end
+	end
 	self:updateKeybindEntry(kb)
 	if kb.cfgId and self.configs then
 		for _, elem in pairs(self.configs) do
-			if elem.label == kb.cfgId then
-				if elem.IsToggle then
-					elem.Mode = (mode == "Always") and "always" or "toggle"
-				end
-				if elem._keybindMode then
-					elem._keybindMode = mode
-				end
+			if elem.label == kb.cfgId and elem._keybindMode then
+				elem._keybindMode = mode
+				break
 			end
 		end
 	end
@@ -3958,7 +3951,7 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 	if type(settingsCallback) == "function" then
 		local gearBtn = Instance.new("ImageLabel")
 		local gi = window:lucide("settings")
-		gearBtn.Size = UDim2.new(0, 16, 0, 16)
+		gearBtn.Size = UDim2.new(0, 14, 0, 14)
 		gearBtn.Position = UDim2.new(1, -18, 0.5, -7)
 		gearBtn.BackgroundTransparency = 1
 		gearBtn.Image = gi or ""
@@ -3972,11 +3965,13 @@ local function createSlider(group, items, window, text, minVal, maxVal, defaultV
 		gb.Text = ""
 		gb.ZIndex = 6
 		gb.Parent = gearBtn
-		gb.MouseButton1Click:Connect(function()
-			if type(settingsCallback) == "function" then
-				settingsCallback(gearBtn)
-			end
-		end)
+gb.MouseButton1Click:Connect(function()
+		if type(settingsCallback) == "function" then
+			window:pushKeybindTarget(window.configs[id])
+			settingsCallback(gearBtn)
+			window:popKeybindTarget()
+		end
+	end)
 	end
 	local track = Instance.new("Frame")
 	track.Size = UDim2.new(1, 0, 0, 22)
@@ -4146,7 +4141,7 @@ local function createColorPicker(group, items, window, text, default, callback, 
 	if type(settingsCallback) == "function" then
 		local gearBtn = Instance.new("ImageLabel")
 		local gi = window:lucide("settings")
-		gearBtn.Size = UDim2.new(0, 16, 0, 16)
+		gearBtn.Size = UDim2.new(0, 14, 0, 14)
 		gearBtn.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
 		gearBtn.BackgroundTransparency = 1
 		gearBtn.Image = gi or ""
@@ -4160,11 +4155,13 @@ local function createColorPicker(group, items, window, text, default, callback, 
 		gb.Text = ""
 		gb.ZIndex = 6
 		gb.Parent = gearBtn
-		gb.MouseButton1Click:Connect(function()
-			if type(settingsCallback) == "function" then
-				settingsCallback(gearBtn)
-			end
-		end)
+gb.MouseButton1Click:Connect(function()
+		if type(settingsCallback) == "function" then
+			window:pushKeybindTarget(window.configs[id])
+			settingsCallback(gearBtn)
+			window:popKeybindTarget()
+		end
+	end)
 		rightOffset = rightOffset + 16
 	end
 	local label = Instance.new("TextLabel")
@@ -4831,7 +4828,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 			else
 				selLbl.Text = s
 			end
-			if not _configLoading then
+			if not window._loadingConfig then
 				window:SafeCallback(callback, keys)
 			end
 			window.configs[id].Value = selected
@@ -5342,10 +5339,12 @@ function UILib.Column:addGroup(title)
 
 	local function createToggleCheckbox(parent, default, window, text, rightOffset)
 		rightOffset = rightOffset or 4
-		local CB_SIZE = 22
+		local CB_W, CB_H = 32, 18
+		local KNOB_PAD = 2
+		local KNOB_SZ = CB_H - KNOB_PAD * 2
 		local cbOuter = Instance.new("TextButton")
-		cbOuter.Size = UDim2.new(0, CB_SIZE, 0, CB_SIZE)
-		cbOuter.Position = UDim2.new(0, 0, 0.5, -CB_SIZE/2)
+		cbOuter.Size = UDim2.new(0, CB_W, 0, CB_H)
+		cbOuter.Position = UDim2.new(0, 0, 0.5, -CB_H / 2)
 		cbOuter.BackgroundColor3 = default and window.theme.Accent or window.theme.BG
 		cbOuter.BorderSizePixel = 0
 		cbOuter.AutoButtonColor = false
@@ -5364,23 +5363,27 @@ function UILib.Column:addGroup(title)
 		cbOuter.MouseButton1Down:Connect(function() TweenService:Create(cbOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 0.7 }):Play(); cbOverlay.Visible = true end)
 		cbOuter.MouseButton1Up:Connect(function() TweenService:Create(cbOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play(); task.delay(0.06, function() cbOverlay.Visible = false end) end)
 		cbOuter.MouseLeave:Connect(function() TweenService:Create(cbOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play(); task.delay(0.06, function() cbOverlay.Visible = false end) end)
-		Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(0, 4)
+		Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(1, 0)
 		local cbStroke = Instance.new("UIStroke", cbOuter)
 		cbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		cbStroke.Color = default and window.theme.AccentD or window.theme.Border
 		cbStroke.Thickness = 1
-		local cbMark = Instance.new("TextLabel")
-		cbMark.Size = UDim2.new(1, 0, 1, 0)
-		cbMark.BackgroundTransparency = 1
-		cbMark.Text = default and "X" or ""
-		cbMark.TextColor3 = Color3.fromRGB(10, 10, 10)
-		cbMark.Font = Enum.Font.GothamBold
-		cbMark.TextSize = 14
-		cbMark.ZIndex = 5
-		cbMark.Parent = cbOuter
+		local cbKnob = Instance.new("Frame")
+		cbKnob.Name = "Knob"
+		cbKnob.Size = UDim2.new(0, KNOB_SZ, 0, KNOB_SZ)
+		cbKnob.Position = UDim2.new(0, KNOB_PAD, 0.5, -KNOB_SZ / 2)
+		cbKnob.AnchorPoint = Vector2.new(0, 0.5)
+		cbKnob.BackgroundColor3 = Color3.new(1, 1, 1)
+		cbKnob.BorderSizePixel = 0
+		cbKnob.ZIndex = 6
+		cbKnob.Parent = cbOuter
+		Instance.new("UICorner", cbKnob).CornerRadius = UDim.new(1, 0)
+		if default then
+			cbKnob.Position = UDim2.new(1, -(KNOB_SZ + KNOB_PAD), 0.5, -KNOB_SZ / 2)
+		end
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -(46 + rightOffset), 1, 0)
-		lbl.Position = UDim2.new(0, 29, 0, 0)
+		lbl.Position = UDim2.new(0, CB_W + 7, 0, 0)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
@@ -5391,13 +5394,22 @@ function UILib.Column:addGroup(title)
 		lbl.TextYAlignment = Enum.TextYAlignment.Center
 		lbl.ZIndex = 4
 		lbl.Parent = parent
-		return cbOuter, cbStroke, cbMark, lbl
+		return cbOuter, cbStroke, cbKnob, lbl
 	end
 
-	local function updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
+	local function updateToggleCheckbox(cbOuter, cbStroke, cbKnob, state, window)
 		cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.BG
 		cbStroke.Color = state and window.theme.AccentD or window.theme.Border
-		cbMark.Text = state and "X" or ""
+		local KNOB_PAD = 2
+		local KNOB_SZ = cbKnob.AbsoluteSize.X
+		if KNOB_SZ <= 0 then KNOB_SZ = 14 end
+		local targetX = state and (cbOuter.AbsoluteSize.X - KNOB_SZ - KNOB_PAD) or KNOB_PAD
+		if targetX < 0 then targetX = KNOB_PAD end
+		TweenService:Create(
+			cbKnob,
+			TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ Position = UDim2.new(0, targetX, 0.5, -KNOB_SZ / 2) }
+		):Play()
 	end
 
 	function group:toggle(text, default, callback, tooltip, icon, expandable, contentFunc, colorCallback, settingsCallback, cfgId)
@@ -5415,7 +5427,7 @@ function UILib.Column:addGroup(title)
 			toggleRow.BackgroundTransparency = 1
 			toggleRow.ZIndex = 3
 			toggleRow.Parent = container
-			local cbOuter, cbStroke, cbMark, lbl = createToggleCheckbox(toggleRow, default, window, text, 4)
+			local cbOuter, cbStroke, cbKnob, lbl = createToggleCheckbox(toggleRow, default, window, text, 4)
 			lbl.Size = UDim2.new(1, -46, 1, 0)
 			local contentFrame = Instance.new("Frame")
 			contentFrame.Size = UDim2.new(1, 0, 0, 0)
@@ -5433,30 +5445,32 @@ function UILib.Column:addGroup(title)
 				updateSize()
 			end
 			contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
-			local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
-			if contentFunc then contentFunc(nestedGroup) end
-			local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, IsToggle = true, Mode = "toggle", frame = container, DefaultHeight = TOGGLE_H }
+local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
+		local keybindTargetSlot = {}
+		window:pushKeybindTarget(keybindTargetSlot)
+		if contentFunc then contentFunc(nestedGroup) end
+		window:popKeybindTarget()
+		local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, IsToggle = true, Mode = "toggle", frame = container, DefaultHeight = TOGGLE_H }
+		keybindTargetSlot.elem = elem
 			elem.SetValue = function(val)
 				state = val
 				elem.Value = state
-				updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
-				task.wait(0.01)
-				updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
+				updateToggleCheckbox(cbOuter, cbStroke, cbKnob, state, window)
 				local targetH = TOGGLE_H + (state and contentLayout.AbsoluteContentSize.Y or 0)
 				TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 					Size = UDim2.new(1, 0, 0, targetH)
 				}):Play()
-				task.delay(0.21, updateSize)
+task.delay(0.21, updateSize)
+			if not window._loadingConfig then
 				window:SafeCallback(callback, state)
-				if window.configs[id] then window.configs[id].Value = state end
 			end
-		function elem:SetVisible(v, anim)
+			if window.configs[id] then window.configs[id].Value = state end
+		end
+	function elem:SetVisible(v, anim)
 			if not anim then
 				if not v then
 					state = false
-					cbOuter.BackgroundColor3 = window.theme.BG
-					cbStroke.Color = window.theme.Border
-					cbMark.Text = ""
+					updateToggleCheckbox(cbOuter, cbStroke, cbKnob, false, window)
 				end
 				container.Visible = v
 				container.Size = UDim2.new(1, 0, 0, v and (TOGGLE_H + (state and contentLayout and contentLayout.AbsoluteContentSize.Y or 0)) or 0)
@@ -5465,11 +5479,7 @@ function UILib.Column:addGroup(title)
 			end
 			if not v then
 				state = false
-				TweenService:Create(cbOuter, TweenInfo.new(0.12, Enum.EasingStyle.Quart), {
-					BackgroundColor3 = window.theme.BG
-				}):Play()
-				cbStroke.Color = window.theme.Border
-				cbMark.Text = ""
+				updateToggleCheckbox(cbOuter, cbStroke, cbKnob, false, window)
 			end
 			if v then container.Visible = true end
 			local tw = TweenService:Create(container, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
@@ -5519,7 +5529,7 @@ function UILib.Column:addGroup(title)
 		if type(settingsCallback) == "function" then
 			local gearBtn = Instance.new("ImageLabel")
 			local gi = window:lucide("settings")
-			gearBtn.Size = UDim2.new(0, 16, 0, 16)
+			gearBtn.Size = UDim2.new(0, 14, 0, 14)
 			gearBtn.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
 			gearBtn.BackgroundTransparency = 1
 			gearBtn.Image = gi or ""
@@ -5543,7 +5553,7 @@ function UILib.Column:addGroup(title)
 		if tooltip then
 			local tipIcon = Instance.new("ImageLabel")
 			local ti = window:lucide("info")
-			tipIcon.Size = UDim2.new(0, 16, 0, 16)
+			tipIcon.Size = UDim2.new(0, 14, 0, 14)
 			tipIcon.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
 			tipIcon.BackgroundTransparency = 1
 			tipIcon.Image = ti or ""
@@ -5567,16 +5577,18 @@ function UILib.Column:addGroup(title)
 			end)
 			rightOffset = rightOffset + 20
 		end
-		local cbOuter, cbStroke, cbMark, lbl = createToggleCheckbox(r, default, window, text, rightOffset)
+		local cbOuter, cbStroke, cbKnob, lbl = createToggleCheckbox(r, default, window, text, rightOffset)
 		local state = default
 		local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = TOGGLE_H }
 		elem.SetValue = function(val)
 			state = val
 			elem.Value = state
-			updateToggleCheckbox(cbOuter, cbStroke, cbMark, state, window)
+updateToggleCheckbox(cbOuter, cbStroke, cbKnob, state, window)
+		if not window._loadingConfig then
 			window:SafeCallback(callback, state)
-			if window.configs[id] then window.configs[id].Value = state end
 		end
+		if window.configs[id] then window.configs[id].Value = state end
+	end
 		function elem:SetVisible(v, anim)
 			if not anim then
 				r.Visible = v
@@ -5613,7 +5625,7 @@ function UILib.Column:addGroup(title)
 		local origSetValue = elem.SetValue
 		local lastConfirm = 0
 		elem.SetValue = function(val, _silent)
-			if (window._loadingConfig or (_configLoading) or (_silent)) and val and elem._confirmMessage then
+			if (window._loadingConfig or _silent) and val and elem._confirmMessage then
 				origSetValue(val)
 				window:SafeCallback(callback, val)
 				return
@@ -5688,7 +5700,7 @@ function UILib.Column:addGroup(title)
 		if type(settingsCallback) == "function" then
 			local gearBtn = Instance.new("ImageLabel")
 			local gi = window:lucide("settings")
-			gearBtn.Size = UDim2.new(0, 16, 0, 16)
+			gearBtn.Size = UDim2.new(0, 14, 0, 14)
 			gearBtn.Position = UDim2.new(1, -(10 + gearWidth), 0, 4)
 			gearBtn.BackgroundTransparency = 1
 			gearBtn.Image = gi or ""
@@ -5702,9 +5714,11 @@ function UILib.Column:addGroup(title)
 			gb.Text = ""
 			gb.ZIndex = 13
 			gb.Parent = gearBtn
-			gb.MouseButton1Click:Connect(function()
-				settingsCallback(gearBtn)
-			end)
+gb.MouseButton1Click:Connect(function()
+			window:pushKeybindTarget(window.configs[id])
+			settingsCallback(gearBtn)
+			window:popKeybindTarget()
+		end)
 		end
 
 		local dbtn = Instance.new("TextButton")
@@ -6013,7 +6027,7 @@ function UILib.Column:addGroup(title)
 				sbg.BackgroundTransparency = (o == val) and 0.8 or 1
 				sbg.BackgroundColor3 = window.theme.Accent
 			end
-			if not _configLoading then
+			if not window._loadingConfig then
 				window:SafeCallback(callback, val)
 			end
 			window.configs[id].Value = val
@@ -6100,9 +6114,39 @@ function UILib.Column:addGroup(title)
 		kstroke.Color = window.theme.Border
 		kstroke.Thickness = 1
 		table.insert(window.keybindButtons, kbtn)
-		local listening = false
+local listening = false
 		local skipNext = false
 		local elem = { ID = id, Value = currentName, label = cfgId or text, _mode = "keybind" }
+
+		local keyMode = "Hold"
+		local linkedTargetSlot = window:currentKeybindTarget()
+		local linkedTarget = linkedTargetSlot and linkedTargetSlot.elem or nil
+
+		local function driver(active)
+			if linkedTarget then
+				pcall(linkedTarget.SetValue, linkedTarget, active)
+			end
+		end
+
+		local function pickKey(keyObj, keyName)
+			kbtn.Text = keyName
+			kbtn.TextColor3 = window.theme.GrayLt
+			if onChange then pcall(onChange, keyObj, keyName) end
+			if window.configs[id] then window.configs[id].Value = keyName end
+			if elem._linkedKB then
+				window._keybinds[elem._linkedKB.key] = nil
+				elem._linkedKB.key = keyName
+				window._keybinds[keyName] = elem._linkedKB
+				window:updateKeybindEntry(elem._linkedKB)
+			elseif linkedTarget then
+				elem._linkedKB = window:registerKeybind(text, keyName, keyMode, driver, cfgId or text)
+			end
+		end
+
+		if linkedTarget and currentName and currentName ~= "" then
+			elem._linkedKB = window:registerKeybind(text, currentName, keyMode, driver, cfgId or text)
+		end
+
 		kbtn.MouseButton1Click:Connect(function()
 			if listening then return end
 			listening = true
@@ -6129,37 +6173,18 @@ function UILib.Column:addGroup(title)
 				end
 				local u = i.UserInputType
 				if u == Enum.UserInputType.Keyboard then
-					kbtn.Text = i.KeyCode.Name
-					kbtn.TextColor3 = window.theme.GrayLt
-					onChange(i.KeyCode, i.KeyCode.Name)
-					if window.configs[id] then window.configs[id].Value = i.KeyCode.Name end
-					local kb = elem._linkedKB
-					if not kb then
-						for _, v in pairs(window._keybinds or {}) do
-							if v.cfgId == (cfgId or text) then kb = v; break end
-						end
-					end
-					if kb and window._keybinds then
-						window._keybinds[kb.key] = nil
-						kb.key = i.KeyCode.Name
-						window._keybinds[kb.key] = kb
-						window:updateKeybindEntry(kb)
-					end
+					pickKey(i.KeyCode, i.KeyCode.Name)
+					currentName = i.KeyCode.Name
 				elseif u == Enum.UserInputType.MouseButton2 then
-					kbtn.Text = "RMB"
-					kbtn.TextColor3 = window.theme.GrayLt
-					onChange(Enum.UserInputType.MouseButton2, "RMB")
-					if window.configs[id] then window.configs[id].Value = "RMB" end
+					pickKey(u, "RMB")
+					currentName = "RMB"
 				elseif u == Enum.UserInputType.MouseButton1 or u == Enum.UserInputType.Touch then
-					kbtn.Text = u == Enum.UserInputType.Touch and "Touch" or "LMB"
-					kbtn.TextColor3 = window.theme.GrayLt
-					onChange(u, u == Enum.UserInputType.Touch and "Touch" or "LMB")
-					if window.configs[id] then window.configs[id].Value = u == Enum.UserInputType.Touch and "Touch" or "LMB" end
+					local nm = (u == Enum.UserInputType.Touch) and "Touch" or "LMB"
+					pickKey(u, nm)
+					currentName = nm
 				elseif u == Enum.UserInputType.MouseButton3 then
-					kbtn.Text = "MMB"
-					kbtn.TextColor3 = window.theme.GrayLt
-					onChange(Enum.UserInputType.MouseButton3, "MMB")
-					if window.configs[id] then window.configs[id].Value = "MMB" end
+					pickKey(u, "MMB")
+					currentName = "MMB"
 				else
 					kbtn.Text = currentName
 					kbtn.TextColor3 = window.theme.GrayLt
@@ -6168,30 +6193,26 @@ function UILib.Column:addGroup(title)
 		end)
 		elem.SetValue = function(val)
 			kbtn.Text = type(val) == "string" and val or tostring(val)
-			window.configs[id].Value = val
+			if window.configs[id] then window.configs[id].Value = val end
 			local kb = elem._linkedKB
-			if not kb then
-				for _, v in pairs(window._keybinds or {}) do
-					if v.cfgId == (cfgId or text) then kb = v; break end
-				end
-			end
 			if kb and window._keybinds and type(val) == "string" then
 				window._keybinds[kb.key] = nil
 				kb.key = val
 				window._keybinds[val] = kb
 				window:updateKeybindEntry(kb)
+			elseif linkedTarget and type(val) == "string" and val ~= "" then
+				elem._linkedKB = window:registerKeybind(text, val, keyMode, driver, cfgId or text)
 			end
 		end
-		local keyMode = "Hold"
 		kbtn.InputBegan:Connect(function(inp)
 			if inp.UserInputType == Enum.UserInputType.MouseButton2 then
-				local liveMode = elem._linkedKB and elem._linkedKB.mode or elem._keybindMode or keyMode
 				window:openAdvancedPanel(kbtn, function(popup)
-					popup:dropdown("Mode", {"Always", "Toggle", "Hold"}, liveMode, function(val)
+					popup:dropdown("Mode", {"Always", "Toggle", "Hold"}, keyMode, function(val)
 						keyMode = val
-						elem._keybindMode = val
 						if elem._linkedKB then
 							window:setKeybindMode(elem._linkedKB, val)
+						else
+							elem._keybindMode = val
 						end
 					end)
 				end)
