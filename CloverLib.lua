@@ -60,7 +60,7 @@ end
 
 function UILib:currentKeybindTarget()
 	if not self._keybindTargetStack or #self._keybindTargetStack == 0 then return nil end
-	return self._keybindTargetStack[#self._keybindTargetStack]
+	return self._keybindTargetStack[#self._keybindTargetStack].elem
 end
 
 local function tryParseIcons(src)
@@ -5449,9 +5449,9 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 		local keybindTargetSlot = {}
 		window:pushKeybindTarget(keybindTargetSlot)
 		if contentFunc then contentFunc(nestedGroup) end
-		window:popKeybindTarget()
 		local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, IsToggle = true, Mode = "toggle", frame = container, DefaultHeight = TOGGLE_H }
 		keybindTargetSlot.elem = elem
+		window:popKeybindTarget()
 			elem.SetValue = function(val)
 				state = val
 				elem.Value = state
@@ -6119,13 +6119,14 @@ local listening = false
 		local elem = { ID = id, Value = currentName, label = cfgId or text, _mode = "keybind" }
 
 		local keyMode = "Hold"
-		local linkedTargetSlot = window:currentKeybindTarget()
-		local linkedTarget = linkedTargetSlot and linkedTargetSlot.elem or nil
+
+		local function getTarget()
+			return window:currentKeybindTarget()
+		end
 
 		local function driver(active)
-			if linkedTarget then
-				pcall(linkedTarget.SetValue, linkedTarget, active)
-			end
+			local t = getTarget()
+			if t then pcall(t.SetValue, t, active) end
 		end
 
 		local function pickKey(keyObj, keyName)
@@ -6138,12 +6139,16 @@ local listening = false
 				elem._linkedKB.key = keyName
 				window._keybinds[keyName] = elem._linkedKB
 				window:updateKeybindEntry(elem._linkedKB)
-			elseif linkedTarget then
-				elem._linkedKB = window:registerKeybind(text, keyName, keyMode, driver, cfgId or text)
+			else
+				local t = getTarget()
+				if t then
+					elem._linkedKB = window:registerKeybind(text, keyName, keyMode, driver, cfgId or text)
+				end
 			end
 		end
 
-		if linkedTarget and currentName and currentName ~= "" then
+		local initialTarget = getTarget()
+		if initialTarget and currentName and currentName ~= "" then
 			elem._linkedKB = window:registerKeybind(text, currentName, keyMode, driver, cfgId or text)
 		end
 
@@ -6200,8 +6205,11 @@ local listening = false
 				kb.key = val
 				window._keybinds[val] = kb
 				window:updateKeybindEntry(kb)
-			elseif linkedTarget and type(val) == "string" and val ~= "" then
-				elem._linkedKB = window:registerKeybind(text, val, keyMode, driver, cfgId or text)
+			else
+				local t = getTarget()
+				if t and type(val) == "string" and val ~= "" then
+					elem._linkedKB = window:registerKeybind(text, val, keyMode, driver, cfgId or text)
+				end
 			end
 		end
 		kbtn.InputBegan:Connect(function(inp)
