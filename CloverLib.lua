@@ -6142,15 +6142,11 @@ local listening = false
 				window._keybinds[keyName] = elem._linkedKB
 				window:updateKeybindEntry(elem._linkedKB)
 			else
-				local t = getTarget()
-				if t then
-					elem._linkedKB = window:registerKeybind(text, keyName, keyMode, driver, cfgId or text)
-				end
+				elem._linkedKB = window:registerKeybind(text, keyName, keyMode, driver, cfgId or text)
 			end
 		end
 
-		local initialTarget = getTarget()
-		if initialTarget and currentName and currentName ~= "" then
+		if currentName and currentName ~= "" then
 			elem._linkedKB = window:registerKeybind(text, currentName, keyMode, driver, cfgId or text)
 		end
 
