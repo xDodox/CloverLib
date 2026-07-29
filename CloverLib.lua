@@ -1789,7 +1789,7 @@ end
 function UILib:setupKeybindSystem()
 	if self._hudFrame then return end
 	local hud = Instance.new("Frame")
-	hud.Size = UDim2.new(0, 150, 0, 0)
+	hud.Size = UDim2.new(0, 120, 0, 0)
 	hud.AutomaticSize = Enum.AutomaticSize.Y
 	hud.Position = self._hudPos or UDim2.new(0, 10, 0.5, 0)
 	hud.AnchorPoint = Vector2.new(0, 0.5)
@@ -1799,31 +1799,21 @@ function UILib:setupKeybindSystem()
 	hud.ZIndex = 200
 	hud.Visible = false
 	hud.Parent = self.sg
-	Instance.new("UICorner", hud).CornerRadius = UDim.new(0, 8)
+	Instance.new("UICorner", hud).CornerRadius = UDim.new(0, 6)
 	local s = Instance.new("UIStroke", hud)
 	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	s.Color = self.theme.Border; s.Thickness = 1; s.Transparency = 0.4
+	s.Color = self.theme.Border; s.Thickness = 1; s.Transparency = 0.6
 	local p = Instance.new("UIPadding", hud)
-	p.PaddingLeft = UDim.new(0, 0); p.PaddingRight = UDim.new(0, 0); p.PaddingTop = UDim.new(0, 0); p.PaddingBottom = UDim.new(0, 6)
+	p.PaddingLeft = UDim.new(0, 8); p.PaddingRight = UDim.new(0, 8); p.PaddingTop = UDim.new(0, 6); p.PaddingBottom = UDim.new(0, 6)
 	local l = Instance.new("UIListLayout", hud)
-	l.SortOrder = Enum.SortOrder.LayoutOrder; l.Padding = UDim.new(0, 0)
+	l.SortOrder = Enum.SortOrder.LayoutOrder; l.Padding = UDim.new(0, 2)
 
-	local hdr = Instance.new("Frame")
-	hdr.Size = UDim2.new(1, 0, 0, 22); hdr.BackgroundTransparency = 0.3
-	hdr.BackgroundColor3 = self.theme.Accent; hdr.BorderSizePixel = 0
-	hdr.ZIndex = 201; hdr.LayoutOrder = 1; hdr.Parent = hud
-	Instance.new("UICorner", hdr).CornerRadius = UDim.new(0, 8)
-	local hdrCover = Instance.new("Frame")
-	hdrCover.Size = UDim2.new(1, 0, 0, 8); hdrCover.Position = UDim2.new(0, 0, 1, -8)
-	hdrCover.BackgroundColor3 = self.theme.Accent; hdrCover.BackgroundTransparency = 0.3
-	hdrCover.BorderSizePixel = 0; hdrCover.ZIndex = 201; hdrCover.Parent = hdr
-
-	local hdrText = Instance.new("TextLabel")
-	hdrText.Size = UDim2.new(1, 0, 1, 0); hdrText.BackgroundTransparency = 1
-	hdrText.Text = "KEYBINDS"; hdrText.TextColor3 = Color3.fromRGB(10, 10, 10)
-	hdrText.Font = Enum.Font.GothamBold; hdrText.TextSize = 10
-	hdrText.TextXAlignment = Enum.TextXAlignment.Center; hdrText.ZIndex = 202
-	hdrText.Parent = hdr
+	local hdr = Instance.new("TextLabel")
+	hdr.Size = UDim2.new(1, 0, 0, 14); hdr.BackgroundTransparency = 1
+	hdr.Text = "KEYBINDS"; hdr.TextColor3 = self.theme.GrayLt
+	hdr.Font = Enum.Font.GothamBold; hdr.TextSize = 9
+	hdr.TextXAlignment = Enum.TextXAlignment.Center; hdr.ZIndex = 201
+	hdr.LayoutOrder = 1; hdr.Parent = hud
 	hdr.Active = true
 	local dr = false; local ds, dp
 	hdr.InputBegan:Connect(function(i)
@@ -1959,24 +1949,15 @@ end
 function UILib:addKeybindEntry(kb)
 	if not self._hudFrame then self:setupKeybindSystem() end
 	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, 0, 0, 22)
+	row.Size = UDim2.new(1, 0, 0, 18)
 	row.BackgroundTransparency = 1
 	row.ZIndex = 201
 	row.LayoutOrder = #self._hudEntries + 2
 	row.Parent = self._hudFrame
 
-	local sep = Instance.new("Frame")
-	sep.Size = UDim2.new(0.85, 0, 0, 1)
-	sep.Position = UDim2.new(0.075, 0, 0, 0)
-	sep.BackgroundColor3 = self.theme.Border
-	sep.BackgroundTransparency = 0.6
-	sep.BorderSizePixel = 0
-	sep.ZIndex = 201
-	sep.Parent = row
-
 	local nameLbl = Instance.new("TextLabel")
-	nameLbl.Size = UDim2.new(1, -40, 1, 0)
-	nameLbl.Position = UDim2.new(0, 8, 0, 0)
+	nameLbl.Size = UDim2.new(1, -30, 1, 0)
+	nameLbl.Position = UDim2.new(0, 0, 0, 0)
 	nameLbl.BackgroundTransparency = 1
 	nameLbl.Text = kb.name
 	nameLbl.TextColor3 = kb.active and self.theme.White or self.theme.GrayLt
@@ -1985,43 +1966,35 @@ function UILib:addKeybindEntry(kb)
 	nameLbl.TextTruncate = Enum.TextTruncate.AtEnd
 	nameLbl.ZIndex = 202; nameLbl.Parent = row
 
-	local keyBadge = Instance.new("Frame")
+	local keyBadge = Instance.new("TextLabel")
 	keyBadge.AutomaticSize = Enum.AutomaticSize.X
-	keyBadge.Size = UDim2.new(0, 0, 0, 16)
-	keyBadge.Position = UDim2.new(1, -8, 0.5, -8)
+	keyBadge.Size = UDim2.new(0, 0, 0, 14)
+	keyBadge.Position = UDim2.new(1, 0, 0.5, -7)
 	keyBadge.AnchorPoint = Vector2.new(1, 0.5)
-	keyBadge.BackgroundColor3 = kb.active and self.theme.Accent or self.theme.Track
+	keyBadge.BackgroundColor3 = self.theme.Accent
+	keyBadge.BackgroundTransparency = kb.active and 0 or 0.85
 	keyBadge.BorderSizePixel = 0
+	keyBadge.Text = kb.key
+	keyBadge.TextColor3 = kb.active and Color3.fromRGB(10, 10, 10) or self.theme.Accent
+	keyBadge.Font = Enum.Font.GothamBold; keyBadge.TextSize = 9
+	keyBadge.TextXAlignment = Enum.TextXAlignment.Center
 	keyBadge.ZIndex = 202; keyBadge.Parent = row
 	Instance.new("UICorner", keyBadge).CornerRadius = UDim.new(0, 3)
-	local kbStroke = Instance.new("UIStroke", keyBadge)
-	kbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	kbStroke.Color = kb.active and self.theme.Accent or self.theme.Border
-	kbStroke.Thickness = 1; kbStroke.Transparency = 0.3
 	local kbPad = Instance.new("UIPadding", keyBadge)
-	kbPad.PaddingLeft = UDim.new(0, 6); kbPad.PaddingRight = UDim.new(0, 6)
-
-	local keyLbl = Instance.new("TextLabel")
-	keyLbl.AutomaticSize = Enum.AutomaticSize.X
-	keyLbl.Size = UDim2.new(0, 0, 1, 0)
-	keyLbl.BackgroundTransparency = 1
-	keyLbl.Text = kb.key
-	keyLbl.TextColor3 = kb.active and Color3.fromRGB(10, 10, 10) or self.theme.Gray
-	keyLbl.Font = Enum.Font.GothamBold; keyLbl.TextSize = 9
-	keyLbl.TextXAlignment = Enum.TextXAlignment.Center
-	keyLbl.ZIndex = 203; keyLbl.Parent = keyBadge
+	kbPad.PaddingLeft = UDim.new(0, 5); kbPad.PaddingRight = UDim.new(0, 5)
 
 	row.InputBegan:Connect(function(inp)
 		if inp.UserInputType == Enum.UserInputType.MouseButton2 then
 			self:openAdvancedPanel(row, function(popup)
-				popup:dropdown("Mode", {"Always", "Toggle", "Hold"}, kb.mode, function(val)
-					self:setKeybindMode(kb, val)
+				local real = (self._keybinds and self._keybinds[kb.key]) or kb
+				popup:dropdown("Mode", {"Always", "Toggle", "Hold"}, real.mode, function(val)
+					self:setKeybindMode(real, val)
 				end)
 			end)
 		end
 	end)
 
-	local entry = { row = row, nameLabel = nameLbl, keyLabel = keyLbl, keyBadge = keyBadge, keyStroke = kbStroke }
+	local entry = { row = row, nameLabel = nameLbl, keyLabel = keyBadge }
 	kb.entry = entry
 	table.insert(self._hudEntries, entry)
 	self._hudFrame.Visible = self._hudEnabled
@@ -2033,11 +2006,8 @@ function UILib:updateKeybindEntry(kb)
 	kb.entry.nameLabel.Text = kb.name
 	kb.entry.nameLabel.TextColor3 = kb.active and self.theme.White or self.theme.GrayLt
 	kb.entry.keyLabel.Text = kb.key
-	if kb.entry.keyBadge then
-		kb.entry.keyBadge.BackgroundColor3 = kb.active and self.theme.Accent or self.theme.Track
-		kb.entry.keyLabel.TextColor3 = kb.active and Color3.fromRGB(10, 10, 10) or self.theme.Gray
-		if kb.entry.keyStroke then kb.entry.keyStroke.Color = kb.active and self.theme.Accent or self.theme.Border end
-	end
+	kb.entry.keyLabel.BackgroundTransparency = kb.active and 0 or 0.85
+	kb.entry.keyLabel.TextColor3 = kb.active and Color3.fromRGB(10, 10, 10) or self.theme.Accent
 	kb.entry.row.Visible = kb.mode == "Always" or kb.active
 end
 
@@ -6190,6 +6160,9 @@ local listening = false
 				elem._linkedKB.key = keyName
 				window._keybinds[keyName] = elem._linkedKB
 				window:updateKeybindEntry(elem._linkedKB)
+			elseif window._keybinds and window._keybinds[keyName] then
+				elem._linkedKB = window._keybinds[keyName]
+				if window.configs and window.configs[id] then window.configs[id].Value = keyName end
 			else
 				if not noHud then
 					elem._linkedKB = window:registerKeybind(text, keyName, keyMode, driver, cfgId or text)
@@ -6198,7 +6171,11 @@ local listening = false
 		end
 
 		if currentName and currentName ~= "" and not noHud then
-			elem._linkedKB = window:registerKeybind(text, currentName, keyMode, driver, cfgId or text)
+			if window._keybinds and window._keybinds[currentName] then
+				elem._linkedKB = window._keybinds[currentName]
+			else
+				elem._linkedKB = window:registerKeybind(text, currentName, keyMode, driver, cfgId or text)
+			end
 		end
 
 		kbtn.MouseButton1Click:Connect(function()
@@ -6264,10 +6241,11 @@ local listening = false
 		kbtn.InputBegan:Connect(function(inp)
 			if inp.UserInputType == Enum.UserInputType.MouseButton2 and not noHud then
 				window:openAdvancedPanel(kbtn, function(popup)
-					popup:dropdown("Mode", {"Always", "Toggle", "Hold"}, keyMode, function(val)
+					local real = elem._linkedKB or (window._keybinds and window._keybinds[elem.Value]) or nil
+					popup:dropdown("Mode", {"Always", "Toggle", "Hold"}, real and real.mode or keyMode, function(val)
 						keyMode = val
-						if elem._linkedKB then
-							window:setKeybindMode(elem._linkedKB, val)
+						if real then
+							window:setKeybindMode(real, val)
 						else
 							elem._keybindMode = val
 						end
