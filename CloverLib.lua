@@ -6757,8 +6757,8 @@ local listening = false
 		end
 	end
 
-	function group:expandableToggle(text, default, contentFunc, tooltip, settingsCallback)
-		return self:toggle(text, default, nil, tooltip, nil, true, contentFunc, nil, settingsCallback)
+	function group:expandableToggle(text, default, contentFunc, tooltip, settingsCallback, callback)
+		return self:toggle(text, default, callback, tooltip, nil, true, contentFunc, nil, settingsCallback)
 	end
 
 	function group:collapsible(text, default, contentFunc, tooltip)
