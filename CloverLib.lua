@@ -3614,7 +3614,7 @@ function UILib.Tab:addSubTab(name, description)
 	pagePadding.PaddingLeft = UDim.new(0, 8)
 	pagePadding.PaddingRight = UDim.new(0, 8)
 	pagePadding.PaddingTop = UDim.new(0, 8)
-	pagePadding.PaddingBottom = UDim.new(0, 12)
+	pagePadding.PaddingBottom = UDim.new(0, 8)
 	sub.btn = btn
 	sub.hov = hov
 	sub.label = label
@@ -4941,8 +4941,8 @@ function UILib.Column:addGroup(title)
 	local padding = Instance.new("UIPadding", items)
 	padding.PaddingLeft = UDim.new(0, 8)
 	padding.PaddingRight = UDim.new(0, 8)
-	padding.PaddingTop = UDim.new(0, 10)
-	padding.PaddingBottom = UDim.new(0, 6)
+	padding.PaddingTop = UDim.new(0, 8)
+	padding.PaddingBottom = UDim.new(0, 8)
 
 		local sizeUpdateScheduled = false
 	local function updateSize()
