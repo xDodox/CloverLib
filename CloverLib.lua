@@ -1469,8 +1469,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 					win.Position = UDim2.new(dragPos.X.Scale, dragPos.X.Offset + delta.X, dragPos.Y.Scale,
 						dragPos.Y.Offset + delta.Y)
 					self.originalPosition = win.Position
-				end
-			end))
+				end))
 		table.insert(self.connections,
 			UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = false end end))
 	end
@@ -5360,6 +5359,7 @@ function UILib.Column:addGroup(title)
 		cbOverlay.Visible = false
 		cbOverlay.ZIndex = 10
 		cbOverlay.Parent = cbOuter
+		Instance.new("UICorner", cbOverlay).CornerRadius = UDim.new(1, 0)
 		cbOverlay.BackgroundTransparency = 1
 		cbOuter.MouseButton1Down:Connect(function() TweenService:Create(cbOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 0.7 }):Play(); cbOverlay.Visible = true end)
 		cbOuter.MouseButton1Up:Connect(function() TweenService:Create(cbOverlay, TweenInfo.new(0.05, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play(); task.delay(0.06, function() cbOverlay.Visible = false end) end)
