@@ -2010,11 +2010,7 @@ function UILib:updateKeybindEntry(kb)
 	if kb._parentToggleId then
 		local te = self.configs and self.configs[kb._parentToggleId]
 		if te and te.Value ~= true then
-			if kb.entry.row.Visible then
-				kb.entry.row.ClipsDescendants = true
-				TweenService:Create(kb.entry.row, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = UDim2.new(1, 0, 0, 0)}):Play()
-				task.delay(0.13, function() kb.entry.row.Visible = false; kb.entry.row.Size = UDim2.new(1, 0, 0, 20) end)
-			end
+			kb.entry.row.Visible = false
 			return
 		end
 	end
@@ -2024,16 +2020,7 @@ function UILib:updateKeybindEntry(kb)
 	kb.entry.keyLabel.Text = kb.key
 	kb.entry.keyLabel.BackgroundTransparency = kb.active and 0 or 0.85
 	kb.entry.keyLabel.TextColor3 = kb.active and Color3.fromRGB(10, 10, 10) or self.theme.Accent
-	local shouldShow = kb.mode == "Always" or kb.active
-	if shouldShow and not kb.entry.row.Visible then
-		kb.entry.row.ClipsDescendants = true
-		kb.entry.row.Size = UDim2.new(1, 0, 0, 0)
-		kb.entry.row.Visible = true
-		TweenService:Create(kb.entry.row, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, 20)}):Play()
-		task.delay(0.16, function() kb.entry.row.ClipsDescendants = false end)
-	else
-		kb.entry.row.Visible = shouldShow
-	end
+	kb.entry.row.Visible = kb.mode == "Always" or kb.active
 end
 
 function UILib:updateKeybindKey(kb, newKey)
@@ -5547,7 +5534,7 @@ function UILib.Column:addGroup(title)
 				local h = contentLayout.AbsoluteContentSize.Y + 12
 				contentFrame.Size = UDim2.new(1, 0, 0, h)
 				container.Size = UDim2.new(1, 0, 0, TOGGLE_H + (state and h or 0))
-				updateSize()
+				task.defer(updateSize)
 			end
 			contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
 local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
