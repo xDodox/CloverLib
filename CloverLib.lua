@@ -1839,6 +1839,10 @@ function UILib:setupKeybindSystem()
 		if not key then return end
 		local kb = self._keybinds[key]
 		if not kb or kb.mode == "Always" then return end
+		if kb._parentToggleId then
+			local te = self.configs and self.configs[kb._parentToggleId]
+			if te and te.Value == false then return end
+		end
 		if kb.mode == "Toggle" then
 			kb.active = not kb.active
 			pcall(kb.callback, kb.active)
@@ -5508,6 +5512,11 @@ function UILib.Column:addGroup(title)
 			contentFrame.Position = UDim2.new(0, 0, 0, TOGGLE_H)
 			contentFrame.BackgroundTransparency = 1
 			contentFrame.Parent = container
+			local contentPad = Instance.new("UIPadding", contentFrame)
+			contentPad.PaddingLeft = UDim.new(0, 4)
+			contentPad.PaddingRight = UDim.new(0, 4)
+			contentPad.PaddingTop = UDim.new(0, 4)
+			contentPad.PaddingBottom = UDim.new(0, 4)
 			local contentLayout = Instance.new("UIListLayout", contentFrame)
 			contentLayout.Padding = UDim.new(0, 2)
 			contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -5526,6 +5535,17 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 			state = val
 			elem.Value = state
 			updateToggleCheckbox(cbOuter, cbStroke, cbKnob, state, window)
+			for _, kb in pairs(window._keybinds) do
+				if kb._parentToggleId == id then
+					if not state then
+						kb.active = false
+						kb._holdKey = nil
+						kb._holdInput = nil
+						kb._holdKind = nil
+					end
+					window:updateKeybindEntry(kb)
+				end
+			end
 			local targetH = TOGGLE_H + (state and contentLayout.AbsoluteContentSize.Y or 0)
 			TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 				Size = UDim2.new(1, 0, 0, targetH)
@@ -5537,7 +5557,9 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 		if window.configs[id] then window.configs[id].Value = state end
 		end
 		window.configs[id] = finalizeElement(elem, window, group)
+		window._currentExpandableToggleId = id
 		if contentFunc then contentFunc(nestedGroup) end
+		window._currentExpandableToggleId = nil
 	function elem:SetVisible(v, anim)
 			if not anim then
 				if not v then
@@ -6228,6 +6250,9 @@ local listening = false
 				elem._linkedKB = window._keybinds[currentName]
 			else
 				elem._linkedKB = window:registerKeybind(text, currentName, keyMode, driver, cfgId or text)
+			end
+			if elem._linkedKB and window._currentExpandableToggleId then
+				elem._linkedKB._parentToggleId = window._currentExpandableToggleId
 			end
 		end
 
