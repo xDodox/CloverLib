@@ -5532,18 +5532,19 @@ function UILib.Column:addGroup(title)
 			contentFrame.Size = UDim2.new(1, 0, 0, 0)
 			contentFrame.Position = UDim2.new(0, 0, 0, TOGGLE_H)
 			contentFrame.BackgroundTransparency = 1
+			contentFrame.ClipsDescendants = true
 			contentFrame.Parent = container
 			local contentPad = Instance.new("UIPadding", contentFrame)
 			contentPad.PaddingLeft = UDim.new(0, 8)
 			contentPad.PaddingRight = UDim.new(0, 8)
-			contentPad.PaddingTop = UDim.new(0, 8)
-			contentPad.PaddingBottom = UDim.new(0, 8)
+			contentPad.PaddingTop = UDim.new(0, 6)
+			contentPad.PaddingBottom = UDim.new(0, 6)
 			local contentLayout = Instance.new("UIListLayout", contentFrame)
-			contentLayout.Padding = UDim.new(0, 2)
+			contentLayout.Padding = UDim.new(0, 4)
 			contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
 			local state = default
 			local function updateContentSize()
-				local h = contentLayout.AbsoluteContentSize.Y + 16
+				local h = contentLayout.AbsoluteContentSize.Y + 12
 				contentFrame.Size = UDim2.new(1, 0, 0, h)
 				container.Size = UDim2.new(1, 0, 0, TOGGLE_H + (state and h or 0))
 				updateSize()
@@ -5557,7 +5558,7 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 			elem.Value = state
 			updateToggleCheckbox(cbOuter, cbStroke, cbKnob, state, window)
 			for _, kb in pairs(window._keybinds) do
-				if kb._parentToggleId and kb._parentToggleId == id then
+				if kb._parentToggleId and tostring(kb._parentToggleId) == tostring(id) then
 					if not state then
 						kb.active = false
 						kb._holdKey = nil
@@ -5567,7 +5568,14 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 					window:updateKeybindEntry(kb)
 				end
 			end
-			local targetH = TOGGLE_H + (state and (contentLayout.AbsoluteContentSize.Y + 16) or 0)
+			task.defer(function()
+				for _, kb in pairs(window._keybinds) do
+					if kb._parentToggleId and tostring(kb._parentToggleId) == tostring(id) then
+						window:updateKeybindEntry(kb)
+					end
+				end
+			end)
+			local targetH = TOGGLE_H + (state and (contentLayout.AbsoluteContentSize.Y + 12) or 0)
 			TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 				Size = UDim2.new(1, 0, 0, targetH)
 			}):Play()
@@ -5588,7 +5596,7 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 					updateToggleCheckbox(cbOuter, cbStroke, cbKnob, false, window)
 				end
 				container.Visible = v
-				container.Size = UDim2.new(1, 0, 0, v and (TOGGLE_H + (state and contentLayout and (contentLayout.AbsoluteContentSize.Y + 16) or 0)) or 0)
+				container.Size = UDim2.new(1, 0, 0, v and (TOGGLE_H + (state and contentLayout and (contentLayout.AbsoluteContentSize.Y + 12) or 0)) or 0)
 				if group and group.updateSize then group.updateSize() end
 				return
 			end
@@ -5598,7 +5606,7 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 			end
 			if v then container.Visible = true end
 			local tw = TweenService:Create(container, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-				Size = UDim2.new(1, 0, 0, v and (TOGGLE_H + (state and contentLayout.AbsoluteContentSize.Y + 16 or 0)) or 0)
+				Size = UDim2.new(1, 0, 0, v and (TOGGLE_H + (state and contentLayout.AbsoluteContentSize.Y + 12 or 0)) or 0)
 			})
 			tw.Completed:Connect(function()
 				if not v then container.Visible = false end
