@@ -5537,10 +5537,7 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 		if window.configs[id] then window.configs[id].Value = state end
 		end
 		window.configs[id] = finalizeElement(elem, window, group)
-		local keybindTargetSlot = { elem = elem }
-		window:pushKeybindTarget(keybindTargetSlot)
 		if contentFunc then contentFunc(nestedGroup) end
-		window:popKeybindTarget()
 	function elem:SetVisible(v, anim)
 			if not anim then
 				if not v then
@@ -6136,7 +6133,7 @@ gb.MouseButton1Click:Connect(function()
 		return elem
 	end
 
-	function group:keybind(text, currentName, onChange, tooltip, cfgId, noHud)
+	function group:keybind(text, currentName, onChange, tooltip, cfgId, noHud, onPress)
 		assert(text ~= nil and text ~= "", "Keybind - Missing text")
 		local id = generateID()
 		local r = Instance.new("Frame")
@@ -6202,14 +6199,8 @@ local listening = false
 
 		local keyMode = "Hold"
 
-		local capturedTarget = window:currentKeybindTarget()
-		local function getTarget()
-			return capturedTarget
-		end
-
 		local function driver(active)
-			local t = getTarget()
-			if t and t.SetValue then pcall(t.SetValue, active) end
+			if onPress then pcall(onPress, active) end
 		end
 
 		local function pickKey(keyObj, keyName)
@@ -6295,8 +6286,7 @@ local listening = false
 				window._keybinds[val] = kb
 				window:updateKeybindEntry(kb)
 			else
-				local t = getTarget()
-				if t and type(val) == "string" and val ~= "" then
+				if type(val) == "string" and val ~= "" then
 					elem._linkedKB = window:registerKeybind(text, val, keyMode, driver, cfgId or text)
 				end
 			end
