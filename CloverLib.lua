@@ -1989,7 +1989,7 @@ function UILib:updateKeybindEntry(kb)
 	kb.entry.nameLabel.TextColor3 = kb.active and self.theme.White or self.theme.GrayLt
 	kb.entry.keyLabel.Text = kb.key
 	kb.entry.keyLabel.TextColor3 = kb.active and self.theme.Accent or self.theme.Gray
-	kb.entry.row.Visible = kb.active
+	kb.entry.row.Visible = true
 end
 
 function UILib:updateKeybindKey(kb, newKey)
@@ -2029,7 +2029,7 @@ function UILib:buildUITab()
 
 	grp:keybind("Toggle Key", "RightShift", function(_, name)
 		self.toggleKey = Enum.KeyCode[name] or Enum.KeyCode.RightShift
-	end, "Set key to show/hide menu", "ui_togglekey")
+	end, "Set key to show/hide menu", "ui_togglekey", true)
 
 	grp:toggle("Show Watermark", self.watermark ~= nil, function(v)
 		if v then
@@ -5448,26 +5448,26 @@ function UILib.Column:addGroup(title)
 			end
 			contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
 local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
-		local keybindTargetSlot = {}
+		local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, IsToggle = true, Mode = "toggle", frame = container, DefaultHeight = TOGGLE_H }
+		elem.SetValue = function(val)
+			state = val
+			elem.Value = state
+			updateToggleCheckbox(cbOuter, cbStroke, cbKnob, state, window)
+			local targetH = TOGGLE_H + (state and contentLayout.AbsoluteContentSize.Y or 0)
+			TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Size = UDim2.new(1, 0, 0, targetH)
+			}):Play()
+task.delay(0.21, updateSize)
+		if not window._loadingConfig then
+			window:SafeCallback(callback, state)
+		end
+		if window.configs[id] then window.configs[id].Value = state end
+		end
+		window.configs[id] = finalizeElement(elem, window, group)
+		local keybindTargetSlot = { elem = elem }
 		window:pushKeybindTarget(keybindTargetSlot)
 		if contentFunc then contentFunc(nestedGroup) end
-		local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, IsToggle = true, Mode = "toggle", frame = container, DefaultHeight = TOGGLE_H }
-		keybindTargetSlot.elem = elem
 		window:popKeybindTarget()
-			elem.SetValue = function(val)
-				state = val
-				elem.Value = state
-				updateToggleCheckbox(cbOuter, cbStroke, cbKnob, state, window)
-				local targetH = TOGGLE_H + (state and contentLayout.AbsoluteContentSize.Y or 0)
-				TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-					Size = UDim2.new(1, 0, 0, targetH)
-				}):Play()
-task.delay(0.21, updateSize)
-			if not window._loadingConfig then
-				window:SafeCallback(callback, state)
-			end
-			if window.configs[id] then window.configs[id].Value = state end
-		end
 	function elem:SetVisible(v, anim)
 			if not anim then
 				if not v then
@@ -5493,7 +5493,6 @@ task.delay(0.21, updateSize)
 			end)
 			tw:Play()
 		end
-			window.configs[id] = finalizeElement(elem, window, group)
 			cbOuter.MouseButton1Click:Connect(function()
 				if elem.Mode == "always" then return end
 				state = not state
@@ -6056,7 +6055,7 @@ gb.MouseButton1Click:Connect(function()
 		return elem
 	end
 
-	function group:keybind(text, currentName, onChange, tooltip, cfgId)
+	function group:keybind(text, currentName, onChange, tooltip, cfgId, noHud)
 		assert(text ~= nil and text ~= "", "Keybind - Missing text")
 		local id = generateID()
 		local r = Instance.new("Frame")
@@ -6118,7 +6117,7 @@ gb.MouseButton1Click:Connect(function()
 		table.insert(window.keybindButtons, kbtn)
 local listening = false
 		local skipNext = false
-		local elem = { ID = id, Value = currentName, label = cfgId or text, _mode = "keybind" }
+		local elem = { ID = id, Value = currentName, label = cfgId or text, _mode = "keybind", _noHud = noHud }
 
 		local keyMode = "Hold"
 
@@ -6142,11 +6141,13 @@ local listening = false
 				window._keybinds[keyName] = elem._linkedKB
 				window:updateKeybindEntry(elem._linkedKB)
 			else
-				elem._linkedKB = window:registerKeybind(text, keyName, keyMode, driver, cfgId or text)
+				if not noHud then
+					elem._linkedKB = window:registerKeybind(text, keyName, keyMode, driver, cfgId or text)
+				end
 			end
 		end
 
-		if currentName and currentName ~= "" then
+		if currentName and currentName ~= "" and not noHud then
 			elem._linkedKB = window:registerKeybind(text, currentName, keyMode, driver, cfgId or text)
 		end
 
@@ -6211,7 +6212,7 @@ local listening = false
 			end
 		end
 		kbtn.InputBegan:Connect(function(inp)
-			if inp.UserInputType == Enum.UserInputType.MouseButton2 then
+			if inp.UserInputType == Enum.UserInputType.MouseButton2 and not noHud then
 				window:openAdvancedPanel(kbtn, function(popup)
 					popup:dropdown("Mode", {"Always", "Toggle", "Hold"}, keyMode, function(val)
 						keyMode = val
