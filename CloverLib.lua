@@ -2007,6 +2007,13 @@ end
 
 function UILib:updateKeybindEntry(kb)
 	if not kb.entry then return end
+	if kb._parentToggleId then
+		local te = self.configs and self.configs[kb._parentToggleId]
+		if te and te.Value == false then
+			kb.entry.row.Visible = false
+			return
+		end
+	end
 	kb.entry.nameLabel.Text = kb.name
 	kb.entry.nameLabel.TextColor3 = kb.active and self.theme.White or self.theme.GrayLt
 	kb.entry.keyLabel.Text = kb.key
