@@ -5453,7 +5453,56 @@ function UILib.Column:addGroup(title)
 			toggleRow.ZIndex = 3
 			toggleRow.Parent = container
 			local cbOuter, cbStroke, cbKnob, lbl = createToggleCheckbox(toggleRow, default, window, text, 4)
-			lbl.Size = UDim2.new(1, -46, 1, 0)
+			local rightOffset = 4
+			if type(settingsCallback) == "function" then
+				local gearBtn = Instance.new("ImageLabel")
+				local gi = window:lucide("settings")
+				gearBtn.Size = UDim2.new(0, 14, 0, 14)
+				gearBtn.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
+				gearBtn.BackgroundTransparency = 1
+				gearBtn.Image = gi or ""
+				gearBtn.ImageColor3 = window.theme.GrayLt
+				gearBtn.ScaleType = Enum.ScaleType.Fit
+				gearBtn.ZIndex = 5
+				gearBtn.Parent = toggleRow
+				local gb = Instance.new("TextButton")
+				gb.Size = UDim2.new(1, 8, 1, 8)
+				gb.BackgroundTransparency = 1
+				gb.Text = ""
+				gb.ZIndex = 6
+				gb.Parent = gearBtn
+				gb.MouseButton1Click:Connect(function()
+					settingsCallback(gearBtn)
+				end)
+				rightOffset = rightOffset + 20
+			end
+			if tooltip then
+				local tipIcon = Instance.new("ImageLabel")
+				local ti = window:lucide("info")
+				tipIcon.Size = UDim2.new(0, 14, 0, 14)
+				tipIcon.Position = UDim2.new(1, -(rightOffset + 14), 0.5, -7)
+				tipIcon.BackgroundTransparency = 1
+				tipIcon.Image = ti or ""
+				tipIcon.ImageColor3 = window.theme.GrayLt
+				tipIcon.ScaleType = Enum.ScaleType.Fit
+				tipIcon.ZIndex = 5
+				tipIcon.Parent = toggleRow
+				local tb = Instance.new("TextButton")
+				tb.Size = UDim2.new(1, 8, 1, 8)
+				tb.BackgroundTransparency = 1
+				tb.Text = ""
+				tb.ZIndex = 6
+				tb.Parent = tipIcon
+				tb.MouseEnter:Connect(function()
+					if not window.tooltip or window.tooltipSuppressed then return end
+					window.tooltip.show(tooltip, tb)
+				end)
+				tb.MouseLeave:Connect(function()
+					if window.tooltip then window.tooltip.hide() end
+				end)
+				rightOffset = rightOffset + 20
+			end
+			lbl.Size = UDim2.new(1, -(46 + rightOffset - 4), 1, 0)
 			local contentFrame = Instance.new("Frame")
 			contentFrame.Size = UDim2.new(1, 0, 0, 0)
 			contentFrame.Position = UDim2.new(0, 0, 0, TOGGLE_H)
