@@ -5368,12 +5368,12 @@ function UILib.Column:addGroup(title)
 		Instance.new("UICorner", cbOuter).CornerRadius = UDim.new(1, 0)
 		local cbStroke = Instance.new("UIStroke", cbOuter)
 		cbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		cbStroke.Color = default and window.theme.AccentD or window.theme.Border
+		cbStroke.Color = window.theme.Border
 		cbStroke.Thickness = 1
 		local cbKnob = Instance.new("Frame")
 		cbKnob.Name = "Knob"
 		cbKnob.Size = UDim2.new(0, KNOB_SZ, 0, KNOB_SZ)
-		cbKnob.Position = UDim2.new(0, KNOB_PAD, 0.5, -KNOB_SZ / 2 + 4)
+		cbKnob.Position = UDim2.new(0, KNOB_PAD, 0.5, 0)
 		cbKnob.AnchorPoint = Vector2.new(0, 0.5)
 		cbKnob.BackgroundColor3 = Color3.new(1, 1, 1)
 		cbKnob.BorderSizePixel = 0
@@ -5381,7 +5381,7 @@ function UILib.Column:addGroup(title)
 		cbKnob.Parent = cbOuter
 		Instance.new("UICorner", cbKnob).CornerRadius = UDim.new(1, 0)
 		if default then
-			cbKnob.Position = UDim2.new(1, -(KNOB_SZ + KNOB_PAD), 0.5, -KNOB_SZ / 2 + 4)
+			cbKnob.Position = UDim2.new(1, -(KNOB_SZ + KNOB_PAD), 0.5, 0)
 		end
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -(46 + rightOffset), 1, 0)
@@ -5401,7 +5401,7 @@ function UILib.Column:addGroup(title)
 
 	local function updateToggleCheckbox(cbOuter, cbStroke, cbKnob, state, window)
 		cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.BG
-		cbStroke.Color = state and window.theme.AccentD or window.theme.Border
+		cbStroke.Color = window.theme.Border
 		local KNOB_PAD = 2
 		local KNOB_SZ = cbKnob.AbsoluteSize.X
 		if KNOB_SZ <= 0 then KNOB_SZ = 14 end
@@ -5410,7 +5410,7 @@ function UILib.Column:addGroup(title)
 		TweenService:Create(
 			cbKnob,
 			TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-			{ Position = UDim2.new(0, targetX, 0.5, -KNOB_SZ / 2 + 4) }
+			{ Position = UDim2.new(0, targetX, 0.5, 0) }
 		):Play()
 	end
 
