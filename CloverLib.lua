@@ -3808,7 +3808,7 @@ function UILib.SubTab:addInput(labelText, default, placeholder, callback, toolti
 		frame = r,
 		DefaultHeight = 52,
 		SetValue = function(first, second)
-			local val = (type(first) == "table" and first.ID) and second or first
+			local val = (type(first) ~= "table" or not first.ID) and first or second
 			current = val
 			box.Text = val
 		end
@@ -4062,7 +4062,7 @@ gb.MouseButton1Click:Connect(function()
 		return cleanNum(val)
 	end
 	local function updateSlider(first, second)
-		local val = (type(first) == "table" and first.ID) and second or first
+		local val = (type(first) ~= "table" or not first.ID) and first or second
 		val = math.clamp(val, minVal, maxVal)
 		val = roundToStep(val)
 		currentVal = val
@@ -4203,7 +4203,7 @@ gb.MouseButton1Click:Connect(function()
 	local pickerFrame = nil
 
 	elem.SetValue = function(first, second)
-		local val = (type(first) == "table" and first.ID) and second or first
+		local val = (type(first) ~= "table" or not first.ID) and first or second
 		current = val
 		elem.Value = val
 		colorBox.BackgroundColor3 = val
@@ -4831,7 +4831,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 		frame = row,
 		DefaultHeight = 56,
 		SetValue = function(first, second)
-			local t = (type(first) == "table" and first.ID) and second or first
+			local t = (type(first) ~= "table" or not first.ID) and first or second
 			selected = {}
 			for _, opt in ipairs(t) do selected[opt] = true end
 			for opt, ck in pairs(checks) do
@@ -5473,7 +5473,7 @@ function UILib.Column:addGroup(title)
 local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 		local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, IsToggle = true, Mode = "toggle", frame = container, DefaultHeight = TOGGLE_H }
 		elem.SetValue = function(first, second)
-			local val = (type(first) == "table" and first.ID) and second or first
+			local val = (type(first) ~= "table" or not first.ID) and first or second
 			state = val
 			elem.Value = state
 			updateToggleCheckbox(cbOuter, cbStroke, cbKnob, state, window)
@@ -5606,7 +5606,7 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 		local state = default
 		local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = TOGGLE_H }
 		elem.SetValue = function(first, second)
-			local val = (type(first) == "table" and first.ID) and second or first
+			local val = (type(first) ~= "table" or not first.ID) and first or second
 			state = val
 			elem.Value = state
 			updateToggleCheckbox(cbOuter, cbStroke, cbKnob, state, window)
@@ -5615,7 +5615,6 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 			end
 		end
 		if window.configs[id] then window.configs[id].Value = state end
-	end
 		function elem:SetVisible(v, anim)
 			if not anim then
 				r.Visible = v
@@ -6047,7 +6046,7 @@ gb.MouseButton1Click:Connect(function()
 			_values = options,
 			Refresh = refresh,
 		SetValue = function(first, second)
-				local val = (type(first) == "table" and first.ID) and second or first
+				local val = (type(first) ~= "table" or not first.ID) and first or second
 				if type(val) ~= "string" then return end
 				currentSelection = val
 				selLbl.Text = val
@@ -6237,7 +6236,7 @@ local listening = false
 			end)
 		end)
 		elem.SetValue = function(first, second)
-			local val = (type(first) == "table" and first.ID) and second or first
+			local val = (type(first) ~= "table" or not first.ID) and first or second
 			kbtn.Text = type(val) == "string" and val or tostring(val)
 			if window.configs[id] then window.configs[id].Value = val end
 			local kb = elem._linkedKB
@@ -6860,7 +6859,7 @@ local listening = false
 			label = cfgId or text,
 			DefaultHeight = 50,
 			SetValue = function(first, second)
-				local val = (type(first) == "table" and first.ID) and second or first
+				local val = (type(first) ~= "table" or not first.ID) and first or second
 				current = val
 				box.Text = val
 				window:SafeCallback(callback, val)
@@ -6937,7 +6936,7 @@ local listening = false
 			_isNumber = true,
 			DefaultHeight = 50,
 			SetValue = function(first, second)
-				local val = (type(first) == "table" and first.ID) and second or first
+				local val = (type(first) ~= "table" or not first.ID) and first or second
 				val = math.clamp(val, min, max)
 				current = val
 				box.Text = tostring(val)
@@ -7126,7 +7125,7 @@ local listening = false
 			label = cfgId or text,
 			_isRange = true,
 			SetValue = function(first, second)
-				local t = (type(first) == "table" and first.ID) and second or first
+				local t = (type(first) ~= "table" or not first.ID) and first or second
 				currentMin, currentMax = roundToStep(t[1]), roundToStep(t[2]); updateDisplay()
 				window:SafeCallback(callback, currentMin, currentMax)
 				window.configs[id].Value = { currentMin, currentMax }
