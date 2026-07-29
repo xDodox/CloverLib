@@ -1811,7 +1811,7 @@ function UILib:setupKeybindSystem()
 	local hdr = Instance.new("TextLabel")
 	hdr.Size = UDim2.new(1, 0, 0, 14); hdr.BackgroundTransparency = 1
 	hdr.Text = "KEYBINDS"; hdr.TextColor3 = self.theme.GrayLt
-	hdr.Font = Enum.Font.GothamBold; hdr.TextSize = 9
+	hdr.Font = Enum.Font.GothamBold; hdr.TextSize = 10
 	hdr.TextXAlignment = Enum.TextXAlignment.Center; hdr.ZIndex = 201
 	hdr.LayoutOrder = 1; hdr.Parent = hud
 	hdr.Active = true
@@ -3807,7 +3807,8 @@ function UILib.SubTab:addInput(labelText, default, placeholder, callback, toolti
 		label = labelText,
 		frame = r,
 		DefaultHeight = 52,
-		SetValue = function(val)
+		SetValue = function(first, second)
+			local val = second ~= nil and second or first
 			current = val
 			box.Text = val
 		end
@@ -4060,7 +4061,8 @@ gb.MouseButton1Click:Connect(function()
 		end
 		return cleanNum(val)
 	end
-	local function updateSlider(val)
+	local function updateSlider(first, second)
+		local val = second ~= nil and second or first
 		val = math.clamp(val, minVal, maxVal)
 		val = roundToStep(val)
 		currentVal = val
@@ -4200,7 +4202,8 @@ gb.MouseButton1Click:Connect(function()
 	local elem = { ID = id, Value = current, label = cfgId or text }
 	local pickerFrame = nil
 
-	elem.SetValue = function(val)
+	elem.SetValue = function(first, second)
+		local val = second ~= nil and second or first
 		current = val
 		elem.Value = val
 		colorBox.BackgroundColor3 = val
@@ -4827,7 +4830,8 @@ local function createMultiDropdown(group, items, window, text, options, default,
 		label = cfgId or text,
 		frame = row,
 		DefaultHeight = 56,
-		SetValue = function(t)
+		SetValue = function(first, second)
+			local t = second ~= nil and second or first
 			selected = {}
 			for _, opt in ipairs(t) do selected[opt] = true end
 			for opt, ck in pairs(checks) do
@@ -5468,7 +5472,8 @@ function UILib.Column:addGroup(title)
 			contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
 local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 		local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, IsToggle = true, Mode = "toggle", frame = container, DefaultHeight = TOGGLE_H }
-		elem.SetValue = function(val)
+		elem.SetValue = function(first, second)
+			local val = second ~= nil and second or first
 			state = val
 			elem.Value = state
 			updateToggleCheckbox(cbOuter, cbStroke, cbKnob, state, window)
@@ -5476,7 +5481,7 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 			TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 				Size = UDim2.new(1, 0, 0, targetH)
 			}):Play()
-task.delay(0.21, updateSize)
+			task.delay(0.21, updateSize)
 		if not window._loadingConfig then
 			window:SafeCallback(callback, state)
 		end
@@ -5600,12 +5605,14 @@ task.delay(0.21, updateSize)
 		local cbOuter, cbStroke, cbKnob, lbl = createToggleCheckbox(r, default, window, text, rightOffset)
 		local state = default
 		local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = TOGGLE_H }
-		elem.SetValue = function(val)
+		elem.SetValue = function(first, second)
+			local val = second ~= nil and second or first
 			state = val
 			elem.Value = state
-updateToggleCheckbox(cbOuter, cbStroke, cbKnob, state, window)
-		if not window._loadingConfig then
-			window:SafeCallback(callback, state)
+			updateToggleCheckbox(cbOuter, cbStroke, cbKnob, state, window)
+			if not window._loadingConfig then
+				window:SafeCallback(callback, state)
+			end
 		end
 		if window.configs[id] then window.configs[id].Value = state end
 	end
@@ -5644,7 +5651,13 @@ updateToggleCheckbox(cbOuter, cbStroke, cbKnob, state, window)
 		elem._confirmMessage = confirmMessage
 		local origSetValue = elem.SetValue
 		local lastConfirm = 0
-		elem.SetValue = function(val, _silent)
+		elem.SetValue = function(first, second, third)
+			local val, _silent
+			if type(first) == "table" and first.ID then
+				val, _silent = second, third
+			else
+				val, _silent = first, second
+			end
 			if (window._loadingConfig or _silent) and val and elem._confirmMessage then
 				origSetValue(val)
 				window:SafeCallback(callback, val)
@@ -6033,7 +6046,8 @@ gb.MouseButton1Click:Connect(function()
 			label = cfgId or text,
 			_values = options,
 			Refresh = refresh,
-		SetValue = function(val)
+		SetValue = function(first, second)
+				local val = second ~= nil and second or first
 				if type(val) ~= "string" then return end
 				currentSelection = val
 				selLbl.Text = val
@@ -6222,7 +6236,8 @@ local listening = false
 				end
 			end)
 		end)
-		elem.SetValue = function(val)
+		elem.SetValue = function(first, second)
+			local val = second ~= nil and second or first
 			kbtn.Text = type(val) == "string" and val or tostring(val)
 			if window.configs[id] then window.configs[id].Value = val end
 			local kb = elem._linkedKB
@@ -6844,7 +6859,8 @@ local listening = false
 			DefaultValue = default or "",
 			label = cfgId or text,
 			DefaultHeight = 50,
-			SetValue = function(val)
+			SetValue = function(first, second)
+				local val = second ~= nil and second or first
 				current = val
 				box.Text = val
 				window:SafeCallback(callback, val)
@@ -6920,7 +6936,8 @@ local listening = false
 			label = cfgId or text,
 			_isNumber = true,
 			DefaultHeight = 50,
-			SetValue = function(val)
+			SetValue = function(first, second)
+				local val = second ~= nil and second or first
 				val = math.clamp(val, min, max)
 				current = val
 				box.Text = tostring(val)
@@ -7108,8 +7125,8 @@ local listening = false
 			DefaultValue = { roundToStep(defaultMin), roundToStep(defaultMax) },
 			label = cfgId or text,
 			_isRange = true,
-			SetValue = function(
-				t)
+			SetValue = function(first, second)
+				local t = second ~= nil and second or first
 				currentMin, currentMax = roundToStep(t[1]), roundToStep(t[2]); updateDisplay()
 				window:SafeCallback(callback, currentMin, currentMax)
 				window.configs[id].Value = { currentMin, currentMax }
