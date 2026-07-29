@@ -2010,17 +2010,42 @@ function UILib:updateKeybindEntry(kb)
 	if kb._parentToggleId then
 		local te = self.configs and self.configs[kb._parentToggleId]
 		if te and te.Value ~= true then
-			kb.entry.row.Visible = false
+			if kb.entry.row.Visible and not kb.entry._hiding then
+				kb.entry._hiding = true
+				kb.entry.row.BackgroundColor3 = self.theme.Panel
+				TweenService:Create(kb.entry.row, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {BackgroundTransparency = 0.5}):Play()
+				TweenService:Create(kb.entry.nameLabel, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {TextTransparency = 1}):Play()
+				TweenService:Create(kb.entry.keyLabel, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {TextTransparency = 1, BackgroundTransparency = 1}):Play()
+				task.delay(0.13, function()
+					kb.entry.row.Visible = false
+					kb.entry.row.BackgroundTransparency = 1
+					kb.entry.nameLabel.TextTransparency = 0
+					kb.entry.keyLabel.TextTransparency = 0
+					kb.entry._hiding = false
+				end)
+			end
 			return
 		end
 	end
+	local isActive = kb.active or kb.mode == "Always"
 	local modeTag = kb.mode and (" [" .. kb.mode:sub(1,1):upper() .. kb.mode:sub(2):lower() .. "]") or ""
 	kb.entry.nameLabel.Text = kb.name .. modeTag
-	kb.entry.nameLabel.TextColor3 = kb.active and self.theme.White or self.theme.GrayLt
+	kb.entry.nameLabel.TextColor3 = isActive and self.theme.White or self.theme.GrayLt
 	kb.entry.keyLabel.Text = kb.key
-	kb.entry.keyLabel.BackgroundTransparency = kb.active and 0 or 0.85
-	kb.entry.keyLabel.TextColor3 = kb.active and Color3.fromRGB(10, 10, 10) or self.theme.Accent
-	kb.entry.row.Visible = kb.mode == "Always" or kb.active
+	kb.entry.keyLabel.BackgroundTransparency = isActive and 0 or 0.85
+	kb.entry.keyLabel.TextColor3 = isActive and Color3.fromRGB(10, 10, 10) or self.theme.Accent
+	local shouldShow = kb.mode == "Always" or kb.active
+	if shouldShow and not kb.entry.row.Visible then
+		kb.entry.row.BackgroundTransparency = 1
+		kb.entry.nameLabel.TextTransparency = 1
+		kb.entry.keyLabel.TextTransparency = 1
+		kb.entry.keyLabel.BackgroundTransparency = 1
+		kb.entry.row.Visible = true
+		TweenService:Create(kb.entry.nameLabel, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+		TweenService:Create(kb.entry.keyLabel, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0, BackgroundTransparency = isActive and 0 or 0.85}):Play()
+	else
+		kb.entry.row.Visible = shouldShow
+	end
 end
 
 function UILib:updateKeybindKey(kb, newKey)
@@ -4990,7 +5015,7 @@ function UILib.Column:addGroup(title)
 		items.Visible = true
 		local ih = itemLayout.AbsoluteContentSize.Y
 		local targetH = ih + 46
-		items.Size = UDim2.new(1, 0, 0, ih + 8)
+		items.Size = UDim2.new(1, 0, 0, ih + 16)
 		grp.Size = UDim2.new(1, 0, 0, targetH)
 	end
 	local function deferredUpdateSize()
