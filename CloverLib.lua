@@ -1949,14 +1949,14 @@ end
 function UILib:addKeybindEntry(kb)
 	if not self._hudFrame then self:setupKeybindSystem() end
 	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, 0, 0, 18)
+	row.Size = UDim2.new(1, 0, 0, 20)
 	row.BackgroundTransparency = 1
 	row.ZIndex = 201
 	row.LayoutOrder = #self._hudEntries + 2
 	row.Parent = self._hudFrame
 
 	local nameLbl = Instance.new("TextLabel")
-	nameLbl.Size = UDim2.new(1, -30, 1, 0)
+	nameLbl.Size = UDim2.new(1, -32, 1, 0)
 	nameLbl.Position = UDim2.new(0, 0, 0, 0)
 	nameLbl.BackgroundTransparency = 1
 	nameLbl.Text = kb.name
@@ -1968,8 +1968,8 @@ function UILib:addKeybindEntry(kb)
 
 	local keyBadge = Instance.new("TextLabel")
 	keyBadge.AutomaticSize = Enum.AutomaticSize.X
-	keyBadge.Size = UDim2.new(0, 0, 0, 14)
-	keyBadge.Position = UDim2.new(1, 0, 0.5, -7)
+	keyBadge.Size = UDim2.new(0, 0, 0, 16)
+	keyBadge.Position = UDim2.new(1, 0, 0.5, 0)
 	keyBadge.AnchorPoint = Vector2.new(1, 0.5)
 	keyBadge.BackgroundColor3 = self.theme.Accent
 	keyBadge.BackgroundTransparency = kb.active and 0 or 0.85
@@ -6718,8 +6718,8 @@ local listening = false
 		end
 	end
 
-	function group:expandableToggle(text, default, contentFunc, tooltip)
-		return self:toggle(text, default, nil, tooltip, nil, true, contentFunc)
+	function group:expandableToggle(text, default, contentFunc, tooltip, settingsCallback)
+		return self:toggle(text, default, nil, tooltip, nil, true, contentFunc, nil, settingsCallback)
 	end
 
 	function group:collapsible(text, default, contentFunc, tooltip)
