@@ -1794,7 +1794,7 @@ function UILib:setupKeybindSystem()
 	hud.Position = self._hudPos or UDim2.new(0, 10, 0.5, 0)
 	hud.AnchorPoint = Vector2.new(0, 0.5)
 	hud.BackgroundColor3 = self.theme.Panel
-	hud.BackgroundTransparency = 0.15
+	hud.BackgroundTransparency = 0.25
 	hud.BorderSizePixel = 0
 	hud.ZIndex = 200
 	hud.Visible = false
@@ -1809,13 +1809,13 @@ function UILib:setupKeybindSystem()
 	l.SortOrder = Enum.SortOrder.LayoutOrder; l.Padding = UDim.new(0, 0)
 
 	local hdr = Instance.new("Frame")
-	hdr.Size = UDim2.new(1, 0, 0, 22); hdr.BackgroundTransparency = 0
+	hdr.Size = UDim2.new(1, 0, 0, 22); hdr.BackgroundTransparency = 0.3
 	hdr.BackgroundColor3 = self.theme.Accent; hdr.BorderSizePixel = 0
 	hdr.ZIndex = 201; hdr.LayoutOrder = 1; hdr.Parent = hud
 	Instance.new("UICorner", hdr).CornerRadius = UDim.new(0, 8)
 	local hdrCover = Instance.new("Frame")
 	hdrCover.Size = UDim2.new(1, 0, 0, 8); hdrCover.Position = UDim2.new(0, 0, 1, -8)
-	hdrCover.BackgroundColor3 = self.theme.Accent; hdrCover.BackgroundTransparency = 0
+	hdrCover.BackgroundColor3 = self.theme.Accent; hdrCover.BackgroundTransparency = 0.3
 	hdrCover.BorderSizePixel = 0; hdrCover.ZIndex = 201; hdrCover.Parent = hdr
 
 	local hdrText = Instance.new("TextLabel")
@@ -1975,7 +1975,7 @@ function UILib:addKeybindEntry(kb)
 	sep.Parent = row
 
 	local nameLbl = Instance.new("TextLabel")
-	nameLbl.Size = UDim2.new(1, -36, 1, 0)
+	nameLbl.Size = UDim2.new(1, -40, 1, 0)
 	nameLbl.Position = UDim2.new(0, 8, 0, 0)
 	nameLbl.BackgroundTransparency = 1
 	nameLbl.Text = kb.name
@@ -1986,8 +1986,10 @@ function UILib:addKeybindEntry(kb)
 	nameLbl.ZIndex = 202; nameLbl.Parent = row
 
 	local keyBadge = Instance.new("Frame")
-	keyBadge.Size = UDim2.new(0, 26, 0, 16)
-	keyBadge.Position = UDim2.new(1, -32, 0.5, -8)
+	keyBadge.AutomaticSize = Enum.AutomaticSize.X
+	keyBadge.Size = UDim2.new(0, 0, 0, 16)
+	keyBadge.Position = UDim2.new(1, -8, 0.5, -8)
+	keyBadge.AnchorPoint = Vector2.new(1, 0.5)
 	keyBadge.BackgroundColor3 = kb.active and self.theme.Accent or self.theme.Track
 	keyBadge.BorderSizePixel = 0
 	keyBadge.ZIndex = 202; keyBadge.Parent = row
@@ -1996,9 +1998,12 @@ function UILib:addKeybindEntry(kb)
 	kbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	kbStroke.Color = kb.active and self.theme.Accent or self.theme.Border
 	kbStroke.Thickness = 1; kbStroke.Transparency = 0.3
+	local kbPad = Instance.new("UIPadding", keyBadge)
+	kbPad.PaddingLeft = UDim.new(0, 6); kbPad.PaddingRight = UDim.new(0, 6)
 
 	local keyLbl = Instance.new("TextLabel")
-	keyLbl.Size = UDim2.new(1, 0, 1, 0)
+	keyLbl.AutomaticSize = Enum.AutomaticSize.X
+	keyLbl.Size = UDim2.new(0, 0, 1, 0)
 	keyLbl.BackgroundTransparency = 1
 	keyLbl.Text = kb.key
 	keyLbl.TextColor3 = kb.active and Color3.fromRGB(10, 10, 10) or self.theme.Gray
@@ -6165,8 +6170,9 @@ local listening = false
 
 		local keyMode = "Hold"
 
+		local capturedTarget = window:currentKeybindTarget()
 		local function getTarget()
-			return window:currentKeybindTarget()
+			return capturedTarget
 		end
 
 		local function driver(active)
