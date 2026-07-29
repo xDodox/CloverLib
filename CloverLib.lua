@@ -2010,7 +2010,11 @@ function UILib:updateKeybindEntry(kb)
 	if kb._parentToggleId then
 		local te = self.configs and self.configs[kb._parentToggleId]
 		if te and te.Value ~= true then
-			kb.entry.row.Visible = false
+			if kb.entry.row.Visible then
+				kb.entry.row.ClipsDescendants = true
+				TweenService:Create(kb.entry.row, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = UDim2.new(1, 0, 0, 0)}):Play()
+				task.delay(0.13, function() kb.entry.row.Visible = false; kb.entry.row.Size = UDim2.new(1, 0, 0, 20) end)
+			end
 			return
 		end
 	end
@@ -2020,7 +2024,16 @@ function UILib:updateKeybindEntry(kb)
 	kb.entry.keyLabel.Text = kb.key
 	kb.entry.keyLabel.BackgroundTransparency = kb.active and 0 or 0.85
 	kb.entry.keyLabel.TextColor3 = kb.active and Color3.fromRGB(10, 10, 10) or self.theme.Accent
-	kb.entry.row.Visible = kb.mode == "Always" or kb.active
+	local shouldShow = kb.mode == "Always" or kb.active
+	if shouldShow and not kb.entry.row.Visible then
+		kb.entry.row.ClipsDescendants = true
+		kb.entry.row.Size = UDim2.new(1, 0, 0, 0)
+		kb.entry.row.Visible = true
+		TweenService:Create(kb.entry.row, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, 20)}):Play()
+		task.delay(0.16, function() kb.entry.row.ClipsDescendants = false end)
+	else
+		kb.entry.row.Visible = shouldShow
+	end
 end
 
 function UILib:updateKeybindKey(kb, newKey)
@@ -5521,16 +5534,16 @@ function UILib.Column:addGroup(title)
 			contentFrame.BackgroundTransparency = 1
 			contentFrame.Parent = container
 			local contentPad = Instance.new("UIPadding", contentFrame)
-			contentPad.PaddingLeft = UDim.new(0, 4)
-			contentPad.PaddingRight = UDim.new(0, 4)
-			contentPad.PaddingTop = UDim.new(0, 4)
-			contentPad.PaddingBottom = UDim.new(0, 10)
+			contentPad.PaddingLeft = UDim.new(0, 8)
+			contentPad.PaddingRight = UDim.new(0, 8)
+			contentPad.PaddingTop = UDim.new(0, 8)
+			contentPad.PaddingBottom = UDim.new(0, 8)
 			local contentLayout = Instance.new("UIListLayout", contentFrame)
 			contentLayout.Padding = UDim.new(0, 2)
 			contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
 			local state = default
 			local function updateContentSize()
-				local h = contentLayout.AbsoluteContentSize.Y + 14
+				local h = contentLayout.AbsoluteContentSize.Y + 16
 				contentFrame.Size = UDim2.new(1, 0, 0, h)
 				container.Size = UDim2.new(1, 0, 0, TOGGLE_H + (state and h or 0))
 				updateSize()
@@ -5554,7 +5567,7 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 					window:updateKeybindEntry(kb)
 				end
 			end
-			local targetH = TOGGLE_H + (state and (contentLayout.AbsoluteContentSize.Y + 14) or 0)
+			local targetH = TOGGLE_H + (state and (contentLayout.AbsoluteContentSize.Y + 16) or 0)
 			TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 				Size = UDim2.new(1, 0, 0, targetH)
 			}):Play()
@@ -5575,7 +5588,7 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 					updateToggleCheckbox(cbOuter, cbStroke, cbKnob, false, window)
 				end
 				container.Visible = v
-				container.Size = UDim2.new(1, 0, 0, v and (TOGGLE_H + (state and contentLayout and (contentLayout.AbsoluteContentSize.Y + 14) or 0)) or 0)
+				container.Size = UDim2.new(1, 0, 0, v and (TOGGLE_H + (state and contentLayout and (contentLayout.AbsoluteContentSize.Y + 16) or 0)) or 0)
 				if group and group.updateSize then group.updateSize() end
 				return
 			end
@@ -5585,7 +5598,7 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 			end
 			if v then container.Visible = true end
 			local tw = TweenService:Create(container, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-				Size = UDim2.new(1, 0, 0, v and (TOGGLE_H + (state and contentLayout.AbsoluteContentSize.Y + 14 or 0)) or 0)
+				Size = UDim2.new(1, 0, 0, v and (TOGGLE_H + (state and contentLayout.AbsoluteContentSize.Y + 16 or 0)) or 0)
 			})
 			tw.Completed:Connect(function()
 				if not v then container.Visible = false end
