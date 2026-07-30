@@ -572,12 +572,17 @@ UILib.Parser = {
 	},
 	Keybind = {
 		Save = function(label, elem)
-			return { type = "Keybind", label = label, value = tostring(elem.Value) }
+			local kb = elem._linkedKB
+			local mode = kb and kb.mode or "Hold"
+			return { type = "Keybind", label = label, value = tostring(elem.Value), mode = mode }
 		end,
 		Load = function(data, elem)
 			local v = data.value
 			if type(v) == "table" then v = v[1] end
 			elem.SetValue(tostring(v or ""))
+			if data.mode and elem._linkedKB then
+				elem._linkedKB.mode = data.mode
+			end
 		end,
 	},
 	TextBox = {
@@ -5460,13 +5465,14 @@ function UILib.Column:addGroup(title)
 		return cbOuter, cbStroke, cbKnob, lbl
 	end
 
+	local CB_W = 32
 	local function updateToggleCheckbox(cbOuter, cbStroke, cbKnob, state, window)
 		cbOuter.BackgroundColor3 = state and window.theme.Accent or window.theme.BG
 		cbStroke.Color = window.theme.Border
 		local KNOB_PAD = 2
 		local KNOB_SZ = cbKnob.AbsoluteSize.X
 		if KNOB_SZ <= 0 then KNOB_SZ = 14 end
-		local targetX = state and (cbOuter.AbsoluteSize.X - KNOB_SZ - KNOB_PAD) or KNOB_PAD
+		local targetX = state and (CB_W - KNOB_SZ - KNOB_PAD) or KNOB_PAD
 		if targetX < 0 then targetX = KNOB_PAD end
 		TweenService:Create(
 			cbKnob,
