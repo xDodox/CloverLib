@@ -6384,6 +6384,7 @@ local listening = false
 		updateSize()
 		elem.frame = r
 		elem.SetDesc = function(self_or_d, d) if type(self_or_d) == "string" then lbl.Text = self_or_d else lbl.Text = d end end
+		window.configs[id] = finalizeElement(elem, window, group)
 		return elem
 	end
 
