@@ -944,7 +944,8 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 		if self.content then
 			local offset = showSidebar and (sw + 1) or 0
 			local contentW = showSidebar and (self.size.X - sw - 1) or self.size.X
-			self.content.Size = UDim2.new(0, contentW, 1, -92)
+			local navH = self.navbarHeight or 46
+			self.content.Size = UDim2.new(0, contentW, 1, -(46 + navH))
 			self.content.Position = UDim2.new(0, offset, 0, 46)
 		end
 
