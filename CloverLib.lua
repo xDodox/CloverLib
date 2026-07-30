@@ -5014,8 +5014,8 @@ function UILib.Column:addGroup(title)
 		end
 		items.Visible = true
 		local ih = itemLayout.AbsoluteContentSize.Y
-		local targetH = ih + 46
-		items.Size = UDim2.new(1, 0, 0, ih + 16)
+		local targetH = ih + 50
+		items.Size = UDim2.new(1, 0, 0, ih + 20)
 		grp.Size = UDim2.new(1, 0, 0, targetH)
 	end
 	local function deferredUpdateSize()
