@@ -3670,7 +3670,7 @@ function UILib.Tab:addSubTab(name, description)
 	pagePadding.PaddingLeft = UDim.new(0, 8)
 	pagePadding.PaddingRight = UDim.new(0, 8)
 	pagePadding.PaddingTop = UDim.new(0, 8)
-	pagePadding.PaddingBottom = UDim.new(0, 8)
+	pagePadding.PaddingBottom = UDim.new(0, 16)
 	sub.btn = btn
 	sub.hov = hov
 	sub.label = label
