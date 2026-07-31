@@ -573,15 +573,18 @@ UILib.Parser = {
 	Keybind = {
 		Save = function(label, elem)
 			local kb = elem._linkedKB
-			local mode = kb and kb.mode or "Hold"
+			local mode = (kb and kb.mode) or elem._keybindMode or "Hold"
 			return { type = "Keybind", label = label, value = tostring(elem.Value), mode = mode }
 		end,
 		Load = function(data, elem)
 			local v = data.value
 			if type(v) == "table" then v = v[1] end
 			elem.SetValue(tostring(v or ""))
-			if data.mode and elem._linkedKB then
-				elem._linkedKB.mode = data.mode
+			if data.mode then
+				if elem._linkedKB then
+					elem._linkedKB.mode = data.mode
+				end
+				elem._keybindMode = data.mode
 			end
 		end,
 	},
@@ -3698,7 +3701,7 @@ function UILib.Tab:addSubTab(name, description)
 	end)
 	btn.MouseLeave:Connect(function()
 		TweenService:Create(hov, TweenInfo.new(0.08), { BackgroundTransparency = 1 }):Play()
-		if label.TextColor3 ~= self.window.theme.White then
+		if not self.page.Visible then
 			TweenService:Create(label, TweenInfo.new(0.08), { TextColor3 = self.window.theme.Gray }):Play()
 		end
 	end)
@@ -7069,6 +7072,7 @@ local listening = false
 		box.Font = Enum.Font.GothamSemibold
 		box.TextSize = 13
 		box.ClearTextOnFocus = false
+		box.TextYAlignment = Enum.TextYAlignment.Center
 		Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
 		local nbStroke = Instance.new("UIStroke", box)
 		nbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
