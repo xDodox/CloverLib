@@ -33,6 +33,7 @@ end
 
 local allWindows = {}
 local _configLoading = false
+local _elementOrder = 0
 
 local LUCIDE_ICONS = nil
 
@@ -629,7 +630,7 @@ UILib.Parser = {
 	for label, elems in pairs(map) do
 		if #elems > 1 then
 			table.sort(elems, function(a, b)
-				return (a.Type or "") < (b.Type or "")
+				return (a._configOrder or 0) < (b._configOrder or 0)
 			end)
 		end
 	end
@@ -649,13 +650,17 @@ local function _configStructuredToJSON(self)
 		local parser = UILib.Parser[etype]
 		if parser then
 			local obj = parser.Save(label, elem)
-			if obj then table.insert(data.objects, obj) end
+			if obj then
+				obj._order = elem._configOrder or 0
+				table.insert(data.objects, obj)
+			end
 		end
 	end
 	table.sort(data.objects, function(a, b)
-		if a.label == b.label then return (a.type or "") < (b.type or "") end
+		if a.label == b.label then return (a._order or 0) < (b._order or 0) end
 		return (a.label or "") < (b.label or "")
 	end)
+	for _, obj in ipairs(data.objects) do obj._order = nil end
 	return HS:JSONEncode(data)
 end
 
@@ -3957,6 +3962,8 @@ function UILib.SubTab:addButton(text, callback, tooltip, color)
 end
 
 	local function finalizeElement(elem, win, grp)
+	_elementOrder = _elementOrder + 1
+	elem._configOrder = _elementOrder
 	local _origValue = elem.Value
 	setmetatable(elem, {
 		__index = function(t, k)
@@ -7030,6 +7037,7 @@ local listening = false
 		assert(text ~= nil and text ~= "", "Numberbox - Missing text")
 		min = min or -math.huge
 		max = max or math.huge
+		if min > max then min, max = max, min end
 		local id = generateID()
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, 50)
