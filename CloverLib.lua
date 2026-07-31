@@ -1,7 +1,6 @@
 local UILib = {}
 UILib.__index = UILib
 
-
 UILib.Tab = {}
 UILib.Tab.__index = UILib.Tab
 
@@ -627,6 +626,13 @@ UILib.Parser = {
 			table.insert(map[label], elem)
 		end
 	end
+	for label, elems in pairs(map) do
+		if #elems > 1 then
+			table.sort(elems, function(a, b)
+				return (a.Type or "") < (b.Type or "")
+			end)
+		end
+	end
 	return map
 end
 
@@ -646,6 +652,10 @@ local function _configStructuredToJSON(self)
 			if obj then table.insert(data.objects, obj) end
 		end
 	end
+	table.sort(data.objects, function(a, b)
+		if a.label == b.label then return (a.type or "") < (b.type or "") end
+		return (a.label or "") < (b.label or "")
+	end)
 	return HS:JSONEncode(data)
 end
 
@@ -655,39 +665,55 @@ local function _applyStructuredJSON(self, decoded)
 	self._loadingConfig = true
 	_configLoading = true
 
-	if decoded.objects then
-		for _, obj in ipairs(decoded.objects) do
-			local elems = labelMap[obj.label]
-			if not elems then continue end
-			local parser = UILib.Parser[obj.type]
-			if not parser then continue end
-			for _, elem in ipairs(elems) do
-				pcall(parser.Load, obj, elem)
-				count = count + 1
-			end
-		end
-	else
-		local legacyTypes = { Toggle = "state", Slider = "value", Dropdown = "value", MultiDropdown = "value", ColorPicker = "color", TextBox = "text", Keybind = "keybind" }
-		for etype, items in pairs(decoded) do
-			if type(items) ~= "table" then continue end
-			if etype:sub(1, 1) == "_" then continue end
-			local parser = UILib.Parser[etype]
-			if not parser then continue end
-			for label, sdata in pairs(items) do
-				local elems = labelMap[label]
+	local ok, err = pcall(function()
+		if decoded.objects then
+			local usedIndices = {}
+			for _, obj in ipairs(decoded.objects) do
+				local elems = labelMap[obj.label]
 				if not elems then continue end
-				local legacyField = legacyTypes[etype] or etype:lower()
-				local obj = { type = etype, label = label, value = sdata[legacyField], color = sdata.color }
-				for _, elem in ipairs(elems) do
-					local ok = pcall(parser.Load, obj, elem)
-					if ok then count = count + 1 end
+				local parser = UILib.Parser[obj.type]
+				if not parser then continue end
+				local labelKey = obj.label .. "|" .. obj.type
+				if not usedIndices[labelKey] then usedIndices[labelKey] = 0 end
+				usedIndices[labelKey] = usedIndices[labelKey] + 1
+				local idx = usedIndices[labelKey]
+				local elem = elems[idx]
+				if elem then
+					pcall(parser.Load, obj, elem)
+					count = count + 1
+				end
+			end
+		else
+			local legacyTypes = { Toggle = "state", Slider = "value", Dropdown = "value", MultiDropdown = "value", ColorPicker = "color", TextBox = "text", Keybind = "keybind" }
+			for etype, items in pairs(decoded) do
+				if type(items) ~= "table" then continue end
+				if etype:sub(1, 1) == "_" then continue end
+				local parser = UILib.Parser[etype]
+				if not parser then continue end
+				local usedIdx = 0
+				for label, sdata in pairs(items) do
+					local elems = labelMap[label]
+					if not elems then continue end
+					local legacyField = legacyTypes[etype] or etype:lower()
+					local obj = { type = etype, label = label, value = sdata[legacyField], color = sdata.color }
+					usedIdx = usedIdx + 1
+					local elem = elems[usedIdx]
+					if elem then
+						local ok2 = pcall(parser.Load, obj, elem)
+						if ok2 then count = count + 1 end
+					end
 				end
 			end
 		end
-	end
+	end)
 
 	self._loadingConfig = nil
 	_configLoading = false
+
+	if not ok then
+		warn("[CloverLib] Config apply error:", err)
+	end
+
 	return count
 end
 
@@ -718,8 +744,8 @@ function UILib:loadConfigStructured(name)
 	local path = self:getConfigDir() .. name .. ".json"
 	local ok, content = pcall(readfile, path)
 	if not ok then self:notify("Not found: " .. name, "error", 3); return end
-	local decoded = HS:JSONDecode(content)
-	if type(decoded) ~= "table" then self:notify("Invalid config", "error", 3); return end
+	local decodeOk, decoded = pcall(HS.JSONDecode, HS, content)
+	if not decodeOk or type(decoded) ~= "table" then self:notify("Invalid config data", "error", 3); return end
 	_applyStructuredJSON(self, decoded)
 	self:notify("Loaded: " .. name, "success", 2)
 end
@@ -805,6 +831,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	self.watermark = nil
 	self.notifications = {}
 	self.configPrefix = "clover_"
+	self.gameName = (game and game.Name and game.Name ~= "" and game.Name) or "Unknown"
 	self.accentObjects = {}
 	self.accentDarkObjects = {}
 	self.rainbowElements = {}
@@ -1138,8 +1165,9 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	local tierLabel = Instance.new("TextLabel")
 	tierLabel.Size = UDim2.new(1, 0, 0, 13)
 	tierLabel.BackgroundTransparency = 1
-	tierLabel.Text = "Standard"
-	tierLabel.TextColor3 = TIER_COLORS["Standard"]
+	local initTier = (_G.CloverKeyType and TIER_COLORS[_G.CloverKeyType] and ({standard="Standard",premium="Premium",beta="Beta",admin="Admin"})[_G.CloverKeyType]) or "Standard"
+	tierLabel.Text = initTier
+	tierLabel.TextColor3 = TIER_COLORS[initTier] or TIER_COLORS["Standard"]
 	tierLabel.Font = Enum.Font.GothamSemibold
 	tierLabel.TextSize = 10
 	tierLabel.TextXAlignment = Enum.TextXAlignment.Right
@@ -2377,7 +2405,7 @@ function UILib:buildUITab()
 	cfg:separator("Share & Import")
 
 	cfg:button("Export Config", function()
-		self:shareConfigCode(self.configShareUrl or "https://cloverhub.fun")
+		self:shareConfigCode(self.configShareUrl or "https://cloverhub.fun", nil, self.gameName)
 	end, "Upload config and get a short share code", Enum.TextXAlignment.Center, Color3.fromRGB(100, 180, 255))
 
 	local shareCodeBox = cfg:textbox("Share Code", "", "e.g. A1B2C3", function(_) end, nil, "ui_sharecode")
@@ -2395,19 +2423,22 @@ function UILib:buildUITab()
 	self:tryAutoLoad()
 end
 
-function UILib:shareConfigCode(baseUrl)
+function UILib:shareConfigCode(baseUrl, gameSlug, gameName)
 	local json = _configStructuredToJSON(self)
+	local payload = { json = json }
+	if gameSlug then payload.gameSlug = gameSlug end
+	if gameName then payload.gameName = gameName end
 	local req = (syn and syn.request) or (http and http.request) or http_request
 	if req then
 		local ok, res = pcall(req, {
 			Url = baseUrl .. "/api/config/share",
 			Method = "POST",
 			Headers = { ["Content-Type"] = "application/json" },
-			Body = HS:JSONEncode({ json = json })
+			Body = HS:JSONEncode(payload)
 		})
 		if ok and res and res.Body then
-			local data = HS:JSONDecode(res.Body)
-			if data and data.success and data.code then
+			local decodeOk, data = pcall(HS.JSONDecode, HS, res.Body)
+			if decodeOk and data and data.success and data.code then
 				pcall(setclipboard, data.code)
 				self:notify("Code copied: " .. data.code, "success", 4)
 			else
@@ -2417,9 +2448,9 @@ function UILib:shareConfigCode(baseUrl)
 		end
 	end
 	pcall(function()
-		local body = HS:PostAsync(baseUrl .. "/api/config/share", HS:JSONEncode({ json = json }), Enum.HttpContentType.ApplicationJson)
-		local data = HS:JSONDecode(body)
-		if data and data.success and data.code then
+		local body = HS:PostAsync(baseUrl .. "/api/config/share", HS:JSONEncode(payload), Enum.HttpContentType.ApplicationJson)
+		local decodeOk, data = pcall(HS.JSONDecode, HS, body)
+		if decodeOk and data and data.success and data.code then
 			pcall(setclipboard, data.code)
 			self:notify("Code copied: " .. data.code, "success", 4)
 		else
@@ -2431,35 +2462,44 @@ end
 function UILib:importConfigCode(baseUrl, code)
 	self:notify("Fetching config...", "info", 2)
 	local req = (syn and syn.request) or (http and http.request) or http_request
+	local fetchedJson = nil
+
 	if req then
 		local ok, res = pcall(req, {
 			Url = baseUrl .. "/api/config/" .. code,
 			Method = "GET"
 		})
 		if ok and res and res.Body then
-			local data = HS:JSONDecode(res.Body)
-			if data and data.success and data.json then
-				self:importConfigStructured(data.json)
-				local dir = self:getConfigDir()
-				pcall(makefolder, dir)
-				pcall(writefile, dir .. code .. ".json", data.json)
-			else
-				self:notify("Config not found: " .. code, "error", 3)
+			local decodeOk, data = pcall(HS.JSONDecode, HS, res.Body)
+			if decodeOk and data and data.success and data.json then
+				fetchedJson = data.json
 			end
-			return
 		end
 	end
-	pcall(function()
-		local body = game:HttpGet(baseUrl .. "/api/config/" .. code)
-		local data = HS:JSONDecode(body)
-		if data and data.success and data.json then
-			self:importConfigStructured(data.json)
-			local dir = self:getConfigDir()
-			pcall(makefolder, dir)
-			pcall(writefile, dir .. code .. ".json", data.json)
-		else
-			self:notify("Config not found: " .. code, "error", 3)
-		end
+
+	if not fetchedJson then
+		pcall(function()
+			local body = game:HttpGet(baseUrl .. "/api/config/" .. code)
+			local decodeOk, data = pcall(HS.JSONDecode, HS, body)
+			if decodeOk and data and data.success and data.json then
+				fetchedJson = data.json
+			end
+		end)
+	end
+
+	if not fetchedJson then
+		self:notify("Config not found: " .. code, "error", 3)
+		return
+	end
+
+	self:prompt("Config Name", code, function(name)
+		if not name or name == "" then name = code end
+		name = name:gsub("[/\\:*?\"<>|]", ""):sub(1, 40)
+		self:importConfigStructured(fetchedJson)
+		local dir = self:getConfigDir()
+		pcall(makefolder, dir)
+		pcall(writefile, dir .. name .. ".json", fetchedJson)
+		self:notify("Imported: " .. name, "success", 3)
 	end)
 end
 
@@ -4114,7 +4154,7 @@ gb.MouseButton1Click:Connect(function()
 		if sliderHandle then sliderHandle.Position = UDim2.new(rel, rel > 0.01 and -4 or 0, 0, 0) end
 		valueLabel.Text = formatVal(val)
 		valueBoxInput.Text = cleanNum(val)
-		window:SafeCallback(callback, val)
+		if not window._loadingConfig then window:SafeCallback(callback, val) end
 		window.configs[id].Value = val
 	end
 		local function apply(mx)
@@ -4250,7 +4290,7 @@ gb.MouseButton1Click:Connect(function()
 		current = val
 		elem.Value = val
 		colorBox.BackgroundColor3 = val
-		window:SafeCallback(callback, val)
+		if not window._loadingConfig then window:SafeCallback(callback, val) end
 	end
 	function elem:SetColor(val)
 		current = val
@@ -6975,7 +7015,7 @@ local listening = false
 				local val = (type(first) ~= "table" or not first.ID) and first or second
 				current = val
 				box.Text = val
-				window:SafeCallback(callback, val)
+				if not window._loadingConfig then window:SafeCallback(callback, val) end
 				window.configs[id].Value = val
 			end
 		}
@@ -7053,7 +7093,7 @@ local listening = false
 				val = math.clamp(val, min, max)
 				current = val
 				box.Text = tostring(val)
-				window:SafeCallback(callback, val)
+				if not window._loadingConfig then window:SafeCallback(callback, val) end
 				window.configs[id].Value = val
 			end
 		}
@@ -7212,7 +7252,7 @@ local listening = false
 				currentMax = val
 			end
 			updateDisplay()
-			window:SafeCallback(callback, currentMin, currentMax)
+			if not window._loadingConfig then window:SafeCallback(callback, currentMin, currentMax) end
 			window.configs[id].Value = { currentMin, currentMax }
 		end
 		hitLeft.MouseButton1Down:Connect(function()
@@ -7240,7 +7280,7 @@ local listening = false
 			SetValue = function(first, second)
 				local t = (type(first) ~= "table" or not first.ID) and first or second
 				currentMin, currentMax = roundToStep(t[1]), roundToStep(t[2]); updateDisplay()
-				window:SafeCallback(callback, currentMin, currentMax)
+				if not window._loadingConfig then window:SafeCallback(callback, currentMin, currentMax) end
 				window.configs[id].Value = { currentMin, currentMax }
 			end
 		}
@@ -7373,6 +7413,30 @@ function UILib.SubTab:addGroup(title)
 	Instance.new("UIListLayout", col).Padding = UDim.new(0, 8)
 	local colObj = setmetatable({ frame = col, window = window, tab = self.tab, sub = self }, UILib.Column)
 	return colObj:addGroup(title)
+end
+
+-- Update Checker
+local CLOVER_VERSION = "1.0.0"
+function UILib.checkVersion(callback)
+	task.spawn(function()
+		local ok, res = pcall(function()
+			local req = (syn and syn.request) or (http and http.request) or http_request or (Fluxus and Fluxus.request) or request
+			if req then
+				local r = req({ Url = "https://cloverhub.fun/api/version", Method = "GET" })
+				return r and r.Body
+			end
+			return game:GetService("HttpService"):GetAsync("https://cloverhub.fun/api/version")
+		end)
+		if ok and res then
+			local s, d = pcall(function() return game:GetService("HttpService"):JSONDecode(res) end)
+			if s and d and d.version then
+				if d.version ~= CLOVER_VERSION then
+					if callback then callback(d.version, CLOVER_VERSION)
+					else warn("[CloverLib] Update available: v" .. d.version .. " (current: v" .. CLOVER_VERSION .. ")") end
+				end
+			end
+		end
+	end)
 end
 
 return UILib
