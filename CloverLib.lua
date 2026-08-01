@@ -768,6 +768,7 @@ function UILib:loadConfigStructured(name)
 	if not ok then self:notify("Not found: " .. name, "error", 3); return end
 	local decodeOk, decoded = pcall(HS.JSONDecode, HS, content)
 	if not decodeOk or type(decoded) ~= "table" then self:notify("Invalid config data", "error", 3); return end
+	self._pendingConfig = decoded
 	_applyStructuredJSON(self, decoded)
 	self:notify("Loaded: " .. name, "success", 2)
 end
@@ -781,6 +782,7 @@ end
 function UILib:importConfigStructured(json)
 	local ok, decoded = pcall(HS.JSONDecode, HS, json)
 	if not ok or type(decoded) ~= "table" then self:notify("Invalid JSON", "error", 3); return end
+	self._pendingConfig = decoded
 	_applyStructuredJSON(self, decoded)
 end
 
@@ -5441,6 +5443,25 @@ function UILib.Column:addGroup(title)
 
 		local ng = buildNestedGroup(popup, updateSize)
 		builder(ng)
+		if self._prebuildingAdvanced then
+			updateSize()
+			self._panels[cacheKey] = {
+				popup = popup,
+				scale = popupScale,
+				anchor = anchorElement,
+				open = false,
+				justOpened = false,
+				overlay = overlay,
+			}
+			popup.Visible = false
+			overlay.Visible = false
+			return
+		end
+		-- Configs can be loaded before lazy advanced-panel controls exist.
+		-- Reapply the pending snapshot after this panel registers its controls.
+		if self._pendingConfig then
+			pcall(_applyStructuredJSON, self, self._pendingConfig)
+		end
 		task.wait(0.08)
 		updateSize()
 		task.wait(0.02)
@@ -5586,6 +5607,10 @@ function UILib.Column:addGroup(title)
 				gb.MouseButton1Click:Connect(function()
 					settingsCallback(gearBtn)
 				end)
+				-- Register advanced controls before config loading; keep the popup hidden.
+				window._prebuildingAdvanced = true
+				pcall(settingsCallback, gearBtn)
+				window._prebuildingAdvanced = false
 				rightOffset = rightOffset + 20
 			end
 			if tooltip then
@@ -5670,9 +5695,9 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 		if not window._loadingConfig then
 			window:SafeCallback(callback, state)
 		end
-		if window.configs[id] then window.configs[id].Value = state end
 		end
 		window.configs[id] = finalizeElement(elem, window, group)
+		if window.configs[id] then window.configs[id].Value = state end
 		window._currentExpandableToggleId = id
 		if contentFunc then contentFunc(nestedGroup) end
 		window._currentExpandableToggleId = nil
@@ -5798,7 +5823,6 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 				window:SafeCallback(callback, state)
 			end
 		end
-		if window.configs[id] then window.configs[id].Value = state end
 		function elem:SetVisible(v, anim)
 			if not anim then
 				r.Visible = v
