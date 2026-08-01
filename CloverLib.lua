@@ -498,15 +498,19 @@ end
 UILib.Parser = {
 	Toggle = {
 		Save = function(label, elem)
-			return { type = "Toggle", label = label, value = elem.Value == true }
+			local v = elem.Value
+			if v == nil then v = elem.DefaultValue end
+			return { type = "Toggle", label = label, value = v == true }
 		end,
 		Load = function(data, elem)
 			local v = data.value
 			if type(v) == "table" then v = v[1] end
 			if type(v) == "boolean" then
 				elem.SetValue(v)
+			elseif type(v) == "string" then
+				elem.SetValue(v == "true" or v == "1")
 			else
-				elem.SetValue(tostring(v or ""))
+				elem.SetValue(false)
 			end
 		end,
 	},
@@ -633,7 +637,10 @@ UILib.Parser = {
 	for label, elems in pairs(map) do
 		if #elems > 1 then
 			table.sort(elems, function(a, b)
-				return (a._configOrder or 0) < (b._configOrder or 0)
+				local at = self:getElementType(a) or ""
+				local bt = self:getElementType(b) or ""
+				if at == bt then return (a._configOrder or 0) < (b._configOrder or 0) end
+				return at < bt
 			end)
 		end
 	end
@@ -641,7 +648,7 @@ UILib.Parser = {
 end
 
 local function _configStructuredToJSON(self)
-	local data = { _version = 3, _timestamp = os.time(), objects = {} }
+	local data = { _version = 5, _timestamp = os.time(), objects = {} }
 	for id, elem in pairs(self.configs) do
 		if elem._noConfig then continue end
 		local val = elem.Value
@@ -654,20 +661,22 @@ local function _configStructuredToJSON(self)
 		if parser then
 			local obj = parser.Save(label, elem)
 			if obj then
-				obj._order = elem._configOrder or 0
+				obj.configId = elem.configId or (label .. "|" .. etype .. "|" .. (elem._configOrder or 0))
 				table.insert(data.objects, obj)
 			end
 		end
 	end
-	table.sort(data.objects, function(a, b)
-		if a.label == b.label then return (a._order or 0) < (b._order or 0) end
-		return (a.label or "") < (b.label or "")
-	end)
-	for _, obj in ipairs(data.objects) do obj._order = nil end
 	return HS:JSONEncode(data)
 end
 
 local function _applyStructuredJSON(self, decoded)
+	local configIdMap = {}
+	for id, elem in pairs(self.configs) do
+		if elem.configId and not elem._noConfig and not (self.configIgnore and self.configIgnore[self:getElementLabel(elem)]) then
+			configIdMap[elem.configId] = elem
+		end
+	end
+
 	local labelMap = _buildLabelMap(self)
 	local count = 0
 	self._loadingConfig = true
@@ -675,20 +684,25 @@ local function _applyStructuredJSON(self, decoded)
 
 	local ok, err = pcall(function()
 		if decoded.objects then
-			local usedIndices = {}
 			for _, obj in ipairs(decoded.objects) do
-				local elems = labelMap[obj.label]
-				if not elems then continue end
-				local parser = UILib.Parser[obj.type]
-				if not parser then continue end
-				local labelKey = obj.label .. "|" .. obj.type
-				if not usedIndices[labelKey] then usedIndices[labelKey] = 0 end
-				usedIndices[labelKey] = usedIndices[labelKey] + 1
-				local idx = usedIndices[labelKey]
-				local elem = elems[idx]
+				local elem = nil
+				if obj.configId and configIdMap[obj.configId] then
+					elem = configIdMap[obj.configId]
+				else
+					local elems = labelMap[obj.label]
+					if elems and #elems > 0 then
+						local usedIndices = {}
+						local labelKey = obj.label .. "|" .. obj.type
+						usedIndices[labelKey] = (usedIndices[labelKey] or 0) + 1
+						elem = elems[usedIndices[labelKey]]
+					end
+				end
 				if elem then
-					pcall(parser.Load, obj, elem)
-					count = count + 1
+					local parser = UILib.Parser[obj.type]
+					if parser then
+						pcall(parser.Load, obj, elem)
+						count = count + 1
+					end
 				end
 			end
 		else
@@ -3701,7 +3715,7 @@ function UILib.Tab:addSubTab(name, description)
 	end)
 	btn.MouseLeave:Connect(function()
 		TweenService:Create(hov, TweenInfo.new(0.08), { BackgroundTransparency = 1 }):Play()
-		if not self.page.Visible then
+		if self.page and not self.page.Visible then
 			TweenService:Create(label, TweenInfo.new(0.08), { TextColor3 = self.window.theme.Gray }):Play()
 		end
 	end)
@@ -3967,6 +3981,10 @@ end
 	local function finalizeElement(elem, win, grp)
 	_elementOrder = _elementOrder + 1
 	elem._configOrder = _elementOrder
+	if not elem.configId then
+		local etype = win and win.getElementType and win:getElementType(elem) or ""
+		elem.configId = (elem.label or "element") .. "|" .. etype .. "|" .. _elementOrder
+	end
 	local _origValue = elem.Value
 	setmetatable(elem, {
 		__index = function(t, k)
@@ -7043,13 +7061,13 @@ local listening = false
 		if min > max then min, max = max, min end
 		local id = generateID()
 		local r = Instance.new("Frame")
-		r.Size = UDim2.new(1, 0, 0, 50)
+		r.Size = UDim2.new(1, 0, 0, 44)
 		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -66, 0, 18)
-		lbl.Position = UDim2.new(0, 4, 0, 6)
+		lbl.Position = UDim2.new(0, 4, 0, 4)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
@@ -7060,8 +7078,8 @@ local listening = false
 		lbl.ZIndex = 3
 		lbl.Parent = r
 		local box = Instance.new("TextBox")
-		box.Size = UDim2.new(0, 54, 0, 22)
-		box.Position = UDim2.new(1, -58, 0, 5)
+		box.Size = UDim2.new(0, 54, 0, 24)
+		box.Position = UDim2.new(1, -58, 0, 4)
 		box.BackgroundColor3 = window.theme.Track
 		box.ClipsDescendants = true
 		box.BorderSizePixel = 0
@@ -7099,7 +7117,7 @@ local listening = false
 			DefaultValue = default or 0,
 			label = cfgId or text,
 			_isNumber = true,
-			DefaultHeight = 50,
+			DefaultHeight = 44,
 			SetValue = function(first, second)
 				local val = (type(first) ~= "table" or not first.ID) and first or second
 				val = math.clamp(val, min, max)
