@@ -3690,6 +3690,7 @@ function UILib.Tab:addSubTab(name, description)
 			if t.tabLbl then t.tabLbl.TextColor3 = self.window.theme.Gray end
 			if t.underline then t.underline.Visible = false end
 			for _, s in pairs(t.subtabs) do
+				s._selected = false
 				s.btn.Visible = false
 				s.page.Visible = false
 				if s.selGradient then s.selGradient.Visible = false end
@@ -3702,6 +3703,7 @@ function UILib.Tab:addSubTab(name, description)
 		for _, s in pairs(self.tab.subtabs) do s.btn.Visible = true end
 		self.window.activeTab = self.tab
 		self.label.TextColor3 = self.window.theme.White
+		self._selected = true
 		if self.selGradient then self.selGradient.Visible = true end
 		if self.selLine then self.selLine.Visible = true end
 		self.page.Visible = true
@@ -3717,7 +3719,7 @@ function UILib.Tab:addSubTab(name, description)
 	end)
 	btn.MouseLeave:Connect(function()
 		TweenService:Create(hov, TweenInfo.new(0.08), { BackgroundTransparency = 1 }):Play()
-		if self.page and not self.page.Visible then
+		if not self._selected then
 			TweenService:Create(label, TweenInfo.new(0.08), { TextColor3 = self.window.theme.Gray }):Play()
 		end
 	end)
@@ -6925,8 +6927,8 @@ local listening = false
 		end
 	end
 
-	function group:expandableToggle(text, default, contentFunc, tooltip, settingsCallback, callback)
-		return self:toggle(text, default, callback, tooltip, nil, true, contentFunc, nil, settingsCallback)
+	function group:expandableToggle(text, default, contentFunc, tooltip, settingsCallback, callback, cfgId)
+		return self:toggle(text, default, callback, tooltip, nil, true, contentFunc, nil, settingsCallback, cfgId)
 	end
 
 	function group:collapsible(text, default, contentFunc, tooltip)
@@ -7088,13 +7090,13 @@ local listening = false
 		if min > max then min, max = max, min end
 		local id = generateID()
 		local r = Instance.new("Frame")
-		r.Size = UDim2.new(1, 0, 0, 44)
+		r.Size = UDim2.new(1, 0, 0, 42)
 		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
 		local lbl = Instance.new("TextLabel")
 		lbl.Size = UDim2.new(1, -66, 0, 18)
-		lbl.Position = UDim2.new(0, 4, 0, 4)
+		lbl.Position = UDim2.new(0, 4, 0, 3)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
@@ -7105,8 +7107,8 @@ local listening = false
 		lbl.ZIndex = 3
 		lbl.Parent = r
 		local box = Instance.new("TextBox")
-		box.Size = UDim2.new(0, 54, 0, 24)
-		box.Position = UDim2.new(1, -58, 0, 4)
+		box.Size = UDim2.new(0, 54, 0, 22)
+		box.Position = UDim2.new(1, -58, 0, 3)
 		box.BackgroundColor3 = window.theme.Track
 		box.ClipsDescendants = true
 		box.BorderSizePixel = 0
@@ -7145,7 +7147,7 @@ local listening = false
 			label = cfgId or text,
 			configId = cfgId,
 			_isNumber = true,
-			DefaultHeight = 44,
+			DefaultHeight = 42,
 			SetValue = function(first, second)
 				local val = (type(first) ~= "table" or not first.ID) and first or second
 				val = math.clamp(val, min, max)
