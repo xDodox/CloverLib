@@ -3990,6 +3990,8 @@ end
 		elem.configId = (elem.label or "element") .. "|" .. etype .. "|" .. _elementOrder
 	end
 	local _origValue = elem.Value
+	-- Keep Value exclusively in the closure so reads/writes cannot bypass tracking.
+	rawset(elem, "Value", nil)
 	setmetatable(elem, {
 		__index = function(t, k)
 			if k == "Value" then return _origValue end
@@ -3999,6 +4001,7 @@ end
 			if k == "Value" then
 				_origValue = v
 				if win and win._dirty ~= nil then win._dirty = true end
+				return
 			end
 			rawset(t, k, v)
 		end
