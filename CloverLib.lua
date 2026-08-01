@@ -328,7 +328,7 @@ end
 function UILib:saveConfig(name)
 	local data = {}
 	if not self.configs then return end
-	for id, elem in pairs(self.configs) do
+	for id, elem in pairs(self.Options or self.configs) do
 		if elem.Value ~= nil and not elem._noConfig then
 			if typeof(elem.Value) == "Color3" then
 				data[id] = {__type = "Color3", r = elem.Value.r, g = elem.Value.g, b = elem.Value.b}
@@ -405,7 +405,7 @@ end
 function UILib:exportConfigToString()
 	local data = {}
 	if not self.configs then return nil end
-	for id, elem in pairs(self.configs) do
+	for id, elem in pairs(self.Options or self.configs) do
 		if elem.Value ~= nil and not elem._noConfig then
 			local label = ""
 			if elem.frame then
@@ -498,7 +498,8 @@ end
 UILib.Parser = {
 	Toggle = {
 		Save = function(label, elem)
-			local v = elem.Value
+			local v = elem._currentValue
+			if v == nil then v = elem.Value end
 			if v == nil then v = elem.DefaultValue end
 			return { type = "Toggle", label = label, value = v == true }
 		end,
@@ -649,7 +650,7 @@ end
 
 local function _configStructuredToJSON(self)
 	local data = { _version = 5, _timestamp = os.time(), objects = {} }
-	for id, elem in pairs(self.configs) do
+	for id, elem in pairs(self.Options or self.configs) do
 		if elem._noConfig then continue end
 		local val = elem.Value
 		if val == nil then continue end
@@ -671,7 +672,7 @@ end
 
 local function _applyStructuredJSON(self, decoded)
 	local configIdMap = {}
-	for id, elem in pairs(self.configs) do
+	for id, elem in pairs(self.Options or self.configs) do
 		if elem.configId and not elem._noConfig and not (self.configIgnore and self.configIgnore[self:getElementLabel(elem)]) then
 			configIdMap[elem.configId] = elem
 		end
@@ -850,6 +851,7 @@ function UILib.newWindow(title, size, theme, parent, showVersion, includeUITab, 
 	self.showLogo = showLogo ~= false
 	self.uiTabIcon = uiTabIcon
 	self.configs = {}
+	self.Options = {}
 	self.resizing = nil
 	self.toggleKey = Enum.KeyCode.RightShift
 	self.watermark = nil
@@ -4007,6 +4009,13 @@ end
 		end
 	})
 	elem.Value = _origValue
+	if win and win.Options and elem.configId then
+		if win.Options[elem.configId] then
+			warn("[CloverLib] Duplicate configId:", elem.configId)
+		else
+			win.Options[elem.configId] = elem
+		end
+	end
 	function elem:remove()
 		if self.frame and self.frame.Parent then self.frame:Destroy() end
 		if win and win.configs then win.configs[self.ID] = nil end
@@ -5669,10 +5678,11 @@ function UILib.Column:addGroup(title)
 			end
 			contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
 local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
-		local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, configId = cfgId, IsToggle = true, Mode = "toggle", frame = container, DefaultHeight = TOGGLE_H }
+		local elem = { ID = id, Value = state, _currentValue = state == true, DefaultValue = default, label = cfgId or text, configId = cfgId, IsToggle = true, Mode = "toggle", frame = container, DefaultHeight = TOGGLE_H }
 		elem.SetValue = function(first, second)
 			local val = (type(first) ~= "table" or not first.ID) and first or second
 			state = val
+			elem._currentValue = state == true
 			elem.Value = state
 			updateToggleCheckbox(cbOuter, cbStroke, cbKnob, state, window)
 			for _, kb in pairs(window._keybinds) do
@@ -5819,10 +5829,11 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 		end
 		local cbOuter, cbStroke, cbKnob, lbl = createToggleCheckbox(r, default, window, text, rightOffset)
 		local state = default
-		local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, configId = cfgId, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = TOGGLE_H }
+		local elem = { ID = id, Value = state, _currentValue = state == true, DefaultValue = default, label = cfgId or text, configId = cfgId, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = TOGGLE_H }
 		elem.SetValue = function(first, second)
 			local val = (type(first) ~= "table" or not first.ID) and first or second
 			state = val
+			elem._currentValue = state == true
 			elem.Value = state
 			updateToggleCheckbox(cbOuter, cbStroke, cbKnob, state, window)
 			if not window._loadingConfig then
