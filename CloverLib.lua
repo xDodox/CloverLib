@@ -4221,7 +4221,7 @@ gb.MouseButton1Click:Connect(function()
 		local num = tonumber(valueBoxInput.Text)
 		if num then updateSlider(num) else valueLabel.Text = cleanNum(currentVal) end
 	end)
-	local elem = { ID = id, Value = currentVal, DefaultValue = defaultVal, label = cfgId or text, SetValue = updateSlider, frame = row, DefaultHeight = 42, _display = nil }
+	local elem = { ID = id, Value = currentVal, DefaultValue = defaultVal, label = cfgId or text, configId = cfgId, SetValue = updateSlider, frame = row, DefaultHeight = 42, _display = nil }
 	function elem:setDisplay(mode) sliderDisplay = mode end
 	function elem:SetVisible(v, anim)
 		if not anim then
@@ -4312,7 +4312,7 @@ gb.MouseButton1Click:Connect(function()
 	label.ZIndex = 3
 	label.Parent = row
 	local current = default or Color3.new(1, 0, 0)
-	local elem = { ID = id, Value = current, label = cfgId or text }
+	local elem = { ID = id, Value = current, label = cfgId or text, configId = cfgId }
 	local pickerFrame = nil
 
 	elem.SetValue = function(first, second)
@@ -4941,6 +4941,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 		ID = id,
 		Value = selected,
 		label = cfgId or text,
+		configId = cfgId,
 		frame = row,
 		DefaultHeight = 56,
 		SetValue = function(first, second)
@@ -5663,7 +5664,7 @@ function UILib.Column:addGroup(title)
 			end
 			contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
 local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
-		local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, IsToggle = true, Mode = "toggle", frame = container, DefaultHeight = TOGGLE_H }
+		local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, configId = cfgId, IsToggle = true, Mode = "toggle", frame = container, DefaultHeight = TOGGLE_H }
 		elem.SetValue = function(first, second)
 			local val = (type(first) ~= "table" or not first.ID) and first or second
 			state = val
@@ -5813,7 +5814,7 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 		end
 		local cbOuter, cbStroke, cbKnob, lbl = createToggleCheckbox(r, default, window, text, rightOffset)
 		local state = default
-		local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = TOGGLE_H }
+		local elem = { ID = id, Value = state, DefaultValue = default, label = cfgId or text, configId = cfgId, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = TOGGLE_H }
 		elem.SetValue = function(first, second)
 			local val = (type(first) ~= "table" or not first.ID) and first or second
 			state = val
@@ -6251,6 +6252,7 @@ gb.MouseButton1Click:Connect(function()
 			Value = currentSelection,
 			DefaultValue = default,
 			label = cfgId or text,
+			configId = cfgId,
 			_values = options,
 			Refresh = refresh,
 		SetValue = function(first, second)
@@ -6357,7 +6359,7 @@ gb.MouseButton1Click:Connect(function()
 		table.insert(window.keybindButtons, kbtn)
 local listening = false
 		local skipNext = false
-		local elem = { ID = id, Value = currentName, label = cfgId or text, _mode = "keybind", _noHud = noHud }
+		local elem = { ID = id, Value = currentName, label = cfgId or text, configId = cfgId, _mode = "keybind", _noHud = noHud }
 
 		local keyMode = "Hold"
 
@@ -7062,6 +7064,7 @@ local listening = false
 			Value = current,
 			DefaultValue = default or "",
 			label = cfgId or text,
+			configId = cfgId,
 			DefaultHeight = 50,
 			SetValue = function(first, second)
 				local val = (type(first) ~= "table" or not first.ID) and first or second
@@ -7140,6 +7143,7 @@ local listening = false
 			Value = current,
 			DefaultValue = default or 0,
 			label = cfgId or text,
+			configId = cfgId,
 			_isNumber = true,
 			DefaultHeight = 44,
 			SetValue = function(first, second)
@@ -7330,6 +7334,7 @@ local listening = false
 			Value = { currentMin, currentMax },
 			DefaultValue = { roundToStep(defaultMin), roundToStep(defaultMax) },
 			label = cfgId or text,
+			configId = cfgId,
 			_isRange = true,
 			SetValue = function(first, second)
 				local t = (type(first) ~= "table" or not first.ID) and first or second
