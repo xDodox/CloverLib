@@ -498,7 +498,7 @@ end
 UILib.Parser = {
 	Toggle = {
 		Save = function(label, elem)
-			local v = elem._currentValue
+			local v = elem.GetValue and elem:GetValue() or elem._currentValue
 			if v == nil then v = elem.Value end
 			if v == nil then v = elem.DefaultValue end
 			return { type = "Toggle", label = label, value = v == true }
@@ -5679,6 +5679,7 @@ function UILib.Column:addGroup(title)
 			contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateContentSize)
 local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 		local elem = { ID = id, Value = state, _currentValue = state == true, DefaultValue = default, label = cfgId or text, configId = cfgId, IsToggle = true, Mode = "toggle", frame = container, DefaultHeight = TOGGLE_H }
+		elem.GetValue = function() return state == true end
 		elem.SetValue = function(first, second)
 			local val = (type(first) ~= "table" or not first.ID) and first or second
 			state = val
@@ -5830,6 +5831,7 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 		local cbOuter, cbStroke, cbKnob, lbl = createToggleCheckbox(r, default, window, text, rightOffset)
 		local state = default
 		local elem = { ID = id, Value = state, _currentValue = state == true, DefaultValue = default, label = cfgId or text, configId = cfgId, IsToggle = true, Mode = "toggle", frame = r, DefaultHeight = TOGGLE_H }
+		elem.GetValue = function() return state == true end
 		elem.SetValue = function(first, second)
 			local val = (type(first) ~= "table" or not first.ID) and first or second
 			state = val
