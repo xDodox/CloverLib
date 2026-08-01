@@ -649,20 +649,22 @@ UILib.Parser = {
 end
 
 local function _configStructuredToJSON(self)
-	local data = { _version = 5, _timestamp = os.time(), objects = {} }
+	local data = { _version = 6, _timestamp = os.time(), objects = {} }
 	for id, elem in pairs(self.Options or self.configs) do
 		if elem._noConfig then continue end
-		local val = elem.Value
-		if val == nil then continue end
 		local label = self:getElementLabel(elem) or id
 		if self.configIgnore and self.configIgnore[label] then continue end
 		local etype = self:getElementType(elem)
 		if not etype then continue end
+		if not elem.configId then
+			warn("[CloverLib] Skipping control without stable configId:", label)
+			continue
+		end
 		local parser = UILib.Parser[etype]
 		if parser then
 			local obj = parser.Save(label, elem)
 			if obj then
-				obj.configId = elem.configId or (label .. "|" .. etype .. "|" .. (elem._configOrder or 0))
+				obj.configId = elem.configId
 				table.insert(data.objects, obj)
 			end
 		end
@@ -680,30 +682,22 @@ local function _applyStructuredJSON(self, decoded)
 
 	local labelMap = _buildLabelMap(self)
 	local count = 0
+	local missing = {}
 	self._loadingConfig = true
 	_configLoading = true
 
 	local ok, err = pcall(function()
 		if decoded.objects then
 			for _, obj in ipairs(decoded.objects) do
-				local elem = nil
-				if obj.configId and configIdMap[obj.configId] then
-					elem = configIdMap[obj.configId]
-				else
-					local elems = labelMap[obj.label]
-					if elems and #elems > 0 then
-						local usedIndices = {}
-						local labelKey = obj.label .. "|" .. obj.type
-						usedIndices[labelKey] = (usedIndices[labelKey] or 0) + 1
-						elem = elems[usedIndices[labelKey]]
-					end
-				end
+				local elem = obj.configId and configIdMap[obj.configId] or nil
 				if elem then
 					local parser = UILib.Parser[obj.type]
 					if parser then
 						pcall(parser.Load, obj, elem)
 						count = count + 1
 					end
+				else
+					table.insert(missing, obj.configId or (obj.label or "unknown"))
 				end
 			end
 		else
@@ -735,6 +729,9 @@ local function _applyStructuredJSON(self, decoded)
 
 	if not ok then
 		warn("[CloverLib] Config apply error:", err)
+	end
+	if #missing > 0 then
+		warn("[CloverLib] Missing controls:", table.concat(missing, ", "))
 	end
 
 	return count
