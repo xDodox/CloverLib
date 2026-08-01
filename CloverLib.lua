@@ -2483,6 +2483,10 @@ function UILib:shareConfigCode(baseUrl, gameSlug, gameName)
 end
 
 function UILib:importConfigCode(baseUrl, code)
+	code = tostring(code or "")
+	code = code:match("[?&]config=([A-Za-z0-9]+)") or code:match("config%/([A-Za-z0-9]+)") or code
+	code = code:gsub("^%s+", ""):gsub("%s+$", "")
+	if code == "" then self:notify("Enter a share code or link first", "warning", 2); return end
 	self:notify("Fetching config...", "info", 2)
 	local req = (syn and syn.request) or (http and http.request) or http_request
 	local fetchedJson = nil
@@ -3712,14 +3716,14 @@ function UILib.Tab:addSubTab(name, description)
 
 	btn.MouseEnter:Connect(function()
 		TweenService:Create(hov, TweenInfo.new(0.08), { BackgroundTransparency = 0 }):Play()
-		if label.TextColor3 ~= self.window.theme.White then
-			TweenService:Create(label, TweenInfo.new(0.08), { TextColor3 = self.window.theme.White }):Play()
+		if not self._selected then
+			label.TextColor3 = self.window.theme.White
 		end
 	end)
 	btn.MouseLeave:Connect(function()
 		TweenService:Create(hov, TweenInfo.new(0.08), { BackgroundTransparency = 1 }):Play()
 		if not self._selected then
-			TweenService:Create(label, TweenInfo.new(0.08), { TextColor3 = self.window.theme.Gray }):Play()
+			label.TextColor3 = self.window.theme.Gray
 		end
 	end)
 
@@ -7103,13 +7107,22 @@ local listening = false
 		if min > max then min, max = max, min end
 		local id = generateID()
 		local r = Instance.new("Frame")
-		r.Size = UDim2.new(1, 0, 0, 42)
+		r.Size = UDim2.new(1, 0, 0, 30)
 		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
+		local topRow = Instance.new("Frame")
+		topRow.Size = UDim2.new(1, 0, 1, 0)
+		topRow.BackgroundTransparency = 1
+		topRow.Parent = r
+		local topLayout = Instance.new("UIListLayout", topRow)
+		topLayout.FillDirection = Enum.FillDirection.Horizontal
+		topLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+		topLayout.Padding = UDim.new(0, 6)
+		topLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		local lbl = Instance.new("TextLabel")
-		lbl.Size = UDim2.new(1, -66, 0, 18)
-		lbl.Position = UDim2.new(0, 4, 0, 3)
+		lbl.Size = UDim2.new(0, 0, 0, 16)
+		lbl.AutomaticSize = Enum.AutomaticSize.X
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
@@ -7118,15 +7131,17 @@ local listening = false
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.TextWrapped = true
 		lbl.ZIndex = 3
-		lbl.Parent = r
+		lbl.LayoutOrder = 1
+		lbl.Parent = topRow
 		local box = Instance.new("TextBox")
 		box.Size = UDim2.new(0, 54, 0, 22)
-		box.Position = UDim2.new(1, -58, 0, 3)
+		box.AutomaticSize = Enum.AutomaticSize.None
 		box.BackgroundColor3 = window.theme.Track
 		box.ClipsDescendants = true
 		box.BorderSizePixel = 0
 		box.ZIndex = 3
-		box.Parent = r
+		box.LayoutOrder = 2
+		box.Parent = topRow
 		box.Text = tostring(default or 0)
 		box.TextColor3 = window.theme.Accent
 		box.Font = Enum.Font.GothamSemibold
@@ -7160,7 +7175,7 @@ local listening = false
 			label = cfgId or text,
 			configId = cfgId,
 			_isNumber = true,
-			DefaultHeight = 42,
+			DefaultHeight = 30,
 			SetValue = function(first, second)
 				local val = (type(first) ~= "table" or not first.ID) and first or second
 				val = math.clamp(val, min, max)
