@@ -4230,7 +4230,7 @@ gb.MouseButton1Click:Connect(function()
 		if sliderHandle then sliderHandle.Position = UDim2.new(rel, rel > 0.01 and -4 or 0, 0, 0) end
 		valueLabel.Text = formatVal(val)
 		valueBoxInput.Text = cleanNum(val)
-		if not window._loadingConfig then window:SafeCallback(callback, val) end
+		window:SafeCallback(callback, val)
 		window.configs[id].Value = val
 	end
 		local function apply(mx)
@@ -4364,7 +4364,7 @@ gb.MouseButton1Click:Connect(function()
 		current = val
 		elem.Value = val
 		colorBox.BackgroundColor3 = val
-		if not window._loadingConfig then window:SafeCallback(callback, val) end
+		window:SafeCallback(callback, val)
 	end
 	function elem:SetColor(val)
 		current = val
@@ -5010,9 +5010,7 @@ local function createMultiDropdown(group, items, window, text, options, default,
 			else
 				selLbl.Text = s
 			end
-			if not window._loadingConfig then
-				window:SafeCallback(callback, keys)
-			end
+			window:SafeCallback(callback, keys)
 			window.configs[id].Value = selected
 		end
 	}
@@ -5753,9 +5751,7 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 				Size = UDim2.new(1, 0, 0, targetH)
 			}):Play()
 			task.delay(0.21, updateSize)
-		if not window._loadingConfig then
-			window:SafeCallback(callback, state)
-		end
+		window:SafeCallback(callback, state)
 		end
 		window.configs[id] = finalizeElement(elem, window, group)
 		if window.configs[id] then window.configs[id].Value = state end
@@ -5882,9 +5878,7 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 			elem._currentValue = state == true
 			elem.Value = state
 			updateToggleCheckbox(cbOuter, cbStroke, cbKnob, state, window)
-			if not window._loadingConfig then
-				window:SafeCallback(callback, state)
-			end
+			window:SafeCallback(callback, state)
 		end
 		function elem:SetVisible(v, anim)
 			if not anim then
@@ -6332,9 +6326,7 @@ gb.MouseButton1Click:Connect(function()
 				sbg.BackgroundTransparency = (o == val) and 0.8 or 1
 				sbg.BackgroundColor3 = window.theme.Accent
 			end
-			if not window._loadingConfig then
-				window:SafeCallback(callback, val)
-			end
+			window:SafeCallback(callback, val)
 			window.configs[id].Value = val
 		end,
 			SetValues = function(self, newOpts)
@@ -7132,7 +7124,7 @@ local listening = false
 				local val = (type(first) ~= "table" or not first.ID) and first or second
 				current = val
 				box.Text = val
-				if not window._loadingConfig then window:SafeCallback(callback, val) end
+				window:SafeCallback(callback, val)
 				window.configs[id].Value = val
 			end
 		}
@@ -7215,7 +7207,7 @@ local listening = false
 				val = math.clamp(val, min, max)
 				current = val
 				box.Text = tostring(val)
-				if not window._loadingConfig then window:SafeCallback(callback, val) end
+				window:SafeCallback(callback, val)
 				window.configs[id].Value = val
 			end
 		}
@@ -7374,7 +7366,7 @@ local listening = false
 				currentMax = val
 			end
 			updateDisplay()
-			if not window._loadingConfig then window:SafeCallback(callback, currentMin, currentMax) end
+			window:SafeCallback(callback, currentMin, currentMax)
 			window.configs[id].Value = { currentMin, currentMax }
 		end
 		hitLeft.MouseButton1Down:Connect(function()
@@ -7403,7 +7395,7 @@ local listening = false
 			SetValue = function(first, second)
 				local t = (type(first) ~= "table" or not first.ID) and first or second
 				currentMin, currentMax = roundToStep(t[1]), roundToStep(t[2]); updateDisplay()
-				if not window._loadingConfig then window:SafeCallback(callback, currentMin, currentMax) end
+				window:SafeCallback(callback, currentMin, currentMax)
 				window.configs[id].Value = { currentMin, currentMax }
 			end
 		}
