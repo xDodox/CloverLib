@@ -2431,16 +2431,16 @@ function UILib:buildUITab()
 		self:shareConfigCode(self.configShareUrl or "https://cloverhub.fun", nil, self.gameName)
 	end, "Upload config and get a short share code", Enum.TextXAlignment.Center, Color3.fromRGB(100, 180, 255))
 
-	local shareCodeBox = cfg:textbox("Share Code", "", "e.g. A1B2C3", function(_) end, nil, "ui_sharecode")
+	local shareCodeBox = cfg:textbox("Share Code", "", "Code or link, e.g. A1B2C3", function(_) end, nil, "ui_sharecode")
 
 	cfg:button("Import Config", function()
 		local box = shareCodeBox.frame and shareCodeBox.frame:FindFirstChildOfClass("TextBox")
 		local code = (box and box.Text and box.Text ~= "" and box.Text) or ""
-		if code == "" then self:notify("Enter a share code first", "warning", 2); return end
+		if code == "" then self:notify("Enter a share code or link first", "warning", 2); return end
 		self:importConfigCode(self.configShareUrl or "https://cloverhub.fun", code)
 		pcall(function() if box then box.Text = "" end end)
 		cfgRefreshDropdown()
-	end, "Fetch and apply config from share code", Enum.TextXAlignment.Center, Color3.fromRGB(100, 255, 180))
+	end, "Fetch and apply config from a share code or link", Enum.TextXAlignment.Center, Color3.fromRGB(100, 255, 180))
 
 	self:ignoreConfig("ui_width", "ui_height", "ui_togglekey", 	"ui_watermark", "ui_theme", "ui_cfgdropdown", "ui_autoload", "ui_cfgname", "ui_sharecode", "ui_keybindhud")
 	self:tryAutoLoad()
@@ -3716,13 +3716,13 @@ function UILib.Tab:addSubTab(name, description)
 
 	btn.MouseEnter:Connect(function()
 		TweenService:Create(hov, TweenInfo.new(0.08), { BackgroundTransparency = 0 }):Play()
-		if not self._selected then
+		if not sub._selected then
 			label.TextColor3 = self.window.theme.White
 		end
 	end)
 	btn.MouseLeave:Connect(function()
 		TweenService:Create(hov, TweenInfo.new(0.08), { BackgroundTransparency = 1 }):Play()
-		if not self._selected then
+		if not sub._selected then
 			label.TextColor3 = self.window.theme.Gray
 		end
 	end)
@@ -7111,18 +7111,10 @@ local listening = false
 		r.BackgroundTransparency = 1
 		r.BorderSizePixel = 0
 		r.Parent = items
-		local topRow = Instance.new("Frame")
-		topRow.Size = UDim2.new(1, 0, 1, 0)
-		topRow.BackgroundTransparency = 1
-		topRow.Parent = r
-		local topLayout = Instance.new("UIListLayout", topRow)
-		topLayout.FillDirection = Enum.FillDirection.Horizontal
-		topLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-		topLayout.Padding = UDim.new(0, 6)
-		topLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		local lbl = Instance.new("TextLabel")
-		lbl.Size = UDim2.new(0, 0, 0, 16)
-		lbl.AutomaticSize = Enum.AutomaticSize.X
+		lbl.Size = UDim2.new(1, -70, 0, 16)
+		lbl.Position = UDim2.new(0, 4, 0.5, 0)
+		lbl.AnchorPoint = Vector2.new(0, 0.5)
 		lbl.BackgroundTransparency = 1
 		lbl.Text = text
 		lbl.TextColor3 = window.theme.White
@@ -7131,17 +7123,16 @@ local listening = false
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
 		lbl.TextWrapped = true
 		lbl.ZIndex = 3
-		lbl.LayoutOrder = 1
-		lbl.Parent = topRow
+		lbl.Parent = r
 		local box = Instance.new("TextBox")
 		box.Size = UDim2.new(0, 54, 0, 22)
-		box.AutomaticSize = Enum.AutomaticSize.None
+		box.Position = UDim2.new(1, -6, 0.5, 0)
+		box.AnchorPoint = Vector2.new(1, 0.5)
 		box.BackgroundColor3 = window.theme.Track
 		box.ClipsDescendants = true
 		box.BorderSizePixel = 0
 		box.ZIndex = 3
-		box.LayoutOrder = 2
-		box.Parent = topRow
+		box.Parent = r
 		box.Text = tostring(default or 0)
 		box.TextColor3 = window.theme.Accent
 		box.Font = Enum.Font.GothamSemibold
