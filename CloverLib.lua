@@ -7538,28 +7538,4 @@ function UILib.SubTab:addGroup(title)
 	return colObj:addGroup(title)
 end
 
--- Update Checker
-local CLOVER_VERSION = "1.0.0"
-function UILib.checkVersion(callback)
-	task.spawn(function()
-		local ok, res = pcall(function()
-			local req = (syn and syn.request) or (http and http.request) or http_request or (Fluxus and Fluxus.request) or request
-			if req then
-				local r = req({ Url = "https://cloverhub.fun/api/version", Method = "GET" })
-				return r and r.Body
-			end
-			return game:GetService("HttpService"):GetAsync("https://cloverhub.fun/api/version")
-		end)
-		if ok and res then
-			local s, d = pcall(function() return game:GetService("HttpService"):JSONDecode(res) end)
-			if s and d and d.version then
-				if d.version ~= CLOVER_VERSION then
-					if callback then callback(d.version, CLOVER_VERSION)
-					else warn("[CloverLib] Update available: v" .. d.version .. " (current: v" .. CLOVER_VERSION .. ")") end
-				end
-			end
-		end
-	end)
-end
-
 return UILib
