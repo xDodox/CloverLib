@@ -2443,26 +2443,36 @@ function UILib:buildUITab()
 		self:shareConfigCode(self.configShareUrl or "https://cloverhub.fun", nil, self.gameName)
 	end, "Upload config and get a short share code", Enum.TextXAlignment.Center, Color3.fromRGB(100, 180, 255))
 
-	local shareCodeBox = cfg:textbox("Share Code", "", "Code or link, e.g. A1B2C3", function(_) end, nil, "ui_sharecode")
+	local shareCodeBox = cfg:textbox("Share Code", "", "e.g. A1B2C3", function(_) end, nil, "ui_sharecode")
 
 	cfg:button("Import Config", function()
 		local box = shareCodeBox.frame and shareCodeBox.frame:FindFirstChildOfClass("TextBox")
 		local code = (box and box.Text and box.Text ~= "" and box.Text) or ""
-		if code == "" then self:notify("Enter a share code or link first", "warning", 2); return end
+		if code == "" then self:notify("Enter a share code first", "warning", 2); return end
 		self:importConfigCode(self.configShareUrl or "https://cloverhub.fun", code)
 		pcall(function() if box then box.Text = "" end end)
 		cfgRefreshDropdown()
-	end, "Fetch and apply config from a share code or link", Enum.TextXAlignment.Center, Color3.fromRGB(100, 255, 180))
+	end, "Fetch and apply config from a share code", Enum.TextXAlignment.Center, Color3.fromRGB(100, 255, 180))
 
 	self:ignoreConfig("ui_width", "ui_height", "ui_togglekey", 	"ui_watermark", "ui_theme", "ui_cfgdropdown", "ui_autoload", "ui_cfgname", "ui_sharecode", "ui_keybindhud")
 	self:tryAutoLoad()
 end
 
 function UILib:shareConfigCode(baseUrl, gameSlug, gameName)
+	self:prompt("Config Description", "Optional note so others know what this config is for", function(desc)
+		if type(desc) == "string" then desc = desc:gsub("^%s+", ""):gsub("%s+$", "") end
+		if not desc or desc == "" then desc = nil end
+		self:_doShareConfig(baseUrl, gameSlug, gameName, desc)
+	end)
+end
+
+function UILib:_doShareConfig(baseUrl, gameSlug, gameName, description)
 	local json = _configStructuredToJSON(self)
 	local payload = { json = json }
 	if gameSlug then payload.gameSlug = gameSlug end
 	if gameName then payload.gameName = gameName end
+	if game and game.PlaceId then payload.gameLink = "https://www.roblox.com/games/" .. tostring(game.PlaceId) end
+	if description then payload.description = description end
 	local req = (syn and syn.request) or (http and http.request) or http_request
 	if req then
 		local ok, res = pcall(req, {
@@ -2495,13 +2505,13 @@ function UILib:shareConfigCode(baseUrl, gameSlug, gameName)
 end
 
 function UILib:importConfigCode(baseUrl, code)
-	code = tostring(code or "")
-	code = code:match("[?&]config=([A-Za-z0-9]+)") or code:match("config%/([A-Za-z0-9]+)") or code
-	code = code:gsub("^%s+", ""):gsub("%s+$", "")
-	if code == "" then self:notify("Enter a share code or link first", "warning", 2); return end
+	code = tostring(code or ""):gsub("^%s+", ""):gsub("%s+$", "")
+	if code == "" then self:notify("Enter a share code first", "warning", 2); return end
 	self:notify("Fetching config...", "info", 2)
 	local req = (syn and syn.request) or (http and http.request) or http_request
 	local fetchedJson = nil
+	local fetchedDesc = nil
+	local fetchedGame = nil
 
 	if req then
 		local ok, res = pcall(req, {
@@ -2512,6 +2522,8 @@ function UILib:importConfigCode(baseUrl, code)
 			local decodeOk, data = pcall(HS.JSONDecode, HS, res.Body)
 			if decodeOk and data and data.success and data.json then
 				fetchedJson = data.json
+				fetchedDesc = data.description
+				fetchedGame = data.gameName
 			end
 		end
 	end
@@ -2522,6 +2534,8 @@ function UILib:importConfigCode(baseUrl, code)
 			local decodeOk, data = pcall(HS.JSONDecode, HS, body)
 			if decodeOk and data and data.success and data.json then
 				fetchedJson = data.json
+				fetchedDesc = data.description
+				fetchedGame = data.gameName
 			end
 		end)
 	end
@@ -2529,6 +2543,13 @@ function UILib:importConfigCode(baseUrl, code)
 	if not fetchedJson then
 		self:notify("Config not found: " .. code, "error", 3)
 		return
+	end
+
+	if fetchedDesc and fetchedDesc ~= "" then
+		self:notify("Config note: " .. fetchedDesc, "info", 4)
+	end
+	if fetchedGame and fetchedGame ~= "" then
+		self:notify("Config for: " .. fetchedGame, "info", 3)
 	end
 
 	self:prompt("Config Name", code, function(name)
