@@ -34,6 +34,7 @@ end
 local allWindows = {}
 local _configLoading = false
 local _elementOrder = 0
+local _pickerCons = {}
 
 local LUCIDE_ICONS = nil
 
@@ -768,6 +769,7 @@ function UILib:loadConfigStructured(name)
 	if not decodeOk or type(decoded) ~= "table" then self:notify("Invalid config data", "error", 3); return end
 	self._pendingConfig = decoded
 	_applyStructuredJSON(self, decoded)
+	self:_clearPendingIfAllBuilt()
 	self:notify("Loaded: " .. name, "success", 2)
 end
 
@@ -782,6 +784,16 @@ function UILib:importConfigStructured(json)
 	if not ok or type(decoded) ~= "table" then self:notify("Invalid JSON", "error", 3); return end
 	self._pendingConfig = decoded
 	_applyStructuredJSON(self, decoded)
+	self:_clearPendingIfAllBuilt()
+end
+
+function UILib:_clearPendingIfAllBuilt()
+	if not self._pendingConfig or not self._pendingConfig.objects then self._pendingConfig = nil; return end
+	local allBuilt = true
+	for _, obj in ipairs(self._pendingConfig.objects) do
+		if obj.configId and not self.Options[obj.configId] then allBuilt = false; break end
+	end
+	if allBuilt then self._pendingConfig = nil end
 end
 
 function UILib:listConfigsStructured()
@@ -2817,7 +2829,7 @@ function UILib:enterResizeMode(widthSlider, heightSlider)
 	rpShortcut.Size = UDim2.new(1, -20, 0, 14)
 	rpShortcut.Position = UDim2.new(0, 10, 0, 46)
 	rpShortcut.BackgroundTransparency = 1
-	rpShortcut.Text = "ESC to cancel  Â·  Double-click to apply"
+	rpShortcut.Text = "ESC to cancel  ·  Double-click to apply"
 	rpShortcut.TextColor3 = self.theme.Gray
 	rpShortcut.Font = Enum.Font.GothamSemibold
 	rpShortcut.TextSize = 10
@@ -3988,10 +4000,7 @@ end
 	local function finalizeElement(elem, win, grp)
 	_elementOrder = _elementOrder + 1
 	elem._configOrder = _elementOrder
-	if not elem.configId then
-		local etype = win and win.getElementType and win:getElementType(elem) or ""
-		elem.configId = (elem.label or "element") .. "|" .. etype .. "|" .. _elementOrder
-	end
+	-- Only controls with an explicit cfgId participate in the config system.
 	local _origValue = elem.Value
 	-- Keep Value exclusively in the closure so reads/writes cannot bypass tracking.
 	rawset(elem, "Value", nil)
@@ -4020,6 +4029,7 @@ end
 	function elem:remove()
 		if self.frame and self.frame.Parent then self.frame:Destroy() end
 		if win and win.configs then win.configs[self.ID] = nil end
+		if win and win.Options and self.configId then win.Options[self.configId] = nil end
 		if grp and grp.updateSize then grp.updateSize() end
 	end
 	return elem
@@ -4262,8 +4272,6 @@ gb.MouseButton1Click:Connect(function()
 	window.configs[id] = finalizeElement(elem, window, group)
 	return row, elem
 end
-
-local _pickerCons = {}
 
 local function createColorPicker(group, items, window, text, default, callback, cfgId, settingsCallback)
 	local id = generateID()
@@ -5457,6 +5465,8 @@ function UILib.Column:addGroup(title)
 		end
 		layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSize)
 
+		local preIds = {}
+		for k in pairs(self.Options) do preIds[k] = true end
 		local ng = buildNestedGroup(popup, updateSize)
 		builder(ng)
 		if self._prebuildingAdvanced then
@@ -5474,9 +5484,21 @@ function UILib.Column:addGroup(title)
 			return
 		end
 		-- Configs can be loaded before lazy advanced-panel controls exist.
-		-- Reapply the pending snapshot after this panel registers its controls.
-		if self._pendingConfig then
-			pcall(_applyStructuredJSON, self, self._pendingConfig)
+		-- Apply the pending snapshot ONLY to the controls this panel just
+		-- registered, so manual changes to other controls are never reverted.
+		if self._pendingConfig and self._pendingConfig.objects then
+			local byId = {}
+			for _, obj in ipairs(self._pendingConfig.objects) do
+				if obj.configId then byId[obj.configId] = obj end
+			end
+			local subObjects = {}
+			for k in pairs(self.Options) do
+				if not preIds[k] and byId[k] then table.insert(subObjects, byId[k]) end
+			end
+			if #subObjects > 0 then
+				pcall(_applyStructuredJSON, self, { _version = 6, objects = subObjects })
+			end
+			self:_clearPendingIfAllBuilt()
 		end
 		task.wait(0.08)
 		updateSize()
