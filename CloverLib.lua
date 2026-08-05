@@ -36,6 +36,8 @@ local _configLoading = false
 local _elementOrder = 0
 local _pickerCons = {}
 
+warn("[CloverLib] build: cfg-recovery-v2")
+
 local LUCIDE_ICONS = nil
 
 local function _kbInputKey(input)
@@ -5629,6 +5631,13 @@ function UILib.Column:addGroup(title)
 
 	function group:toggle(text, default, callback, tooltip, icon, expandable, contentFunc, colorCallback, settingsCallback, cfgId)
 		assert(text ~= nil and text ~= "", "Toggle - Missing text")
+		if not cfgId then
+			if type(settingsCallback) == "string" and settingsCallback:match("^[%w]+_[%w_]+$") then cfgId, settingsCallback = settingsCallback, nil
+			elseif type(colorCallback) == "string" and colorCallback:match("^[%w]+_[%w_]+$") then cfgId, colorCallback = colorCallback, nil
+			elseif type(contentFunc) == "string" and contentFunc:match("^[%w]+_[%w_]+$") then cfgId, contentFunc = contentFunc, nil
+			elseif type(icon) == "string" and icon:match("^[%w]+_[%w_]+$") then cfgId, icon = icon, nil
+			elseif type(tooltip) == "string" and tooltip:match("^[%w]+_[%w_]+$") then cfgId, tooltip = tooltip, nil end
+		end
 		local id = generateID()
 		local TOGGLE_H = 36
 		if expandable then
@@ -5960,6 +5969,13 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 	end
 
 	function group:slider(text, minVal, maxVal, defaultVal, callback, step, tooltip, icon, display, cfgId, settingsCallback)
+		if not cfgId then
+			if type(settingsCallback) == "string" and settingsCallback:match("^[%w]+_[%w_]+$") then cfgId, settingsCallback = settingsCallback, nil
+			elseif type(display) == "string" and display:match("^[%w]+_[%w_]+$") then cfgId, display = display, nil
+			elseif type(icon) == "string" and icon:match("^[%w]+_[%w_]+$") then cfgId, icon = icon, nil
+			elseif type(tooltip) == "string" and tooltip:match("^[%w]+_[%w_]+$") then cfgId, tooltip = tooltip, nil
+			elseif type(step) == "string" and step:match("^[%w]+_[%w_]+$") then cfgId, step = step, nil end
+		end
 		local r, elem = createSlider(group, items, window, text, minVal, maxVal, defaultVal, callback, step, cfgId, settingsCallback)
 		if display then elem:setDisplay(display) end
 		updateSize()
@@ -5968,6 +5984,12 @@ local nestedGroup = buildNestedGroup(contentFrame, updateContentSize)
 
 	function group:dropdown(text, options, default, callback, tooltip, refreshCallback, icon, cfgId, settingsCallback)
 		assert(text ~= nil, "Dropdown - Missing text")
+		if not cfgId then
+			if type(settingsCallback) == "string" and settingsCallback:match("^[%w]+_[%w_]+$") then cfgId, settingsCallback = settingsCallback, nil
+			elseif type(icon) == "string" and icon:match("^[%w]+_[%w_]+$") then cfgId, icon = icon, nil
+			elseif type(refreshCallback) == "string" and refreshCallback:match("^[%w]+_[%w_]+$") then cfgId, refreshCallback = refreshCallback, nil
+			elseif type(tooltip) == "string" and tooltip:match("^[%w]+_[%w_]+$") then cfgId, tooltip = tooltip, nil end
+		end
 		local id = generateID()
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, 56)
@@ -7054,6 +7076,11 @@ local listening = false
 
 	function group:colorpicker(text, default, callback, tooltip, icon, cfgId, settingsCallback)
 		assert(text ~= nil and text ~= "", "ColorPicker - Missing text")
+		if not cfgId then
+			if type(settingsCallback) == "string" and settingsCallback:match("^[%w]+_[%w_]+$") then cfgId, settingsCallback = settingsCallback, nil
+			elseif type(icon) == "string" and icon:match("^[%w]+_[%w_]+$") then cfgId, icon = icon, nil
+			elseif type(tooltip) == "string" and tooltip:match("^[%w]+_[%w_]+$") then cfgId, tooltip = tooltip, nil end
+		end
 		local r, elem = createColorPicker(group, items, window, text, default, callback, cfgId, settingsCallback)
 		updateSize()
 		return elem
@@ -7061,6 +7088,10 @@ local listening = false
 
 	function 	group:multidropdown(text, options, default, callback, tooltip, refreshCallback, cfgId)
 		assert(text ~= nil and text ~= "", "MultiDropdown - Missing text")
+		if not cfgId then
+			if type(refreshCallback) == "string" and refreshCallback:match("^[%w]+_[%w_]+$") then cfgId, refreshCallback = refreshCallback, nil
+			elseif type(tooltip) == "string" and tooltip:match("^[%w]+_[%w_]+$") then cfgId, tooltip = tooltip, nil end
+		end
 		local r, elem = createMultiDropdown(group, items, window, text, options, default, callback, refreshCallback, cfgId)
 		updateSize()
 		return elem
@@ -7068,6 +7099,7 @@ local listening = false
 
 	function group:textbox(text, default, placeholder, callback, tooltip, cfgId)
 		assert(text ~= nil and text ~= "", "Textbox - Missing text")
+		if not cfgId and type(tooltip) == "string" and tooltip:match("^[%w]+_[%w_]+$") then cfgId, tooltip = tooltip, nil end
 		local id = generateID()
 		local r = Instance.new("Frame")
 		r.Size = UDim2.new(1, 0, 0, 50)
@@ -7137,6 +7169,7 @@ local listening = false
 
 	function group:numberbox(text, default, min, max, callback, tooltip, cfgId)
 		assert(text ~= nil and text ~= "", "Numberbox - Missing text")
+		if not cfgId and type(tooltip) == "string" and tooltip:match("^[%w]+_[%w_]+$") then cfgId, tooltip = tooltip, nil end
 		min = min or -math.huge
 		max = max or math.huge
 		if min > max then min, max = max, min end
@@ -7220,6 +7253,10 @@ local listening = false
 
 	function group:rangeslider(text, minVal, maxVal, defaultMin, defaultMax, callback, step, tooltip, cfgId)
 		assert(text ~= nil and text ~= "", "RangeSlider - Missing text")
+		if not cfgId then
+			if type(tooltip) == "string" and tooltip:match("^[%w]+_[%w_]+$") then cfgId, tooltip = tooltip, nil
+			elseif type(step) == "string" and step:match("^[%w]+_[%w_]+$") then cfgId, step = step, nil end
+		end
 		local id = generateID()
 		step = step or 1
 		local pctMin, pctMax = 0, 1
