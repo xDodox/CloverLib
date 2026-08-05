@@ -36,8 +36,6 @@ local _configLoading = false
 local _elementOrder = 0
 local _pickerCons = {}
 
-warn("[CloverLib] build: cfg-recovery-v2")
-
 local LUCIDE_ICONS = nil
 
 local function _kbInputKey(input)
