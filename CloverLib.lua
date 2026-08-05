@@ -4043,11 +4043,16 @@ end
 	})
 	elem.Value = _origValue
 	if win and win.Options and elem.configId then
-		if win.Options[elem.configId] then
-			warn("[CloverLib] Duplicate configId:", elem.configId)
-		else
-			win.Options[elem.configId] = elem
+		-- Auto-uniquify duplicate configIds so every control is saved.
+		local baseId = elem.configId
+		local finalId = baseId
+		local n = 2
+		while win.Options[finalId] do
+			finalId = baseId .. "_" .. n
+			n = n + 1
 		end
+		elem.configId = finalId
+		win.Options[finalId] = elem
 	end
 	function elem:remove()
 		if self.frame and self.frame.Parent then self.frame:Destroy() end
